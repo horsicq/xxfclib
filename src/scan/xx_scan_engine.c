@@ -123,8 +123,8 @@ static size_t xx_scan_build_plan(const xx_scan_options *options, xx_file_type_t 
     return count;
 }
 
-static xx_scan_result *xx_scan_run_plan(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options,
-                                        const xx_scan_result *forbidden_result, unsigned int archive_depth, xx_pd_struct *pd)
+static xx_scan_result *xx_scan_run_plan(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, const xx_scan_result *forbidden_result,
+                                        unsigned int archive_depth, xx_pd_struct *pd)
 {
     xx_file_type_t types[3];
     size_t count = xx_scan_build_plan(options, types);
@@ -219,9 +219,8 @@ static bool xx_scan_validate(xx_scan_engine *engine, const xx_scan_options *opti
         xx_pd_set_error(pd, XXFC_ERR_NULL_PARAM, "Scan engine is NULL");
         return false;
     }
-    if (!engine->ops || engine->ops->abi_version != XX_SCAN_ENGINE_ABI_VERSION ||
-        engine->ops->struct_size < sizeof(xx_scan_engine_ops) || engine->ops->id == XX_SCAN_ENGINE_UNKNOWN ||
-        !engine->ops->name || !engine->ops->display_name || !engine->ops->supports_type || !engine->ops->scan_region) {
+    if (!engine->ops || engine->ops->abi_version != XX_SCAN_ENGINE_ABI_VERSION || engine->ops->struct_size < sizeof(xx_scan_engine_ops) ||
+        engine->ops->id == XX_SCAN_ENGINE_UNKNOWN || !engine->ops->name || !engine->ops->display_name || !engine->ops->supports_type || !engine->ops->scan_region) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Incomplete or incompatible scan engine ops");
         return false;
     }
@@ -304,8 +303,7 @@ typedef struct xx_scan_resources_context {
  * neither. GZIP, BZIP2, LHA, Mach-O FAT and the rest are never expanded. */
 static bool xx_scan_expands_archive(xx_file_type_t type)
 {
-    return type == XX_FILE_TYPE_ZIP || type == XX_FILE_TYPE_ZIP64 || type == XX_FILE_TYPE_JAR || type == XX_FILE_TYPE_APK ||
-           type == XX_FILE_TYPE_IPA;
+    return type == XX_FILE_TYPE_ZIP || type == XX_FILE_TYPE_ZIP64 || type == XX_FILE_TYPE_JAR || type == XX_FILE_TYPE_APK || type == XX_FILE_TYPE_IPA;
 }
 
 /* Report the pending archive error in result, as the "Last error" record of
@@ -351,10 +349,8 @@ static bool xx_scan_is_scanable_type(xx_file_type_t type)
         case XX_FILE_TYPE_IPA:
         case XX_FILE_TYPE_NPM:
         case XX_FILE_TYPE_RAR:
-        case XX_FILE_TYPE_ISO9660:
-            return true;
-        default:
-            return false;
+        case XX_FILE_TYPE_ISO9660: return true;
+        default: return false;
     }
 }
 
@@ -433,8 +429,7 @@ static bool xx_scan_run_resource(void *context, const xx_resource_record *resour
         return !xx_pd_is_stopped(pd) && !(pd && pd->last_error);
     }
 
-    part = xx_scan_internal(engine, child_device, &child_options, scan->result, scan->options->scan_id, XX_SCAN_PART_RESOURCE, scan->archive_depth,
-                            scan->shared, pd);
+    part = xx_scan_internal(engine, child_device, &child_options, scan->result, scan->options->scan_id, XX_SCAN_PART_RESOURCE, scan->archive_depth, scan->shared, pd);
     if (!part) {
         xx_io_close(child_device);
         return false;
@@ -537,8 +532,8 @@ static bool xx_scan_run_archive_member(void *context, const xx_scan_archive_memb
         scan->shared->archive_member_scans++;
     }
 
-    part = xx_scan_internal(engine, member->device, &child_options, scan->result, scan->options->scan_id, XX_SCAN_PART_ARCHIVE,
-                            scan->archive_depth + 1U, scan->shared, pd);
+    part =
+        xx_scan_internal(engine, member->device, &child_options, scan->result, scan->options->scan_id, XX_SCAN_PART_ARCHIVE, scan->archive_depth + 1U, scan->shared, pd);
     if (!part) return false;
     if (xx_pd_is_stopped(pd) || (pd && pd->last_error)) {
         xx_scan_free_result(engine, part);
@@ -887,16 +882,14 @@ void xx_scan_engine_cleanup(xx_scan_engine *engine)
     xx_mem_zero(engine, sizeof(*engine));
 }
 
-bool xx_scan_engine_init(xx_scan_engine *engine, const xx_scan_engine_ops *ops,
-                         const void *config, const void *database, xx_pd_struct *pd)
+bool xx_scan_engine_init(xx_scan_engine *engine, const xx_scan_engine_ops *ops, const void *config, const void *database, xx_pd_struct *pd)
 {
     if (!engine || !ops) {
         xx_pd_set_error(pd, XXFC_ERR_NULL_PARAM, "Missing scan engine or ops");
         return false;
     }
     xx_mem_zero(engine, sizeof(*engine));
-    if (ops->abi_version != XX_SCAN_ENGINE_ABI_VERSION || ops->struct_size < sizeof(*ops) ||
-        ops->id == XX_SCAN_ENGINE_UNKNOWN || !ops->name || !ops->display_name ||
+    if (ops->abi_version != XX_SCAN_ENGINE_ABI_VERSION || ops->struct_size < sizeof(*ops) || ops->id == XX_SCAN_ENGINE_UNKNOWN || !ops->name || !ops->display_name ||
         !ops->supports_type || !ops->scan_region) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Incompatible scan engine ops");
         return false;

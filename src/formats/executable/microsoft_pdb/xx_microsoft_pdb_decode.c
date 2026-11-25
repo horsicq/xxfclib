@@ -33,7 +33,10 @@ static inline void decode_r_init(decode_reader *r, const uint8_t *data, size_t s
 
 static inline uint8_t decode_r_u8(decode_reader *r)
 {
-    if (r->offset >= r->size) { r->error = true; return 0; }
+    if (r->offset >= r->size) {
+        r->error = true;
+        return 0;
+    }
     return r->data[r->offset++];
 }
 
@@ -44,7 +47,10 @@ static inline int8_t decode_r_i8(decode_reader *r)
 
 static inline uint16_t decode_r_u16(decode_reader *r)
 {
-    if (r->offset + 2 > r->size) { r->error = true; return 0; }
+    if (r->offset + 2 > r->size) {
+        r->error = true;
+        return 0;
+    }
     uint16_t v = (uint16_t)(r->data[r->offset] | (r->data[r->offset + 1] << 8));
     r->offset += 2;
     return v;
@@ -57,11 +63,12 @@ static inline int16_t decode_r_i16(decode_reader *r)
 
 static inline uint32_t decode_r_u32(decode_reader *r)
 {
-    if (r->offset + 4 > r->size) { r->error = true; return 0; }
-    uint32_t v = (uint32_t)r->data[r->offset] |
-                 ((uint32_t)r->data[r->offset + 1] << 8) |
-                 ((uint32_t)r->data[r->offset + 2] << 16) |
-                 ((uint32_t)r->data[r->offset + 3] << 24);
+    if (r->offset + 4 > r->size) {
+        r->error = true;
+        return 0;
+    }
+    uint32_t v =
+        (uint32_t)r->data[r->offset] | ((uint32_t)r->data[r->offset + 1] << 8) | ((uint32_t)r->data[r->offset + 2] << 16) | ((uint32_t)r->data[r->offset + 3] << 24);
     r->offset += 4;
     return v;
 }
@@ -73,7 +80,10 @@ static inline int32_t decode_r_i32(decode_reader *r)
 
 static inline uint64_t decode_r_u64(decode_reader *r)
 {
-    if (r->offset + 8 > r->size) { r->error = true; return 0; }
+    if (r->offset + 8 > r->size) {
+        r->error = true;
+        return 0;
+    }
     uint64_t v = 0;
     for (int i = 0; i < 8; i++) {
         v |= ((uint64_t)r->data[r->offset + i]) << (i * 8);
@@ -349,8 +359,8 @@ static inline bool decode_emit_guid(xx_ms_pdb_dump_fn fn, void *user, int32_t de
 {
     char buf[40];
     if (g) {
-        snprintf(buf, sizeof(buf), "{%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-                 g[3], g[2], g[1], g[0], g[5], g[4], g[7], g[6], g[8], g[9], g[10], g[11], g[12], g[13], g[14], g[15]);
+        snprintf(buf, sizeof(buf), "{%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X}", g[3], g[2], g[1], g[0], g[5], g[4], g[7], g[6], g[8], g[9],
+                 g[10], g[11], g[12], g[13], g[14], g[15]);
     } else {
         snprintf(buf, sizeof(buf), "{00000000-0000-0000-0000-000000000000}");
     }
@@ -561,7 +571,9 @@ static void decode_read_numeric(decode_reader *r, decode_num_val *nv)
             if (r->offset + 10 <= r->size) {
                 nv->dval = decode_r_f64(r);
                 r->offset += 2; /* remaining 2 bytes */
-            } else { r->error = true; }
+            } else {
+                r->error = true;
+            }
             nv->is_float = true;
             break;
         case XX_MS_PDB_LF_REAL128:
@@ -569,7 +581,9 @@ static void decode_read_numeric(decode_reader *r, decode_num_val *nv)
             if (r->offset + 16 <= r->size) {
                 nv->dval = decode_r_f64(r);
                 r->offset += 8;
-            } else { r->error = true; }
+            } else {
+                r->error = true;
+            }
             nv->is_float = true;
             break;
         case XX_MS_PDB_LF_QUADWORD:
@@ -582,27 +596,32 @@ static void decode_read_numeric(decode_reader *r, decode_num_val *nv)
             nv->ival = (int64_t)nv->uval;
             break;
         case XX_MS_PDB_LF_REAL48:
-            if (r->offset + 6 <= r->size) r->offset += 6; else r->error = true;
+            if (r->offset + 6 <= r->size) r->offset += 6;
+            else r->error = true;
             nv->dval = 0;
             nv->is_float = true;
             break;
         case XX_MS_PDB_LF_COMPLEX32:
-            if (r->offset + 8 <= r->size) r->offset += 8; else r->error = true;
+            if (r->offset + 8 <= r->size) r->offset += 8;
+            else r->error = true;
             nv->is_str = true;
             snprintf(nv->sval, sizeof(nv->sval), "<complex32>");
             break;
         case XX_MS_PDB_LF_COMPLEX64:
-            if (r->offset + 16 <= r->size) r->offset += 16; else r->error = true;
+            if (r->offset + 16 <= r->size) r->offset += 16;
+            else r->error = true;
             nv->is_str = true;
             snprintf(nv->sval, sizeof(nv->sval), "<complex64>");
             break;
         case XX_MS_PDB_LF_COMPLEX80:
-            if (r->offset + 20 <= r->size) r->offset += 20; else r->error = true;
+            if (r->offset + 20 <= r->size) r->offset += 20;
+            else r->error = true;
             nv->is_str = true;
             snprintf(nv->sval, sizeof(nv->sval), "<complex80>");
             break;
         case XX_MS_PDB_LF_COMPLEX128:
-            if (r->offset + 32 <= r->size) r->offset += 32; else r->error = true;
+            if (r->offset + 32 <= r->size) r->offset += 32;
+            else r->error = true;
             nv->is_str = true;
             snprintf(nv->sval, sizeof(nv->sval), "<complex128>");
             break;
@@ -613,7 +632,9 @@ static void decode_read_numeric(decode_reader *r, decode_num_val *nv)
                 memcpy(nv->sval, r->data + r->offset, cplen);
                 nv->sval[cplen] = '\0';
                 r->offset += vlen;
-            } else { r->error = true; }
+            } else {
+                r->error = true;
+            }
             nv->is_str = true;
             break;
         }
@@ -626,12 +647,14 @@ static void decode_read_numeric(decode_reader *r, decode_num_val *nv)
             break;
         }
         case XX_MS_PDB_LF_DECIMAL:
-            if (r->offset + 16 <= r->size) r->offset += 16; else r->error = true;
+            if (r->offset + 16 <= r->size) r->offset += 16;
+            else r->error = true;
             nv->is_str = true;
             snprintf(nv->sval, sizeof(nv->sval), "<decimal>");
             break;
         case XX_MS_PDB_LF_DATE:
-            if (r->offset + 8 <= r->size) r->offset += 8; else r->error = true;
+            if (r->offset + 8 <= r->size) r->offset += 8;
+            else r->error = true;
             nv->is_str = true;
             snprintf(nv->sval, sizeof(nv->sval), "<date>");
             break;
@@ -643,9 +666,7 @@ static void decode_read_numeric(decode_reader *r, decode_num_val *nv)
             decode_r_u16(r);
             nv->is_float = true;
             break;
-        default:
-            r->error = true;
-            break;
+        default: r->error = true; break;
     }
 }
 
@@ -661,8 +682,6 @@ static void decode_emit_num_val(xx_ms_pdb_dump_fn fn, void *user, int32_t depth,
         decode_emit_uint(fn, user, depth, name, nv->uval);
     }
 }
-
-
 
 /* Binary annotations decoder for S_INLINESITE / S_INLINESITE2 */
 static uint32_t decode_read_compressed_u32(decode_reader *r)
@@ -801,17 +820,21 @@ static void decode_binary_annotations(decode_reader *r, int32_t depth, xx_ms_pdb
     }
 }
 
-
-
 static void decode_format_prop_flags(uint32_t prop, char *buf, size_t buf_size)
 {
     buf[0] = '\0';
     size_t len = 0;
-    #define PROP_FLAG(bit, name) \
-        if (prop & (bit)) { \
-            if (len > 0 && len + 3 < buf_size) { strcat(buf, " | "); len += 3; } \
-            if (len + strlen(name) < buf_size) { strcat(buf, name); len += strlen(name); } \
-        }
+#define PROP_FLAG(bit, name)                 \
+    if (prop & (bit)) {                      \
+        if (len > 0 && len + 3 < buf_size) { \
+            strcat(buf, " | ");              \
+            len += 3;                        \
+        }                                    \
+        if (len + strlen(name) < buf_size) { \
+            strcat(buf, name);               \
+            len += strlen(name);             \
+        }                                    \
+    }
     PROP_FLAG(0x0001, "packed")
     PROP_FLAG(0x0002, "ctor")
     PROP_FLAG(0x0004, "ovlops")
@@ -826,7 +849,7 @@ static void decode_format_prop_flags(uint32_t prop, char *buf, size_t buf_size)
     PROP_FLAG(0x0800, "hfa_float")
     PROP_FLAG(0x1000, "hfa_double")
     PROP_FLAG(0x2000, "intrinsic")
-    #undef PROP_FLAG
+#undef PROP_FLAG
     if (len == 0 && buf_size > 4) strcpy(buf, "none");
 }
 
@@ -848,19 +871,29 @@ static void decode_format_fldattr(uint16_t attr, char *buf, size_t buf_size)
         default: mp_str = "unknown"; break;
     }
     snprintf(buf, buf_size, "%s | %s", acc_str, mp_str);
-    if (attr & 0x20) { if (strlen(buf) + 12 < buf_size) strcat(buf, " | compgen"); }
-    if (attr & 0x40) { if (strlen(buf) + 12 < buf_size) strcat(buf, " | sealed"); }
+    if (attr & 0x20) {
+        if (strlen(buf) + 12 < buf_size) strcat(buf, " | compgen");
+    }
+    if (attr & 0x40) {
+        if (strlen(buf) + 12 < buf_size) strcat(buf, " | sealed");
+    }
 }
 
 static void decode_format_frameproc_flags(uint32_t flags, char *buf, size_t buf_size)
 {
     buf[0] = '\0';
     size_t len = 0;
-    #define FP_FLAG(bit, name) \
-        if (flags & (bit)) { \
-            if (len > 0 && len + 3 < buf_size) { strcat(buf, " | "); len += 3; } \
-            if (len + strlen(name) < buf_size) { strcat(buf, name); len += strlen(name); } \
-        }
+#define FP_FLAG(bit, name)                   \
+    if (flags & (bit)) {                     \
+        if (len > 0 && len + 3 < buf_size) { \
+            strcat(buf, " | ");              \
+            len += 3;                        \
+        }                                    \
+        if (len + strlen(name) < buf_size) { \
+            strcat(buf, name);               \
+            len += strlen(name);             \
+        }                                    \
+    }
     FP_FLAG(0x00000001, "has_alloca")
     FP_FLAG(0x00000002, "has_setjmp")
     FP_FLAG(0x00000004, "has_longjmp")
@@ -875,7 +908,7 @@ static void decode_format_frameproc_flags(uint32_t flags, char *buf, size_t buf_
     FP_FLAG(0x00000800, "gs_check")
     FP_FLAG(0x00001000, "safe_buffers")
     FP_FLAG(0x00040000, "strict_gs_check")
-    #undef FP_FLAG
+#undef FP_FLAG
     if (len == 0 && buf_size > 4) strcpy(buf, "none");
 }
 
@@ -901,8 +934,6 @@ static const char *decode_frameproc_base_reg(uint16_t machine, uint8_t enc)
     }
     return "unknown";
 }
-
-
 
 static void decode_symbol_compile(uint16_t kind, decode_reader *r, int32_t depth, xx_ms_pdb_dump_fn fn, void *user)
 {
@@ -942,9 +973,7 @@ static void decode_symbol_compile(uint16_t kind, decode_reader *r, int32_t depth
         uint16_t be_major = decode_r_u16(r);
         uint16_t be_minor = decode_r_u16(r);
         uint16_t be_build = decode_r_u16(r);
-        const char *ver = (kind == XX_MS_PDB_S_COMPILE2_ST) ?
-                          decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                          decode_r_cstring(r, str_buf, sizeof(str_buf));
+        const char *ver = (kind == XX_MS_PDB_S_COMPILE2_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
         decode_emit_enum(fn, user, depth, "machine", machine, decode_cpu_to_string(machine));
         decode_emit_enum(fn, user, depth, "language", lang, decode_language_to_string(lang));
         decode_emit_hex(fn, user, depth, "flags", flags >> 8);
@@ -982,15 +1011,11 @@ static void decode_symbol_proc(uint16_t kind, decode_reader *r, int32_t depth, x
     uint32_t dbg_start = decode_r_u32(r);
     uint32_t dbg_end = decode_r_u32(r);
     uint32_t type_index = 0;
-    bool is_id = (kind == XX_MS_PDB_S_LPROC32_ID || kind == XX_MS_PDB_S_GPROC32_ID ||
-                  kind == XX_MS_PDB_S_LPROC32_DPC_ID ||
-                  kind == XX_MS_PDB_S_LPROCMIPS_ID || kind == XX_MS_PDB_S_GPROCMIPS_ID ||
-                  kind == XX_MS_PDB_S_LPROCIA64_ID || kind == XX_MS_PDB_S_GPROCIA64_ID);
-    bool is_16t = (kind == XX_MS_PDB_S_LPROC32_16t || kind == XX_MS_PDB_S_GPROC32_16t ||
-                   kind == XX_MS_PDB_S_LPROCMIPS_16t || kind == XX_MS_PDB_S_GPROCMIPS_16t ||
+    bool is_id = (kind == XX_MS_PDB_S_LPROC32_ID || kind == XX_MS_PDB_S_GPROC32_ID || kind == XX_MS_PDB_S_LPROC32_DPC_ID || kind == XX_MS_PDB_S_LPROCMIPS_ID ||
+                  kind == XX_MS_PDB_S_GPROCMIPS_ID || kind == XX_MS_PDB_S_LPROCIA64_ID || kind == XX_MS_PDB_S_GPROCIA64_ID);
+    bool is_16t = (kind == XX_MS_PDB_S_LPROC32_16t || kind == XX_MS_PDB_S_GPROC32_16t || kind == XX_MS_PDB_S_LPROCMIPS_16t || kind == XX_MS_PDB_S_GPROCMIPS_16t ||
                    kind == XX_MS_PDB_S_LPROC16 || kind == XX_MS_PDB_S_GPROC16);
-    bool is_st = (kind == XX_MS_PDB_S_LPROC32_ST || kind == XX_MS_PDB_S_GPROC32_ST ||
-                  kind == XX_MS_PDB_S_LPROCMIPS_ST || kind == XX_MS_PDB_S_GPROCMIPS_ST ||
+    bool is_st = (kind == XX_MS_PDB_S_LPROC32_ST || kind == XX_MS_PDB_S_GPROC32_ST || kind == XX_MS_PDB_S_LPROCMIPS_ST || kind == XX_MS_PDB_S_GPROCMIPS_ST ||
                   kind == XX_MS_PDB_S_LPROCIA64_ST || kind == XX_MS_PDB_S_GPROCIA64_ST);
     if (is_16t) {
         type_index = decode_r_u16(r);
@@ -1108,17 +1133,13 @@ static void decode_symbol_defrange(uint16_t kind, decode_reader *r, uint16_t mac
     }
 }
 
-
-
 static void decode_symbol_constant(uint16_t kind, decode_reader *r, int32_t depth, xx_ms_pdb_dump_fn fn, void *user)
 {
     char str_buf[512];
     uint32_t type_index = (kind == XX_MS_PDB_S_CONSTANT_16t) ? decode_r_u16(r) : decode_r_u32(r);
     decode_num_val nv;
     decode_read_numeric(r, &nv);
-    const char *name = (kind == XX_MS_PDB_S_CONSTANT_ST) ?
-                       decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                       decode_r_cstring(r, str_buf, sizeof(str_buf));
+    const char *name = (kind == XX_MS_PDB_S_CONSTANT_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
 
     decode_emit_type(fn, user, depth, "type_index", type_index);
     decode_emit_num_val(fn, user, depth, "value", &nv);
@@ -1128,11 +1149,9 @@ static void decode_symbol_constant(uint16_t kind, decode_reader *r, int32_t dept
 static void decode_symbol_data(uint16_t kind, decode_reader *r, int32_t depth, xx_ms_pdb_dump_fn fn, void *user)
 {
     char str_buf[512];
-    bool is_16t = (kind == XX_MS_PDB_S_LDATA32_16t || kind == XX_MS_PDB_S_GDATA32_16t ||
-                   kind == XX_MS_PDB_S_LTHREAD32_16t || kind == XX_MS_PDB_S_GTHREAD32_16t ||
+    bool is_16t = (kind == XX_MS_PDB_S_LDATA32_16t || kind == XX_MS_PDB_S_GDATA32_16t || kind == XX_MS_PDB_S_LTHREAD32_16t || kind == XX_MS_PDB_S_GTHREAD32_16t ||
                    kind == XX_MS_PDB_S_LDATA16 || kind == XX_MS_PDB_S_GDATA16);
-    bool is_st = (kind == XX_MS_PDB_S_LDATA32_ST || kind == XX_MS_PDB_S_GDATA32_ST ||
-                  kind == XX_MS_PDB_S_LTHREAD32_ST || kind == XX_MS_PDB_S_GTHREAD32_ST);
+    bool is_st = (kind == XX_MS_PDB_S_LDATA32_ST || kind == XX_MS_PDB_S_GDATA32_ST || kind == XX_MS_PDB_S_LTHREAD32_ST || kind == XX_MS_PDB_S_GTHREAD32_ST);
     uint32_t type_index = is_16t ? decode_r_u16(r) : decode_r_u32(r);
     uint32_t offset = (kind == XX_MS_PDB_S_LDATA16 || kind == XX_MS_PDB_S_GDATA16) ? decode_r_u16(r) : decode_r_u32(r);
     uint16_t segment = decode_r_u16(r);
@@ -1204,10 +1223,7 @@ static void decode_symbol_thunk(uint16_t kind, decode_reader *r, int32_t depth, 
     }
 }
 
-
-
-bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size, uint16_t machine,
-                             int32_t depth, xx_ms_pdb_dump_fn fn, void *user)
+bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size, uint16_t machine, int32_t depth, xx_ms_pdb_dump_fn fn, void *user)
 {
     decode_reader reader;
     decode_r_init(&reader, payload, size);
@@ -1218,16 +1234,12 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
         case XX_MS_PDB_S_COMPILE:
         case XX_MS_PDB_S_COMPILE2:
         case XX_MS_PDB_S_COMPILE2_ST:
-        case XX_MS_PDB_S_COMPILE3:
-            decode_symbol_compile(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_S_COMPILE3: decode_symbol_compile(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_S_OBJNAME:
         case XX_MS_PDB_S_OBJNAME_ST: {
             uint32_t sig = decode_r_u32(r);
-            const char *name = (kind == XX_MS_PDB_S_OBJNAME_ST) ?
-                               decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                               decode_r_cstring(r, str_buf, sizeof(str_buf));
+            const char *name = (kind == XX_MS_PDB_S_OBJNAME_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
             decode_emit_hex(fn, user, depth, "signature", sig);
             decode_emit_string(fn, user, depth, "name", name);
             break;
@@ -1280,13 +1292,9 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
         case XX_MS_PDB_S_GPROCIA64_ID:
         case XX_MS_PDB_S_LPROCIA64_ID:
         case XX_MS_PDB_S_GPROC16:
-        case XX_MS_PDB_S_LPROC16:
-            decode_symbol_proc(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_S_LPROC16: decode_symbol_proc(kind, r, depth, fn, user); break;
 
-        case XX_MS_PDB_S_FRAMEPROC:
-            decode_symbol_frameproc(r, machine, depth, fn, user);
-            break;
+        case XX_MS_PDB_S_FRAMEPROC: decode_symbol_frameproc(r, machine, depth, fn, user); break;
 
         case XX_MS_PDB_S_REGREL32:
         case XX_MS_PDB_S_REGREL32_ST:
@@ -1295,9 +1303,7 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
             int32_t offset = (kind == XX_MS_PDB_S_REGREL16) ? decode_r_i16(r) : decode_r_i32(r);
             uint32_t type_index = (kind == XX_MS_PDB_S_REGREL32_16t || kind == XX_MS_PDB_S_REGREL16) ? decode_r_u16(r) : decode_r_u32(r);
             uint16_t reg = decode_r_u16(r);
-            const char *name = (kind == XX_MS_PDB_S_REGREL32_ST) ?
-                               decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                               decode_r_cstring(r, str_buf, sizeof(str_buf));
+            const char *name = (kind == XX_MS_PDB_S_REGREL32_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
             decode_emit_int(fn, user, depth, "offset", offset);
             decode_emit_type(fn, user, depth, "type_index", type_index);
             decode_emit_enum(fn, user, depth, "register", reg, decode_get_register_name(machine, reg));
@@ -1311,9 +1317,7 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
         case XX_MS_PDB_S_BPREL16: {
             int32_t offset = (kind == XX_MS_PDB_S_BPREL16) ? decode_r_i16(r) : decode_r_i32(r);
             uint32_t type_index = (kind == XX_MS_PDB_S_BPREL32_16t || kind == XX_MS_PDB_S_BPREL16) ? decode_r_u16(r) : decode_r_u32(r);
-            const char *name = (kind == XX_MS_PDB_S_BPREL32_ST) ?
-                               decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                               decode_r_cstring(r, str_buf, sizeof(str_buf));
+            const char *name = (kind == XX_MS_PDB_S_BPREL32_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
             decode_emit_int(fn, user, depth, "offset", offset);
             decode_emit_type(fn, user, depth, "type_index", type_index);
             decode_emit_string(fn, user, depth, "name", name);
@@ -1325,9 +1329,7 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
         case XX_MS_PDB_S_REGISTER_16t: {
             uint32_t type_index = (kind == XX_MS_PDB_S_REGISTER_16t) ? decode_r_u16(r) : decode_r_u32(r);
             uint16_t reg = decode_r_u16(r);
-            const char *name = (kind == XX_MS_PDB_S_REGISTER_ST) ?
-                               decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                               decode_r_cstring(r, str_buf, sizeof(str_buf));
+            const char *name = (kind == XX_MS_PDB_S_REGISTER_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
             decode_emit_type(fn, user, depth, "type_index", type_index);
             decode_emit_enum(fn, user, depth, "register", reg, decode_get_register_name(machine, reg));
             decode_emit_string(fn, user, depth, "name", name);
@@ -1353,9 +1355,7 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
         case XX_MS_PDB_S_DEFRANGE_HLSL:
         case XX_MS_PDB_S_DEFRANGE_DPC_PTR_TAG:
         case XX_MS_PDB_S_DEFRANGE:
-        case XX_MS_PDB_S_DEFRANGE_SUBFIELD:
-            decode_symbol_defrange(kind, r, machine, depth, fn, user);
-            break;
+        case XX_MS_PDB_S_DEFRANGE_SUBFIELD: decode_symbol_defrange(kind, r, machine, depth, fn, user); break;
 
         case XX_MS_PDB_S_INLINESITE:
         case XX_MS_PDB_S_INLINESITE2: {
@@ -1417,9 +1417,7 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
 
         case XX_MS_PDB_S_CONSTANT:
         case XX_MS_PDB_S_CONSTANT_ST:
-        case XX_MS_PDB_S_CONSTANT_16t:
-            decode_symbol_constant(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_S_CONSTANT_16t: decode_symbol_constant(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_S_UDT:
         case XX_MS_PDB_S_UDT_ST:
@@ -1439,9 +1437,7 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
         case XX_MS_PDB_S_PUB32:
         case XX_MS_PDB_S_PUB32_ST:
         case XX_MS_PDB_S_PUB32_16t:
-        case XX_MS_PDB_S_PUB16:
-            decode_symbol_pub(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_S_PUB16: decode_symbol_pub(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_S_LDATA32:
         case XX_MS_PDB_S_GDATA32:
@@ -1462,9 +1458,7 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
         case XX_MS_PDB_S_GDATA_HLSL32:
         case XX_MS_PDB_S_LDATA_HLSL32:
         case XX_MS_PDB_S_GDATA_HLSL32_EX:
-        case XX_MS_PDB_S_LDATA_HLSL32_EX:
-            decode_symbol_data(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_S_LDATA_HLSL32_EX: decode_symbol_data(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_S_PROCREF:
         case XX_MS_PDB_S_LPROCREF:
@@ -1473,9 +1467,7 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
         case XX_MS_PDB_S_TOKENREF:
         case XX_MS_PDB_S_PROCREF_ST:
         case XX_MS_PDB_S_LPROCREF_ST:
-        case XX_MS_PDB_S_DATAREF_ST:
-            decode_symbol_ref(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_S_DATAREF_ST: decode_symbol_ref(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_S_SECTION: {
             uint16_t isec = decode_r_u16(r);
@@ -1579,9 +1571,7 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
 
         case XX_MS_PDB_S_UNAMESPACE:
         case XX_MS_PDB_S_UNAMESPACE_ST: {
-            const char *name = (kind == XX_MS_PDB_S_UNAMESPACE_ST) ?
-                               decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                               decode_r_cstring(r, str_buf, sizeof(str_buf));
+            const char *name = (kind == XX_MS_PDB_S_UNAMESPACE_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
             decode_emit_string(fn, user, depth, "name", name);
             break;
         }
@@ -1666,9 +1656,7 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
 
         case XX_MS_PDB_S_THUNK32:
         case XX_MS_PDB_S_THUNK32_ST:
-        case XX_MS_PDB_S_THUNK16:
-            decode_symbol_thunk(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_S_THUNK16: decode_symbol_thunk(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_S_TRAMPOLINE: {
             uint16_t tramp_type = decode_r_u16(r);
@@ -1708,9 +1696,7 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
         case XX_MS_PDB_S_MANSLOT_ST: {
             uint32_t slot = decode_r_u32(r);
             uint32_t type_index = decode_r_u32(r);
-            const char *name = (kind == XX_MS_PDB_S_MANSLOT_ST) ?
-                               decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                               decode_r_cstring(r, str_buf, sizeof(str_buf));
+            const char *name = (kind == XX_MS_PDB_S_MANSLOT_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
             decode_emit_uint(fn, user, depth, "slot", slot);
             decode_emit_type(fn, user, depth, "type_index", type_index);
             decode_emit_string(fn, user, depth, "name", name);
@@ -1779,8 +1765,6 @@ bool xx_ms_pdb_decode_symbol(uint16_t kind, const uint8_t *payload, size_t size,
     return true;
 }
 
-
-
 static void decode_leaf_modifier(uint16_t kind, decode_reader *r, int32_t depth, xx_ms_pdb_dump_fn fn, void *user)
 {
     char mod_buf[64];
@@ -1788,8 +1772,14 @@ static void decode_leaf_modifier(uint16_t kind, decode_reader *r, int32_t depth,
     uint16_t mods = decode_r_u16(r);
     mod_buf[0] = '\0';
     if (mods & 1) strcat(mod_buf, "const");
-    if (mods & 2) { if (mod_buf[0]) strcat(mod_buf, " | "); strcat(mod_buf, "volatile"); }
-    if (mods & 4) { if (mod_buf[0]) strcat(mod_buf, " | "); strcat(mod_buf, "unaligned"); }
+    if (mods & 2) {
+        if (mod_buf[0]) strcat(mod_buf, " | ");
+        strcat(mod_buf, "volatile");
+    }
+    if (mods & 4) {
+        if (mod_buf[0]) strcat(mod_buf, " | ");
+        strcat(mod_buf, "unaligned");
+    }
     if (!mod_buf[0]) strcpy(mod_buf, "none");
 
     decode_emit_type(fn, user, depth, "type_index", type_index);
@@ -1814,10 +1804,22 @@ static void decode_leaf_pointer(uint16_t kind, decode_reader *r, int32_t depth, 
     }
     attr_buf[0] = '\0';
     if (attrs & 0x0100) strcat(attr_buf, "flat32");
-    if (attrs & 0x0200) { if (attr_buf[0]) strcat(attr_buf, " | "); strcat(attr_buf, "volatile"); }
-    if (attrs & 0x0400) { if (attr_buf[0]) strcat(attr_buf, " | "); strcat(attr_buf, "const"); }
-    if (attrs & 0x0800) { if (attr_buf[0]) strcat(attr_buf, " | "); strcat(attr_buf, "unaligned"); }
-    if (attrs & 0x1000) { if (attr_buf[0]) strcat(attr_buf, " | "); strcat(attr_buf, "restrict"); }
+    if (attrs & 0x0200) {
+        if (attr_buf[0]) strcat(attr_buf, " | ");
+        strcat(attr_buf, "volatile");
+    }
+    if (attrs & 0x0400) {
+        if (attr_buf[0]) strcat(attr_buf, " | ");
+        strcat(attr_buf, "const");
+    }
+    if (attrs & 0x0800) {
+        if (attr_buf[0]) strcat(attr_buf, " | ");
+        strcat(attr_buf, "unaligned");
+    }
+    if (attrs & 0x1000) {
+        if (attr_buf[0]) strcat(attr_buf, " | ");
+        strcat(attr_buf, "restrict");
+    }
     if (!attr_buf[0]) strcpy(attr_buf, "none");
 
     decode_emit_type(fn, user, depth, "type_index", type_index);
@@ -1913,14 +1915,10 @@ static void decode_leaf_udt(uint16_t kind, decode_reader *r, int32_t depth, xx_m
 {
     char str_buf[512];
     char flags_buf[256];
-    bool is_v2 = (kind == XX_MS_PDB_LF_CLASS2 || kind == XX_MS_PDB_LF_STRUCTURE2 ||
-                  kind == XX_MS_PDB_LF_INTERFACE2 || kind == XX_MS_PDB_LF_UNION2);
-    bool is_union = (kind == XX_MS_PDB_LF_UNION || kind == XX_MS_PDB_LF_UNION2 ||
-                     kind == XX_MS_PDB_LF_UNION_ST || kind == XX_MS_PDB_LF_UNION_16t);
-    bool is_16t = (kind == XX_MS_PDB_LF_CLASS_16t || kind == XX_MS_PDB_LF_STRUCTURE_16t ||
-                   kind == XX_MS_PDB_LF_UNION_16t);
-    bool is_st = (kind == XX_MS_PDB_LF_CLASS_ST || kind == XX_MS_PDB_LF_STRUCTURE_ST ||
-                  kind == XX_MS_PDB_LF_UNION_ST);
+    bool is_v2 = (kind == XX_MS_PDB_LF_CLASS2 || kind == XX_MS_PDB_LF_STRUCTURE2 || kind == XX_MS_PDB_LF_INTERFACE2 || kind == XX_MS_PDB_LF_UNION2);
+    bool is_union = (kind == XX_MS_PDB_LF_UNION || kind == XX_MS_PDB_LF_UNION2 || kind == XX_MS_PDB_LF_UNION_ST || kind == XX_MS_PDB_LF_UNION_16t);
+    bool is_16t = (kind == XX_MS_PDB_LF_CLASS_16t || kind == XX_MS_PDB_LF_STRUCTURE_16t || kind == XX_MS_PDB_LF_UNION_16t);
+    bool is_st = (kind == XX_MS_PDB_LF_CLASS_ST || kind == XX_MS_PDB_LF_STRUCTURE_ST || kind == XX_MS_PDB_LF_UNION_ST);
 
     uint16_t count = 0;
     if (!is_v2) {
@@ -2022,7 +2020,10 @@ static void decode_leaf_methodlist(uint16_t kind, decode_reader *r, int32_t dept
     char attr_buf[64];
     bool is_16t = (kind == XX_MS_PDB_LF_METHODLIST_16t);
     while (r->offset < r->size && !r->error) {
-        if ((r->data[r->offset] & 0xF0) == 0xF0) { r->offset++; continue; }
+        if ((r->data[r->offset] & 0xF0) == 0xF0) {
+            r->offset++;
+            continue;
+        }
         if (r->offset + 4 > r->size) break;
         uint16_t attr = decode_r_u16(r);
         decode_r_u16(r); /* padding */
@@ -2066,9 +2067,7 @@ static void decode_leaf_fieldlist(uint16_t kind, decode_reader *r, int32_t depth
                 uint32_t ti = (is_16t || mkind == XX_MS_PDB_LF_MEMBER_16t) ? decode_r_u16(r) : decode_r_u32(r);
                 decode_num_val nv;
                 decode_read_numeric(r, &nv);
-                const char *name = (mkind == XX_MS_PDB_LF_MEMBER_ST) ?
-                                   decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                                   decode_r_cstring(r, str_buf, sizeof(str_buf));
+                const char *name = (mkind == XX_MS_PDB_LF_MEMBER_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
                 decode_format_fldattr(attr, attr_buf, sizeof(attr_buf));
                 decode_emit_flags(fn, user, depth + 1, "attributes", attr, attr_buf);
                 decode_emit_type(fn, user, depth + 1, "type_index", ti);
@@ -2082,9 +2081,7 @@ static void decode_leaf_fieldlist(uint16_t kind, decode_reader *r, int32_t depth
             case XX_MS_PDB_LF_STMEMBER_ST: {
                 uint16_t attr = decode_r_u16(r);
                 uint32_t ti = (is_16t || mkind == XX_MS_PDB_LF_STMEMBER_16t) ? decode_r_u16(r) : decode_r_u32(r);
-                const char *name = (mkind == XX_MS_PDB_LF_STMEMBER_ST) ?
-                                   decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                                   decode_r_cstring(r, str_buf, sizeof(str_buf));
+                const char *name = (mkind == XX_MS_PDB_LF_STMEMBER_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
                 decode_format_fldattr(attr, attr_buf, sizeof(attr_buf));
                 decode_emit_flags(fn, user, depth + 1, "attributes", attr, attr_buf);
                 decode_emit_type(fn, user, depth + 1, "type_index", ti);
@@ -2097,9 +2094,7 @@ static void decode_leaf_fieldlist(uint16_t kind, decode_reader *r, int32_t depth
             case XX_MS_PDB_LF_METHOD_ST: {
                 uint16_t mcount = decode_r_u16(r);
                 uint32_t mlist = (is_16t || mkind == XX_MS_PDB_LF_METHOD_16t) ? decode_r_u16(r) : decode_r_u32(r);
-                const char *name = (mkind == XX_MS_PDB_LF_METHOD_ST) ?
-                                   decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                                   decode_r_cstring(r, str_buf, sizeof(str_buf));
+                const char *name = (mkind == XX_MS_PDB_LF_METHOD_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
                 decode_emit_uint(fn, user, depth + 1, "count", mcount);
                 decode_emit_type(fn, user, depth + 1, "method_list_type", mlist);
                 decode_emit_string(fn, user, depth + 1, "name", name);
@@ -2119,9 +2114,7 @@ static void decode_leaf_fieldlist(uint16_t kind, decode_reader *r, int32_t depth
                     uint32_t vtab_off = decode_r_u32(r);
                     decode_emit_hex(fn, user, depth + 1, "vtable_offset", vtab_off);
                 }
-                const char *name = (mkind == XX_MS_PDB_LF_ONEMETHOD_ST) ?
-                                   decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                                   decode_r_cstring(r, str_buf, sizeof(str_buf));
+                const char *name = (mkind == XX_MS_PDB_LF_ONEMETHOD_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
                 decode_emit_string(fn, user, depth + 1, "name", name);
                 break;
             }
@@ -2175,9 +2168,7 @@ static void decode_leaf_fieldlist(uint16_t kind, decode_reader *r, int32_t depth
                 uint16_t attr = decode_r_u16(r);
                 decode_num_val nv;
                 decode_read_numeric(r, &nv);
-                const char *name = (mkind == XX_MS_PDB_LF_ENUMERATE_ST) ?
-                                   decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                                   decode_r_cstring(r, str_buf, sizeof(str_buf));
+                const char *name = (mkind == XX_MS_PDB_LF_ENUMERATE_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
                 decode_format_fldattr(attr, attr_buf, sizeof(attr_buf));
                 decode_emit_flags(fn, user, depth + 1, "attributes", attr, attr_buf);
                 decode_emit_num_val(fn, user, depth + 1, "value", &nv);
@@ -2190,9 +2181,7 @@ static void decode_leaf_fieldlist(uint16_t kind, decode_reader *r, int32_t depth
             case XX_MS_PDB_LF_NESTTYPE_ST: {
                 decode_r_u16(r); /* padding */
                 uint32_t ti = (is_16t || mkind == XX_MS_PDB_LF_NESTTYPE_16t) ? decode_r_u16(r) : decode_r_u32(r);
-                const char *name = (mkind == XX_MS_PDB_LF_NESTTYPE_ST) ?
-                                   decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                                   decode_r_cstring(r, str_buf, sizeof(str_buf));
+                const char *name = (mkind == XX_MS_PDB_LF_NESTTYPE_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
                 decode_emit_type(fn, user, depth + 1, "type_index", ti);
                 decode_emit_string(fn, user, depth + 1, "name", name);
                 break;
@@ -2202,9 +2191,8 @@ static void decode_leaf_fieldlist(uint16_t kind, decode_reader *r, int32_t depth
             case XX_MS_PDB_LF_NESTTYPEEX_ST: {
                 uint16_t attr = decode_r_u16(r);
                 uint32_t ti = decode_r_u32(r);
-                const char *name = (mkind == XX_MS_PDB_LF_NESTTYPEEX_ST) ?
-                                   decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                                   decode_r_cstring(r, str_buf, sizeof(str_buf));
+                const char *name =
+                    (mkind == XX_MS_PDB_LF_NESTTYPEEX_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
                 decode_format_fldattr(attr, attr_buf, sizeof(attr_buf));
                 decode_emit_flags(fn, user, depth + 1, "attributes", attr, attr_buf);
                 decode_emit_type(fn, user, depth + 1, "type_index", ti);
@@ -2251,9 +2239,7 @@ static void decode_leaf_fieldlist(uint16_t kind, decode_reader *r, int32_t depth
             case XX_MS_PDB_LF_FRIENDFCN_ST: {
                 decode_r_u16(r); /* padding */
                 uint32_t ti = (is_16t || mkind == XX_MS_PDB_LF_FRIENDFCN_16t) ? decode_r_u16(r) : decode_r_u32(r);
-                const char *name = (mkind == XX_MS_PDB_LF_FRIENDFCN_ST) ?
-                                   decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                                   decode_r_cstring(r, str_buf, sizeof(str_buf));
+                const char *name = (mkind == XX_MS_PDB_LF_FRIENDFCN_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
                 decode_emit_type(fn, user, depth + 1, "type_index", ti);
                 decode_emit_string(fn, user, depth + 1, "name", name);
                 break;
@@ -2263,9 +2249,8 @@ static void decode_leaf_fieldlist(uint16_t kind, decode_reader *r, int32_t depth
             case XX_MS_PDB_LF_MEMBERMODIFY_ST: {
                 uint16_t attr = decode_r_u16(r);
                 uint32_t ti = decode_r_u32(r);
-                const char *name = (mkind == XX_MS_PDB_LF_MEMBERMODIFY_ST) ?
-                                   decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                                   decode_r_cstring(r, str_buf, sizeof(str_buf));
+                const char *name =
+                    (mkind == XX_MS_PDB_LF_MEMBERMODIFY_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
                 decode_format_fldattr(attr, attr_buf, sizeof(attr_buf));
                 decode_emit_flags(fn, user, depth + 1, "attributes", attr, attr_buf);
                 decode_emit_type(fn, user, depth + 1, "type_index", ti);
@@ -2349,15 +2334,11 @@ static void decode_leaf_ipi(uint16_t kind, decode_reader *r, int32_t depth, xx_m
             decode_emit_uint(fn, user, depth, "module", mod);
             break;
         }
-        default:
-            break;
+        default: break;
     }
 }
 
-
-
-bool xx_ms_pdb_decode_leaf(uint16_t kind, const uint8_t *payload, size_t size,
-                           int32_t depth, xx_ms_pdb_dump_fn fn, void *user)
+bool xx_ms_pdb_decode_leaf(uint16_t kind, const uint8_t *payload, size_t size, int32_t depth, xx_ms_pdb_dump_fn fn, void *user)
 {
     decode_reader reader;
     decode_r_init(&reader, payload, size);
@@ -2367,40 +2348,26 @@ bool xx_ms_pdb_decode_leaf(uint16_t kind, const uint8_t *payload, size_t size,
     switch (kind) {
         case XX_MS_PDB_LF_MODIFIER:
         case XX_MS_PDB_LF_MODIFIER_EX:
-        case XX_MS_PDB_LF_MODIFIER_16t:
-            decode_leaf_modifier(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_MODIFIER_16t: decode_leaf_modifier(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_LF_POINTER:
-        case XX_MS_PDB_LF_POINTER_16t:
-            decode_leaf_pointer(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_POINTER_16t: decode_leaf_pointer(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_LF_PROCEDURE:
-        case XX_MS_PDB_LF_PROCEDURE_16t:
-            decode_leaf_procedure(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_PROCEDURE_16t: decode_leaf_procedure(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_LF_MFUNCTION:
-        case XX_MS_PDB_LF_MFUNCTION_16t:
-            decode_leaf_mfunction(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_MFUNCTION_16t: decode_leaf_mfunction(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_LF_ARGLIST:
-        case XX_MS_PDB_LF_ARGLIST_16t:
-            decode_leaf_arglist(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_ARGLIST_16t: decode_leaf_arglist(kind, r, depth, fn, user); break;
 
-        case XX_MS_PDB_LF_SUBSTR_LIST:
-            decode_leaf_substr_list(r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_SUBSTR_LIST: decode_leaf_substr_list(r, depth, fn, user); break;
 
         case XX_MS_PDB_LF_ARRAY:
         case XX_MS_PDB_LF_ARRAY_16t:
         case XX_MS_PDB_LF_ARRAY_ST:
-        case XX_MS_PDB_LF_STRIDED_ARRAY:
-            decode_leaf_array(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_STRIDED_ARRAY: decode_leaf_array(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_LF_CLASS:
         case XX_MS_PDB_LF_STRUCTURE:
@@ -2415,24 +2382,16 @@ bool xx_ms_pdb_decode_leaf(uint16_t kind, const uint8_t *payload, size_t size,
         case XX_MS_PDB_LF_UNION_ST:
         case XX_MS_PDB_LF_CLASS_16t:
         case XX_MS_PDB_LF_STRUCTURE_16t:
-        case XX_MS_PDB_LF_UNION_16t:
-            decode_leaf_udt(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_UNION_16t: decode_leaf_udt(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_LF_ENUM:
         case XX_MS_PDB_LF_ENUM_16t:
-        case XX_MS_PDB_LF_ENUM_ST:
-            decode_leaf_enum(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_ENUM_ST: decode_leaf_enum(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_LF_BITFIELD:
-        case XX_MS_PDB_LF_BITFIELD_16t:
-            decode_leaf_bitfield(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_BITFIELD_16t: decode_leaf_bitfield(kind, r, depth, fn, user); break;
 
-        case XX_MS_PDB_LF_VTSHAPE:
-            decode_leaf_vtshape(r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_VTSHAPE: decode_leaf_vtshape(r, depth, fn, user); break;
 
         case XX_MS_PDB_LF_VFTABLE: {
             uint32_t comp_type = decode_r_u32(r);
@@ -2470,14 +2429,10 @@ bool xx_ms_pdb_decode_leaf(uint16_t kind, const uint8_t *payload, size_t size,
         }
 
         case XX_MS_PDB_LF_METHODLIST:
-        case XX_MS_PDB_LF_METHODLIST_16t:
-            decode_leaf_methodlist(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_METHODLIST_16t: decode_leaf_methodlist(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_LF_FIELDLIST:
-        case XX_MS_PDB_LF_FIELDLIST_16t:
-            decode_leaf_fieldlist(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_FIELDLIST_16t: decode_leaf_fieldlist(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_LF_TYPESERVER:
         case XX_MS_PDB_LF_TYPESERVER2:
@@ -2486,11 +2441,11 @@ bool xx_ms_pdb_decode_leaf(uint16_t kind, const uint8_t *payload, size_t size,
             if (r->offset + 16 <= r->size) {
                 guid = r->data + r->offset;
                 r->offset += 16;
-            } else { r->error = true; }
+            } else {
+                r->error = true;
+            }
             uint32_t age = decode_r_u32(r);
-            const char *name = (kind == XX_MS_PDB_LF_TYPESERVER_ST) ?
-                               decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                               decode_r_cstring(r, str_buf, sizeof(str_buf));
+            const char *name = (kind == XX_MS_PDB_LF_TYPESERVER_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
             decode_emit_guid(fn, user, depth, "guid", guid);
             decode_emit_uint(fn, user, depth, "age", age);
             decode_emit_string(fn, user, depth, "name", name);
@@ -2503,9 +2458,7 @@ bool xx_ms_pdb_decode_leaf(uint16_t kind, const uint8_t *payload, size_t size,
             uint32_t start_idx = (kind == XX_MS_PDB_LF_PRECOMP_16t) ? decode_r_u16(r) : decode_r_u32(r);
             uint32_t count = decode_r_u32(r);
             uint32_t sig = decode_r_u32(r);
-            const char *name = (kind == XX_MS_PDB_LF_PRECOMP_ST) ?
-                               decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                               decode_r_cstring(r, str_buf, sizeof(str_buf));
+            const char *name = (kind == XX_MS_PDB_LF_PRECOMP_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
             decode_emit_type(fn, user, depth, "start_index", start_idx);
             decode_emit_uint(fn, user, depth, "count", count);
             decode_emit_hex(fn, user, depth, "signature", sig);
@@ -2530,16 +2483,12 @@ bool xx_ms_pdb_decode_leaf(uint16_t kind, const uint8_t *payload, size_t size,
         case XX_MS_PDB_LF_BUILDINFO:
         case XX_MS_PDB_LF_STRING_ID:
         case XX_MS_PDB_LF_UDT_SRC_LINE:
-        case XX_MS_PDB_LF_UDT_MOD_SRC_LINE:
-            decode_leaf_ipi(kind, r, depth, fn, user);
-            break;
+        case XX_MS_PDB_LF_UDT_MOD_SRC_LINE: decode_leaf_ipi(kind, r, depth, fn, user); break;
 
         case XX_MS_PDB_LF_ALIAS:
         case XX_MS_PDB_LF_ALIAS_ST: {
             uint32_t ti = decode_r_u32(r);
-            const char *name = (kind == XX_MS_PDB_LF_ALIAS_ST) ?
-                               decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                               decode_r_cstring(r, str_buf, sizeof(str_buf));
+            const char *name = (kind == XX_MS_PDB_LF_ALIAS_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
             decode_emit_type(fn, user, depth, "type_index", ti);
             decode_emit_string(fn, user, depth, "name", name);
             break;
@@ -2584,9 +2533,7 @@ bool xx_ms_pdb_decode_leaf(uint16_t kind, const uint8_t *payload, size_t size,
         case XX_MS_PDB_LF_DEFARG:
         case XX_MS_PDB_LF_DEFARG_ST: {
             uint32_t ti = decode_r_u32(r);
-            const char *expr = (kind == XX_MS_PDB_LF_DEFARG_ST) ?
-                               decode_r_st_string(r, str_buf, sizeof(str_buf)) :
-                               decode_r_cstring(r, str_buf, sizeof(str_buf));
+            const char *expr = (kind == XX_MS_PDB_LF_DEFARG_ST) ? decode_r_st_string(r, str_buf, sizeof(str_buf)) : decode_r_cstring(r, str_buf, sizeof(str_buf));
             decode_emit_type(fn, user, depth, "type_index", ti);
             decode_emit_string(fn, user, depth, "expression", expr);
             break;
@@ -2609,4 +2556,3 @@ bool xx_ms_pdb_decode_leaf(uint16_t kind, const uint8_t *payload, size_t size,
     decode_check_cut(r, depth, fn, user);
     return true;
 }
-

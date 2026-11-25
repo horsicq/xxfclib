@@ -34,14 +34,14 @@ void xx_sfx_arq_init(xx_sfx_arq *r, xx_io_device *d, int64_t b)
     if (r) {
         xx_mem_zero(r, sizeof(*r));
         pm_init(&r->format, d, b, XX_FILE_TYPE_SFX_ARQ, "exe");
-        r->format.handle_base_info=xx_sfx_arq_handle_base_info;
-        r->format.get_format_size=arqm_size;
-        r->format.get_number_of_archive_records=arqm_count;
-        r->format.create_archive_records_reading=arqm_records;
-        r->format.get_current_archive_record=arqm_current;
-        r->format.archive_record_move_to_next=arqm_next;
-        r->format.unpack_current_archive_record=arqm_unpack;
-        r->format.free_archive_records_reading=arqm_free_records;
+        r->format.handle_base_info = xx_sfx_arq_handle_base_info;
+        r->format.get_format_size = arqm_size;
+        r->format.get_number_of_archive_records = arqm_count;
+        r->format.create_archive_records_reading = arqm_records;
+        r->format.get_current_archive_record = arqm_current;
+        r->format.archive_record_move_to_next = arqm_next;
+        r->format.unpack_current_archive_record = arqm_unpack;
+        r->format.free_archive_records_reading = arqm_free_records;
     }
 }
 xx_sfx_arq *xx_sfx_arq_create(xx_io_device *d, int64_t b)
@@ -67,9 +67,16 @@ bool xx_sfx_arq_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
 }
 bool xx_sfx_arq_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
 {
-    int64_t extent=0; xx_arq *r=arqm_open(f,&extent,pd); if(!r) return false;
-    f->format_size=extent; f->number_of_archive_records=r->format.number_of_archive_records;
-    int64_t end=f->base_address+extent;
-    f->overlay_size=xx_io_size(f->device)-end; f->overlay_offset=f->overlay_size>0?end:-1;
-    f->is_valid=true; f->base_info_handled=true; xx_arq_free(r); return true;
+    int64_t extent = 0;
+    xx_arq *r = arqm_open(f, &extent, pd);
+    if (!r) return false;
+    f->format_size = extent;
+    f->number_of_archive_records = r->format.number_of_archive_records;
+    int64_t end = f->base_address + extent;
+    f->overlay_size = xx_io_size(f->device) - end;
+    f->overlay_offset = f->overlay_size > 0 ? end : -1;
+    f->is_valid = true;
+    f->base_info_handled = true;
+    xx_arq_free(r);
+    return true;
 }

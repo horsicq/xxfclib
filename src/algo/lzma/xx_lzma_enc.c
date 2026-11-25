@@ -845,8 +845,8 @@ bool xx_lzma2_compress_stream(xx_io_device *src_dev, const uint8_t *mem_src, siz
             chunk_input = input;
         }
 
-        compressed_ok = enc_compress_stream(workspace, NULL, chunk_input, chunk_size, 0, (int64_t)chunk_size, NULL, compressed, compressed_cap, &packed_size, level, props,
-                                            &props_size, pd, false);
+        compressed_ok = enc_compress_stream(workspace, NULL, chunk_input, chunk_size, 0, (int64_t)chunk_size, NULL, compressed, compressed_cap, &packed_size, level,
+                                            props, &props_size, pd, false);
         if (pd && xx_pd_is_stopped(pd)) goto cleanup;
 
         unpack_minus_one = (uint32_t)chunk_size - 1u;

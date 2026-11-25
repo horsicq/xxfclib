@@ -221,7 +221,6 @@ static bool xx_br_read_bytes(xx_bit_reader *br, uint8_t *dst, size_t size)
     return true;
 }
 
-
 /* ========================================================================= */
 /* --- Packed Huffman Tables                                             --- */
 /* ========================================================================= */
@@ -265,8 +264,7 @@ static bool xx_br_read_bytes(xx_bit_reader *br, uint8_t *dst, size_t size)
 #define XX_HI_EOB (XX_HF_EXC | XX_HF_EOB)
 #define XX_HI_BAD XX_HF_EXC
 #define XX_HE_ADD_LEN(info, len) ((info) + (uint32_t)(len) + ((uint32_t)(len) << 8))
-#define XX_HE_SUBLINK(table_bits, sub_bits, offset) \
-    (XX_HF_EXC | XX_HF_SUB | (uint32_t)(table_bits) | ((uint32_t)(sub_bits) << 8) | ((uint32_t)(offset) << 16))
+#define XX_HE_SUBLINK(table_bits, sub_bits, offset) (XX_HF_EXC | XX_HF_SUB | (uint32_t)(table_bits) | ((uint32_t)(sub_bits) << 8) | ((uint32_t)(offset) << 16))
 #define XX_HE_TOTAL(e) ((e) & 63U)
 #define XX_HE_CL(e) (((e) >> 8) & 31U)
 #define XX_HE_EXTRA(e) (XX_HE_TOTAL(e) - XX_HE_CL(e))
@@ -313,25 +311,12 @@ typedef struct {
 
 static const uint8_t g_cll_order[XX_DEFLATE_MAX_CLEN_CODES] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
 
-static const uint16_t g_deflate_length_base[29] = {
-    3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31,
-    35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258
-};
-static const uint8_t g_deflate_length_extra[29] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
-    3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0
-};
+static const uint16_t g_deflate_length_base[29] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258};
+static const uint8_t g_deflate_length_extra[29] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0};
 
-static const uint16_t g_deflate_dist_base[32] = {
-    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
-    257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577,
-    32769, 49153
-};
-static const uint8_t g_deflate_dist_extra[32] = {
-    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6,
-    7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13,
-    14, 14
-};
+static const uint16_t g_deflate_dist_base[32] = {1,   2,   3,   4,   5,    7,    9,    13,   17,   25,   33,   49,    65,    97,    129,   193,
+                                                 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 32769, 49153};
+static const uint8_t g_deflate_dist_extra[32] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14};
 
 /* Symbol meanings: length code 285 is base 3 + 16 extra bits in Deflate64
  * (258 otherwise); 286/287 and, outside Deflate64, distances 30/31 are
@@ -355,22 +340,16 @@ static void xx_dec_state_init(xx_dec_state *st, bool is_deflate64)
 }
 
 static const uint8_t g_dec_rev8[256] = {
-    0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0,
-    0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8, 0x18, 0x98, 0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8,
-    0x04, 0x84, 0x44, 0xC4, 0x24, 0xA4, 0x64, 0xE4, 0x14, 0x94, 0x54, 0xD4, 0x34, 0xB4, 0x74, 0xF4,
-    0x0C, 0x8C, 0x4C, 0xCC, 0x2C, 0xAC, 0x6C, 0xEC, 0x1C, 0x9C, 0x5C, 0xDC, 0x3C, 0xBC, 0x7C, 0xFC,
-    0x02, 0x82, 0x42, 0xC2, 0x22, 0xA2, 0x62, 0xE2, 0x12, 0x92, 0x52, 0xD2, 0x32, 0xB2, 0x72, 0xF2,
-    0x0A, 0x8A, 0x4A, 0xCA, 0x2A, 0xAA, 0x6A, 0xEA, 0x1A, 0x9A, 0x5A, 0xDA, 0x3A, 0xBA, 0x7A, 0xFA,
-    0x06, 0x86, 0x46, 0xC6, 0x26, 0xA6, 0x66, 0xE6, 0x16, 0x96, 0x56, 0xD6, 0x36, 0xB6, 0x76, 0xF6,
-    0x0E, 0x8E, 0x4E, 0xCE, 0x2E, 0xAE, 0x6E, 0xEE, 0x1E, 0x9E, 0x5E, 0xDE, 0x3E, 0xBE, 0x7E, 0xFE,
-    0x01, 0x81, 0x41, 0xC1, 0x21, 0xA1, 0x61, 0xE1, 0x11, 0x91, 0x51, 0xD1, 0x31, 0xB1, 0x71, 0xF1,
-    0x09, 0x89, 0x49, 0xC9, 0x29, 0xA9, 0x69, 0xE9, 0x19, 0x99, 0x59, 0xD9, 0x39, 0xB9, 0x79, 0xF9,
-    0x05, 0x85, 0x45, 0xC5, 0x25, 0xA5, 0x65, 0xE5, 0x15, 0x95, 0x55, 0xD5, 0x35, 0xB5, 0x75, 0xF5,
-    0x0D, 0x8D, 0x4D, 0xCD, 0x2D, 0xAD, 0x6D, 0xED, 0x1D, 0x9D, 0x5D, 0xDD, 0x3D, 0xBD, 0x7D, 0xFD,
-    0x03, 0x83, 0x43, 0xC3, 0x23, 0xA3, 0x63, 0xE3, 0x13, 0x93, 0x53, 0xD3, 0x33, 0xB3, 0x73, 0xF3,
-    0x0B, 0x8B, 0x4B, 0xCB, 0x2B, 0xAB, 0x6B, 0xEB, 0x1B, 0x9B, 0x5B, 0xDB, 0x3B, 0xBB, 0x7B, 0xFB,
-    0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7,
-    0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF,
+    0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0, 0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8, 0x18, 0x98,
+    0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8, 0x04, 0x84, 0x44, 0xC4, 0x24, 0xA4, 0x64, 0xE4, 0x14, 0x94, 0x54, 0xD4, 0x34, 0xB4, 0x74, 0xF4, 0x0C, 0x8C, 0x4C, 0xCC,
+    0x2C, 0xAC, 0x6C, 0xEC, 0x1C, 0x9C, 0x5C, 0xDC, 0x3C, 0xBC, 0x7C, 0xFC, 0x02, 0x82, 0x42, 0xC2, 0x22, 0xA2, 0x62, 0xE2, 0x12, 0x92, 0x52, 0xD2, 0x32, 0xB2,
+    0x72, 0xF2, 0x0A, 0x8A, 0x4A, 0xCA, 0x2A, 0xAA, 0x6A, 0xEA, 0x1A, 0x9A, 0x5A, 0xDA, 0x3A, 0xBA, 0x7A, 0xFA, 0x06, 0x86, 0x46, 0xC6, 0x26, 0xA6, 0x66, 0xE6,
+    0x16, 0x96, 0x56, 0xD6, 0x36, 0xB6, 0x76, 0xF6, 0x0E, 0x8E, 0x4E, 0xCE, 0x2E, 0xAE, 0x6E, 0xEE, 0x1E, 0x9E, 0x5E, 0xDE, 0x3E, 0xBE, 0x7E, 0xFE, 0x01, 0x81,
+    0x41, 0xC1, 0x21, 0xA1, 0x61, 0xE1, 0x11, 0x91, 0x51, 0xD1, 0x31, 0xB1, 0x71, 0xF1, 0x09, 0x89, 0x49, 0xC9, 0x29, 0xA9, 0x69, 0xE9, 0x19, 0x99, 0x59, 0xD9,
+    0x39, 0xB9, 0x79, 0xF9, 0x05, 0x85, 0x45, 0xC5, 0x25, 0xA5, 0x65, 0xE5, 0x15, 0x95, 0x55, 0xD5, 0x35, 0xB5, 0x75, 0xF5, 0x0D, 0x8D, 0x4D, 0xCD, 0x2D, 0xAD,
+    0x6D, 0xED, 0x1D, 0x9D, 0x5D, 0xDD, 0x3D, 0xBD, 0x7D, 0xFD, 0x03, 0x83, 0x43, 0xC3, 0x23, 0xA3, 0x63, 0xE3, 0x13, 0x93, 0x53, 0xD3, 0x33, 0xB3, 0x73, 0xF3,
+    0x0B, 0x8B, 0x4B, 0xCB, 0x2B, 0xAB, 0x6B, 0xEB, 0x1B, 0x9B, 0x5B, 0xDB, 0x3B, 0xBB, 0x7B, 0xFB, 0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 0x17, 0x97,
+    0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7, 0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF,
 };
 
 /* The low len (1..15) bits of code, bit-reversed; no loop-carried chain. */
@@ -390,8 +369,8 @@ static inline unsigned xx_dec_reverse(unsigned code, unsigned len)
  * counter's store-to-load chain; the quarters are placed in order, so each
  * length group stays in symbol order. A code is first[len] plus its rank in
  * its length group. */
-static bool xx_htab_build(uint32_t *table, size_t capacity, unsigned table_bits, const uint8_t *lengths, unsigned num_symbols, const uint32_t *info,
-                          unsigned spec, uint8_t *out_max_bits)
+static bool xx_htab_build(uint32_t *table, size_t capacity, unsigned table_bits, const uint8_t *lengths, unsigned num_symbols, const uint32_t *info, unsigned spec,
+                          uint8_t *out_max_bits)
 {
     uint16_t qcount[4][XX_DEFLATE_MAX_BITS + 1];
     uint16_t qpos[4][XX_DEFLATE_MAX_BITS + 1];
@@ -606,12 +585,12 @@ typedef struct {
     uint8_t *pos;       /* next output byte */
     uint8_t *limit;     /* pos never passes it */
     uint8_t *buf_end;
-    uint8_t *emit;      /* first byte not yet handed to the sink */
-    int64_t emitted;    /* bytes handed to the sink */
+    uint8_t *emit;   /* first byte not yet handed to the sink */
+    int64_t emitted; /* bytes handed to the sink */
     size_t win_size;
     size_t dict_size;
     bool direct;
-    bool capped;        /* buffered mode with a memory sink */
+    bool capped; /* buffered mode with a memory sink */
     bool error;
 } xx_out_lin;
 
@@ -624,8 +603,7 @@ static void xx_out_set_limit(xx_out_lin *out)
     }
 }
 
-static bool xx_out_lin_init(xx_out_lin *out, xx_io_device *dev, uint8_t *mem_dst, size_t mem_cap, size_t win_size, const uint8_t *dictionary,
-                            size_t dictionary_size)
+static bool xx_out_lin_init(xx_out_lin *out, xx_io_device *dev, uint8_t *mem_dst, size_t mem_cap, size_t win_size, const uint8_t *dictionary, size_t dictionary_size)
 {
     xx_rt_memset(out, 0, sizeof(*out));
     out->dev = dev;
@@ -823,27 +801,16 @@ static XX_DEFLATE_DEC_INLINE void xx_dec_copy_scalar(uint8_t *dst, size_t distan
     }
 }
 
-
 /* Byte i of row d is i % d: one shuffle of the d history bytes yields a
  * vector of the repeating pattern, which is stored every g_dec_step[d]
  * bytes (the largest multiple of d not above 16). */
 #if defined(XX_DEFLATE_DEC_X86) || defined(XX_DEFLATE_DEC_NEON)
 static const uint8_t g_dec_pattern[16][16] = {
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
-    {0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0},
-    {0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3},
-    {0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0},
-    {0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3},
-    {0, 1, 2, 3, 4, 5, 6, 0, 1, 2, 3, 4, 5, 6, 0, 1},
-    {0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7},
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6},
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5},
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0, 1, 2, 3, 4},
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3},
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 0, 1, 2},
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 0, 1},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},    {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
+    {0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0},      {0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3},    {0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0},
+    {0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3},      {0, 1, 2, 3, 4, 5, 6, 0, 1, 2, 3, 4, 5, 6, 0, 1},    {0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7},
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6},      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5},    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0, 1, 2, 3, 4},
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3},    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 0, 1, 2}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 0, 1},
     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0},
 };
 static const uint8_t g_dec_step[16] = {16, 16, 16, 15, 16, 15, 12, 14, 16, 9, 10, 11, 12, 13, 14, 15};
@@ -911,8 +878,7 @@ static XX_DEFLATE_DEC_INLINE void xx_dec_copy_avx2(uint8_t *dst, size_t distance
             dst += 16U;
         } while (dst < end);
     } else {
-        __m128i value = _mm_shuffle_epi8(_mm_loadu_si128((const __m128i *)(const void *)src),
-                                         _mm_loadu_si128((const __m128i *)(const void *)g_dec_pattern[distance]));
+        __m128i value = _mm_shuffle_epi8(_mm_loadu_si128((const __m128i *)(const void *)src), _mm_loadu_si128((const __m128i *)(const void *)g_dec_pattern[distance]));
         size_t step = g_dec_step[distance];
         do {
             _mm_storeu_si128((__m128i *)(void *)dst, value);
@@ -962,8 +928,7 @@ static XX_DEFLATE_DEC_INLINE void xx_dec_copy_x128(uint8_t *dst, size_t distance
             dst += 16U;
         } while (dst < end);
     } else {
-        __m128i value = _mm_shuffle_epi8(_mm_loadu_si128((const __m128i *)(const void *)src),
-                                         _mm_loadu_si128((const __m128i *)(const void *)g_dec_pattern[distance]));
+        __m128i value = _mm_shuffle_epi8(_mm_loadu_si128((const __m128i *)(const void *)src), _mm_loadu_si128((const __m128i *)(const void *)g_dec_pattern[distance]));
         size_t step = g_dec_step[distance];
         do {
             _mm_storeu_si128((__m128i *)(void *)dst, value);
@@ -1194,8 +1159,8 @@ static bool xx_dec_speculate(const uint8_t *lit_lens)
  * loop runs while input and output room allow; near either end each symbol
  * goes through the checked reader, which reproduces the reader calls (and
  * so the end-of-input behaviour) of the previous symbol-at-a-time decoder. */
-static bool xx_dec_huffman_block(const uint32_t *lit_table, unsigned lit_max, const uint32_t *dist_table, unsigned dist_max, xx_bit_reader *reader,
-                                 xx_out_lin *out, xx_dec_fast_fn fast)
+static bool xx_dec_huffman_block(const uint32_t *lit_table, unsigned lit_max, const uint32_t *dist_table, unsigned dist_max, xx_bit_reader *reader, xx_out_lin *out,
+                                 xx_dec_fast_fn fast)
 {
     for (;;) {
         uint32_t entry, kind;
@@ -1416,15 +1381,14 @@ bool xx_deflate_decompress_stream_with_flags(xx_bit_reader *reader, xx_io_device
                  * of HLIT and HDIST ("too many length or distance symbols":
                  * 286 and 30; 32 distance codes in Deflate64, as in zlib's
                  * inflateBack9) are checked above in every mode. */
-                if (strict && (lit_dist_lens[256] == 0U || !xx_dec_zlib_takes_set(lit_dist_lens, hlit, false) ||
-                               !xx_dec_zlib_takes_set(lit_dist_lens + hlit, hdist, false))) {
+                if (strict &&
+                    (lit_dist_lens[256] == 0U || !xx_dec_zlib_takes_set(lit_dist_lens, hlit, false) || !xx_dec_zlib_takes_set(lit_dist_lens + hlit, hdist, false))) {
                     success = false;
                     break;
                 }
 
                 spec = xx_dec_speculate(lit_dist_lens);
-                if (!xx_htab_build(st->lit, XX_ARRAYSIZE_DEC(st->lit), XX_DEC_LIT_BITS, lit_dist_lens, hlit, st->lit_info, spec ? XX_DEC_SPEC_BITS : 0U,
-                                   &st->lit_max) ||
+                if (!xx_htab_build(st->lit, XX_ARRAYSIZE_DEC(st->lit), XX_DEC_LIT_BITS, lit_dist_lens, hlit, st->lit_info, spec ? XX_DEC_SPEC_BITS : 0U, &st->lit_max) ||
                     !xx_htab_build(st->dist, XX_ARRAYSIZE_DEC(st->dist), XX_DEC_DIST_BITS, lit_dist_lens + hlit, hdist, st->dist_info, 0U, &st->dist_max)) {
                     success = false;
                     break;

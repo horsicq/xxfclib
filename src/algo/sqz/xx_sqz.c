@@ -602,8 +602,7 @@ bool xx_sqz_decode_memory(const uint8_t *input, size_t input_size, uint32_t meth
             if (source + 1 == s->window_position) {
                 xx_rt_memset(dst, *src, copy_length);
             } else if ((uint32_t)distance >= copy_length &&
-                       ((uint32_t)source + copy_length <= (uint32_t)s->window_position ||
-                        (uint32_t)s->window_position + copy_length <= (uint32_t)source)) {
+                       ((uint32_t)source + copy_length <= (uint32_t)s->window_position || (uint32_t)s->window_position + copy_length <= (uint32_t)source)) {
                 xx_rt_memcpy(dst, src, copy_length);
             } else {
                 for (i = 0; i < copy_length; ++i) dst[i] = src[i];

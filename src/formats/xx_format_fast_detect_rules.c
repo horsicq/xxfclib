@@ -9,17 +9,19 @@
  * compound reader still verifies its stream and the TAR inside it. */
 static int restricted_stream_signature(xx_file_type_t type, xx_io_device *device, int64_t base)
 {
-    static const struct { xx_file_type_t type; uint8_t bytes[9]; size_t length; } rules[] = {
-        {XX_FILE_TYPE_GZ, {0x1f, 0x8b, 8}, 3},
-        {XX_FILE_TYPE_BZ2, {'B', 'Z', 'h'}, 3},
-        {XX_FILE_TYPE_XZ, {0xfd, '7', 'z', 'X', 'Z', 0}, 6},
-        {XX_FILE_TYPE_LZIP, {'L', 'Z', 'I', 'P'}, 4},
-        {XX_FILE_TYPE_LZOP, {0x89, 'L', 'Z', 'O', 0, 13, 10, 26, 10}, 9},
-        {XX_FILE_TYPE_UNIX_COMPRESS, {0x1f, 0x9d}, 2},
-        {XX_FILE_TYPE_LZ4, {4, 0x22, 0x4d, 0x18}, 4},
-        {XX_FILE_TYPE_LZ4, {2, 0x21, 0x4c, 0x18}, 4},
-        {XX_FILE_TYPE_ZSTD, {0x28, 0xb5, 0x2f, 0xfd}, 4}
-    };
+    static const struct {
+        xx_file_type_t type;
+        uint8_t bytes[9];
+        size_t length;
+    } rules[] = {{XX_FILE_TYPE_GZ, {0x1f, 0x8b, 8}, 3},
+                 {XX_FILE_TYPE_BZ2, {'B', 'Z', 'h'}, 3},
+                 {XX_FILE_TYPE_XZ, {0xfd, '7', 'z', 'X', 'Z', 0}, 6},
+                 {XX_FILE_TYPE_LZIP, {'L', 'Z', 'I', 'P'}, 4},
+                 {XX_FILE_TYPE_LZOP, {0x89, 'L', 'Z', 'O', 0, 13, 10, 26, 10}, 9},
+                 {XX_FILE_TYPE_UNIX_COMPRESS, {0x1f, 0x9d}, 2},
+                 {XX_FILE_TYPE_LZ4, {4, 0x22, 0x4d, 0x18}, 4},
+                 {XX_FILE_TYPE_LZ4, {2, 0x21, 0x4c, 0x18}, 4},
+                 {XX_FILE_TYPE_ZSTD, {0x28, 0xb5, 0x2f, 0xfd}, 4}};
     uint8_t header[9];
     size_t i, j;
     bool declared = false;
@@ -38,7 +40,8 @@ static int restricted_stream_signature(xx_file_type_t type, xx_io_device *device
         if (rules[i].type != type) continue;
         declared = true;
         if (!xx_io_read_at(device, base, header, rules[i].length)) continue;
-        for (j = 0; j < rules[i].length && header[j] == rules[i].bytes[j]; ++j) {}
+        for (j = 0; j < rules[i].length && header[j] == rules[i].bytes[j]; ++j) {
+        }
         if (j == rules[i].length) return 1;
     }
     return declared ? 0 : -1;
@@ -61,9 +64,12 @@ int xx_format_fast_detect_rules(const xx_file_type_t *types, size_t type_count, 
         if (types[i] == XX_FILE_TYPE_ZIP) zip = true;
         else
 #endif
-        if (xx_format_extractor_get(types[i])) {
+            if (xx_format_extractor_get(types[i])) {
             int signature = restricted_stream_signature(types[i], device, base_address);
-            if (signature == 1) { result = 1; goto done; }
+            if (signature == 1) {
+                result = 1;
+                goto done;
+            }
             if (signature < 0) unknown = true;
         }
     }
@@ -72,8 +78,8 @@ int xx_format_fast_detect_rules(const xx_file_type_t *types, size_t type_count, 
         if ((header[2] == 0x30 && header[3] == 0x30) || (header[2] == 7 && header[3] == 8)) {
             if (base_address > INT64_MAX - 4 || !xx_io_read_at(device, base_address + 4, header, sizeof(header))) goto done;
         }
-        if (header[0] == 'P' && header[1] == 'K' &&
-            ((header[2] == 3 && header[3] == 4) || (header[2] == 5 && header[3] == 6) || (header[2] == 6 && header[3] == 6))) result = 1;
+        if (header[0] == 'P' && header[1] == 'K' && ((header[2] == 3 && header[3] == 4) || (header[2] == 5 && header[3] == 6) || (header[2] == 6 && header[3] == 6)))
+            result = 1;
     }
 done:
     if (xx_io_seek64(device, saved, SEEK_SET)) return 0;
@@ -88,7 +94,10 @@ size_t xx_format_fast_signature_types(xx_io_device *dev, int64_t base_address, x
     types[0] = type;
     return 1;
 #else
-    (void)dev; (void)base_address; (void)types; (void)capacity;
+    (void)dev;
+    (void)base_address;
+    (void)types;
+    (void)capacity;
     return 0;
 #endif
 }

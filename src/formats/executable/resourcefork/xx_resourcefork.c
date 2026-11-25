@@ -112,11 +112,9 @@ static char rsrc_safe_char(uint8_t c)
  * instead of collapsing all high bytes to '_', which can also create false
  * filename collisions. */
 
-
 /* The reference reader displays the four raw type bytes through Windows-1252, while it decodes
  * Pascal resource names as Mac Roman. The hexadecimal prefix still preserves
  * the exact bytes when a display character is unavailable. */
-
 
 /* The reference extractor renders most nonzero control bytes in resource
  * names as DOS graphical characters. Whitespace controls are handled below. */
@@ -180,7 +178,8 @@ static char *rsrc_build_name(uint32_t type, int32_t id, const uint8_t *raw, size
         buffer[output++] = ' ';
         for (index = 0U; index < display_size; ++index) {
             uint8_t c = raw[index];
-            if (c >= 0x80U) output += rsrc_put_utf8(buffer + output, (c == 0xf0U ? 0xfffdU : xx_codepage_decode_byte(xx_codepage_by_number(10000), (unsigned char)(c), 0xfffd)));
+            if (c >= 0x80U)
+                output += rsrc_put_utf8(buffer + output, (c == 0xf0U ? 0xfffdU : xx_codepage_decode_byte(xx_codepage_by_number(10000), (unsigned char)(c), 0xfffd)));
             else if (c == '\t' || c == '\f') buffer[output++] = ' ';
             else if (c == '\n' || c == '\r') buffer[output++] = '_';
             else if (c > 0U && c < 0x20U) output += rsrc_put_utf8(buffer + output, rsrc_control_glyphs[c]);
@@ -577,7 +576,7 @@ bool xx_resourcefork_unpack_current_archive_record(Abstractformat *format, xx_ar
     }
     if (!base) goto done;
     {
-        char *output_name=rsrc_output_name(member->name,stream->index);
+        char *output_name = rsrc_output_name(member->name, stream->index);
         if (!output_name) goto done;
         path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", output_name)
                                                                                                       : xx_str_concat(base, output_name);

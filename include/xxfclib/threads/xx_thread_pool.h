@@ -27,8 +27,8 @@ typedef struct xx_thread_pool_s xx_thread_pool_t;
 typedef void (*xx_thread_pool_fn)(void *arg);
 
 typedef enum xx_thread_pool_shutdown_e {
-    XX_THREAD_POOL_DRAIN = 0,          /**< Execute every accepted task. */
-    XX_THREAD_POOL_CANCEL_PENDING = 1  /**< Discard queued tasks; finish active tasks. */
+    XX_THREAD_POOL_DRAIN = 0,         /**< Execute every accepted task. */
+    XX_THREAD_POOL_CANCEL_PENDING = 1 /**< Discard queued tasks; finish active tasks. */
 } xx_thread_pool_shutdown_t;
 
 typedef struct xx_thread_pool_stats_s {

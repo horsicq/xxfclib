@@ -27,8 +27,7 @@
 #include "xx_entropy_platform.h"
 #include "xxfclib/rt/xx_rt.h"
 
-#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || \
-    ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
+#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
 #define XX_ENTROPY_SSE2_X86 1
 #endif
 
@@ -79,19 +78,18 @@ static double xx_entropy_sse2_finish(const uint32_t total_counts[256], size_t si
 
 #ifdef XX_ENTROPY_SSE2_X86
 #define XX_ENTROPY_SSE2_COUNT8(q, offset, counts) \
-    do {                                             \
-        (counts)[0][(q)[(offset)]]++;                \
-        (counts)[1][(q)[(offset) + 1U]]++;           \
-        (counts)[2][(q)[(offset) + 2U]]++;           \
-        (counts)[3][(q)[(offset) + 3U]]++;           \
-        (counts)[4][(q)[(offset) + 4U]]++;           \
-        (counts)[5][(q)[(offset) + 5U]]++;           \
-        (counts)[6][(q)[(offset) + 6U]]++;           \
-        (counts)[7][(q)[(offset) + 7U]]++;           \
+    do {                                          \
+        (counts)[0][(q)[(offset)]]++;             \
+        (counts)[1][(q)[(offset) + 1U]]++;        \
+        (counts)[2][(q)[(offset) + 2U]]++;        \
+        (counts)[3][(q)[(offset) + 3U]]++;        \
+        (counts)[4][(q)[(offset) + 4U]]++;        \
+        (counts)[5][(q)[(offset) + 5U]]++;        \
+        (counts)[6][(q)[(offset) + 6U]]++;        \
+        (counts)[7][(q)[(offset) + 7U]]++;        \
     } while (0)
 
-static XX_ENTROPY_SSE2_TARGET XX_ENTROPY_SSE2_NOINLINE void xx_entropy_histogram_sse2_small(const uint8_t *p, size_t size,
-                                                                                              uint32_t total_counts[256])
+static XX_ENTROPY_SSE2_TARGET XX_ENTROPY_SSE2_NOINLINE void xx_entropy_histogram_sse2_small(const uint8_t *p, size_t size, uint32_t total_counts[256])
 {
     XX_ENTROPY_SSE2_ALIGN16 uint32_t counts[4][256] = {{0}};
     size_t i = 0U;
@@ -126,8 +124,7 @@ static XX_ENTROPY_SSE2_TARGET XX_ENTROPY_SSE2_NOINLINE void xx_entropy_histogram
     }
 }
 
-static XX_ENTROPY_SSE2_TARGET XX_ENTROPY_SSE2_NOINLINE void xx_entropy_histogram_sse2_large(const uint8_t *p, size_t size,
-                                                                                              uint32_t total_counts[256])
+static XX_ENTROPY_SSE2_TARGET XX_ENTROPY_SSE2_NOINLINE void xx_entropy_histogram_sse2_large(const uint8_t *p, size_t size, uint32_t total_counts[256])
 {
     XX_ENTROPY_SSE2_ALIGN64 uint32_t counts[8][256] = {{0}};
     size_t i = 0U;
@@ -158,8 +155,7 @@ static XX_ENTROPY_SSE2_TARGET XX_ENTROPY_SSE2_NOINLINE void xx_entropy_histogram
         __m128i c23 = _mm_add_epi32(c2, c3);
         __m128i c45 = _mm_add_epi32(c4, c5);
         __m128i c67 = _mm_add_epi32(c6, c7);
-        _mm_storeu_si128((__m128i *)(total_counts + i),
-                         _mm_add_epi32(_mm_add_epi32(c01, c23), _mm_add_epi32(c45, c67)));
+        _mm_storeu_si128((__m128i *)(total_counts + i), _mm_add_epi32(_mm_add_epi32(c01, c23), _mm_add_epi32(c45, c67)));
     }
 }
 #endif /* XX_ENTROPY_SSE2_X86 */

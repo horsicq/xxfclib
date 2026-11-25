@@ -468,8 +468,7 @@ static bool xx_xz_find_stream(Abstractformat *self, int64_t stream_start, int64_
     /* No larger than the stream it scans: a member of a ZIP (method 95) is
        read through this, so a large file buffer setting must not decide
        whether the member is seen at all. */
-    const size_t buffer_capacity =
-        xx_io_buffer_size_for(0U, total_size > stream_start ? (uint64_t)(total_size - stream_start) : 1U);
+    const size_t buffer_capacity = xx_io_buffer_size_for(0U, total_size > stream_start ? (uint64_t)(total_size - stream_start) : 1U);
     uint8_t *buffer = (uint8_t *)xx_mem_alloc(buffer_capacity);
     bool result;
     if (!buffer) {
@@ -627,8 +626,7 @@ typedef struct xx_xz_filter_sink_s {
     xx_xz_filter_stage stages[3]; /* In decoding order. */
 } xx_xz_filter_sink;
 
-static bool xx_xz_filter_stage_init(xx_xz_filter_stage *stage, uint8_t kind, uint64_t method, const uint8_t *properties, size_t properties_size,
-                                    uint16_t distance)
+static bool xx_xz_filter_stage_init(xx_xz_filter_stage *stage, uint8_t kind, uint64_t method, const uint8_t *properties, size_t properties_size, uint16_t distance)
 {
     if (kind == 2U) {
         if (distance == 0U || distance > 256U) return false;
@@ -713,8 +711,7 @@ static bool xx_xz_filter_push(xx_xz_filter_sink *sink, size_t index, const uint8
 static ssize_t xx_xz_filter_write(xx_io_device *device, const void *data, size_t size)
 {
     xx_xz_filter_sink *sink = (xx_xz_filter_sink *)device->priv;
-    if (sink->failed || (!data && size != 0U) || size > (size_t)PTRDIFF_MAX ||
-        !xx_xz_filter_push(sink, 0U, (const uint8_t *)data, size, false)) {
+    if (sink->failed || (!data && size != 0U) || size > (size_t)PTRDIFF_MAX || !xx_xz_filter_push(sink, 0U, (const uint8_t *)data, size, false)) {
         sink->failed = true;
         return -1;
     }
@@ -838,9 +835,8 @@ static bool xx_xz_verify_filter_chain_block(Abstractformat *self, const xx_xz_st
         /* Filters run in the reverse of their order in the header. */
         size_t index = (size_t)block->filter_count - 1U;
         while (index-- > 0U) {
-            if (sink->count == 3U ||
-                !xx_xz_filter_stage_init(&sink->stages[sink->count++], block->chain_kind[index], block->chain_method[index], block->chain_properties[index],
-                                         block->chain_property_size[index], block->chain_distance[index]))
+            if (sink->count == 3U || !xx_xz_filter_stage_init(&sink->stages[sink->count++], block->chain_kind[index], block->chain_method[index],
+                                                              block->chain_properties[index], block->chain_property_size[index], block->chain_distance[index]))
                 goto cleanup;
         }
     } else if (!xx_xz_filter_stage_init(&sink->stages[sink->count++], 1U, block->bcj_method, block->bcj_properties, block->bcj_properties_size, 0U) ||
@@ -849,19 +845,16 @@ static bool xx_xz_verify_filter_chain_block(Abstractformat *self, const xx_xz_st
     }
     if (!xx_xz_lzma2_fills_extent(self->device, block->data_offset, block->compressed_size, pd) ||
         !xx_lzma2_unpack_filtered_checked_device(self->device, block->data_offset, block->compressed_size, block->lzma2_property,
-                                                 block->delta_after_bcj ? 0U : block->delta_distance, block->uncompressed_size, &sink->device, 0U, &decoded,
-                                                 pd) ||
+                                                 block->delta_after_bcj ? 0U : block->delta_distance, block->uncompressed_size, &sink->device, 0U, &decoded, pd) ||
         sink->failed || decoded.written != block->uncompressed_size || (pd && xx_pd_is_stopped(pd)) || !xx_xz_filter_push(sink, 0U, NULL, 0U, true) ||
-        sink->written != block->uncompressed_size ||
-        !xx_lzma_stream_read_exact_at(self->device, block->check_offset, expected, (size_t)block->check_size, pd) || (pd && xx_pd_is_stopped(pd)))
+        sink->written != block->uncompressed_size || !xx_lzma_stream_read_exact_at(self->device, block->check_offset, expected, (size_t)block->check_size, pd) ||
+        (pd && xx_pd_is_stopped(pd)))
         goto cleanup;
     switch (stream->check_type) {
         case XX_XZ_CHECK_NONE: valid = true; break;
         case XX_XZ_CHECK_CRC32: valid = xx_data_get_u32(expected, sizeof(expected), 0U, false) == sink->crc32; break;
         case XX_XZ_CHECK_CRC64: valid = xx_data_get_u64(expected, sizeof(expected), 0U, false) == sink->crc64; break;
-        case XX_XZ_CHECK_SHA256:
-            valid = xx_sha256_final(&sink->sha256, digest, sizeof(digest)) && (xx_mem_compare(expected, digest, sizeof(digest)) == 0);
-            break;
+        case XX_XZ_CHECK_SHA256: valid = xx_sha256_final(&sink->sha256, digest, sizeof(digest)) && (xx_mem_compare(expected, digest, sizeof(digest)) == 0); break;
         default: valid = false; break;
     }
 cleanup:

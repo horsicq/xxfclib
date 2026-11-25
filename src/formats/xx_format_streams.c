@@ -87,13 +87,13 @@
 #include "xxfclib/datastructs/xx_xxds.h"
 #endif
 
-#if XXFC_STREAM_HAS_PE && (XXFC_ENABLE_STREAM_IMPORT || XXFC_ENABLE_STREAM_EXPORT || XXFC_ENABLE_STREAM_RESOURCES || XXFC_ENABLE_STREAM_METADATA || XXFC_ENABLE_STREAM_SYMBOLS)
+#if XXFC_STREAM_HAS_PE && \
+    (XXFC_ENABLE_STREAM_IMPORT || XXFC_ENABLE_STREAM_EXPORT || XXFC_ENABLE_STREAM_RESOURCES || XXFC_ENABLE_STREAM_METADATA || XXFC_ENABLE_STREAM_SYMBOLS)
 extern bool xx_pe_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
 #endif
 #if XXFC_STREAM_HAS_ELF && (XXFC_ENABLE_STREAM_RESOURCES || XXFC_ENABLE_STREAM_SYMBOLS)
 extern bool xx_elf_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
 #endif
-
 
 #if XXFC_ENABLE_STREAM_IMPORT
 #if XXFC_STREAM_HAS_LE
@@ -198,29 +198,23 @@ const StreamImport *xx_format_get_stream_import(Abstractformat *format)
 #endif
     switch (format->file_type) {
 #if XXFC_STREAM_HAS_LE
-    case XX_FILE_TYPE_LE:
-        return xx_le_get_stream_import();
+        case XX_FILE_TYPE_LE: return xx_le_get_stream_import();
 #endif
 #if XXFC_STREAM_HAS_LX
-    case XX_FILE_TYPE_LX:
-        return xx_lx_get_stream_import();
+        case XX_FILE_TYPE_LX: return xx_lx_get_stream_import();
 #endif
 #if XXFC_STREAM_HAS_NE
-    case XX_FILE_TYPE_NE:
-        return xx_ne_get_stream_import();
+        case XX_FILE_TYPE_NE: return xx_ne_get_stream_import();
 #endif
 #if XXFC_STREAM_HAS_PE
-    case XX_FILE_TYPE_PE32:
-    case XX_FILE_TYPE_PE64:
-    case XX_FILE_TYPE_DOTNET:
-        return xx_pe_get_stream_import();
+        case XX_FILE_TYPE_PE32:
+        case XX_FILE_TYPE_PE64:
+        case XX_FILE_TYPE_DOTNET: return xx_pe_get_stream_import();
 #endif
 #if XXFC_STREAM_HAS_PEF
-    case XX_FILE_TYPE_PEF:
-        return xx_pef_get_stream_import();
+        case XX_FILE_TYPE_PEF: return xx_pef_get_stream_import();
 #endif
-    default:
-        break;
+        default: break;
     }
     return NULL;
 #else
@@ -238,25 +232,20 @@ const StreamExport *xx_format_get_stream_export(Abstractformat *format)
 #endif
     switch (format->file_type) {
 #if XXFC_STREAM_HAS_LE
-    case XX_FILE_TYPE_LE:
-        return xx_le_get_stream_export();
+        case XX_FILE_TYPE_LE: return xx_le_get_stream_export();
 #endif
 #if XXFC_STREAM_HAS_LX
-    case XX_FILE_TYPE_LX:
-        return xx_lx_get_stream_export();
+        case XX_FILE_TYPE_LX: return xx_lx_get_stream_export();
 #endif
 #if XXFC_STREAM_HAS_NE
-    case XX_FILE_TYPE_NE:
-        return xx_ne_get_stream_export();
+        case XX_FILE_TYPE_NE: return xx_ne_get_stream_export();
 #endif
 #if XXFC_STREAM_HAS_PE
-    case XX_FILE_TYPE_PE32:
-    case XX_FILE_TYPE_PE64:
-    case XX_FILE_TYPE_DOTNET:
-        return xx_pe_get_stream_export();
+        case XX_FILE_TYPE_PE32:
+        case XX_FILE_TYPE_PE64:
+        case XX_FILE_TYPE_DOTNET: return xx_pe_get_stream_export();
 #endif
-    default:
-        break;
+        default: break;
     }
     return NULL;
 #else
@@ -277,30 +266,24 @@ const StreamResources *xx_format_get_stream_resources(Abstractformat *format)
 #endif
     switch (format->file_type) {
 #if XXFC_STREAM_HAS_LE
-    case XX_FILE_TYPE_LE:
-        return xx_le_get_stream_resources();
+        case XX_FILE_TYPE_LE: return xx_le_get_stream_resources();
 #endif
 #if XXFC_STREAM_HAS_LX
-    case XX_FILE_TYPE_LX:
-        return xx_lx_get_stream_resources();
+        case XX_FILE_TYPE_LX: return xx_lx_get_stream_resources();
 #endif
 #if XXFC_STREAM_HAS_NE
-    case XX_FILE_TYPE_NE:
-        return xx_ne_get_stream_resources();
+        case XX_FILE_TYPE_NE: return xx_ne_get_stream_resources();
 #endif
 #if XXFC_STREAM_HAS_PE
-    case XX_FILE_TYPE_PE32:
-    case XX_FILE_TYPE_PE64:
-    case XX_FILE_TYPE_DOTNET:
-        return xx_pe_get_stream_resources();
+        case XX_FILE_TYPE_PE32:
+        case XX_FILE_TYPE_PE64:
+        case XX_FILE_TYPE_DOTNET: return xx_pe_get_stream_resources();
 #endif
 #if XXFC_STREAM_HAS_ELF
-    case XX_FILE_TYPE_ELF32:
-    case XX_FILE_TYPE_ELF64:
-        return xx_elf_get_stream_resources();
+        case XX_FILE_TYPE_ELF32:
+        case XX_FILE_TYPE_ELF64: return xx_elf_get_stream_resources();
 #endif
-    default:
-        break;
+        default: break;
     }
     return NULL;
 #else
@@ -318,17 +301,14 @@ const StreamMetadata *xx_format_get_stream_metadata(Abstractformat *format)
 #endif
     switch (format->file_type) {
 #if XXFC_STREAM_HAS_VXWORKS
-    case XX_FILE_TYPE_VXWORKS:
-        return xx_vxworks_get_stream_metadata();
+        case XX_FILE_TYPE_VXWORKS: return xx_vxworks_get_stream_metadata();
 #endif
 #if XXFC_STREAM_HAS_PE
-    case XX_FILE_TYPE_PE32:
-    case XX_FILE_TYPE_PE64:
-    case XX_FILE_TYPE_DOTNET:
-        return xx_pe_get_stream_metadata();
+        case XX_FILE_TYPE_PE32:
+        case XX_FILE_TYPE_PE64:
+        case XX_FILE_TYPE_DOTNET: return xx_pe_get_stream_metadata();
 #endif
-    default:
-        break;
+        default: break;
     }
     return NULL;
 #else
@@ -349,26 +329,21 @@ const StreamSymbols *xx_format_get_stream_symbols(Abstractformat *format)
 #endif
     switch (format->file_type) {
 #if XXFC_STREAM_HAS_PE
-    case XX_FILE_TYPE_PE32:
-    case XX_FILE_TYPE_PE64:
-    case XX_FILE_TYPE_DOTNET:
-        return xx_pe_get_stream_symbols();
+        case XX_FILE_TYPE_PE32:
+        case XX_FILE_TYPE_PE64:
+        case XX_FILE_TYPE_DOTNET: return xx_pe_get_stream_symbols();
 #endif
 #if XXFC_STREAM_HAS_ELF
-    case XX_FILE_TYPE_ELF32:
-    case XX_FILE_TYPE_ELF64:
-        return xx_elf_get_stream_symbols();
+        case XX_FILE_TYPE_ELF32:
+        case XX_FILE_TYPE_ELF64: return xx_elf_get_stream_symbols();
 #endif
 #if XXFC_STREAM_HAS_OMF
-    case XX_FILE_TYPE_OMF:
-        return xx_omf_get_stream_symbols();
+        case XX_FILE_TYPE_OMF: return xx_omf_get_stream_symbols();
 #endif
 #if XXFC_STREAM_HAS_XTAC
-    case XX_FILE_TYPE_XTAC:
-        return xx_xtac_get_stream_symbols();
+        case XX_FILE_TYPE_XTAC: return xx_xtac_get_stream_symbols();
 #endif
-    default:
-        break;
+        default: break;
     }
     return NULL;
 #else

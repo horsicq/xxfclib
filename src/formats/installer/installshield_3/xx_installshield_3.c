@@ -585,7 +585,7 @@ static bool is3_check_descriptor(xx_io_device *device, int64_t base, int64_t ava
         for (field = 0U; field < 4U; ++field)
             if (!is3_field_ok(shifted, field, decoded, NULL)) return false;
     } else if (!is_v4 && (xx_rt_memcmp(descriptor, g_is3_magic, sizeof(g_is3_magic)) != 0 || !is3_range_within(available, offset, IS3_DESC_SIZE) ||
-                   !is3_read_at(device, base + offset, descriptor, sizeof(descriptor))))
+                          !is3_read_at(device, base + offset, descriptor, sizeof(descriptor))))
         return false;
     xx_mem_zero(&candidate, sizeof(candidate));
     candidate.descriptor_offset = offset;
@@ -594,8 +594,11 @@ static bool is3_check_descriptor(xx_io_device *device, int64_t base, int64_t ava
     candidate.archive_size = (is_v4 || is_v5) ? available : (int64_t)xx_data_get_u32(descriptor + 0x10, 4, 0, false);
     candidate.is_ne = is_ne;
     candidate.is_v4 = is_v4 || is_v5;
-    if ((data_exact >= 0 && candidate.data_offset != data_exact) || candidate.data_offset < (is_v4 ? offset + (int64_t)IS3_DESC_V4_SIZE : is_v5 ? offset + (int64_t)IS3_DESC_V5_SIZE : data_min) || candidate.count == 0U || candidate.count > IS3_MAX_RECORDS ||
-        candidate.archive_size > available || candidate.archive_size <= candidate.data_offset ||
+    if ((data_exact >= 0 && candidate.data_offset != data_exact) ||
+        candidate.data_offset < (is_v4   ? offset + (int64_t)IS3_DESC_V4_SIZE
+                                 : is_v5 ? offset + (int64_t)IS3_DESC_V5_SIZE
+                                         : data_min) ||
+        candidate.count == 0U || candidate.count > IS3_MAX_RECORDS || candidate.archive_size > available || candidate.archive_size <= candidate.data_offset ||
         (uint64_t)(candidate.archive_size - candidate.data_offset) / IS3_MIN_RECORD < candidate.count)
         return false;
     for (field = 0U; field < 4U && !is_v4 && !is_v5; ++field) {

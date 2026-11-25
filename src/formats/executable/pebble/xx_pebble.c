@@ -43,8 +43,7 @@ static bool pebble_parse(const Abstractformat *format, xx_pebble_fields *fields,
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     available = total - format->base_address;
-    if (available < (int64_t)sizeof(header) ||
-        !xx_io_read_at(format->device, format->base_address, header, sizeof(header)) ||
+    if (available < (int64_t)sizeof(header) || !xx_io_read_at(format->device, format->base_address, header, sizeof(header)) ||
         xx_rt_memcmp(header, "PBLAPP\0\0", 8U) != 0)
         return false;
 
@@ -71,9 +70,8 @@ static bool pebble_parse(const Abstractformat *format, xx_pebble_fields *fields,
     xx_mem_copy(fields->uuid, header + 104U, XX_PEBBLE_UUID_SIZE);
     fields->header_crc = xx_data_get_u32(header, sizeof(header), 120U, false);
 
-    if (fields->image_size < XX_PEBBLE_APP_HEADER_SIZE || fields->image_size > (uint64_t)available ||
-        fields->entry_point < XX_PEBBLE_APP_HEADER_SIZE || fields->entry_point >= fields->image_size ||
-        (fields->symbol_table_address != 0U && fields->symbol_table_address >= fields->image_size))
+    if (fields->image_size < XX_PEBBLE_APP_HEADER_SIZE || fields->image_size > (uint64_t)available || fields->entry_point < XX_PEBBLE_APP_HEADER_SIZE ||
+        fields->entry_point >= fields->image_size || (fields->symbol_table_address != 0U && fields->symbol_table_address >= fields->image_size))
         return false;
     relocation_size = (uint64_t)fields->relocation_count * XX_PEBBLE_RELOCATION_SIZE;
     format_size = (uint64_t)fields->image_size + relocation_size;
@@ -172,8 +170,7 @@ bool xx_pebble_get_relocation(xx_pebble *reader, uint32_t index, uint32_t *value
 {
     uint8_t bytes[XX_PEBBLE_RELOCATION_SIZE];
     int64_t offset;
-    if (!reader || !value || pebble_stopped(pd) ||
-        (!reader->format.base_info_handled && !xx_pebble_handle_base_info(&reader->format, pd)) ||
+    if (!reader || !value || pebble_stopped(pd) || (!reader->format.base_info_handled && !xx_pebble_handle_base_info(&reader->format, pd)) ||
         index >= reader->relocation_count)
         return false;
     offset = reader->format.base_address + (int64_t)reader->relocation_offset + (int64_t)index * XX_PEBBLE_RELOCATION_SIZE;
@@ -187,8 +184,7 @@ bool xx_pebble_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode,
     xx_pebble *reader = (xx_pebble *)format;
     int64_t image_payload;
     int64_t relocation_size;
-    if (!reader || !output || pebble_stopped(pd) ||
-        (mode != XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_SECTIONS && mode != XX_MEMORY_MAP_MODE_MAPS) ||
+    if (!reader || !output || pebble_stopped(pd) || (mode != XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_SECTIONS && mode != XX_MEMORY_MAP_MODE_MAPS) ||
         (!format->base_info_handled && !xx_pebble_handle_base_info(format, pd)))
         return false;
     image_payload = (int64_t)reader->image_size - XX_PEBBLE_APP_HEADER_SIZE;
@@ -205,14 +201,12 @@ bool xx_pebble_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode,
     output->arch = format->arch;
     output->mode = XX_MEMORY_MAP_MODE_SECTIONS;
     output->is_image = true;
-    if (!xx_memory_map_add_part(output, format->base_address, XX_PEBBLE_APP_HEADER_SIZE, 0U, XX_PEBBLE_APP_HEADER_SIZE,
-                                XX_FILE_PART_HEADER, 0, "header", false) ||
-        !xx_memory_map_add_part(output, format->base_address + XX_PEBBLE_APP_HEADER_SIZE, image_payload,
-                                XX_PEBBLE_APP_HEADER_SIZE, image_payload, XX_FILE_PART_SECTION, 1, "image", false))
+    if (!xx_memory_map_add_part(output, format->base_address, XX_PEBBLE_APP_HEADER_SIZE, 0U, XX_PEBBLE_APP_HEADER_SIZE, XX_FILE_PART_HEADER, 0, "header", false) ||
+        !xx_memory_map_add_part(output, format->base_address + XX_PEBBLE_APP_HEADER_SIZE, image_payload, XX_PEBBLE_APP_HEADER_SIZE, image_payload, XX_FILE_PART_SECTION,
+                                1, "image", false))
         return false;
-    if (relocation_size > 0 &&
-        !xx_memory_map_add_part(output, format->base_address + reader->relocation_offset, relocation_size,
-                                reader->relocation_offset, relocation_size, XX_FILE_PART_TABLE, 2, "relocations", false))
+    if (relocation_size > 0 && !xx_memory_map_add_part(output, format->base_address + reader->relocation_offset, relocation_size, reader->relocation_offset,
+                                                       relocation_size, XX_FILE_PART_TABLE, 2, "relocations", false))
         return false;
     return !pebble_stopped(pd) && xx_memory_map_finalize(output);
 }

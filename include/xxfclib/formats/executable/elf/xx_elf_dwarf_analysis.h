@@ -80,60 +80,38 @@ typedef struct xx_elf_dwarf_analysis xx_elf_dwarf_analysis;
 /** Build a stable function/type/variable model from a parsed ELF DWARF image.
  * The analysis copies all exposed strings.  elf and dwarf are only borrowed
  * for this call and may be released after creation. */
-XXFC_API xx_elf_dwarf_analysis *xx_elf_dwarf_analysis_create(const xx_elf *elf,
-                                                              const xx_elf_dwarf *dwarf,
-                                                              xx_pd_struct *pd);
+XXFC_API xx_elf_dwarf_analysis *xx_elf_dwarf_analysis_create(const xx_elf *elf, const xx_elf_dwarf *dwarf, xx_pd_struct *pd);
 XXFC_API void xx_elf_dwarf_analysis_free(xx_elf_dwarf_analysis *analysis);
 
 /** Replace imported DWARF records while preserving registered types and user
  * function overrides.  elf must describe the same image as dwarf. */
-XXFC_API bool xx_elf_dwarf_analysis_reimport(xx_elf_dwarf_analysis *analysis,
-                                              const xx_elf *elf,
-                                              const xx_elf_dwarf *dwarf,
-                                              xx_pd_struct *pd);
+XXFC_API bool xx_elf_dwarf_analysis_reimport(xx_elf_dwarf_analysis *analysis, const xx_elf *elf, const xx_elf_dwarf *dwarf, xx_pd_struct *pd);
 
 XXFC_API uint64_t xx_elf_dwarf_analysis_get_number_of_types(const xx_elf_dwarf_analysis *analysis);
-XXFC_API const xx_elf_dwarf_analysis_type *xx_elf_dwarf_analysis_get_type(const xx_elf_dwarf_analysis *analysis,
-                                                                           uint64_t index);
+XXFC_API const xx_elf_dwarf_analysis_type *xx_elf_dwarf_analysis_get_type(const xx_elf_dwarf_analysis *analysis, uint64_t index);
 XXFC_API uint64_t xx_elf_dwarf_analysis_get_number_of_functions(const xx_elf_dwarf_analysis *analysis);
-XXFC_API const xx_elf_dwarf_analysis_function *xx_elf_dwarf_analysis_get_function(const xx_elf_dwarf_analysis *analysis,
-                                                                                   uint64_t index);
-XXFC_API const xx_elf_dwarf_analysis_function *xx_elf_dwarf_analysis_find_function_at(const xx_elf_dwarf_analysis *analysis,
-                                                                                       uint64_t address);
-XXFC_API const xx_elf_dwarf_analysis_function *xx_elf_dwarf_analysis_find_function_named(const xx_elf_dwarf_analysis *analysis,
-                                                                                          const char *name);
+XXFC_API const xx_elf_dwarf_analysis_function *xx_elf_dwarf_analysis_get_function(const xx_elf_dwarf_analysis *analysis, uint64_t index);
+XXFC_API const xx_elf_dwarf_analysis_function *xx_elf_dwarf_analysis_find_function_at(const xx_elf_dwarf_analysis *analysis, uint64_t address);
+XXFC_API const xx_elf_dwarf_analysis_function *xx_elf_dwarf_analysis_find_function_named(const xx_elf_dwarf_analysis *analysis, const char *name);
 XXFC_API uint64_t xx_elf_dwarf_analysis_get_number_of_parameters(const xx_elf_dwarf_analysis *analysis);
-XXFC_API const xx_elf_dwarf_analysis_parameter *xx_elf_dwarf_analysis_get_parameter(const xx_elf_dwarf_analysis *analysis,
-                                                                                     uint64_t index);
+XXFC_API const xx_elf_dwarf_analysis_parameter *xx_elf_dwarf_analysis_get_parameter(const xx_elf_dwarf_analysis *analysis, uint64_t index);
 XXFC_API uint64_t xx_elf_dwarf_analysis_get_number_of_variables(const xx_elf_dwarf_analysis *analysis);
-XXFC_API const xx_elf_dwarf_analysis_variable *xx_elf_dwarf_analysis_get_variable(const xx_elf_dwarf_analysis *analysis,
-                                                                                   uint64_t index);
-XXFC_API const xx_elf_dwarf_analysis_variable *xx_elf_dwarf_analysis_find_variable(const xx_elf_dwarf_analysis *analysis,
-                                                                                    uint32_t function_index,
-                                                                                    const char *name,
-                                                                                    uint32_t occurrence);
+XXFC_API const xx_elf_dwarf_analysis_variable *xx_elf_dwarf_analysis_get_variable(const xx_elf_dwarf_analysis *analysis, uint64_t index);
+XXFC_API const xx_elf_dwarf_analysis_variable *xx_elf_dwarf_analysis_find_variable(const xx_elf_dwarf_analysis *analysis, uint32_t function_index, const char *name,
+                                                                                   uint32_t occurrence);
 XXFC_API uint64_t xx_elf_dwarf_analysis_get_number_of_accesses(const xx_elf_dwarf_analysis *analysis);
-XXFC_API const xx_elf_dwarf_analysis_access *xx_elf_dwarf_analysis_get_access(const xx_elf_dwarf_analysis *analysis,
-                                                                               uint64_t index);
+XXFC_API const xx_elf_dwarf_analysis_access *xx_elf_dwarf_analysis_get_access(const xx_elf_dwarf_analysis *analysis, uint64_t index);
 
 /** Add an analysis type known to the caller.  Data-type names participate in
  * function-name collision repair; function types deliberately do not. */
-XXFC_API bool xx_elf_dwarf_analysis_register_type(xx_elf_dwarf_analysis *analysis,
-                                                   const char *name,
-                                                   xx_elf_dwarf_registered_type_kind_t kind);
+XXFC_API bool xx_elf_dwarf_analysis_register_type(xx_elf_dwarf_analysis *analysis, const char *name, xx_elf_dwarf_registered_type_kind_t kind);
 
 /** Install a user-owned function signature.  Overrides are keyed by address,
  * survive reimport and take precedence over imported names/prototypes. */
-XXFC_API bool xx_elf_dwarf_analysis_set_function_override(xx_elf_dwarf_analysis *analysis,
-                                                           uint64_t address,
-                                                           const char *name,
-                                                           const char *prototype);
-XXFC_API bool xx_elf_dwarf_analysis_clear_function_override(xx_elf_dwarf_analysis *analysis,
-                                                             uint64_t address);
-XXFC_API const char *xx_elf_dwarf_analysis_get_effective_function_name(const xx_elf_dwarf_analysis *analysis,
-                                                                        const xx_elf_dwarf_analysis_function *function);
-XXFC_API const char *xx_elf_dwarf_analysis_get_effective_function_prototype(const xx_elf_dwarf_analysis *analysis,
-                                                                             const xx_elf_dwarf_analysis_function *function);
+XXFC_API bool xx_elf_dwarf_analysis_set_function_override(xx_elf_dwarf_analysis *analysis, uint64_t address, const char *name, const char *prototype);
+XXFC_API bool xx_elf_dwarf_analysis_clear_function_override(xx_elf_dwarf_analysis *analysis, uint64_t address);
+XXFC_API const char *xx_elf_dwarf_analysis_get_effective_function_name(const xx_elf_dwarf_analysis *analysis, const xx_elf_dwarf_analysis_function *function);
+XXFC_API const char *xx_elf_dwarf_analysis_get_effective_function_prototype(const xx_elf_dwarf_analysis *analysis, const xx_elf_dwarf_analysis_function *function);
 
 #ifdef __cplusplus
 }

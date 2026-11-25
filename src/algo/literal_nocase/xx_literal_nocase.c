@@ -28,20 +28,16 @@ static uint8_t xx_literal_fold(uint8_t byte)
     return byte >= 'A' && byte <= 'Z' ? (uint8_t)(byte + 32) : byte;
 }
 
-static bool xx_literal_nocase_equal(const uint8_t *data,
-                                    const uint8_t *needle, size_t length)
+static bool xx_literal_nocase_equal(const uint8_t *data, const uint8_t *needle, size_t length)
 {
     for (size_t i = 0; i < length; ++i)
         if (xx_literal_fold(data[i]) != xx_literal_fold(needle[i])) return false;
     return true;
 }
 
-size_t xx_literal_nocase_find_scalar(const uint8_t *data, size_t size,
-                                     size_t start, const uint8_t *needle,
-                                     size_t length)
+size_t xx_literal_nocase_find_scalar(const uint8_t *data, size_t size, size_t start, const uint8_t *needle, size_t length)
 {
-    if (!data || !needle || !length || length > size || start > size - length)
-        return SIZE_MAX;
+    if (!data || !needle || !length || length > size || start > size - length) return SIZE_MAX;
     size_t count = size - length + 1;
     for (size_t i = start; i < count; ++i)
         if (xx_literal_nocase_equal(data + i, needle, length)) return i;
@@ -71,9 +67,7 @@ static size_t xx_literal_second_pivot(const uint8_t *needle, size_t length)
 }
 
 XX_LITERAL_SSE2
-static size_t xx_literal_nocase_sse2(const uint8_t *data, size_t size,
-                                     size_t start, const uint8_t *needle,
-                                     size_t length)
+static size_t xx_literal_nocase_sse2(const uint8_t *data, size_t size, size_t start, const uint8_t *needle, size_t length)
 {
     size_t count = size - length + 1;
     size_t pivot = xx_literal_second_pivot(needle, length);
@@ -102,9 +96,7 @@ static size_t xx_literal_nocase_sse2(const uint8_t *data, size_t size,
 /* Deliberately isolated behind noinline and runtime CPU/OS dispatch. Do not
  * compile the dispatcher with a global AVX2 architecture requirement. */
 XX_LITERAL_AVX2
-static size_t xx_literal_nocase_avx2(const uint8_t *data, size_t size,
-                                     size_t start, const uint8_t *needle,
-                                     size_t length)
+static size_t xx_literal_nocase_avx2(const uint8_t *data, size_t size, size_t start, const uint8_t *needle, size_t length)
 {
     size_t count = size - length + 1;
     size_t pivot = xx_literal_second_pivot(needle, length);
@@ -131,11 +123,9 @@ static size_t xx_literal_nocase_avx2(const uint8_t *data, size_t size,
 }
 #endif
 
-size_t xx_literal_nocase_find(const uint8_t *data, size_t size, size_t start,
-                              const uint8_t *needle, size_t length)
+size_t xx_literal_nocase_find(const uint8_t *data, size_t size, size_t start, const uint8_t *needle, size_t length)
 {
-    if (!data || !needle || !length || length > size || start > size - length)
-        return SIZE_MAX;
+    if (!data || !needle || !length || length > size || start > size - length) return SIZE_MAX;
     /* Repeated callers commonly resume directly on another overlapping hit.
      * Avoid rebuilding SIMD constants and dispatching for that case. */
     if (xx_literal_nocase_equal(data + start, needle, length)) return start;
@@ -143,10 +133,8 @@ size_t xx_literal_nocase_find(const uint8_t *data, size_t size, size_t start,
     ++start;
 #if defined(XX_LITERAL_NOCASE_X86)
     size_t remaining = size - length - start + 1;
-    if (remaining >= 32 && xx_is_avx2_enabled())
-        return xx_literal_nocase_avx2(data, size, start, needle, length);
-    if (remaining >= 16 && xx_is_sse2_enabled())
-        return xx_literal_nocase_sse2(data, size, start, needle, length);
+    if (remaining >= 32 && xx_is_avx2_enabled()) return xx_literal_nocase_avx2(data, size, start, needle, length);
+    if (remaining >= 16 && xx_is_sse2_enabled()) return xx_literal_nocase_sse2(data, size, start, needle, length);
 #endif
     return xx_literal_nocase_find_scalar(data, size, start, needle, length);
 }

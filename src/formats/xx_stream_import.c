@@ -23,6 +23,5 @@ void xx_import_record_cleanup(xx_import_record *r)
 
 #include "xx_stream_runtime_internal.h"
 
-
 XX_STREAM_RUNTIME(import, imports, StreamImport, xx_format_get_stream_import)
 #undef XX_STREAM_RUNTIME

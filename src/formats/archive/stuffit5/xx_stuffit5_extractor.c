@@ -13,8 +13,8 @@
 #include "xxfclib/formats/archive/stuffit5/xx_stuffit5.h"
 
 static const uint8_t k_anchor0[] = {0x53, 0x74, 0x75, 0x66, 0x66, 0x49, 0x74, 0x20, 0x28, 0x63, 0x29, 0x31, 0x39, 0x39, 0x37, 0x2D};
-static const uint8_t k_anchor1[] = {'M','Z'};
-static const uint8_t k_anchor2[] = {0xbd,0x05,0xfe,0xef};
+static const uint8_t k_anchor1[] = {'M', 'Z'};
+static const uint8_t k_anchor2[] = {0xbd, 0x05, 0xfe, 0xef};
 
 static const xx_format_search_anchor k_anchors[] = {
     {k_anchor0, sizeof(k_anchor0), 0U},

@@ -63,4 +63,3 @@ invalid:
     xx_pd_set_error(pd, XXFC_ERR_IO, "Unmapped or invalid PE stream RVA");
     return false;
 }
-

@@ -52,8 +52,8 @@ XXFC_API const xx_nso_segment *xx_nintendo_nso_get_segment(xx_nintendo_nso *read
 
 /** Decode one section into a caller-owned buffer. The destination must be at
  * least segment.memory_size bytes. Uncompressed sections are copied directly. */
-XXFC_API bool xx_nintendo_nso_decode_segment(xx_nintendo_nso *reader, xx_nso_segment_kind kind, void *destination, size_t destination_size,
-                                             size_t *written, xx_pd_struct *pd);
+XXFC_API bool xx_nintendo_nso_decode_segment(xx_nintendo_nso *reader, xx_nso_segment_kind kind, void *destination, size_t destination_size, size_t *written,
+                                             xx_pd_struct *pd);
 
 static inline Abstractformat *xx_nintendo_nso_to_format(xx_nintendo_nso *reader)
 {

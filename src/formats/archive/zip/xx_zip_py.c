@@ -74,14 +74,13 @@ static char *xx_zip_py_concat(const char *a, const char *b, const char *c)
 
 /* CPython's cp437 codec, upper half. The lower half is ASCII. */
 static const uint16_t xx_zip_py_cp437_high[128] = {
-    0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7, 0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5,
-    0x00C9, 0x00E6, 0x00C6, 0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9, 0x00FF, 0x00D6, 0x00DC, 0x00A2, 0x00A3, 0x00A5, 0x20A7, 0x0192,
-    0x00E1, 0x00ED, 0x00F3, 0x00FA, 0x00F1, 0x00D1, 0x00AA, 0x00BA, 0x00BF, 0x2310, 0x00AC, 0x00BD, 0x00BC, 0x00A1, 0x00AB, 0x00BB,
-    0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556, 0x2555, 0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510,
-    0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F, 0x255A, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256C, 0x2567,
-    0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B, 0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590, 0x2580,
-    0x03B1, 0x00DF, 0x0393, 0x03C0, 0x03A3, 0x03C3, 0x00B5, 0x03C4, 0x03A6, 0x0398, 0x03A9, 0x03B4, 0x221E, 0x03C6, 0x03B5, 0x2229,
-    0x2261, 0x00B1, 0x2265, 0x2264, 0x2320, 0x2321, 0x00F7, 0x2248, 0x00B0, 0x2219, 0x00B7, 0x221A, 0x207F, 0x00B2, 0x25A0, 0x00A0};
+    0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7, 0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5, 0x00C9, 0x00E6, 0x00C6,
+    0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9, 0x00FF, 0x00D6, 0x00DC, 0x00A2, 0x00A3, 0x00A5, 0x20A7, 0x0192, 0x00E1, 0x00ED, 0x00F3, 0x00FA, 0x00F1, 0x00D1,
+    0x00AA, 0x00BA, 0x00BF, 0x2310, 0x00AC, 0x00BD, 0x00BC, 0x00A1, 0x00AB, 0x00BB, 0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556, 0x2555,
+    0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510, 0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F, 0x255A, 0x2554, 0x2569, 0x2566,
+    0x2560, 0x2550, 0x256C, 0x2567, 0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B, 0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590,
+    0x2580, 0x03B1, 0x00DF, 0x0393, 0x03C0, 0x03A3, 0x03C3, 0x00B5, 0x03C4, 0x03A6, 0x0398, 0x03A9, 0x03B4, 0x221E, 0x03C6, 0x03B5, 0x2229, 0x2261, 0x00B1,
+    0x2265, 0x2264, 0x2320, 0x2321, 0x00F7, 0x2248, 0x00B0, 0x2219, 0x00B7, 0x221A, 0x207F, 0x00B2, 0x25A0, 0x00A0};
 
 static uint16_t xx_zip_py_rd16(const uint8_t *p)
 {
@@ -171,17 +170,13 @@ static char *xx_zip_py_decode_name(const uint8_t *raw, size_t length, bool utf8,
         if (utf8) {
             int32_t code_point;
             size_t used = xx_zip_py_utf8_decode(raw + i, length - i, &code_point);
-            if (code_point < 0)
-                xx_zip_py_utf8_encode(&out, 0xFFFD);
-            else
-                xx_buf_append(&out, raw + i, used);
+            if (code_point < 0) xx_zip_py_utf8_encode(&out, 0xFFFD);
+            else xx_buf_append(&out, raw + i, used);
             i += used;
         } else {
             uint8_t c = raw[i++];
-            if (c < 0x80)
-                xx_buf_append_char(&out, (char)c);
-            else
-                xx_zip_py_utf8_encode(&out, xx_zip_py_cp437_high[c - 0x80]);
+            if (c < 0x80) xx_buf_append_char(&out, (char)c);
+            else xx_zip_py_utf8_encode(&out, xx_zip_py_cp437_high[c - 0x80]);
         }
     }
     return xx_buf_detach(&out, out_length);
@@ -206,137 +201,104 @@ static char *xx_zip_py_sanitize(const char *name, size_t length)
  * 3.13 (Unicode 15.1.0: categories Cc, Cf, Cs, Co, Cn, Zl, Zp and Zs),
  * as ranges in ascending order. repr() escapes them. */
 static const uint32_t xx_zip_py_unprintable[712][2] = {
-    {0x80, 0xA0}, {0xAD, 0xAD}, {0x378, 0x379}, {0x380, 0x383}, {0x38B, 0x38B}, {0x38D, 0x38D},
-    {0x3A2, 0x3A2}, {0x530, 0x530}, {0x557, 0x558}, {0x58B, 0x58C}, {0x590, 0x590}, {0x5C8, 0x5CF},
-    {0x5EB, 0x5EE}, {0x5F5, 0x605}, {0x61C, 0x61C}, {0x6DD, 0x6DD}, {0x70E, 0x70F}, {0x74B, 0x74C},
-    {0x7B2, 0x7BF}, {0x7FB, 0x7FC}, {0x82E, 0x82F}, {0x83F, 0x83F}, {0x85C, 0x85D}, {0x85F, 0x85F},
-    {0x86B, 0x86F}, {0x88F, 0x897}, {0x8E2, 0x8E2}, {0x984, 0x984}, {0x98D, 0x98E}, {0x991, 0x992},
-    {0x9A9, 0x9A9}, {0x9B1, 0x9B1}, {0x9B3, 0x9B5}, {0x9BA, 0x9BB}, {0x9C5, 0x9C6}, {0x9C9, 0x9CA},
-    {0x9CF, 0x9D6}, {0x9D8, 0x9DB}, {0x9DE, 0x9DE}, {0x9E4, 0x9E5}, {0x9FF, 0xA00}, {0xA04, 0xA04},
-    {0xA0B, 0xA0E}, {0xA11, 0xA12}, {0xA29, 0xA29}, {0xA31, 0xA31}, {0xA34, 0xA34}, {0xA37, 0xA37},
-    {0xA3A, 0xA3B}, {0xA3D, 0xA3D}, {0xA43, 0xA46}, {0xA49, 0xA4A}, {0xA4E, 0xA50}, {0xA52, 0xA58},
-    {0xA5D, 0xA5D}, {0xA5F, 0xA65}, {0xA77, 0xA80}, {0xA84, 0xA84}, {0xA8E, 0xA8E}, {0xA92, 0xA92},
-    {0xAA9, 0xAA9}, {0xAB1, 0xAB1}, {0xAB4, 0xAB4}, {0xABA, 0xABB}, {0xAC6, 0xAC6}, {0xACA, 0xACA},
-    {0xACE, 0xACF}, {0xAD1, 0xADF}, {0xAE4, 0xAE5}, {0xAF2, 0xAF8}, {0xB00, 0xB00}, {0xB04, 0xB04},
-    {0xB0D, 0xB0E}, {0xB11, 0xB12}, {0xB29, 0xB29}, {0xB31, 0xB31}, {0xB34, 0xB34}, {0xB3A, 0xB3B},
-    {0xB45, 0xB46}, {0xB49, 0xB4A}, {0xB4E, 0xB54}, {0xB58, 0xB5B}, {0xB5E, 0xB5E}, {0xB64, 0xB65},
-    {0xB78, 0xB81}, {0xB84, 0xB84}, {0xB8B, 0xB8D}, {0xB91, 0xB91}, {0xB96, 0xB98}, {0xB9B, 0xB9B},
-    {0xB9D, 0xB9D}, {0xBA0, 0xBA2}, {0xBA5, 0xBA7}, {0xBAB, 0xBAD}, {0xBBA, 0xBBD}, {0xBC3, 0xBC5},
-    {0xBC9, 0xBC9}, {0xBCE, 0xBCF}, {0xBD1, 0xBD6}, {0xBD8, 0xBE5}, {0xBFB, 0xBFF}, {0xC0D, 0xC0D},
-    {0xC11, 0xC11}, {0xC29, 0xC29}, {0xC3A, 0xC3B}, {0xC45, 0xC45}, {0xC49, 0xC49}, {0xC4E, 0xC54},
-    {0xC57, 0xC57}, {0xC5B, 0xC5C}, {0xC5E, 0xC5F}, {0xC64, 0xC65}, {0xC70, 0xC76}, {0xC8D, 0xC8D},
-    {0xC91, 0xC91}, {0xCA9, 0xCA9}, {0xCB4, 0xCB4}, {0xCBA, 0xCBB}, {0xCC5, 0xCC5}, {0xCC9, 0xCC9},
-    {0xCCE, 0xCD4}, {0xCD7, 0xCDC}, {0xCDF, 0xCDF}, {0xCE4, 0xCE5}, {0xCF0, 0xCF0}, {0xCF4, 0xCFF},
-    {0xD0D, 0xD0D}, {0xD11, 0xD11}, {0xD45, 0xD45}, {0xD49, 0xD49}, {0xD50, 0xD53}, {0xD64, 0xD65},
-    {0xD80, 0xD80}, {0xD84, 0xD84}, {0xD97, 0xD99}, {0xDB2, 0xDB2}, {0xDBC, 0xDBC}, {0xDBE, 0xDBF},
-    {0xDC7, 0xDC9}, {0xDCB, 0xDCE}, {0xDD5, 0xDD5}, {0xDD7, 0xDD7}, {0xDE0, 0xDE5}, {0xDF0, 0xDF1},
-    {0xDF5, 0xE00}, {0xE3B, 0xE3E}, {0xE5C, 0xE80}, {0xE83, 0xE83}, {0xE85, 0xE85}, {0xE8B, 0xE8B},
-    {0xEA4, 0xEA4}, {0xEA6, 0xEA6}, {0xEBE, 0xEBF}, {0xEC5, 0xEC5}, {0xEC7, 0xEC7}, {0xECF, 0xECF},
-    {0xEDA, 0xEDB}, {0xEE0, 0xEFF}, {0xF48, 0xF48}, {0xF6D, 0xF70}, {0xF98, 0xF98}, {0xFBD, 0xFBD},
-    {0xFCD, 0xFCD}, {0xFDB, 0xFFF}, {0x10C6, 0x10C6}, {0x10C8, 0x10CC}, {0x10CE, 0x10CF}, {0x1249, 0x1249},
-    {0x124E, 0x124F}, {0x1257, 0x1257}, {0x1259, 0x1259}, {0x125E, 0x125F}, {0x1289, 0x1289}, {0x128E, 0x128F},
-    {0x12B1, 0x12B1}, {0x12B6, 0x12B7}, {0x12BF, 0x12BF}, {0x12C1, 0x12C1}, {0x12C6, 0x12C7}, {0x12D7, 0x12D7},
-    {0x1311, 0x1311}, {0x1316, 0x1317}, {0x135B, 0x135C}, {0x137D, 0x137F}, {0x139A, 0x139F}, {0x13F6, 0x13F7},
-    {0x13FE, 0x13FF}, {0x1680, 0x1680}, {0x169D, 0x169F}, {0x16F9, 0x16FF}, {0x1716, 0x171E}, {0x1737, 0x173F},
-    {0x1754, 0x175F}, {0x176D, 0x176D}, {0x1771, 0x1771}, {0x1774, 0x177F}, {0x17DE, 0x17DF}, {0x17EA, 0x17EF},
-    {0x17FA, 0x17FF}, {0x180E, 0x180E}, {0x181A, 0x181F}, {0x1879, 0x187F}, {0x18AB, 0x18AF}, {0x18F6, 0x18FF},
-    {0x191F, 0x191F}, {0x192C, 0x192F}, {0x193C, 0x193F}, {0x1941, 0x1943}, {0x196E, 0x196F}, {0x1975, 0x197F},
-    {0x19AC, 0x19AF}, {0x19CA, 0x19CF}, {0x19DB, 0x19DD}, {0x1A1C, 0x1A1D}, {0x1A5F, 0x1A5F}, {0x1A7D, 0x1A7E},
-    {0x1A8A, 0x1A8F}, {0x1A9A, 0x1A9F}, {0x1AAE, 0x1AAF}, {0x1ACF, 0x1AFF}, {0x1B4D, 0x1B4F}, {0x1B7F, 0x1B7F},
-    {0x1BF4, 0x1BFB}, {0x1C38, 0x1C3A}, {0x1C4A, 0x1C4C}, {0x1C89, 0x1C8F}, {0x1CBB, 0x1CBC}, {0x1CC8, 0x1CCF},
-    {0x1CFB, 0x1CFF}, {0x1F16, 0x1F17}, {0x1F1E, 0x1F1F}, {0x1F46, 0x1F47}, {0x1F4E, 0x1F4F}, {0x1F58, 0x1F58},
-    {0x1F5A, 0x1F5A}, {0x1F5C, 0x1F5C}, {0x1F5E, 0x1F5E}, {0x1F7E, 0x1F7F}, {0x1FB5, 0x1FB5}, {0x1FC5, 0x1FC5},
-    {0x1FD4, 0x1FD5}, {0x1FDC, 0x1FDC}, {0x1FF0, 0x1FF1}, {0x1FF5, 0x1FF5}, {0x1FFF, 0x200F}, {0x2028, 0x202F},
-    {0x205F, 0x206F}, {0x2072, 0x2073}, {0x208F, 0x208F}, {0x209D, 0x209F}, {0x20C1, 0x20CF}, {0x20F1, 0x20FF},
-    {0x218C, 0x218F}, {0x2427, 0x243F}, {0x244B, 0x245F}, {0x2B74, 0x2B75}, {0x2B96, 0x2B96}, {0x2CF4, 0x2CF8},
-    {0x2D26, 0x2D26}, {0x2D28, 0x2D2C}, {0x2D2E, 0x2D2F}, {0x2D68, 0x2D6E}, {0x2D71, 0x2D7E}, {0x2D97, 0x2D9F},
-    {0x2DA7, 0x2DA7}, {0x2DAF, 0x2DAF}, {0x2DB7, 0x2DB7}, {0x2DBF, 0x2DBF}, {0x2DC7, 0x2DC7}, {0x2DCF, 0x2DCF},
-    {0x2DD7, 0x2DD7}, {0x2DDF, 0x2DDF}, {0x2E5E, 0x2E7F}, {0x2E9A, 0x2E9A}, {0x2EF4, 0x2EFF}, {0x2FD6, 0x2FEF},
-    {0x3000, 0x3000}, {0x3040, 0x3040}, {0x3097, 0x3098}, {0x3100, 0x3104}, {0x3130, 0x3130}, {0x318F, 0x318F},
-    {0x31E4, 0x31EE}, {0x321F, 0x321F}, {0xA48D, 0xA48F}, {0xA4C7, 0xA4CF}, {0xA62C, 0xA63F}, {0xA6F8, 0xA6FF},
-    {0xA7CB, 0xA7CF}, {0xA7D2, 0xA7D2}, {0xA7D4, 0xA7D4}, {0xA7DA, 0xA7F1}, {0xA82D, 0xA82F}, {0xA83A, 0xA83F},
-    {0xA878, 0xA87F}, {0xA8C6, 0xA8CD}, {0xA8DA, 0xA8DF}, {0xA954, 0xA95E}, {0xA97D, 0xA97F}, {0xA9CE, 0xA9CE},
-    {0xA9DA, 0xA9DD}, {0xA9FF, 0xA9FF}, {0xAA37, 0xAA3F}, {0xAA4E, 0xAA4F}, {0xAA5A, 0xAA5B}, {0xAAC3, 0xAADA},
-    {0xAAF7, 0xAB00}, {0xAB07, 0xAB08}, {0xAB0F, 0xAB10}, {0xAB17, 0xAB1F}, {0xAB27, 0xAB27}, {0xAB2F, 0xAB2F},
-    {0xAB6C, 0xAB6F}, {0xABEE, 0xABEF}, {0xABFA, 0xABFF}, {0xD7A4, 0xD7AF}, {0xD7C7, 0xD7CA}, {0xD7FC, 0xF8FF},
-    {0xFA6E, 0xFA6F}, {0xFADA, 0xFAFF}, {0xFB07, 0xFB12}, {0xFB18, 0xFB1C}, {0xFB37, 0xFB37}, {0xFB3D, 0xFB3D},
-    {0xFB3F, 0xFB3F}, {0xFB42, 0xFB42}, {0xFB45, 0xFB45}, {0xFBC3, 0xFBD2}, {0xFD90, 0xFD91}, {0xFDC8, 0xFDCE},
-    {0xFDD0, 0xFDEF}, {0xFE1A, 0xFE1F}, {0xFE53, 0xFE53}, {0xFE67, 0xFE67}, {0xFE6C, 0xFE6F}, {0xFE75, 0xFE75},
-    {0xFEFD, 0xFF00}, {0xFFBF, 0xFFC1}, {0xFFC8, 0xFFC9}, {0xFFD0, 0xFFD1}, {0xFFD8, 0xFFD9}, {0xFFDD, 0xFFDF},
-    {0xFFE7, 0xFFE7}, {0xFFEF, 0xFFFB}, {0xFFFE, 0xFFFF}, {0x1000C, 0x1000C}, {0x10027, 0x10027}, {0x1003B, 0x1003B},
-    {0x1003E, 0x1003E}, {0x1004E, 0x1004F}, {0x1005E, 0x1007F}, {0x100FB, 0x100FF}, {0x10103, 0x10106}, {0x10134, 0x10136},
-    {0x1018F, 0x1018F}, {0x1019D, 0x1019F}, {0x101A1, 0x101CF}, {0x101FE, 0x1027F}, {0x1029D, 0x1029F}, {0x102D1, 0x102DF},
-    {0x102FC, 0x102FF}, {0x10324, 0x1032C}, {0x1034B, 0x1034F}, {0x1037B, 0x1037F}, {0x1039E, 0x1039E}, {0x103C4, 0x103C7},
-    {0x103D6, 0x103FF}, {0x1049E, 0x1049F}, {0x104AA, 0x104AF}, {0x104D4, 0x104D7}, {0x104FC, 0x104FF}, {0x10528, 0x1052F},
-    {0x10564, 0x1056E}, {0x1057B, 0x1057B}, {0x1058B, 0x1058B}, {0x10593, 0x10593}, {0x10596, 0x10596}, {0x105A2, 0x105A2},
-    {0x105B2, 0x105B2}, {0x105BA, 0x105BA}, {0x105BD, 0x105FF}, {0x10737, 0x1073F}, {0x10756, 0x1075F}, {0x10768, 0x1077F},
-    {0x10786, 0x10786}, {0x107B1, 0x107B1}, {0x107BB, 0x107FF}, {0x10806, 0x10807}, {0x10809, 0x10809}, {0x10836, 0x10836},
-    {0x10839, 0x1083B}, {0x1083D, 0x1083E}, {0x10856, 0x10856}, {0x1089F, 0x108A6}, {0x108B0, 0x108DF}, {0x108F3, 0x108F3},
-    {0x108F6, 0x108FA}, {0x1091C, 0x1091E}, {0x1093A, 0x1093E}, {0x10940, 0x1097F}, {0x109B8, 0x109BB}, {0x109D0, 0x109D1},
-    {0x10A04, 0x10A04}, {0x10A07, 0x10A0B}, {0x10A14, 0x10A14}, {0x10A18, 0x10A18}, {0x10A36, 0x10A37}, {0x10A3B, 0x10A3E},
-    {0x10A49, 0x10A4F}, {0x10A59, 0x10A5F}, {0x10AA0, 0x10ABF}, {0x10AE7, 0x10AEA}, {0x10AF7, 0x10AFF}, {0x10B36, 0x10B38},
-    {0x10B56, 0x10B57}, {0x10B73, 0x10B77}, {0x10B92, 0x10B98}, {0x10B9D, 0x10BA8}, {0x10BB0, 0x10BFF}, {0x10C49, 0x10C7F},
-    {0x10CB3, 0x10CBF}, {0x10CF3, 0x10CF9}, {0x10D28, 0x10D2F}, {0x10D3A, 0x10E5F}, {0x10E7F, 0x10E7F}, {0x10EAA, 0x10EAA},
-    {0x10EAE, 0x10EAF}, {0x10EB2, 0x10EFC}, {0x10F28, 0x10F2F}, {0x10F5A, 0x10F6F}, {0x10F8A, 0x10FAF}, {0x10FCC, 0x10FDF},
-    {0x10FF7, 0x10FFF}, {0x1104E, 0x11051}, {0x11076, 0x1107E}, {0x110BD, 0x110BD}, {0x110C3, 0x110CF}, {0x110E9, 0x110EF},
-    {0x110FA, 0x110FF}, {0x11135, 0x11135}, {0x11148, 0x1114F}, {0x11177, 0x1117F}, {0x111E0, 0x111E0}, {0x111F5, 0x111FF},
-    {0x11212, 0x11212}, {0x11242, 0x1127F}, {0x11287, 0x11287}, {0x11289, 0x11289}, {0x1128E, 0x1128E}, {0x1129E, 0x1129E},
-    {0x112AA, 0x112AF}, {0x112EB, 0x112EF}, {0x112FA, 0x112FF}, {0x11304, 0x11304}, {0x1130D, 0x1130E}, {0x11311, 0x11312},
-    {0x11329, 0x11329}, {0x11331, 0x11331}, {0x11334, 0x11334}, {0x1133A, 0x1133A}, {0x11345, 0x11346}, {0x11349, 0x1134A},
-    {0x1134E, 0x1134F}, {0x11351, 0x11356}, {0x11358, 0x1135C}, {0x11364, 0x11365}, {0x1136D, 0x1136F}, {0x11375, 0x113FF},
-    {0x1145C, 0x1145C}, {0x11462, 0x1147F}, {0x114C8, 0x114CF}, {0x114DA, 0x1157F}, {0x115B6, 0x115B7}, {0x115DE, 0x115FF},
-    {0x11645, 0x1164F}, {0x1165A, 0x1165F}, {0x1166D, 0x1167F}, {0x116BA, 0x116BF}, {0x116CA, 0x116FF}, {0x1171B, 0x1171C},
-    {0x1172C, 0x1172F}, {0x11747, 0x117FF}, {0x1183C, 0x1189F}, {0x118F3, 0x118FE}, {0x11907, 0x11908}, {0x1190A, 0x1190B},
-    {0x11914, 0x11914}, {0x11917, 0x11917}, {0x11936, 0x11936}, {0x11939, 0x1193A}, {0x11947, 0x1194F}, {0x1195A, 0x1199F},
-    {0x119A8, 0x119A9}, {0x119D8, 0x119D9}, {0x119E5, 0x119FF}, {0x11A48, 0x11A4F}, {0x11AA3, 0x11AAF}, {0x11AF9, 0x11AFF},
-    {0x11B0A, 0x11BFF}, {0x11C09, 0x11C09}, {0x11C37, 0x11C37}, {0x11C46, 0x11C4F}, {0x11C6D, 0x11C6F}, {0x11C90, 0x11C91},
-    {0x11CA8, 0x11CA8}, {0x11CB7, 0x11CFF}, {0x11D07, 0x11D07}, {0x11D0A, 0x11D0A}, {0x11D37, 0x11D39}, {0x11D3B, 0x11D3B},
-    {0x11D3E, 0x11D3E}, {0x11D48, 0x11D4F}, {0x11D5A, 0x11D5F}, {0x11D66, 0x11D66}, {0x11D69, 0x11D69}, {0x11D8F, 0x11D8F},
-    {0x11D92, 0x11D92}, {0x11D99, 0x11D9F}, {0x11DAA, 0x11EDF}, {0x11EF9, 0x11EFF}, {0x11F11, 0x11F11}, {0x11F3B, 0x11F3D},
-    {0x11F5A, 0x11FAF}, {0x11FB1, 0x11FBF}, {0x11FF2, 0x11FFE}, {0x1239A, 0x123FF}, {0x1246F, 0x1246F}, {0x12475, 0x1247F},
-    {0x12544, 0x12F8F}, {0x12FF3, 0x12FFF}, {0x13430, 0x1343F}, {0x13456, 0x143FF}, {0x14647, 0x167FF}, {0x16A39, 0x16A3F},
-    {0x16A5F, 0x16A5F}, {0x16A6A, 0x16A6D}, {0x16ABF, 0x16ABF}, {0x16ACA, 0x16ACF}, {0x16AEE, 0x16AEF}, {0x16AF6, 0x16AFF},
-    {0x16B46, 0x16B4F}, {0x16B5A, 0x16B5A}, {0x16B62, 0x16B62}, {0x16B78, 0x16B7C}, {0x16B90, 0x16E3F}, {0x16E9B, 0x16EFF},
-    {0x16F4B, 0x16F4E}, {0x16F88, 0x16F8E}, {0x16FA0, 0x16FDF}, {0x16FE5, 0x16FEF}, {0x16FF2, 0x16FFF}, {0x187F8, 0x187FF},
-    {0x18CD6, 0x18CFF}, {0x18D09, 0x1AFEF}, {0x1AFF4, 0x1AFF4}, {0x1AFFC, 0x1AFFC}, {0x1AFFF, 0x1AFFF}, {0x1B123, 0x1B131},
-    {0x1B133, 0x1B14F}, {0x1B153, 0x1B154}, {0x1B156, 0x1B163}, {0x1B168, 0x1B16F}, {0x1B2FC, 0x1BBFF}, {0x1BC6B, 0x1BC6F},
-    {0x1BC7D, 0x1BC7F}, {0x1BC89, 0x1BC8F}, {0x1BC9A, 0x1BC9B}, {0x1BCA0, 0x1CEFF}, {0x1CF2E, 0x1CF2F}, {0x1CF47, 0x1CF4F},
-    {0x1CFC4, 0x1CFFF}, {0x1D0F6, 0x1D0FF}, {0x1D127, 0x1D128}, {0x1D173, 0x1D17A}, {0x1D1EB, 0x1D1FF}, {0x1D246, 0x1D2BF},
-    {0x1D2D4, 0x1D2DF}, {0x1D2F4, 0x1D2FF}, {0x1D357, 0x1D35F}, {0x1D379, 0x1D3FF}, {0x1D455, 0x1D455}, {0x1D49D, 0x1D49D},
-    {0x1D4A0, 0x1D4A1}, {0x1D4A3, 0x1D4A4}, {0x1D4A7, 0x1D4A8}, {0x1D4AD, 0x1D4AD}, {0x1D4BA, 0x1D4BA}, {0x1D4BC, 0x1D4BC},
-    {0x1D4C4, 0x1D4C4}, {0x1D506, 0x1D506}, {0x1D50B, 0x1D50C}, {0x1D515, 0x1D515}, {0x1D51D, 0x1D51D}, {0x1D53A, 0x1D53A},
-    {0x1D53F, 0x1D53F}, {0x1D545, 0x1D545}, {0x1D547, 0x1D549}, {0x1D551, 0x1D551}, {0x1D6A6, 0x1D6A7}, {0x1D7CC, 0x1D7CD},
-    {0x1DA8C, 0x1DA9A}, {0x1DAA0, 0x1DAA0}, {0x1DAB0, 0x1DEFF}, {0x1DF1F, 0x1DF24}, {0x1DF2B, 0x1DFFF}, {0x1E007, 0x1E007},
-    {0x1E019, 0x1E01A}, {0x1E022, 0x1E022}, {0x1E025, 0x1E025}, {0x1E02B, 0x1E02F}, {0x1E06E, 0x1E08E}, {0x1E090, 0x1E0FF},
-    {0x1E12D, 0x1E12F}, {0x1E13E, 0x1E13F}, {0x1E14A, 0x1E14D}, {0x1E150, 0x1E28F}, {0x1E2AF, 0x1E2BF}, {0x1E2FA, 0x1E2FE},
-    {0x1E300, 0x1E4CF}, {0x1E4FA, 0x1E7DF}, {0x1E7E7, 0x1E7E7}, {0x1E7EC, 0x1E7EC}, {0x1E7EF, 0x1E7EF}, {0x1E7FF, 0x1E7FF},
-    {0x1E8C5, 0x1E8C6}, {0x1E8D7, 0x1E8FF}, {0x1E94C, 0x1E94F}, {0x1E95A, 0x1E95D}, {0x1E960, 0x1EC70}, {0x1ECB5, 0x1ED00},
-    {0x1ED3E, 0x1EDFF}, {0x1EE04, 0x1EE04}, {0x1EE20, 0x1EE20}, {0x1EE23, 0x1EE23}, {0x1EE25, 0x1EE26}, {0x1EE28, 0x1EE28},
-    {0x1EE33, 0x1EE33}, {0x1EE38, 0x1EE38}, {0x1EE3A, 0x1EE3A}, {0x1EE3C, 0x1EE41}, {0x1EE43, 0x1EE46}, {0x1EE48, 0x1EE48},
-    {0x1EE4A, 0x1EE4A}, {0x1EE4C, 0x1EE4C}, {0x1EE50, 0x1EE50}, {0x1EE53, 0x1EE53}, {0x1EE55, 0x1EE56}, {0x1EE58, 0x1EE58},
-    {0x1EE5A, 0x1EE5A}, {0x1EE5C, 0x1EE5C}, {0x1EE5E, 0x1EE5E}, {0x1EE60, 0x1EE60}, {0x1EE63, 0x1EE63}, {0x1EE65, 0x1EE66},
-    {0x1EE6B, 0x1EE6B}, {0x1EE73, 0x1EE73}, {0x1EE78, 0x1EE78}, {0x1EE7D, 0x1EE7D}, {0x1EE7F, 0x1EE7F}, {0x1EE8A, 0x1EE8A},
-    {0x1EE9C, 0x1EEA0}, {0x1EEA4, 0x1EEA4}, {0x1EEAA, 0x1EEAA}, {0x1EEBC, 0x1EEEF}, {0x1EEF2, 0x1EFFF}, {0x1F02C, 0x1F02F},
-    {0x1F094, 0x1F09F}, {0x1F0AF, 0x1F0B0}, {0x1F0C0, 0x1F0C0}, {0x1F0D0, 0x1F0D0}, {0x1F0F6, 0x1F0FF}, {0x1F1AE, 0x1F1E5},
-    {0x1F203, 0x1F20F}, {0x1F23C, 0x1F23F}, {0x1F249, 0x1F24F}, {0x1F252, 0x1F25F}, {0x1F266, 0x1F2FF}, {0x1F6D8, 0x1F6DB},
-    {0x1F6ED, 0x1F6EF}, {0x1F6FD, 0x1F6FF}, {0x1F777, 0x1F77A}, {0x1F7DA, 0x1F7DF}, {0x1F7EC, 0x1F7EF}, {0x1F7F1, 0x1F7FF},
-    {0x1F80C, 0x1F80F}, {0x1F848, 0x1F84F}, {0x1F85A, 0x1F85F}, {0x1F888, 0x1F88F}, {0x1F8AE, 0x1F8AF}, {0x1F8B2, 0x1F8FF},
-    {0x1FA54, 0x1FA5F}, {0x1FA6E, 0x1FA6F}, {0x1FA7D, 0x1FA7F}, {0x1FA89, 0x1FA8F}, {0x1FABE, 0x1FABE}, {0x1FAC6, 0x1FACD},
-    {0x1FADC, 0x1FADF}, {0x1FAE9, 0x1FAEF}, {0x1FAF9, 0x1FAFF}, {0x1FB93, 0x1FB93}, {0x1FBCB, 0x1FBEF}, {0x1FBFA, 0x1FFFF},
-    {0x2A6E0, 0x2A6FF}, {0x2B73A, 0x2B73F}, {0x2B81E, 0x2B81F}, {0x2CEA2, 0x2CEAF}, {0x2EBE1, 0x2EBEF}, {0x2EE5E, 0x2F7FF},
-    {0x2FA1E, 0x2FFFF}, {0x3134B, 0x3134F}, {0x323B0, 0xE00FF}, {0xE01F0, 0x10FFFF}};
+    {0x80, 0xA0},       {0xAD, 0xAD},       {0x378, 0x379},     {0x380, 0x383},     {0x38B, 0x38B},     {0x38D, 0x38D},     {0x3A2, 0x3A2},     {0x530, 0x530},
+    {0x557, 0x558},     {0x58B, 0x58C},     {0x590, 0x590},     {0x5C8, 0x5CF},     {0x5EB, 0x5EE},     {0x5F5, 0x605},     {0x61C, 0x61C},     {0x6DD, 0x6DD},
+    {0x70E, 0x70F},     {0x74B, 0x74C},     {0x7B2, 0x7BF},     {0x7FB, 0x7FC},     {0x82E, 0x82F},     {0x83F, 0x83F},     {0x85C, 0x85D},     {0x85F, 0x85F},
+    {0x86B, 0x86F},     {0x88F, 0x897},     {0x8E2, 0x8E2},     {0x984, 0x984},     {0x98D, 0x98E},     {0x991, 0x992},     {0x9A9, 0x9A9},     {0x9B1, 0x9B1},
+    {0x9B3, 0x9B5},     {0x9BA, 0x9BB},     {0x9C5, 0x9C6},     {0x9C9, 0x9CA},     {0x9CF, 0x9D6},     {0x9D8, 0x9DB},     {0x9DE, 0x9DE},     {0x9E4, 0x9E5},
+    {0x9FF, 0xA00},     {0xA04, 0xA04},     {0xA0B, 0xA0E},     {0xA11, 0xA12},     {0xA29, 0xA29},     {0xA31, 0xA31},     {0xA34, 0xA34},     {0xA37, 0xA37},
+    {0xA3A, 0xA3B},     {0xA3D, 0xA3D},     {0xA43, 0xA46},     {0xA49, 0xA4A},     {0xA4E, 0xA50},     {0xA52, 0xA58},     {0xA5D, 0xA5D},     {0xA5F, 0xA65},
+    {0xA77, 0xA80},     {0xA84, 0xA84},     {0xA8E, 0xA8E},     {0xA92, 0xA92},     {0xAA9, 0xAA9},     {0xAB1, 0xAB1},     {0xAB4, 0xAB4},     {0xABA, 0xABB},
+    {0xAC6, 0xAC6},     {0xACA, 0xACA},     {0xACE, 0xACF},     {0xAD1, 0xADF},     {0xAE4, 0xAE5},     {0xAF2, 0xAF8},     {0xB00, 0xB00},     {0xB04, 0xB04},
+    {0xB0D, 0xB0E},     {0xB11, 0xB12},     {0xB29, 0xB29},     {0xB31, 0xB31},     {0xB34, 0xB34},     {0xB3A, 0xB3B},     {0xB45, 0xB46},     {0xB49, 0xB4A},
+    {0xB4E, 0xB54},     {0xB58, 0xB5B},     {0xB5E, 0xB5E},     {0xB64, 0xB65},     {0xB78, 0xB81},     {0xB84, 0xB84},     {0xB8B, 0xB8D},     {0xB91, 0xB91},
+    {0xB96, 0xB98},     {0xB9B, 0xB9B},     {0xB9D, 0xB9D},     {0xBA0, 0xBA2},     {0xBA5, 0xBA7},     {0xBAB, 0xBAD},     {0xBBA, 0xBBD},     {0xBC3, 0xBC5},
+    {0xBC9, 0xBC9},     {0xBCE, 0xBCF},     {0xBD1, 0xBD6},     {0xBD8, 0xBE5},     {0xBFB, 0xBFF},     {0xC0D, 0xC0D},     {0xC11, 0xC11},     {0xC29, 0xC29},
+    {0xC3A, 0xC3B},     {0xC45, 0xC45},     {0xC49, 0xC49},     {0xC4E, 0xC54},     {0xC57, 0xC57},     {0xC5B, 0xC5C},     {0xC5E, 0xC5F},     {0xC64, 0xC65},
+    {0xC70, 0xC76},     {0xC8D, 0xC8D},     {0xC91, 0xC91},     {0xCA9, 0xCA9},     {0xCB4, 0xCB4},     {0xCBA, 0xCBB},     {0xCC5, 0xCC5},     {0xCC9, 0xCC9},
+    {0xCCE, 0xCD4},     {0xCD7, 0xCDC},     {0xCDF, 0xCDF},     {0xCE4, 0xCE5},     {0xCF0, 0xCF0},     {0xCF4, 0xCFF},     {0xD0D, 0xD0D},     {0xD11, 0xD11},
+    {0xD45, 0xD45},     {0xD49, 0xD49},     {0xD50, 0xD53},     {0xD64, 0xD65},     {0xD80, 0xD80},     {0xD84, 0xD84},     {0xD97, 0xD99},     {0xDB2, 0xDB2},
+    {0xDBC, 0xDBC},     {0xDBE, 0xDBF},     {0xDC7, 0xDC9},     {0xDCB, 0xDCE},     {0xDD5, 0xDD5},     {0xDD7, 0xDD7},     {0xDE0, 0xDE5},     {0xDF0, 0xDF1},
+    {0xDF5, 0xE00},     {0xE3B, 0xE3E},     {0xE5C, 0xE80},     {0xE83, 0xE83},     {0xE85, 0xE85},     {0xE8B, 0xE8B},     {0xEA4, 0xEA4},     {0xEA6, 0xEA6},
+    {0xEBE, 0xEBF},     {0xEC5, 0xEC5},     {0xEC7, 0xEC7},     {0xECF, 0xECF},     {0xEDA, 0xEDB},     {0xEE0, 0xEFF},     {0xF48, 0xF48},     {0xF6D, 0xF70},
+    {0xF98, 0xF98},     {0xFBD, 0xFBD},     {0xFCD, 0xFCD},     {0xFDB, 0xFFF},     {0x10C6, 0x10C6},   {0x10C8, 0x10CC},   {0x10CE, 0x10CF},   {0x1249, 0x1249},
+    {0x124E, 0x124F},   {0x1257, 0x1257},   {0x1259, 0x1259},   {0x125E, 0x125F},   {0x1289, 0x1289},   {0x128E, 0x128F},   {0x12B1, 0x12B1},   {0x12B6, 0x12B7},
+    {0x12BF, 0x12BF},   {0x12C1, 0x12C1},   {0x12C6, 0x12C7},   {0x12D7, 0x12D7},   {0x1311, 0x1311},   {0x1316, 0x1317},   {0x135B, 0x135C},   {0x137D, 0x137F},
+    {0x139A, 0x139F},   {0x13F6, 0x13F7},   {0x13FE, 0x13FF},   {0x1680, 0x1680},   {0x169D, 0x169F},   {0x16F9, 0x16FF},   {0x1716, 0x171E},   {0x1737, 0x173F},
+    {0x1754, 0x175F},   {0x176D, 0x176D},   {0x1771, 0x1771},   {0x1774, 0x177F},   {0x17DE, 0x17DF},   {0x17EA, 0x17EF},   {0x17FA, 0x17FF},   {0x180E, 0x180E},
+    {0x181A, 0x181F},   {0x1879, 0x187F},   {0x18AB, 0x18AF},   {0x18F6, 0x18FF},   {0x191F, 0x191F},   {0x192C, 0x192F},   {0x193C, 0x193F},   {0x1941, 0x1943},
+    {0x196E, 0x196F},   {0x1975, 0x197F},   {0x19AC, 0x19AF},   {0x19CA, 0x19CF},   {0x19DB, 0x19DD},   {0x1A1C, 0x1A1D},   {0x1A5F, 0x1A5F},   {0x1A7D, 0x1A7E},
+    {0x1A8A, 0x1A8F},   {0x1A9A, 0x1A9F},   {0x1AAE, 0x1AAF},   {0x1ACF, 0x1AFF},   {0x1B4D, 0x1B4F},   {0x1B7F, 0x1B7F},   {0x1BF4, 0x1BFB},   {0x1C38, 0x1C3A},
+    {0x1C4A, 0x1C4C},   {0x1C89, 0x1C8F},   {0x1CBB, 0x1CBC},   {0x1CC8, 0x1CCF},   {0x1CFB, 0x1CFF},   {0x1F16, 0x1F17},   {0x1F1E, 0x1F1F},   {0x1F46, 0x1F47},
+    {0x1F4E, 0x1F4F},   {0x1F58, 0x1F58},   {0x1F5A, 0x1F5A},   {0x1F5C, 0x1F5C},   {0x1F5E, 0x1F5E},   {0x1F7E, 0x1F7F},   {0x1FB5, 0x1FB5},   {0x1FC5, 0x1FC5},
+    {0x1FD4, 0x1FD5},   {0x1FDC, 0x1FDC},   {0x1FF0, 0x1FF1},   {0x1FF5, 0x1FF5},   {0x1FFF, 0x200F},   {0x2028, 0x202F},   {0x205F, 0x206F},   {0x2072, 0x2073},
+    {0x208F, 0x208F},   {0x209D, 0x209F},   {0x20C1, 0x20CF},   {0x20F1, 0x20FF},   {0x218C, 0x218F},   {0x2427, 0x243F},   {0x244B, 0x245F},   {0x2B74, 0x2B75},
+    {0x2B96, 0x2B96},   {0x2CF4, 0x2CF8},   {0x2D26, 0x2D26},   {0x2D28, 0x2D2C},   {0x2D2E, 0x2D2F},   {0x2D68, 0x2D6E},   {0x2D71, 0x2D7E},   {0x2D97, 0x2D9F},
+    {0x2DA7, 0x2DA7},   {0x2DAF, 0x2DAF},   {0x2DB7, 0x2DB7},   {0x2DBF, 0x2DBF},   {0x2DC7, 0x2DC7},   {0x2DCF, 0x2DCF},   {0x2DD7, 0x2DD7},   {0x2DDF, 0x2DDF},
+    {0x2E5E, 0x2E7F},   {0x2E9A, 0x2E9A},   {0x2EF4, 0x2EFF},   {0x2FD6, 0x2FEF},   {0x3000, 0x3000},   {0x3040, 0x3040},   {0x3097, 0x3098},   {0x3100, 0x3104},
+    {0x3130, 0x3130},   {0x318F, 0x318F},   {0x31E4, 0x31EE},   {0x321F, 0x321F},   {0xA48D, 0xA48F},   {0xA4C7, 0xA4CF},   {0xA62C, 0xA63F},   {0xA6F8, 0xA6FF},
+    {0xA7CB, 0xA7CF},   {0xA7D2, 0xA7D2},   {0xA7D4, 0xA7D4},   {0xA7DA, 0xA7F1},   {0xA82D, 0xA82F},   {0xA83A, 0xA83F},   {0xA878, 0xA87F},   {0xA8C6, 0xA8CD},
+    {0xA8DA, 0xA8DF},   {0xA954, 0xA95E},   {0xA97D, 0xA97F},   {0xA9CE, 0xA9CE},   {0xA9DA, 0xA9DD},   {0xA9FF, 0xA9FF},   {0xAA37, 0xAA3F},   {0xAA4E, 0xAA4F},
+    {0xAA5A, 0xAA5B},   {0xAAC3, 0xAADA},   {0xAAF7, 0xAB00},   {0xAB07, 0xAB08},   {0xAB0F, 0xAB10},   {0xAB17, 0xAB1F},   {0xAB27, 0xAB27},   {0xAB2F, 0xAB2F},
+    {0xAB6C, 0xAB6F},   {0xABEE, 0xABEF},   {0xABFA, 0xABFF},   {0xD7A4, 0xD7AF},   {0xD7C7, 0xD7CA},   {0xD7FC, 0xF8FF},   {0xFA6E, 0xFA6F},   {0xFADA, 0xFAFF},
+    {0xFB07, 0xFB12},   {0xFB18, 0xFB1C},   {0xFB37, 0xFB37},   {0xFB3D, 0xFB3D},   {0xFB3F, 0xFB3F},   {0xFB42, 0xFB42},   {0xFB45, 0xFB45},   {0xFBC3, 0xFBD2},
+    {0xFD90, 0xFD91},   {0xFDC8, 0xFDCE},   {0xFDD0, 0xFDEF},   {0xFE1A, 0xFE1F},   {0xFE53, 0xFE53},   {0xFE67, 0xFE67},   {0xFE6C, 0xFE6F},   {0xFE75, 0xFE75},
+    {0xFEFD, 0xFF00},   {0xFFBF, 0xFFC1},   {0xFFC8, 0xFFC9},   {0xFFD0, 0xFFD1},   {0xFFD8, 0xFFD9},   {0xFFDD, 0xFFDF},   {0xFFE7, 0xFFE7},   {0xFFEF, 0xFFFB},
+    {0xFFFE, 0xFFFF},   {0x1000C, 0x1000C}, {0x10027, 0x10027}, {0x1003B, 0x1003B}, {0x1003E, 0x1003E}, {0x1004E, 0x1004F}, {0x1005E, 0x1007F}, {0x100FB, 0x100FF},
+    {0x10103, 0x10106}, {0x10134, 0x10136}, {0x1018F, 0x1018F}, {0x1019D, 0x1019F}, {0x101A1, 0x101CF}, {0x101FE, 0x1027F}, {0x1029D, 0x1029F}, {0x102D1, 0x102DF},
+    {0x102FC, 0x102FF}, {0x10324, 0x1032C}, {0x1034B, 0x1034F}, {0x1037B, 0x1037F}, {0x1039E, 0x1039E}, {0x103C4, 0x103C7}, {0x103D6, 0x103FF}, {0x1049E, 0x1049F},
+    {0x104AA, 0x104AF}, {0x104D4, 0x104D7}, {0x104FC, 0x104FF}, {0x10528, 0x1052F}, {0x10564, 0x1056E}, {0x1057B, 0x1057B}, {0x1058B, 0x1058B}, {0x10593, 0x10593},
+    {0x10596, 0x10596}, {0x105A2, 0x105A2}, {0x105B2, 0x105B2}, {0x105BA, 0x105BA}, {0x105BD, 0x105FF}, {0x10737, 0x1073F}, {0x10756, 0x1075F}, {0x10768, 0x1077F},
+    {0x10786, 0x10786}, {0x107B1, 0x107B1}, {0x107BB, 0x107FF}, {0x10806, 0x10807}, {0x10809, 0x10809}, {0x10836, 0x10836}, {0x10839, 0x1083B}, {0x1083D, 0x1083E},
+    {0x10856, 0x10856}, {0x1089F, 0x108A6}, {0x108B0, 0x108DF}, {0x108F3, 0x108F3}, {0x108F6, 0x108FA}, {0x1091C, 0x1091E}, {0x1093A, 0x1093E}, {0x10940, 0x1097F},
+    {0x109B8, 0x109BB}, {0x109D0, 0x109D1}, {0x10A04, 0x10A04}, {0x10A07, 0x10A0B}, {0x10A14, 0x10A14}, {0x10A18, 0x10A18}, {0x10A36, 0x10A37}, {0x10A3B, 0x10A3E},
+    {0x10A49, 0x10A4F}, {0x10A59, 0x10A5F}, {0x10AA0, 0x10ABF}, {0x10AE7, 0x10AEA}, {0x10AF7, 0x10AFF}, {0x10B36, 0x10B38}, {0x10B56, 0x10B57}, {0x10B73, 0x10B77},
+    {0x10B92, 0x10B98}, {0x10B9D, 0x10BA8}, {0x10BB0, 0x10BFF}, {0x10C49, 0x10C7F}, {0x10CB3, 0x10CBF}, {0x10CF3, 0x10CF9}, {0x10D28, 0x10D2F}, {0x10D3A, 0x10E5F},
+    {0x10E7F, 0x10E7F}, {0x10EAA, 0x10EAA}, {0x10EAE, 0x10EAF}, {0x10EB2, 0x10EFC}, {0x10F28, 0x10F2F}, {0x10F5A, 0x10F6F}, {0x10F8A, 0x10FAF}, {0x10FCC, 0x10FDF},
+    {0x10FF7, 0x10FFF}, {0x1104E, 0x11051}, {0x11076, 0x1107E}, {0x110BD, 0x110BD}, {0x110C3, 0x110CF}, {0x110E9, 0x110EF}, {0x110FA, 0x110FF}, {0x11135, 0x11135},
+    {0x11148, 0x1114F}, {0x11177, 0x1117F}, {0x111E0, 0x111E0}, {0x111F5, 0x111FF}, {0x11212, 0x11212}, {0x11242, 0x1127F}, {0x11287, 0x11287}, {0x11289, 0x11289},
+    {0x1128E, 0x1128E}, {0x1129E, 0x1129E}, {0x112AA, 0x112AF}, {0x112EB, 0x112EF}, {0x112FA, 0x112FF}, {0x11304, 0x11304}, {0x1130D, 0x1130E}, {0x11311, 0x11312},
+    {0x11329, 0x11329}, {0x11331, 0x11331}, {0x11334, 0x11334}, {0x1133A, 0x1133A}, {0x11345, 0x11346}, {0x11349, 0x1134A}, {0x1134E, 0x1134F}, {0x11351, 0x11356},
+    {0x11358, 0x1135C}, {0x11364, 0x11365}, {0x1136D, 0x1136F}, {0x11375, 0x113FF}, {0x1145C, 0x1145C}, {0x11462, 0x1147F}, {0x114C8, 0x114CF}, {0x114DA, 0x1157F},
+    {0x115B6, 0x115B7}, {0x115DE, 0x115FF}, {0x11645, 0x1164F}, {0x1165A, 0x1165F}, {0x1166D, 0x1167F}, {0x116BA, 0x116BF}, {0x116CA, 0x116FF}, {0x1171B, 0x1171C},
+    {0x1172C, 0x1172F}, {0x11747, 0x117FF}, {0x1183C, 0x1189F}, {0x118F3, 0x118FE}, {0x11907, 0x11908}, {0x1190A, 0x1190B}, {0x11914, 0x11914}, {0x11917, 0x11917},
+    {0x11936, 0x11936}, {0x11939, 0x1193A}, {0x11947, 0x1194F}, {0x1195A, 0x1199F}, {0x119A8, 0x119A9}, {0x119D8, 0x119D9}, {0x119E5, 0x119FF}, {0x11A48, 0x11A4F},
+    {0x11AA3, 0x11AAF}, {0x11AF9, 0x11AFF}, {0x11B0A, 0x11BFF}, {0x11C09, 0x11C09}, {0x11C37, 0x11C37}, {0x11C46, 0x11C4F}, {0x11C6D, 0x11C6F}, {0x11C90, 0x11C91},
+    {0x11CA8, 0x11CA8}, {0x11CB7, 0x11CFF}, {0x11D07, 0x11D07}, {0x11D0A, 0x11D0A}, {0x11D37, 0x11D39}, {0x11D3B, 0x11D3B}, {0x11D3E, 0x11D3E}, {0x11D48, 0x11D4F},
+    {0x11D5A, 0x11D5F}, {0x11D66, 0x11D66}, {0x11D69, 0x11D69}, {0x11D8F, 0x11D8F}, {0x11D92, 0x11D92}, {0x11D99, 0x11D9F}, {0x11DAA, 0x11EDF}, {0x11EF9, 0x11EFF},
+    {0x11F11, 0x11F11}, {0x11F3B, 0x11F3D}, {0x11F5A, 0x11FAF}, {0x11FB1, 0x11FBF}, {0x11FF2, 0x11FFE}, {0x1239A, 0x123FF}, {0x1246F, 0x1246F}, {0x12475, 0x1247F},
+    {0x12544, 0x12F8F}, {0x12FF3, 0x12FFF}, {0x13430, 0x1343F}, {0x13456, 0x143FF}, {0x14647, 0x167FF}, {0x16A39, 0x16A3F}, {0x16A5F, 0x16A5F}, {0x16A6A, 0x16A6D},
+    {0x16ABF, 0x16ABF}, {0x16ACA, 0x16ACF}, {0x16AEE, 0x16AEF}, {0x16AF6, 0x16AFF}, {0x16B46, 0x16B4F}, {0x16B5A, 0x16B5A}, {0x16B62, 0x16B62}, {0x16B78, 0x16B7C},
+    {0x16B90, 0x16E3F}, {0x16E9B, 0x16EFF}, {0x16F4B, 0x16F4E}, {0x16F88, 0x16F8E}, {0x16FA0, 0x16FDF}, {0x16FE5, 0x16FEF}, {0x16FF2, 0x16FFF}, {0x187F8, 0x187FF},
+    {0x18CD6, 0x18CFF}, {0x18D09, 0x1AFEF}, {0x1AFF4, 0x1AFF4}, {0x1AFFC, 0x1AFFC}, {0x1AFFF, 0x1AFFF}, {0x1B123, 0x1B131}, {0x1B133, 0x1B14F}, {0x1B153, 0x1B154},
+    {0x1B156, 0x1B163}, {0x1B168, 0x1B16F}, {0x1B2FC, 0x1BBFF}, {0x1BC6B, 0x1BC6F}, {0x1BC7D, 0x1BC7F}, {0x1BC89, 0x1BC8F}, {0x1BC9A, 0x1BC9B}, {0x1BCA0, 0x1CEFF},
+    {0x1CF2E, 0x1CF2F}, {0x1CF47, 0x1CF4F}, {0x1CFC4, 0x1CFFF}, {0x1D0F6, 0x1D0FF}, {0x1D127, 0x1D128}, {0x1D173, 0x1D17A}, {0x1D1EB, 0x1D1FF}, {0x1D246, 0x1D2BF},
+    {0x1D2D4, 0x1D2DF}, {0x1D2F4, 0x1D2FF}, {0x1D357, 0x1D35F}, {0x1D379, 0x1D3FF}, {0x1D455, 0x1D455}, {0x1D49D, 0x1D49D}, {0x1D4A0, 0x1D4A1}, {0x1D4A3, 0x1D4A4},
+    {0x1D4A7, 0x1D4A8}, {0x1D4AD, 0x1D4AD}, {0x1D4BA, 0x1D4BA}, {0x1D4BC, 0x1D4BC}, {0x1D4C4, 0x1D4C4}, {0x1D506, 0x1D506}, {0x1D50B, 0x1D50C}, {0x1D515, 0x1D515},
+    {0x1D51D, 0x1D51D}, {0x1D53A, 0x1D53A}, {0x1D53F, 0x1D53F}, {0x1D545, 0x1D545}, {0x1D547, 0x1D549}, {0x1D551, 0x1D551}, {0x1D6A6, 0x1D6A7}, {0x1D7CC, 0x1D7CD},
+    {0x1DA8C, 0x1DA9A}, {0x1DAA0, 0x1DAA0}, {0x1DAB0, 0x1DEFF}, {0x1DF1F, 0x1DF24}, {0x1DF2B, 0x1DFFF}, {0x1E007, 0x1E007}, {0x1E019, 0x1E01A}, {0x1E022, 0x1E022},
+    {0x1E025, 0x1E025}, {0x1E02B, 0x1E02F}, {0x1E06E, 0x1E08E}, {0x1E090, 0x1E0FF}, {0x1E12D, 0x1E12F}, {0x1E13E, 0x1E13F}, {0x1E14A, 0x1E14D}, {0x1E150, 0x1E28F},
+    {0x1E2AF, 0x1E2BF}, {0x1E2FA, 0x1E2FE}, {0x1E300, 0x1E4CF}, {0x1E4FA, 0x1E7DF}, {0x1E7E7, 0x1E7E7}, {0x1E7EC, 0x1E7EC}, {0x1E7EF, 0x1E7EF}, {0x1E7FF, 0x1E7FF},
+    {0x1E8C5, 0x1E8C6}, {0x1E8D7, 0x1E8FF}, {0x1E94C, 0x1E94F}, {0x1E95A, 0x1E95D}, {0x1E960, 0x1EC70}, {0x1ECB5, 0x1ED00}, {0x1ED3E, 0x1EDFF}, {0x1EE04, 0x1EE04},
+    {0x1EE20, 0x1EE20}, {0x1EE23, 0x1EE23}, {0x1EE25, 0x1EE26}, {0x1EE28, 0x1EE28}, {0x1EE33, 0x1EE33}, {0x1EE38, 0x1EE38}, {0x1EE3A, 0x1EE3A}, {0x1EE3C, 0x1EE41},
+    {0x1EE43, 0x1EE46}, {0x1EE48, 0x1EE48}, {0x1EE4A, 0x1EE4A}, {0x1EE4C, 0x1EE4C}, {0x1EE50, 0x1EE50}, {0x1EE53, 0x1EE53}, {0x1EE55, 0x1EE56}, {0x1EE58, 0x1EE58},
+    {0x1EE5A, 0x1EE5A}, {0x1EE5C, 0x1EE5C}, {0x1EE5E, 0x1EE5E}, {0x1EE60, 0x1EE60}, {0x1EE63, 0x1EE63}, {0x1EE65, 0x1EE66}, {0x1EE6B, 0x1EE6B}, {0x1EE73, 0x1EE73},
+    {0x1EE78, 0x1EE78}, {0x1EE7D, 0x1EE7D}, {0x1EE7F, 0x1EE7F}, {0x1EE8A, 0x1EE8A}, {0x1EE9C, 0x1EEA0}, {0x1EEA4, 0x1EEA4}, {0x1EEAA, 0x1EEAA}, {0x1EEBC, 0x1EEEF},
+    {0x1EEF2, 0x1EFFF}, {0x1F02C, 0x1F02F}, {0x1F094, 0x1F09F}, {0x1F0AF, 0x1F0B0}, {0x1F0C0, 0x1F0C0}, {0x1F0D0, 0x1F0D0}, {0x1F0F6, 0x1F0FF}, {0x1F1AE, 0x1F1E5},
+    {0x1F203, 0x1F20F}, {0x1F23C, 0x1F23F}, {0x1F249, 0x1F24F}, {0x1F252, 0x1F25F}, {0x1F266, 0x1F2FF}, {0x1F6D8, 0x1F6DB}, {0x1F6ED, 0x1F6EF}, {0x1F6FD, 0x1F6FF},
+    {0x1F777, 0x1F77A}, {0x1F7DA, 0x1F7DF}, {0x1F7EC, 0x1F7EF}, {0x1F7F1, 0x1F7FF}, {0x1F80C, 0x1F80F}, {0x1F848, 0x1F84F}, {0x1F85A, 0x1F85F}, {0x1F888, 0x1F88F},
+    {0x1F8AE, 0x1F8AF}, {0x1F8B2, 0x1F8FF}, {0x1FA54, 0x1FA5F}, {0x1FA6E, 0x1FA6F}, {0x1FA7D, 0x1FA7F}, {0x1FA89, 0x1FA8F}, {0x1FABE, 0x1FABE}, {0x1FAC6, 0x1FACD},
+    {0x1FADC, 0x1FADF}, {0x1FAE9, 0x1FAEF}, {0x1FAF9, 0x1FAFF}, {0x1FB93, 0x1FB93}, {0x1FBCB, 0x1FBEF}, {0x1FBFA, 0x1FFFF}, {0x2A6E0, 0x2A6FF}, {0x2B73A, 0x2B73F},
+    {0x2B81E, 0x2B81F}, {0x2CEA2, 0x2CEAF}, {0x2EBE1, 0x2EBEF}, {0x2EE5E, 0x2F7FF}, {0x2FA1E, 0x2FFFF}, {0x3134B, 0x3134F}, {0x323B0, 0xE00FF}, {0xE01F0, 0x10FFFF}};
 
 static bool xx_zip_py_is_printable(uint32_t code_point)
 {
     size_t low = 0, high = sizeof(xx_zip_py_unprintable) / sizeof(xx_zip_py_unprintable[0]);
     while (low < high) {
         size_t middle = (low + high) / 2;
-        if (code_point > xx_zip_py_unprintable[middle][1])
-            low = middle + 1;
-        else if (code_point < xx_zip_py_unprintable[middle][0])
-            high = middle;
-        else
-            return false;
+        if (code_point > xx_zip_py_unprintable[middle][1]) low = middle + 1;
+        else if (code_point < xx_zip_py_unprintable[middle][0]) high = middle;
+        else return false;
     }
     return true;
 }
@@ -377,14 +339,10 @@ static char *xx_zip_py_repr_of(const char *text, size_t length, bool bytes)
             int32_t code_point;
             size_t used = xx_zip_py_utf8_decode((const uint8_t *)text + i, length - i, &code_point);
             if (code_point < 0) code_point = 0xFFFD;
-            if (xx_zip_py_is_printable((uint32_t)code_point))
-                xx_buf_append(&out, text + i, used);
-            else if (code_point <= 0xFF)
-                xx_zip_py_repr_hex(&out, 'x', (uint32_t)code_point, 2);
-            else if (code_point <= 0xFFFF)
-                xx_zip_py_repr_hex(&out, 'u', (uint32_t)code_point, 4);
-            else
-                xx_zip_py_repr_hex(&out, 'U', (uint32_t)code_point, 8);
+            if (xx_zip_py_is_printable((uint32_t)code_point)) xx_buf_append(&out, text + i, used);
+            else if (code_point <= 0xFF) xx_zip_py_repr_hex(&out, 'x', (uint32_t)code_point, 2);
+            else if (code_point <= 0xFFFF) xx_zip_py_repr_hex(&out, 'u', (uint32_t)code_point, 4);
+            else xx_zip_py_repr_hex(&out, 'U', (uint32_t)code_point, 8);
             i += used;
             continue;
         }
@@ -414,10 +372,8 @@ static char *xx_zip_py_message(const char *before, const char *text, size_t leng
 static xx_zip_py_status xx_zip_py_fail(char **error, xx_zip_py_status status, char *message)
 {
     if (!message) status = XX_ZIP_PY_NO_MEMORY;
-    if (error)
-        *error = message;
-    else
-        xx_rt_free(message);
+    if (error) *error = message;
+    else xx_rt_free(message);
     return status;
 }
 
@@ -694,8 +650,7 @@ static xx_zip_py_status xx_zip_py_end_rec64(const uint8_t *data, size_t size, xx
 
 /* zipfile._EndRecData(): *found tells whether a record was found; a failure
  * status is BadZipFile (or out of memory for its text). */
-static xx_zip_py_status xx_zip_py_end_rec(const uint8_t *data, size_t size, xx_zip_py_end_record *rec, bool *found,
-                                          char **error)
+static xx_zip_py_status xx_zip_py_end_rec(const uint8_t *data, size_t size, xx_zip_py_end_record *rec, bool *found, char **error)
 {
     *found = false;
     if (size < XX_ZIP_PY_SIZE_END_CENT_DIR) return XX_ZIP_PY_OK;
@@ -705,9 +660,7 @@ static xx_zip_py_status xx_zip_py_end_rec(const uint8_t *data, size_t size, xx_z
         *found = true;
         return xx_zip_py_end_rec64(data, size, rec, error);
     }
-    size_t start = size > (size_t)XX_ZIP_PY_MAX_COMMENT + XX_ZIP_PY_SIZE_END_CENT_DIR
-                       ? size - XX_ZIP_PY_MAX_COMMENT - XX_ZIP_PY_SIZE_END_CENT_DIR
-                       : 0;
+    size_t start = size > (size_t)XX_ZIP_PY_MAX_COMMENT + XX_ZIP_PY_SIZE_END_CENT_DIR ? size - XX_ZIP_PY_MAX_COMMENT - XX_ZIP_PY_SIZE_END_CENT_DIR : 0;
     /* data.rfind(stringEndArchive) */
     for (size_t at = size - 4 + 1; at-- > start;) {
         if (data[at] != 'P' || memcmp(data + at, "PK\x05\x06", 4) != 0) continue;
@@ -748,8 +701,7 @@ bool xx_zip_py_file_seek_fails(const uint8_t *data, size_t size)
 /* ZipInfo._decodeExtra(): NULL, or the text of the BadZipFile it raises.
  * CPython also raises for a truncated extra record; parsing just stops
  * here. *no_memory is set when memory ran out. */
-static const char *xx_zip_py_decode_extra(xx_zip_py *zip, xx_zip_py_info *info, const uint8_t *extra, size_t length,
-                                          uint32_t name_crc, bool *no_memory)
+static const char *xx_zip_py_decode_extra(xx_zip_py *zip, xx_zip_py_info *info, const uint8_t *extra, size_t length, uint32_t name_crc, bool *no_memory)
 {
     while (length >= 4) {
         uint16_t type = xx_zip_py_rd16(extra);
@@ -843,8 +795,7 @@ xx_zip_py_status xx_zip_py_open(xx_zip_py *zip, const uint8_t *data, size_t size
     /* concat = location - size_cd - offset_cd [- zip64 records];
        start_dir = offset_cd + concat */
     uint64_t trailer = rec.zip64 ? XX_ZIP_PY_SIZE_END_CENT_DIR64 + XX_ZIP_PY_SIZE_END_CENT_DIR64_LOCATOR : 0;
-    if (rec.size > rec.location || trailer > rec.location - rec.size)
-        return xx_zip_py_fail_text(error, XX_ZIP_PY_BAD, "Bad offset for central directory");
+    if (rec.size > rec.location || trailer > rec.location - rec.size) return xx_zip_py_fail_text(error, XX_ZIP_PY_BAD, "Bad offset for central directory");
     uint64_t start_dir = rec.location - rec.size - trailer;
     int64_t concat = (int64_t)start_dir - (rec.offset > (uint64_t)INT64_MAX ? INT64_MAX : (int64_t)rec.offset);
 
@@ -853,13 +804,10 @@ xx_zip_py_status xx_zip_py_open(xx_zip_py *zip, const uint8_t *data, size_t size
     size_t capacity = 0, position = 0;
     uint64_t total = 0;
     while (total < rec.size) {
-        if (cd_size - position < XX_ZIP_PY_SIZE_CENTRAL_DIR)
-            return xx_zip_py_open_fail(zip, error, XX_ZIP_PY_BAD, "Truncated central directory");
+        if (cd_size - position < XX_ZIP_PY_SIZE_CENTRAL_DIR) return xx_zip_py_open_fail(zip, error, XX_ZIP_PY_BAD, "Truncated central directory");
         const uint8_t *entry = cd + position;
-        if (memcmp(entry, "PK\x01\x02", 4) != 0)
-            return xx_zip_py_open_fail(zip, error, XX_ZIP_PY_BAD, "Bad magic number for central directory");
-        size_t name_length = xx_zip_py_rd16(entry + 28), extra_length = xx_zip_py_rd16(entry + 30),
-               comment_length = xx_zip_py_rd16(entry + 32);
+        if (memcmp(entry, "PK\x01\x02", 4) != 0) return xx_zip_py_open_fail(zip, error, XX_ZIP_PY_BAD, "Bad magic number for central directory");
+        size_t name_length = xx_zip_py_rd16(entry + 28), extra_length = xx_zip_py_rd16(entry + 30), comment_length = xx_zip_py_rd16(entry + 32);
         position += XX_ZIP_PY_SIZE_CENTRAL_DIR;
         /* io.BytesIO.read() returns short data at the end of the buffer. */
         size_t name_read = name_length < cd_size - position ? name_length : cd_size - position;
@@ -880,8 +828,7 @@ xx_zip_py_status xx_zip_py_open(xx_zip_py *zip, const uint8_t *data, size_t size
         xx_zip_py_info *info = &zip->infos[zip->count++];
         memset(info, 0, sizeof(*info));
         info->flag_bits = xx_zip_py_rd16(entry + 8);
-        info->orig_filename = xx_zip_py_decode_name(raw_name, name_read, (info->flag_bits & XX_ZIP_PY_MASK_UTF_FILENAME) != 0,
-                                                    &info->orig_filename_length);
+        info->orig_filename = xx_zip_py_decode_name(raw_name, name_read, (info->flag_bits & XX_ZIP_PY_MASK_UTF_FILENAME) != 0, &info->orig_filename_length);
         if (info->orig_filename) info->filename = xx_zip_py_sanitize(info->orig_filename, info->orig_filename_length);
         if (!info->filename) return xx_zip_py_open_fail(zip, error, XX_ZIP_PY_NO_MEMORY, "out of memory");
         info->extract_version = entry[6];
@@ -946,13 +893,11 @@ bool xx_zip_py_info_is_dir(const xx_zip_py_info *info)
 #endif
 }
 
-xx_zip_py_status xx_zip_py_open_entry(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t *data_offset,
-                                      char **warning, char **error)
+xx_zip_py_status xx_zip_py_open_entry(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t *data_offset, char **warning, char **error)
 {
     if (warning) *warning = NULL;
     if (error) *error = NULL;
-    if (info->header_offset < 0 || (uint64_t)info->header_offset > zip->size ||
-        zip->size - (size_t)info->header_offset < XX_ZIP_PY_SIZE_FILE_HEADER) {
+    if (info->header_offset < 0 || (uint64_t)info->header_offset > zip->size || zip->size - (size_t)info->header_offset < XX_ZIP_PY_SIZE_FILE_HEADER) {
         if (info->header_offset < 0) {
             /* io.BytesIO.seek(): ValueError("negative seek value -N") */
             char digits[24];
@@ -966,21 +911,18 @@ xx_zip_py_status xx_zip_py_open_entry(const xx_zip_py *zip, const xx_zip_py_info
         return xx_zip_py_fail_text(error, XX_ZIP_PY_BAD, "Truncated file header");
     }
     const uint8_t *header = zip->data + info->header_offset;
-    if (memcmp(header, "PK\x03\x04", 4) != 0)
-        return xx_zip_py_fail_text(error, XX_ZIP_PY_BAD, "Bad magic number for file header");
+    if (memcmp(header, "PK\x03\x04", 4) != 0) return xx_zip_py_fail_text(error, XX_ZIP_PY_BAD, "Bad magic number for file header");
     size_t name_length = xx_zip_py_rd16(header + 26), extra_length = xx_zip_py_rd16(header + 28);
     size_t available = zip->size - (size_t)info->header_offset - XX_ZIP_PY_SIZE_FILE_HEADER;
     size_t name_read = name_length < available ? name_length : available;
     uint64_t position = (uint64_t)info->header_offset + XX_ZIP_PY_SIZE_FILE_HEADER + name_read + extra_length;
 
-    if (info->flag_bits & XX_ZIP_PY_MASK_COMPRESSED_PATCH)
-        return xx_zip_py_fail_text(error, XX_ZIP_PY_NOT_IMPLEMENTED, "compressed patched data (flag bit 5)");
-    if (info->flag_bits & XX_ZIP_PY_MASK_STRONG_ENCRYPTION)
-        return xx_zip_py_fail_text(error, XX_ZIP_PY_NOT_IMPLEMENTED, "strong encryption (flag bit 6)");
+    if (info->flag_bits & XX_ZIP_PY_MASK_COMPRESSED_PATCH) return xx_zip_py_fail_text(error, XX_ZIP_PY_NOT_IMPLEMENTED, "compressed patched data (flag bit 5)");
+    if (info->flag_bits & XX_ZIP_PY_MASK_STRONG_ENCRYPTION) return xx_zip_py_fail_text(error, XX_ZIP_PY_NOT_IMPLEMENTED, "strong encryption (flag bit 6)");
 
     size_t local_length = 0;
-    char *local_name = xx_zip_py_decode_name(header + XX_ZIP_PY_SIZE_FILE_HEADER, name_read,
-                                             (xx_zip_py_rd16(header + 6) & XX_ZIP_PY_MASK_UTF_FILENAME) != 0, &local_length);
+    char *local_name =
+        xx_zip_py_decode_name(header + XX_ZIP_PY_SIZE_FILE_HEADER, name_read, (xx_zip_py_rd16(header + 6) & XX_ZIP_PY_MASK_UTF_FILENAME) != 0, &local_length);
     if (!local_name) return xx_zip_py_fail(error, XX_ZIP_PY_NO_MEMORY, NULL);
     bool same = local_length == info->orig_filename_length && memcmp(local_name, info->orig_filename, local_length) == 0;
     if (!same) {
@@ -1006,23 +948,19 @@ xx_zip_py_status xx_zip_py_open_entry(const xx_zip_py *zip, const xx_zip_py_info
 
     if (position + info->compress_size < position || (int64_t)(position + info->compress_size) > info->end_offset ||
         position + info->compress_size > (uint64_t)INT64_MAX) {
-        char *message = xx_zip_py_message("Overlapped entries: ", info->orig_filename, info->orig_filename_length,
-                                          " (possible zip bomb)");
+        char *message = xx_zip_py_message("Overlapped entries: ", info->orig_filename, info->orig_filename_length, " (possible zip bomb)");
         if (info->end_offset != info->header_offset) return xx_zip_py_fail(error, XX_ZIP_PY_OVERLAPPED, message);
         if (!message) return xx_zip_py_fail(error, XX_ZIP_PY_NO_MEMORY, NULL);
-        if (warning)
-            *warning = message;
-        else
-            xx_rt_free(message);
+        if (warning) *warning = message;
+        else xx_rt_free(message);
     }
 
     if (info->flag_bits & XX_ZIP_PY_MASK_ENCRYPTED) {
-        char *message = xx_zip_py_message("File ", info->filename, strlen(info->filename),
-                                          " is encrypted, password required for extraction");
+        char *message = xx_zip_py_message("File ", info->filename, strlen(info->filename), " is encrypted, password required for extraction");
         return xx_zip_py_fail(error, XX_ZIP_PY_ENCRYPTED, message);
     }
-    if (info->compress_type != XX_ZIP_PY_STORED && info->compress_type != XX_ZIP_PY_DEFLATED &&
-        info->compress_type != XX_ZIP_PY_BZIP2 && info->compress_type != XX_ZIP_PY_LZMA) {
+    if (info->compress_type != XX_ZIP_PY_STORED && info->compress_type != XX_ZIP_PY_DEFLATED && info->compress_type != XX_ZIP_PY_BZIP2 &&
+        info->compress_type != XX_ZIP_PY_LZMA) {
         return xx_zip_py_fail_text(error, XX_ZIP_PY_NOT_IMPLEMENTED, "That compression method is not supported");
     }
     *data_offset = position;
@@ -1122,8 +1060,7 @@ static int xx_zip_py_huffman_build(xx_zip_py_huffman *table, const uint8_t *leng
             unsigned reversed = 0;
             for (unsigned bit = 0; bit < length; ++bit)
                 if (code & (1u << bit)) reversed |= 1u << (length - 1 - bit);
-            for (unsigned fill = reversed; fill < 512; fill += 1u << length)
-                table->fast[fill] = (uint16_t)((table->symbol[index] << 4) | length);
+            for (unsigned fill = reversed; fill < 512; fill += 1u << length) table->fast[fill] = (uint16_t)((table->symbol[index] << 4) | length);
         }
         code <<= 1;
     }
@@ -1141,8 +1078,7 @@ static bool xx_zip_py_huffman_single(const xx_zip_py_huffman *table)
 /* One code from `bits` (the stream's next bits, zeros past the `available`
  * ones): 0 with the symbol and its length, 1 when zlib would wait for more
  * input, 2 for an invalid code. */
-static int xx_zip_py_huffman_decode(const xx_zip_py_huffman *table, uint32_t bits, uint64_t available, unsigned *symbol,
-                                    unsigned *length)
+static int xx_zip_py_huffman_decode(const xx_zip_py_huffman *table, uint32_t bits, uint64_t available, unsigned *symbol, unsigned *length)
 {
     if (!available) return 1;
     if (table->empty) return 2;
@@ -1170,7 +1106,12 @@ static int xx_zip_py_huffman_decode(const xx_zip_py_huffman *table, uint32_t bit
     return 2;
 }
 
-enum { XX_ZIP_PY_INFLATE_HEAD, XX_ZIP_PY_INFLATE_STORED, XX_ZIP_PY_INFLATE_CODES, XX_ZIP_PY_INFLATE_DONE };
+enum {
+    XX_ZIP_PY_INFLATE_HEAD,
+    XX_ZIP_PY_INFLATE_STORED,
+    XX_ZIP_PY_INFLATE_CODES,
+    XX_ZIP_PY_INFLATE_DONE
+};
 
 struct xx_zip_py_inflate {
     uint64_t position; /* bits consumed */
@@ -1213,8 +1154,7 @@ static void xx_zip_py_inflate_flush(xx_zip_py_inflate *z, xx_zip_py_ext *file)
 
 /* The header of a dynamic block at bit `cursor`: zlib's checks in zlib's
  * order. XX_ZIP_PY_STEP_END stands for success here. */
-static xx_zip_py_step xx_zip_py_inflate_dynamic(xx_zip_py_inflate *z, const uint8_t *in, size_t fed, uint64_t cursor,
-                                                uint64_t *next)
+static xx_zip_py_step xx_zip_py_inflate_dynamic(xx_zip_py_inflate *z, const uint8_t *in, size_t fed, uint64_t cursor, uint64_t *next)
 {
     static const uint8_t order[19] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
     uint64_t end = (uint64_t)fed * 8;
@@ -1284,13 +1224,11 @@ static xx_zip_py_step xx_zip_py_inflate_dynamic(xx_zip_py_inflate *z, const uint
  * has taken the bits of the literal or match it then stops at. */
 static xx_zip_py_step xx_zip_py_inflate_run(xx_zip_py_inflate *z, xx_zip_py_ext *file, uint64_t limit)
 {
-    static const uint16_t length_base[29] = {3,  4,  5,  6,  7,  8,  9,  10, 11,  13,  15,  17,  19,  23, 27,
-                                             31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258};
+    static const uint16_t length_base[29] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258};
     static const uint8_t length_extra[29] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0};
     static const uint16_t distance_base[30] = {1,   2,   3,   4,   5,   7,    9,    13,   17,   25,   33,   49,   65,    97,    129,
                                                193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577};
-    static const uint8_t distance_extra[30] = {0, 0, 0, 0, 1, 1, 2, 2,  3,  3,  4,  4,  5,  5,  6,
-                                               6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
+    static const uint8_t distance_extra[30] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
     const uint8_t *in = file->input;
     size_t fed = file->fed;
     uint64_t end = (uint64_t)fed * 8;
@@ -1511,8 +1449,7 @@ static uint32_t xx_zip_py_bzip2_peek(const uint8_t *in, size_t limit, uint64_t p
 }
 
 /* BZ2_hbCreateDecodeTables() */
-static void xx_zip_py_bzip2_tables(int32_t *limit, int32_t *base, uint16_t *perm, const uint8_t *length, int minimum,
-                                   int maximum, unsigned alphabet)
+static void xx_zip_py_bzip2_tables(int32_t *limit, int32_t *base, uint16_t *perm, const uint8_t *length, int minimum, int maximum, unsigned alphabet)
 {
     int pp = 0, vec = 0;
     for (int i = minimum; i <= maximum; ++i)
@@ -1655,236 +1592,231 @@ static xx_zip_py_step xx_zip_py_bzip2_run(xx_zip_py_bzip2 *bz, xx_zip_py_ext *fi
     for (;;) {
         uint64_t available = end - bz->position;
         switch (bz->phase) {
-        case XX_ZIP_PY_BZ_OUTPUT: {
-            uint64_t written = 0;
-            int result = xx_zip_py_bzip2_output(bz, file, capacity - call_output, &written);
-            call_output += written;
-            if (result == 2) return XX_ZIP_PY_STEP_ERROR;
-            if (result == 1) {
-                bz->index = 0;
-                bz->phase = XX_ZIP_PY_BZ_BLOCK_MAGIC;
-            } else if (((bz->position + 7) >> 3) == fed) {
-                return XX_ZIP_PY_STEP_INPUT;
-            } else {
-                capacity += xx_zip_py_buffer_block(buffer_blocks++);
+            case XX_ZIP_PY_BZ_OUTPUT: {
+                uint64_t written = 0;
+                int result = xx_zip_py_bzip2_output(bz, file, capacity - call_output, &written);
+                call_output += written;
+                if (result == 2) return XX_ZIP_PY_STEP_ERROR;
+                if (result == 1) {
+                    bz->index = 0;
+                    bz->phase = XX_ZIP_PY_BZ_BLOCK_MAGIC;
+                } else if (((bz->position + 7) >> 3) == fed) {
+                    return XX_ZIP_PY_STEP_INPUT;
+                } else {
+                    capacity += xx_zip_py_buffer_block(buffer_blocks++);
+                }
+                break;
             }
-            break;
-        }
-        case XX_ZIP_PY_BZ_MAGIC: {
-            if (available < 8) return XX_ZIP_PY_STEP_INPUT;
-            unsigned byte = xx_zip_py_bzip2_peek(in, fed, bz->position, 8);
-            if (bz->index < 3 ? byte != (unsigned)"BZh"[bz->index] : (byte < '1' || byte > '9')) return XX_ZIP_PY_STEP_ERROR;
-            bz->position += 8;
-            if (bz->index++ == 3) {
-                bz->level = byte - '0';
-                bz->block_max = 100000 * bz->level;
-                bz->tt = (uint32_t *)xx_rt_malloc((size_t)bz->block_max * sizeof(uint32_t));
-                if (!bz->tt) return XX_ZIP_PY_STEP_MEMORY;
-                bz->index = 0;
-                bz->phase = XX_ZIP_PY_BZ_BLOCK_MAGIC;
+            case XX_ZIP_PY_BZ_MAGIC: {
+                if (available < 8) return XX_ZIP_PY_STEP_INPUT;
+                unsigned byte = xx_zip_py_bzip2_peek(in, fed, bz->position, 8);
+                if (bz->index < 3 ? byte != (unsigned)"BZh"[bz->index] : (byte < '1' || byte > '9')) return XX_ZIP_PY_STEP_ERROR;
+                bz->position += 8;
+                if (bz->index++ == 3) {
+                    bz->level = byte - '0';
+                    bz->block_max = 100000 * bz->level;
+                    bz->tt = (uint32_t *)xx_rt_malloc((size_t)bz->block_max * sizeof(uint32_t));
+                    if (!bz->tt) return XX_ZIP_PY_STEP_MEMORY;
+                    bz->index = 0;
+                    bz->phase = XX_ZIP_PY_BZ_BLOCK_MAGIC;
+                }
+                break;
             }
-            break;
-        }
-        case XX_ZIP_PY_BZ_BLOCK_MAGIC: {
-            if (available < 8) return XX_ZIP_PY_STEP_INPUT;
-            unsigned byte = xx_zip_py_bzip2_peek(in, fed, bz->position, 8);
-            if (bz->index == 0) {
-                if (byte != block_magic[0] && byte != end_magic[0]) return XX_ZIP_PY_STEP_ERROR;
-                bz->last = byte == end_magic[0];
-            } else if (byte != (bz->last ? end_magic : block_magic)[bz->index]) {
-                return XX_ZIP_PY_STEP_ERROR;
+            case XX_ZIP_PY_BZ_BLOCK_MAGIC: {
+                if (available < 8) return XX_ZIP_PY_STEP_INPUT;
+                unsigned byte = xx_zip_py_bzip2_peek(in, fed, bz->position, 8);
+                if (bz->index == 0) {
+                    if (byte != block_magic[0] && byte != end_magic[0]) return XX_ZIP_PY_STEP_ERROR;
+                    bz->last = byte == end_magic[0];
+                } else if (byte != (bz->last ? end_magic : block_magic)[bz->index]) {
+                    return XX_ZIP_PY_STEP_ERROR;
+                }
+                bz->position += 8;
+                if (++bz->index == 6) {
+                    bz->index = 0;
+                    bz->phase = bz->last ? XX_ZIP_PY_BZ_STREAM_CRC : XX_ZIP_PY_BZ_BLOCK_HEAD;
+                }
+                break;
             }
-            bz->position += 8;
-            if (++bz->index == 6) {
-                bz->index = 0;
-                bz->phase = bz->last ? XX_ZIP_PY_BZ_STREAM_CRC : XX_ZIP_PY_BZ_BLOCK_HEAD;
-            }
-            break;
-        }
-        case XX_ZIP_PY_BZ_BLOCK_HEAD:
-            if (available < 57) return XX_ZIP_PY_STEP_INPUT;
-            bz->stored_crc = (xx_zip_py_bzip2_peek(in, fed, bz->position, 16) << 16) |
-                             xx_zip_py_bzip2_peek(in, fed, bz->position + 16, 16);
-            bz->randomised = xx_zip_py_bzip2_peek(in, fed, bz->position + 32, 1) != 0;
-            bz->origin = xx_zip_py_bzip2_peek(in, fed, bz->position + 33, 24);
-            bz->position += 57;
-            if (bz->origin > 10 + bz->block_max) return XX_ZIP_PY_STEP_ERROR;
-            bz->phase = XX_ZIP_PY_BZ_MAP;
-            break;
-        case XX_ZIP_PY_BZ_MAP: {
-            if (available < 16) return XX_ZIP_PY_STEP_INPUT;
-            unsigned used = xx_zip_py_bzip2_peek(in, fed, bz->position, 16), rows = 0;
-            for (unsigned i = 0; i < 16; ++i) rows += (used >> i) & 1;
-            if (available < 16 + 16 * (uint64_t)rows) return XX_ZIP_PY_STEP_INPUT;
-            bz->position += 16;
-            bz->in_use = 0;
-            memset(bz->seq_to_unseq, 0, sizeof(bz->seq_to_unseq));
-            for (unsigned i = 0; i < 16; ++i) {
-                if (!(used & (0x8000u >> i))) continue;
-                unsigned row = xx_zip_py_bzip2_peek(in, fed, bz->position, 16);
+            case XX_ZIP_PY_BZ_BLOCK_HEAD:
+                if (available < 57) return XX_ZIP_PY_STEP_INPUT;
+                bz->stored_crc = (xx_zip_py_bzip2_peek(in, fed, bz->position, 16) << 16) | xx_zip_py_bzip2_peek(in, fed, bz->position + 16, 16);
+                bz->randomised = xx_zip_py_bzip2_peek(in, fed, bz->position + 32, 1) != 0;
+                bz->origin = xx_zip_py_bzip2_peek(in, fed, bz->position + 33, 24);
+                bz->position += 57;
+                if (bz->origin > 10 + bz->block_max) return XX_ZIP_PY_STEP_ERROR;
+                bz->phase = XX_ZIP_PY_BZ_MAP;
+                break;
+            case XX_ZIP_PY_BZ_MAP: {
+                if (available < 16) return XX_ZIP_PY_STEP_INPUT;
+                unsigned used = xx_zip_py_bzip2_peek(in, fed, bz->position, 16), rows = 0;
+                for (unsigned i = 0; i < 16; ++i) rows += (used >> i) & 1;
+                if (available < 16 + 16 * (uint64_t)rows) return XX_ZIP_PY_STEP_INPUT;
                 bz->position += 16;
-                for (unsigned j = 0; j < 16; ++j)
-                    if (row & (0x8000u >> j)) bz->seq_to_unseq[bz->in_use++] = (uint8_t)(i * 16 + j);
-            }
-            if (!bz->in_use) return XX_ZIP_PY_STEP_ERROR;
-            bz->alphabet = bz->in_use + 2;
-            bz->phase = XX_ZIP_PY_BZ_GROUPS;
-            break;
-        }
-        case XX_ZIP_PY_BZ_GROUPS:
-            if (available < 3) return XX_ZIP_PY_STEP_INPUT;
-            bz->groups = xx_zip_py_bzip2_peek(in, fed, bz->position, 3);
-            bz->position += 3;
-            if (bz->groups < 2 || bz->groups > 6) return XX_ZIP_PY_STEP_ERROR;
-            bz->phase = XX_ZIP_PY_BZ_SELECTOR_COUNT;
-            break;
-        case XX_ZIP_PY_BZ_SELECTOR_COUNT:
-            if (available < 15) return XX_ZIP_PY_STEP_INPUT;
-            bz->selector_count = xx_zip_py_bzip2_peek(in, fed, bz->position, 15);
-            bz->position += 15;
-            if (bz->selector_count < 1) return XX_ZIP_PY_STEP_ERROR;
-            bz->index = 0;
-            bz->phase = XX_ZIP_PY_BZ_SELECTORS;
-            break;
-        case XX_ZIP_PY_BZ_SELECTORS: {
-            unsigned j = 0;
-            for (;;) {
-                if (available <= j) return XX_ZIP_PY_STEP_INPUT;
-                if (!xx_zip_py_bzip2_peek(in, fed, bz->position + j, 1)) break;
-                if (++j >= bz->groups) return XX_ZIP_PY_STEP_ERROR;
-            }
-            bz->position += j + 1;
-            if (bz->index < XX_ZIP_PY_BZ_MAX_SELECTORS) bz->selector[bz->index] = (uint8_t)j;
-            if (++bz->index == bz->selector_count) {
-                uint8_t order[6];
-                if (bz->selector_count > XX_ZIP_PY_BZ_MAX_SELECTORS) bz->selector_count = XX_ZIP_PY_BZ_MAX_SELECTORS;
-                for (unsigned v = 0; v < bz->groups; ++v) order[v] = (uint8_t)v;
-                for (unsigned i = 0; i < bz->selector_count; ++i) {
-                    unsigned v = bz->selector[i];
-                    uint8_t front = order[v];
-                    for (; v; --v) order[v] = order[v - 1];
-                    order[0] = front;
-                    bz->selector[i] = front;
+                bz->in_use = 0;
+                memset(bz->seq_to_unseq, 0, sizeof(bz->seq_to_unseq));
+                for (unsigned i = 0; i < 16; ++i) {
+                    if (!(used & (0x8000u >> i))) continue;
+                    unsigned row = xx_zip_py_bzip2_peek(in, fed, bz->position, 16);
+                    bz->position += 16;
+                    for (unsigned j = 0; j < 16; ++j)
+                        if (row & (0x8000u >> j)) bz->seq_to_unseq[bz->in_use++] = (uint8_t)(i * 16 + j);
                 }
-                bz->table = 0;
-                bz->phase = XX_ZIP_PY_BZ_CODE_START;
-            }
-            break;
-        }
-        case XX_ZIP_PY_BZ_CODE_START:
-            if (available < 5) return XX_ZIP_PY_STEP_INPUT;
-            bz->current = (int)xx_zip_py_bzip2_peek(in, fed, bz->position, 5);
-            bz->position += 5;
-            bz->index = 0;
-            bz->phase = XX_ZIP_PY_BZ_CODE;
-            break;
-        case XX_ZIP_PY_BZ_CODE: {
-            int current = bz->current;
-            uint64_t used = 0;
-            for (;;) {
-                if (current < 1 || current > 20) return XX_ZIP_PY_STEP_ERROR;
-                if (available <= used) return XX_ZIP_PY_STEP_INPUT;
-                if (!xx_zip_py_bzip2_peek(in, fed, bz->position + used++, 1)) break;
-                if (available <= used) return XX_ZIP_PY_STEP_INPUT;
-                if (xx_zip_py_bzip2_peek(in, fed, bz->position + used++, 1))
-                    --current;
-                else
-                    ++current;
-            }
-            bz->position += used;
-            bz->current = current;
-            bz->lengths[bz->table][bz->index] = (uint8_t)current;
-            if (++bz->index < bz->alphabet) break;
-            if (++bz->table < bz->groups) {
-                bz->phase = XX_ZIP_PY_BZ_CODE_START;
+                if (!bz->in_use) return XX_ZIP_PY_STEP_ERROR;
+                bz->alphabet = bz->in_use + 2;
+                bz->phase = XX_ZIP_PY_BZ_GROUPS;
                 break;
             }
-            for (unsigned t = 0; t < bz->groups; ++t) {
-                int minimum = 32, maximum = 0;
-                for (unsigned i = 0; i < bz->alphabet; ++i) {
-                    if (bz->lengths[t][i] > maximum) maximum = bz->lengths[t][i];
-                    if (bz->lengths[t][i] < minimum) minimum = bz->lengths[t][i];
+            case XX_ZIP_PY_BZ_GROUPS:
+                if (available < 3) return XX_ZIP_PY_STEP_INPUT;
+                bz->groups = xx_zip_py_bzip2_peek(in, fed, bz->position, 3);
+                bz->position += 3;
+                if (bz->groups < 2 || bz->groups > 6) return XX_ZIP_PY_STEP_ERROR;
+                bz->phase = XX_ZIP_PY_BZ_SELECTOR_COUNT;
+                break;
+            case XX_ZIP_PY_BZ_SELECTOR_COUNT:
+                if (available < 15) return XX_ZIP_PY_STEP_INPUT;
+                bz->selector_count = xx_zip_py_bzip2_peek(in, fed, bz->position, 15);
+                bz->position += 15;
+                if (bz->selector_count < 1) return XX_ZIP_PY_STEP_ERROR;
+                bz->index = 0;
+                bz->phase = XX_ZIP_PY_BZ_SELECTORS;
+                break;
+            case XX_ZIP_PY_BZ_SELECTORS: {
+                unsigned j = 0;
+                for (;;) {
+                    if (available <= j) return XX_ZIP_PY_STEP_INPUT;
+                    if (!xx_zip_py_bzip2_peek(in, fed, bz->position + j, 1)) break;
+                    if (++j >= bz->groups) return XX_ZIP_PY_STEP_ERROR;
                 }
-                xx_zip_py_bzip2_tables(bz->limit[t], bz->base[t], bz->perm[t], bz->lengths[t], minimum, maximum, bz->alphabet);
-                bz->minimum[t] = minimum;
-            }
-            for (unsigned i = 0; i < 256; ++i) bz->mtf[i] = (uint8_t)i;
-            bz->group_started = false;
-            bz->group_number = 0;
-            bz->group_position = 0;
-            bz->in_run = false;
-            bz->block_size = 0;
-            bz->phase = XX_ZIP_PY_BZ_SYMBOL;
-            break;
-        }
-        case XX_ZIP_PY_BZ_SYMBOL: {
-            unsigned group = bz->group_number, left = bz->group_position;
-            if (!left) {
-                if (bz->group_started) ++group;
-                if (group >= bz->selector_count) return XX_ZIP_PY_STEP_ERROR;
-                left = 50;
-            }
-            unsigned t = bz->selector[group];
-            int size = bz->minimum[t];
-            int32_t code;
-            for (;;) {
-                /* libbz2 has read the bit before it gives up on the code */
-                if (available < (uint64_t)size) return XX_ZIP_PY_STEP_INPUT;
-                if (size > 20) return XX_ZIP_PY_STEP_ERROR;
-                code = (int32_t)xx_zip_py_bzip2_peek(in, fed, bz->position, (unsigned)size);
-                if (code <= bz->limit[t][size]) break;
-                ++size;
-            }
-            code -= bz->base[t][size];
-            if (code < 0 || code >= 258) return XX_ZIP_PY_STEP_ERROR;
-            unsigned symbol = bz->perm[t][code];
-            bz->position += (unsigned)size;
-            bz->group_started = true;
-            bz->group_number = group;
-            bz->group_position = left - 1;
-
-            if (symbol < 2) { /* BZ_RUNA, BZ_RUNB */
-                if (!bz->in_run) {
-                    bz->in_run = true;
-                    bz->run_length = -1;
-                    bz->run_weight = 1;
+                bz->position += j + 1;
+                if (bz->index < XX_ZIP_PY_BZ_MAX_SELECTORS) bz->selector[bz->index] = (uint8_t)j;
+                if (++bz->index == bz->selector_count) {
+                    uint8_t order[6];
+                    if (bz->selector_count > XX_ZIP_PY_BZ_MAX_SELECTORS) bz->selector_count = XX_ZIP_PY_BZ_MAX_SELECTORS;
+                    for (unsigned v = 0; v < bz->groups; ++v) order[v] = (uint8_t)v;
+                    for (unsigned i = 0; i < bz->selector_count; ++i) {
+                        unsigned v = bz->selector[i];
+                        uint8_t front = order[v];
+                        for (; v; --v) order[v] = order[v - 1];
+                        order[0] = front;
+                        bz->selector[i] = front;
+                    }
+                    bz->table = 0;
+                    bz->phase = XX_ZIP_PY_BZ_CODE_START;
                 }
-                if (bz->run_weight >= 2 * 1024 * 1024) return XX_ZIP_PY_STEP_ERROR;
-                bz->run_length += (int32_t)(symbol + 1) * bz->run_weight;
-                bz->run_weight *= 2;
                 break;
             }
-            if (bz->in_run) {
-                uint8_t byte = bz->seq_to_unseq[bz->mtf[0]];
+            case XX_ZIP_PY_BZ_CODE_START:
+                if (available < 5) return XX_ZIP_PY_STEP_INPUT;
+                bz->current = (int)xx_zip_py_bzip2_peek(in, fed, bz->position, 5);
+                bz->position += 5;
+                bz->index = 0;
+                bz->phase = XX_ZIP_PY_BZ_CODE;
+                break;
+            case XX_ZIP_PY_BZ_CODE: {
+                int current = bz->current;
+                uint64_t used = 0;
+                for (;;) {
+                    if (current < 1 || current > 20) return XX_ZIP_PY_STEP_ERROR;
+                    if (available <= used) return XX_ZIP_PY_STEP_INPUT;
+                    if (!xx_zip_py_bzip2_peek(in, fed, bz->position + used++, 1)) break;
+                    if (available <= used) return XX_ZIP_PY_STEP_INPUT;
+                    if (xx_zip_py_bzip2_peek(in, fed, bz->position + used++, 1)) --current;
+                    else ++current;
+                }
+                bz->position += used;
+                bz->current = current;
+                bz->lengths[bz->table][bz->index] = (uint8_t)current;
+                if (++bz->index < bz->alphabet) break;
+                if (++bz->table < bz->groups) {
+                    bz->phase = XX_ZIP_PY_BZ_CODE_START;
+                    break;
+                }
+                for (unsigned t = 0; t < bz->groups; ++t) {
+                    int minimum = 32, maximum = 0;
+                    for (unsigned i = 0; i < bz->alphabet; ++i) {
+                        if (bz->lengths[t][i] > maximum) maximum = bz->lengths[t][i];
+                        if (bz->lengths[t][i] < minimum) minimum = bz->lengths[t][i];
+                    }
+                    xx_zip_py_bzip2_tables(bz->limit[t], bz->base[t], bz->perm[t], bz->lengths[t], minimum, maximum, bz->alphabet);
+                    bz->minimum[t] = minimum;
+                }
+                for (unsigned i = 0; i < 256; ++i) bz->mtf[i] = (uint8_t)i;
+                bz->group_started = false;
+                bz->group_number = 0;
+                bz->group_position = 0;
                 bz->in_run = false;
-                for (int32_t count = bz->run_length + 1; count > 0; --count) {
-                    if (bz->block_size >= bz->block_max) return XX_ZIP_PY_STEP_ERROR;
-                    bz->tt[bz->block_size++] = byte;
-                }
-            }
-            if (symbol == bz->in_use + 1) { /* the end of the block */
-                if (!xx_zip_py_bzip2_block(bz)) return XX_ZIP_PY_STEP_ERROR;
-                bz->phase = XX_ZIP_PY_BZ_OUTPUT;
+                bz->block_size = 0;
+                bz->phase = XX_ZIP_PY_BZ_SYMBOL;
                 break;
             }
-            if (bz->block_size >= bz->block_max || symbol > 256) return XX_ZIP_PY_STEP_ERROR;
-            uint8_t byte = bz->mtf[symbol - 1];
-            memmove(bz->mtf + 1, bz->mtf, symbol - 1);
-            bz->mtf[0] = byte;
-            bz->tt[bz->block_size++] = bz->seq_to_unseq[byte];
-            break;
-        }
-        case XX_ZIP_PY_BZ_STREAM_CRC: {
-            if (available < 32) return XX_ZIP_PY_STEP_INPUT;
-            uint32_t stored = (xx_zip_py_bzip2_peek(in, fed, bz->position, 16) << 16) |
-                              xx_zip_py_bzip2_peek(in, fed, bz->position + 16, 16);
-            bz->position += 32;
-            if (stored != bz->combined_crc) return XX_ZIP_PY_STEP_ERROR;
-            bz->phase = XX_ZIP_PY_BZ_DONE;
-            break;
-        }
-        default:
-            return XX_ZIP_PY_STEP_END;
+            case XX_ZIP_PY_BZ_SYMBOL: {
+                unsigned group = bz->group_number, left = bz->group_position;
+                if (!left) {
+                    if (bz->group_started) ++group;
+                    if (group >= bz->selector_count) return XX_ZIP_PY_STEP_ERROR;
+                    left = 50;
+                }
+                unsigned t = bz->selector[group];
+                int size = bz->minimum[t];
+                int32_t code;
+                for (;;) {
+                    /* libbz2 has read the bit before it gives up on the code */
+                    if (available < (uint64_t)size) return XX_ZIP_PY_STEP_INPUT;
+                    if (size > 20) return XX_ZIP_PY_STEP_ERROR;
+                    code = (int32_t)xx_zip_py_bzip2_peek(in, fed, bz->position, (unsigned)size);
+                    if (code <= bz->limit[t][size]) break;
+                    ++size;
+                }
+                code -= bz->base[t][size];
+                if (code < 0 || code >= 258) return XX_ZIP_PY_STEP_ERROR;
+                unsigned symbol = bz->perm[t][code];
+                bz->position += (unsigned)size;
+                bz->group_started = true;
+                bz->group_number = group;
+                bz->group_position = left - 1;
+
+                if (symbol < 2) { /* BZ_RUNA, BZ_RUNB */
+                    if (!bz->in_run) {
+                        bz->in_run = true;
+                        bz->run_length = -1;
+                        bz->run_weight = 1;
+                    }
+                    if (bz->run_weight >= 2 * 1024 * 1024) return XX_ZIP_PY_STEP_ERROR;
+                    bz->run_length += (int32_t)(symbol + 1) * bz->run_weight;
+                    bz->run_weight *= 2;
+                    break;
+                }
+                if (bz->in_run) {
+                    uint8_t byte = bz->seq_to_unseq[bz->mtf[0]];
+                    bz->in_run = false;
+                    for (int32_t count = bz->run_length + 1; count > 0; --count) {
+                        if (bz->block_size >= bz->block_max) return XX_ZIP_PY_STEP_ERROR;
+                        bz->tt[bz->block_size++] = byte;
+                    }
+                }
+                if (symbol == bz->in_use + 1) { /* the end of the block */
+                    if (!xx_zip_py_bzip2_block(bz)) return XX_ZIP_PY_STEP_ERROR;
+                    bz->phase = XX_ZIP_PY_BZ_OUTPUT;
+                    break;
+                }
+                if (bz->block_size >= bz->block_max || symbol > 256) return XX_ZIP_PY_STEP_ERROR;
+                uint8_t byte = bz->mtf[symbol - 1];
+                memmove(bz->mtf + 1, bz->mtf, symbol - 1);
+                bz->mtf[0] = byte;
+                bz->tt[bz->block_size++] = bz->seq_to_unseq[byte];
+                break;
+            }
+            case XX_ZIP_PY_BZ_STREAM_CRC: {
+                if (available < 32) return XX_ZIP_PY_STEP_INPUT;
+                uint32_t stored = (xx_zip_py_bzip2_peek(in, fed, bz->position, 16) << 16) | xx_zip_py_bzip2_peek(in, fed, bz->position + 16, 16);
+                bz->position += 32;
+                if (stored != bz->combined_crc) return XX_ZIP_PY_STEP_ERROR;
+                bz->phase = XX_ZIP_PY_BZ_DONE;
+                break;
+            }
+            default: return XX_ZIP_PY_STEP_END;
         }
     }
 }
@@ -1938,7 +1870,14 @@ typedef struct xx_zip_py_rc {
     bool update, starved;
 } xx_zip_py_rc;
 
-enum { XX_ZIP_PY_LZMA_LITERAL, XX_ZIP_PY_LZMA_MATCH, XX_ZIP_PY_LZMA_SHORT_REP, XX_ZIP_PY_LZMA_REP, XX_ZIP_PY_LZMA_MARKER, XX_ZIP_PY_LZMA_BAD };
+enum {
+    XX_ZIP_PY_LZMA_LITERAL,
+    XX_ZIP_PY_LZMA_MATCH,
+    XX_ZIP_PY_LZMA_SHORT_REP,
+    XX_ZIP_PY_LZMA_REP,
+    XX_ZIP_PY_LZMA_MARKER,
+    XX_ZIP_PY_LZMA_BAD
+};
 
 typedef struct xx_zip_py_lzma_symbol {
     int kind;
@@ -2029,8 +1968,7 @@ static void xx_zip_py_lzma_decode(xx_zip_py_lzma *lz, xx_zip_py_rc *rc, xx_zip_p
     unsigned state = lz->state, pos_state = (unsigned)(lz->total & ((1u << lz->pb) - 1));
     if (!xx_zip_py_rc_bit(rc, &lz->is_match[state][pos_state])) {
         unsigned previous = lz->total ? xx_zip_py_lzma_back(lz, 0) : 0, symbol = 1;
-        uint16_t *probabilities =
-            lz->literal + (size_t)0x300 * ((((size_t)lz->total & ((1u << lz->lp) - 1)) << lz->lc) + (previous >> (8 - lz->lc)));
+        uint16_t *probabilities = lz->literal + (size_t)0x300 * ((((size_t)lz->total & ((1u << lz->lp) - 1)) << lz->lc) + (previous >> (8 - lz->lc)));
         if (state < 7) {
             do symbol = (symbol << 1) | xx_zip_py_rc_bit(rc, &probabilities[symbol]);
             while (symbol < 0x100);
@@ -2146,58 +2084,58 @@ static bool xx_zip_py_lzma_put(xx_zip_py_lzma *lz, uint8_t byte)
 #define XX_ZIP_PY_LZMA_FAST_INPUT 64
 #define XX_ZIP_PY_LZMA_FAST_OUTPUT 274
 
-#define XX_ZIP_PY_FAST_NORMALIZE()      \
-    if (range < 0x1000000u) {           \
-        range <<= 8;                    \
-        code = (code << 8) | *in++;     \
+#define XX_ZIP_PY_FAST_NORMALIZE()  \
+    if (range < 0x1000000u) {       \
+        range <<= 8;                \
+        code = (code << 8) | *in++; \
     }
 
 /* One bit: the bound, the comparison and the three updates as the careful
  * decoder makes them, without a branch on the bit (which bit comes is what
  * a processor predicts worst here). */
-#define XX_ZIP_PY_FAST_BIT(probability, bit)                                                                 \
-    do {                                                                                                     \
-        uint16_t *fast_p = (probability);                                                                    \
-        uint32_t fast_v = *fast_p, fast_bound, fast_mask;                                                    \
-        XX_ZIP_PY_FAST_NORMALIZE()                                                                           \
-        fast_bound = (range >> 11) * fast_v;                                                                 \
-        (bit) = code >= fast_bound;                                                                          \
-        fast_mask = 0u - (uint32_t)(bit);                                                                    \
-        range = fast_bound + ((range - 2 * fast_bound) & fast_mask);                                         \
-        code -= fast_bound & fast_mask;                                                                      \
-        *fast_p = (uint16_t)(fast_v + (((2048 - fast_v) >> 5) & ~fast_mask) - ((fast_v >> 5) & fast_mask));  \
+#define XX_ZIP_PY_FAST_BIT(probability, bit)                                                                \
+    do {                                                                                                    \
+        uint16_t *fast_p = (probability);                                                                   \
+        uint32_t fast_v = *fast_p, fast_bound, fast_mask;                                                   \
+        XX_ZIP_PY_FAST_NORMALIZE()                                                                          \
+        fast_bound = (range >> 11) * fast_v;                                                                \
+        (bit) = code >= fast_bound;                                                                         \
+        fast_mask = 0u - (uint32_t)(bit);                                                                   \
+        range = fast_bound + ((range - 2 * fast_bound) & fast_mask);                                        \
+        code -= fast_bound & fast_mask;                                                                     \
+        *fast_p = (uint16_t)(fast_v + (((2048 - fast_v) >> 5) & ~fast_mask) - ((fast_v >> 5) & fast_mask)); \
     } while (0)
 
 /* A bit tree of `count` levels: `result` gets the symbol with its top bit. */
-#define XX_ZIP_PY_FAST_TREE(probabilities, count, result)                \
-    do {                                                                 \
-        uint16_t *fast_tree = (probabilities);                           \
-        unsigned fast_symbol = 1, fast_bit;                              \
-        for (unsigned fast_i = 0; fast_i < (count); ++fast_i) {          \
-            XX_ZIP_PY_FAST_BIT(&fast_tree[fast_symbol], fast_bit);       \
-            fast_symbol = (fast_symbol << 1) | fast_bit;                 \
-        }                                                                \
-        (result) = fast_symbol;                                          \
+#define XX_ZIP_PY_FAST_TREE(probabilities, count, result)          \
+    do {                                                           \
+        uint16_t *fast_tree = (probabilities);                     \
+        unsigned fast_symbol = 1, fast_bit;                        \
+        for (unsigned fast_i = 0; fast_i < (count); ++fast_i) {    \
+            XX_ZIP_PY_FAST_BIT(&fast_tree[fast_symbol], fast_bit); \
+            fast_symbol = (fast_symbol << 1) | fast_bit;           \
+        }                                                          \
+        (result) = fast_symbol;                                    \
     } while (0)
 
-#define XX_ZIP_PY_FAST_LENGTH(coder, result)                                             \
-    do {                                                                                 \
-        xx_zip_py_lzma_length *fast_coder = (coder);                                     \
-        unsigned fast_choice, fast_value;                                                \
-        XX_ZIP_PY_FAST_BIT(&fast_coder->choice, fast_choice);                            \
-        if (!fast_choice) {                                                              \
-            XX_ZIP_PY_FAST_TREE(fast_coder->low[pos_state], 3, fast_value);              \
-            (result) = 2 + (fast_value - 8);                                             \
-        } else {                                                                         \
-            XX_ZIP_PY_FAST_BIT(&fast_coder->choice2, fast_choice);                       \
-            if (!fast_choice) {                                                          \
-                XX_ZIP_PY_FAST_TREE(fast_coder->mid[pos_state], 3, fast_value);          \
-                (result) = 10 + (fast_value - 8);                                        \
-            } else {                                                                     \
-                XX_ZIP_PY_FAST_TREE(fast_coder->high, 8, fast_value);                    \
-                (result) = 18 + (fast_value - 256);                                      \
-            }                                                                            \
-        }                                                                                \
+#define XX_ZIP_PY_FAST_LENGTH(coder, result)                                    \
+    do {                                                                        \
+        xx_zip_py_lzma_length *fast_coder = (coder);                            \
+        unsigned fast_choice, fast_value;                                       \
+        XX_ZIP_PY_FAST_BIT(&fast_coder->choice, fast_choice);                   \
+        if (!fast_choice) {                                                     \
+            XX_ZIP_PY_FAST_TREE(fast_coder->low[pos_state], 3, fast_value);     \
+            (result) = 2 + (fast_value - 8);                                    \
+        } else {                                                                \
+            XX_ZIP_PY_FAST_BIT(&fast_coder->choice2, fast_choice);              \
+            if (!fast_choice) {                                                 \
+                XX_ZIP_PY_FAST_TREE(fast_coder->mid[pos_state], 3, fast_value); \
+                (result) = 10 + (fast_value - 8);                               \
+            } else {                                                            \
+                XX_ZIP_PY_FAST_TREE(fast_coder->high, 8, fast_value);           \
+                (result) = 18 + (fast_value - 256);                             \
+            }                                                                   \
+        }                                                                       \
     } while (0)
 
 /* Whether the fast loop can take the next symbol: `left` is the number of
@@ -2205,8 +2143,7 @@ static bool xx_zip_py_lzma_put(xx_zip_py_lzma *lz, uint8_t byte)
 static bool xx_zip_py_lzma_fast_ready(const xx_zip_py_lzma *lz, const xx_zip_py_rc *rc, uint64_t left)
 {
     /* at != 0: something has been produced and the byte before is in place */
-    return lz->at && lz->capacity - lz->at >= XX_ZIP_PY_LZMA_FAST_OUTPUT && left >= XX_ZIP_PY_LZMA_FAST_OUTPUT &&
-           rc->limit - rc->position >= XX_ZIP_PY_LZMA_FAST_INPUT;
+    return lz->at && lz->capacity - lz->at >= XX_ZIP_PY_LZMA_FAST_OUTPUT && left >= XX_ZIP_PY_LZMA_FAST_OUTPUT && rc->limit - rc->position >= XX_ZIP_PY_LZMA_FAST_INPUT;
 }
 
 /* Decode symbols into the dictionary while xx_zip_py_lzma_fast_ready() holds
@@ -2587,8 +2524,7 @@ static xx_zip_py_status xx_zip_py_read1(xx_zip_py_ext *file, uint64_t n, uint64_
         uint64_t most = n < XX_ZIP_PY_MIN_READ_SIZE ? XX_ZIP_PY_MIN_READ_SIZE : n;
         step = xx_zip_py_inflate_run(file->inflate, file, file->inflate->total + most);
         if (step == XX_ZIP_PY_STEP_ERROR)
-            return xx_zip_py_fail(error, XX_ZIP_PY_DATA_ERROR,
-                                  xx_zip_py_concat("Error -3 while decompressing data: ", file->inflate->message, ""));
+            return xx_zip_py_fail(error, XX_ZIP_PY_DATA_ERROR, xx_zip_py_concat("Error -3 while decompressing data: ", file->inflate->message, ""));
         file->consumed = step == XX_ZIP_PY_STEP_INPUT ? file->fed : (size_t)((file->inflate->position + 7) >> 3);
         file->eof = step == XX_ZIP_PY_STEP_END || (!file->compress_left && file->consumed == file->fed);
         /* data += flush(): whatever zlib still holds, errors ignored */
@@ -2628,8 +2564,8 @@ static void xx_zip_py_ext_free(xx_zip_py_ext *file)
 
 /* read(limit) and/or read() of a stored member (see xx_zip_py_read_steps):
  * the bytes are the archive's own. */
-static xx_zip_py_status xx_zip_py_read_stored(const xx_zip_py_info *info, const uint8_t *input, size_t available, size_t limit,
-                                              bool rest, size_t *out_size, bool *complete, char **error)
+static xx_zip_py_status xx_zip_py_read_stored(const xx_zip_py_info *info, const uint8_t *input, size_t available, size_t limit, bool rest, size_t *out_size,
+                                              bool *complete, char **error)
 {
     uint64_t compress_left = info->compress_size, left = info->file_size, n = limit;
     size_t fed = 0, kept = 0;
@@ -2690,9 +2626,8 @@ static void xx_zip_py_sink_prepare(xx_zip_py_sink *sink, size_t cap, size_t inpu
 
 /* One ZipExtFile from the member's start: read(limit) when limit is not 0,
  * then read() when `rest` is set. */
-static xx_zip_py_status xx_zip_py_read_steps(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t data_offset,
-                                             size_t limit, bool rest, uint8_t **out, size_t *out_size, bool *complete,
-                                             xx_zip_py_owner *owner, char **error)
+static xx_zip_py_status xx_zip_py_read_steps(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t data_offset, size_t limit, bool rest, uint8_t **out,
+                                             size_t *out_size, bool *complete, xx_zip_py_owner *owner, char **error)
 {
     *out = NULL;
     *out_size = 0;
@@ -2767,8 +2702,7 @@ static xx_zip_py_status xx_zip_py_read_steps(const xx_zip_py *zip, const xx_zip_
             xx_zip_py_sink whole;
             size_t consumed = 0;
             xx_zip_py_sink_prepare(&whole, target, input_size);
-            bool ok = xx_deflate_unpack_memory_to_device_flags(input, input_size, &whole.device, &consumed, false,
-                                                               XX_DEFLATE_UNPACK_ZLIB_STRICT, NULL);
+            bool ok = xx_deflate_unpack_memory_to_device_flags(input, input_size, &whole.device, &consumed, false, XX_DEFLATE_UNPACK_ZLIB_STRICT, NULL);
             if (whole.no_memory) {
                 xx_zip_py_sink_free(&whole);
                 xx_zip_py_ext_free(&file);
@@ -2801,14 +2735,14 @@ static xx_zip_py_status xx_zip_py_read_steps(const xx_zip_py *zip, const xx_zip_
     return XX_ZIP_PY_OK;
 }
 
-xx_zip_py_status xx_zip_py_read(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t data_offset, size_t limit,
-                                uint8_t **out, size_t *out_size, bool *complete, xx_zip_py_owner *owner, char **error)
+xx_zip_py_status xx_zip_py_read(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t data_offset, size_t limit, uint8_t **out, size_t *out_size, bool *complete,
+                                xx_zip_py_owner *owner, char **error)
 {
     return xx_zip_py_read_steps(zip, info, data_offset, limit, !limit, out, out_size, complete, owner, error);
 }
 
-xx_zip_py_status xx_zip_py_read_rest(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t data_offset, size_t first,
-                                     uint8_t **out, size_t *out_size, xx_zip_py_owner *owner, char **error)
+xx_zip_py_status xx_zip_py_read_rest(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t data_offset, size_t first, uint8_t **out, size_t *out_size,
+                                     xx_zip_py_owner *owner, char **error)
 {
     bool complete;
     return xx_zip_py_read_steps(zip, info, data_offset, first, true, out, out_size, &complete, owner, error);
@@ -2816,12 +2750,9 @@ xx_zip_py_status xx_zip_py_read_rest(const xx_zip_py *zip, const xx_zip_py_info 
 
 bool xx_zip_py_raw_data(const xx_zip_py *zip, const xx_zip_py_info *info, const uint8_t **data, size_t *size)
 {
-    if (info->header_offset < 0 || (uint64_t)info->header_offset > zip->size ||
-        zip->size - (size_t)info->header_offset < XX_ZIP_PY_SIZE_FILE_HEADER)
-        return false;
+    if (info->header_offset < 0 || (uint64_t)info->header_offset > zip->size || zip->size - (size_t)info->header_offset < XX_ZIP_PY_SIZE_FILE_HEADER) return false;
     const uint8_t *header = zip->data + info->header_offset;
-    uint64_t offset =
-        (uint64_t)info->header_offset + XX_ZIP_PY_SIZE_FILE_HEADER + xx_zip_py_rd16(header + 26) + xx_zip_py_rd16(header + 28);
+    uint64_t offset = (uint64_t)info->header_offset + XX_ZIP_PY_SIZE_FILE_HEADER + xx_zip_py_rd16(header + 26) + xx_zip_py_rd16(header + 28);
     if (offset > zip->size) offset = zip->size;
     size_t available = zip->size - (size_t)offset;
     *data = zip->data + offset;
@@ -2894,7 +2825,7 @@ typedef struct xx_zip_py_xz_filter {
 typedef struct xx_zip_py_xz {
     xx_zip_py_lzma lz;
     xx_buf_t *out;
-    const char *message;  /* of a failure */
+    const char *message; /* of a failure */
     /* the block's filters before LZMA2, and what LZMA2 gave for them */
     unsigned filter_count;
     xx_zip_py_xz_filter filters[3];
@@ -2902,9 +2833,9 @@ typedef struct xx_zip_py_xz {
     bool raw_ended;         /* LZMA2 reached its end marker */
     bool raw_starved;       /* a filter asked for more than LZMA2 has: liblzma has used all its input */
     /* CPython's output buffer for the stream being decoded */
-    size_t stream_start;  /* where the stream's output starts in out */
-    unsigned py_block;    /* the index of the buffer's last block */
-    size_t py_end;        /* the end of that block, from stream_start */
+    size_t stream_start; /* where the stream's output starts in out */
+    unsigned py_block;   /* the index of the buffer's last block */
+    size_t py_end;       /* the end of that block, from stream_start */
     size_t pending_size;
     uint8_t pending[4096]; /* decoded bytes on their way to out */
 } xx_zip_py_xz;
@@ -3000,8 +2931,7 @@ static xx_zip_py_xz_step xx_zip_py_xz_lzma(xx_zip_py_xz *xz, const uint8_t *data
             if (!decoded) continue;
         }
         if (!decoded) xx_zip_py_lzma_decode(lz, &rc, &symbol);
-        if (symbol.kind == XX_ZIP_PY_LZMA_MARKER && symbol.whole && left != XX_ZIP_PY_XZ_UNKNOWN)
-            return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
+        if (symbol.kind == XX_ZIP_PY_LZMA_MARKER && symbol.whole && left != XX_ZIP_PY_XZ_UNKNOWN) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
         if (rc.starved) return XX_ZIP_PY_XZ_MORE;
         if (symbol.kind == XX_ZIP_PY_LZMA_BAD) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
         if (symbol.kind == XX_ZIP_PY_LZMA_MARKER) {
@@ -3055,10 +2985,8 @@ static xx_zip_py_xz_step xx_zip_py_xz_lzma2(xx_zip_py_xz *xz, const uint8_t *dat
             *position = at;
             return XX_ZIP_PY_XZ_END;
         }
-        if (control >= 0xE0 || control == 1)
-            need_properties = need_reset = true;
-        else if (need_reset)
-            return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
+        if (control >= 0xE0 || control == 1) need_properties = need_reset = true;
+        else if (need_reset) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
         if (control < 0x80 ? control > 2 : (control < 0xC0 && need_properties)) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
         if (need_reset) {
             need_reset = false;
@@ -3083,8 +3011,7 @@ static xx_zip_py_xz_step xx_zip_py_xz_lzma2(xx_zip_py_xz *xz, const uint8_t *dat
         if (control >= 0xC0) {
             if (at == size) return XX_ZIP_PY_XZ_MORE;
             unsigned properties = data[at++];
-            if (properties > (4 * 5 + 4) * 9 + 8 || properties % 9 + (properties % 45) / 9 > 4)
-                return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
+            if (properties > (4 * 5 + 4) * 9 + 8 || properties % 9 + (properties % 45) / 9 > 4) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
             lz->pb = properties / 45;
             lz->lp = (properties % 45) / 9;
             lz->lc = properties % 9;
@@ -3136,16 +3063,13 @@ static size_t xx_zip_py_xz_check_size(unsigned check)
 static bool xx_zip_py_xz_verify_check(unsigned check, const uint8_t *data, size_t size, const uint8_t *expected)
 {
     switch (check) {
-    case 0x01:
-        return xx_crc32_calc(0, data, size) == xx_zip_py_rd32(expected);
-    case 0x04:
-        return xx_crc64_xz_calc(0, data, size) == xx_zip_py_rd64(expected);
-    case 0x0A: {
-        uint8_t digest[32];
-        return xx_sha256_memory(data, size, digest) && memcmp(digest, expected, sizeof(digest)) == 0;
-    }
-    default:
-        return true; /* liblzma skips check types it does not know */
+        case 0x01: return xx_crc32_calc(0, data, size) == xx_zip_py_rd32(expected);
+        case 0x04: return xx_crc64_xz_calc(0, data, size) == xx_zip_py_rd64(expected);
+        case 0x0A: {
+            uint8_t digest[32];
+            return xx_sha256_memory(data, size, digest) && memcmp(digest, expected, sizeof(digest)) == 0;
+        }
+        default: return true; /* liblzma skips check types it does not know */
     }
 }
 
@@ -3218,8 +3142,8 @@ static size_t xx_zip_py_xz_bcj_powerpc(uint32_t now_pos, uint8_t *buffer, size_t
     size_t i;
     for (i = 0; i + 4 <= size; i += 4) {
         if ((buffer[i] >> 2) == 0x12 && (buffer[i + 3] & 3) == 1) {
-            const uint32_t src = (((uint32_t)buffer[i] & 3) << 24) | ((uint32_t)buffer[i + 1] << 16) | ((uint32_t)buffer[i + 2] << 8) |
-                                 ((uint32_t)buffer[i + 3] & ~(uint32_t)3);
+            const uint32_t src =
+                (((uint32_t)buffer[i] & 3) << 24) | ((uint32_t)buffer[i + 1] << 16) | ((uint32_t)buffer[i + 2] << 8) | ((uint32_t)buffer[i + 3] & ~(uint32_t)3);
             const uint32_t dest = src - (now_pos + (uint32_t)i);
             buffer[i] = (uint8_t)(0x48 | ((dest >> 24) & 0x03));
             buffer[i + 1] = (uint8_t)(dest >> 16);
@@ -3233,8 +3157,7 @@ static size_t xx_zip_py_xz_bcj_powerpc(uint32_t now_pos, uint8_t *buffer, size_t
 /* IA-64: the branch slots of a 16-byte instruction bundle. */
 static size_t xx_zip_py_xz_bcj_ia64(uint32_t now_pos, uint8_t *buffer, size_t size)
 {
-    static const uint8_t branch_table[32] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                             4, 4, 6, 6, 0, 0, 7, 7, 4, 4, 0, 0, 4, 4, 0, 0};
+    static const uint8_t branch_table[32] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 6, 6, 0, 0, 7, 7, 4, 4, 0, 0, 4, 4, 0, 0};
     size_t i;
     for (i = 0; i + 16 <= size; i += 16) {
         const uint32_t mask = branch_table[buffer[i] & 0x1F];
@@ -3288,8 +3211,7 @@ static size_t xx_zip_py_xz_bcj_armthumb(uint32_t now_pos, uint8_t *buffer, size_
     size_t i;
     for (i = 0; i + 4 <= size; i += 2) {
         if ((buffer[i + 1] & 0xF8) == 0xF0 && (buffer[i + 3] & 0xF8) == 0xF8) {
-            uint32_t src = (((uint32_t)buffer[i + 1] & 7) << 19) | ((uint32_t)buffer[i] << 11) | (((uint32_t)buffer[i + 3] & 7) << 8) |
-                           (uint32_t)buffer[i + 2];
+            uint32_t src = (((uint32_t)buffer[i + 1] & 7) << 19) | ((uint32_t)buffer[i] << 11) | (((uint32_t)buffer[i + 3] & 7) << 8) | (uint32_t)buffer[i + 2];
             src <<= 1;
             uint32_t dest = src - (now_pos + (uint32_t)i + 4);
             dest >>= 1;
@@ -3329,24 +3251,12 @@ static size_t xx_zip_py_xz_bcj(xx_zip_py_xz_filter *f, uint8_t *buffer, size_t s
 {
     size_t done;
     switch (f->id) {
-    case XX_ZIP_PY_XZ_FILTER_X86:
-        done = xx_zip_py_xz_bcj_x86(f, buffer, size);
-        break;
-    case XX_ZIP_PY_XZ_FILTER_POWERPC:
-        done = xx_zip_py_xz_bcj_powerpc(f->now_pos, buffer, size);
-        break;
-    case XX_ZIP_PY_XZ_FILTER_IA64:
-        done = xx_zip_py_xz_bcj_ia64(f->now_pos, buffer, size);
-        break;
-    case XX_ZIP_PY_XZ_FILTER_ARM:
-        done = xx_zip_py_xz_bcj_arm(f->now_pos, buffer, size);
-        break;
-    case XX_ZIP_PY_XZ_FILTER_ARMTHUMB:
-        done = xx_zip_py_xz_bcj_armthumb(f->now_pos, buffer, size);
-        break;
-    default:
-        done = xx_zip_py_xz_bcj_sparc(f->now_pos, buffer, size);
-        break;
+        case XX_ZIP_PY_XZ_FILTER_X86: done = xx_zip_py_xz_bcj_x86(f, buffer, size); break;
+        case XX_ZIP_PY_XZ_FILTER_POWERPC: done = xx_zip_py_xz_bcj_powerpc(f->now_pos, buffer, size); break;
+        case XX_ZIP_PY_XZ_FILTER_IA64: done = xx_zip_py_xz_bcj_ia64(f->now_pos, buffer, size); break;
+        case XX_ZIP_PY_XZ_FILTER_ARM: done = xx_zip_py_xz_bcj_arm(f->now_pos, buffer, size); break;
+        case XX_ZIP_PY_XZ_FILTER_ARMTHUMB: done = xx_zip_py_xz_bcj_armthumb(f->now_pos, buffer, size); break;
+        default: done = xx_zip_py_xz_bcj_sparc(f->now_pos, buffer, size); break;
     }
     f->now_pos += (uint32_t)done;
     return done;
@@ -3499,8 +3409,8 @@ typedef struct xx_zip_py_xz_record {
  * LZMA2 last and only last), and then each filter's own start, where a BCJ
  * start offset that is not a multiple of the filter's alignment is refused.
  * The filters before LZMA2 are left in xz->filters. */
-static xx_zip_py_xz_step xx_zip_py_xz_block_header(xx_zip_py_xz *xz, const uint8_t *header, size_t header_size, size_t check_size,
-                                                   uint64_t *declared_compressed, uint64_t *declared_uncompressed, unsigned *lzma2)
+static xx_zip_py_xz_step xx_zip_py_xz_block_header(xx_zip_py_xz *xz, const uint8_t *header, size_t header_size, size_t check_size, uint64_t *declared_compressed,
+                                                   uint64_t *declared_uncompressed, unsigned *lzma2)
 {
     size_t end = header_size - 4, cursor = 2;
     uint8_t flags = header[1];
@@ -3516,8 +3426,7 @@ static xx_zip_py_xz_step xx_zip_py_xz_block_header(xx_zip_py_xz *xz, const uint8
             *declared_compressed > (XX_ZIP_PY_XZ_VLI_MAX & ~(uint64_t)3) - header_size - check_size)
             return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
     }
-    if ((flags & 0x80) && xx_zip_py_xz_vli(header, end, &cursor, declared_uncompressed) != XX_ZIP_PY_XZ_END)
-        return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
+    if ((flags & 0x80) && xx_zip_py_xz_vli(header, end, &cursor, declared_uncompressed) != XX_ZIP_PY_XZ_END) return xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
     for (unsigned i = 0; i < filters; ++i) {
         uint64_t id, size;
         if (xx_zip_py_xz_vli(header, end, &cursor, &id) != XX_ZIP_PY_XZ_END || id >= ((uint64_t)1 << 62) ||
@@ -3604,8 +3513,7 @@ static xx_zip_py_xz_step xx_zip_py_xz_stream(xx_zip_py_xz *xz, const uint8_t *da
             /* the buffer grows when liblzma has filled it and has not ended the block */
             while (xz->out->size - xz->stream_start > xz->py_end) xx_zip_py_xz_py_grow(xz);
         }
-        uint64_t limit = declared_compressed != XX_ZIP_PY_XZ_UNKNOWN ? declared_compressed
-                                                                     : (XX_ZIP_PY_XZ_VLI_MAX & ~(uint64_t)3) - header_size - check_size;
+        uint64_t limit = declared_compressed != XX_ZIP_PY_XZ_UNKNOWN ? declared_compressed : (XX_ZIP_PY_XZ_VLI_MAX & ~(uint64_t)3) - header_size - check_size;
         if (compressed > limit || (declared_uncompressed != XX_ZIP_PY_XZ_UNKNOWN && uncompressed > declared_uncompressed)) {
             step = xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
             goto done;
@@ -3633,8 +3541,8 @@ static xx_zip_py_xz_step xx_zip_py_xz_stream(xx_zip_py_xz *xz, const uint8_t *da
         if (record_count == record_capacity) {
             size_t larger = record_capacity ? record_capacity * 2 : 8;
             /* The byte count must not wrap (a 32-bit size_t): treated as memory that cannot be had. */
-            xx_zip_py_xz_record *grown = larger > SIZE_MAX / sizeof(*records) || larger < record_capacity ? NULL :
-                (xx_zip_py_xz_record *)xx_rt_realloc(records, larger * sizeof(*records));
+            xx_zip_py_xz_record *grown =
+                larger > SIZE_MAX / sizeof(*records) || larger < record_capacity ? NULL : (xx_zip_py_xz_record *)xx_rt_realloc(records, larger * sizeof(*records));
             if (!grown) {
                 step = xx_zip_py_xz_fail(xz, xx_zip_py_xz_memory);
                 goto done;
@@ -3673,10 +3581,8 @@ static xx_zip_py_xz_step xx_zip_py_xz_stream(xx_zip_py_xz *xz, const uint8_t *da
         if (blocks_size < records_size || blocks_uncompressed < records_uncompressed || blocks_list < records_list) step = XX_ZIP_PY_XZ_FAIL;
     }
     while (step == XX_ZIP_PY_XZ_END && (position - index_start) % 4) {
-        if (position == size)
-            step = XX_ZIP_PY_XZ_MORE;
-        else if (data[position++])
-            step = XX_ZIP_PY_XZ_FAIL;
+        if (position == size) step = XX_ZIP_PY_XZ_MORE;
+        else if (data[position++]) step = XX_ZIP_PY_XZ_FAIL;
     }
     /* liblzma compares when the next byte, the CRC-32's first, is there */
     if (step == XX_ZIP_PY_XZ_END && position == size) step = XX_ZIP_PY_XZ_MORE;
@@ -3684,10 +3590,8 @@ static xx_zip_py_xz_step xx_zip_py_xz_stream(xx_zip_py_xz *xz, const uint8_t *da
     if (step == XX_ZIP_PY_XZ_END) {
         uint32_t crc = xx_crc32_calc(0, data + index_start, position - index_start);
         for (unsigned i = 0; step == XX_ZIP_PY_XZ_END && i < 4; ++i, crc >>= 8) {
-            if (position == size)
-                step = XX_ZIP_PY_XZ_MORE;
-            else if (data[position++] != (uint8_t)crc)
-                step = XX_ZIP_PY_XZ_FAIL;
+            if (position == size) step = XX_ZIP_PY_XZ_MORE;
+            else if (data[position++] != (uint8_t)crc) step = XX_ZIP_PY_XZ_FAIL;
         }
     }
     if (step != XX_ZIP_PY_XZ_END) {
@@ -3701,12 +3605,9 @@ static xx_zip_py_xz_step xx_zip_py_xz_stream(xx_zip_py_xz *xz, const uint8_t *da
     step = XX_ZIP_PY_XZ_MORE;
     if (size - position < 12) goto done;
     const uint8_t *footer = data + position;
-    if (memcmp(footer + 10, "YZ", 2) != 0)
-        step = xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
-    else if (xx_crc32_calc(0, footer + 4, 6) != xx_zip_py_rd32(footer))
-        step = xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
-    else if (footer[8] != 0 || (footer[9] & 0xF0))
-        step = xx_zip_py_xz_fail(xz, xx_zip_py_xz_options);
+    if (memcmp(footer + 10, "YZ", 2) != 0) step = xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
+    else if (xx_crc32_calc(0, footer + 4, 6) != xx_zip_py_rd32(footer)) step = xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
+    else if (footer[8] != 0 || (footer[9] & 0xF0)) step = xx_zip_py_xz_fail(xz, xx_zip_py_xz_options);
     else if (((uint64_t)xx_zip_py_rd32(footer + 4) + 1) * 4 != (uint64_t)(position - index_start) || footer[9] != data[7])
         step = xx_zip_py_xz_fail(xz, xx_zip_py_xz_data);
     else {
@@ -3777,9 +3678,9 @@ bool xx_zip_py_xz_decompress(const uint8_t *data, size_t size, uint8_t **out, si
             size_t before = result.size, taken = 0;
             /* FORMAT_AUTO: 0xFD starts an .xz stream, any other byte a
                .lzma one; without a byte the decoder waits. */
-            xx_zip_py_xz_step step = used == size ? XX_ZIP_PY_XZ_MORE
-                                                  : data[used] == xx_zip_py_xz_magic[0] ? xx_zip_py_xz_stream(xz, data + used, size - used, &taken)
-                                                                                        : xx_zip_py_xz_alone(xz, data + used, size - used, &taken);
+            xx_zip_py_xz_step step = used == size                          ? XX_ZIP_PY_XZ_MORE
+                                     : data[used] == xx_zip_py_xz_magic[0] ? xx_zip_py_xz_stream(xz, data + used, size - used, &taken)
+                                                                           : xx_zip_py_xz_alone(xz, data + used, size - used, &taken);
             if (step == XX_ZIP_PY_XZ_MORE) {
                 message = xx_zip_py_xz_ended;
                 break;

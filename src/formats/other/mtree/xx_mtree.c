@@ -842,7 +842,8 @@ static bool mtree_parse_member_fields(mtree_member *member, const mtree_options 
     value = &options->values[MTREE_KEY_SIZE];
     if (value->present) {
         if (!value->has_value || !mtree_parse_unsigned(value->value, 10U, (uint64_t)INT64_MAX, &member->declared_size) ||
-            (member->directory && member->declared_size != 0U)) return false;
+            (member->directory && member->declared_size != 0U))
+            return false;
     }
     value = &options->values[MTREE_KEY_MODE];
     if (value->present) {
@@ -1117,8 +1118,9 @@ static bool mtree_set_record(xx_archive_record *record, const mtree_member *memb
     record->data_offset = member->data_offset;
     record->compressed_size = 0;
     if (!xx_archive_record_set_original_name(record, member->name) || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, 0U) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->declared_size) || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->directory) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false)) {
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->declared_size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->directory) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false)) {
         return false;
     }
     if (member->has_mode && !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->mode)) {

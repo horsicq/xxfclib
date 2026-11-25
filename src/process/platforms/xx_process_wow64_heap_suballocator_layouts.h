@@ -311,33 +311,24 @@ static const xx_data_struct_field_desc xx_pswhsw_lfh_owner32_26100[] = {
 };
 
 static const xx_psw_nt_layout xx_pswhsw_profiles_19045[] = {
-    {19045, 0x014c, "WOW64 HEAP_VS_SUBSEGMENT32; exact selected NTDLL PDB profile",
-        xx_pswhsw_vs32_19045, XX_PSW_COUNT(xx_pswhsw_vs32_19045), 0x18u},
-    {19045, 0x014c, "WOW64 HEAP_LFH_SUBSEGMENT32; exact selected NTDLL PDB profile",
-        xx_pswhsw_lfh_subsegment32_19045, XX_PSW_COUNT(xx_pswhsw_lfh_subsegment32_19045), 0x24u},
-    {19045, 0x014c, "WOW64 HEAP_LFH_BUCKET32; exact selected NTDLL PDB profile",
-        xx_pswhsw_lfh_bucket32_19045, XX_PSW_COUNT(xx_pswhsw_lfh_bucket32_19045), 0x38u},
-    {19045, 0x014c, "WOW64 HEAP_LFH_AFFINITY_SLOT32; exact selected NTDLL PDB profile",
-        xx_pswhsw_lfh_slot32_19045, XX_PSW_COUNT(xx_pswhsw_lfh_slot32_19045), 0x20u},
-    {19045, 0x014c, "WOW64 HEAP_LFH_SUBSEGMENT_OWNER32; exact selected NTDLL PDB profile",
-        xx_pswhsw_lfh_owner32_19045, XX_PSW_COUNT(xx_pswhsw_lfh_owner32_19045), 0x1Cu},
+    {19045, 0x014c, "WOW64 HEAP_VS_SUBSEGMENT32; exact selected NTDLL PDB profile", xx_pswhsw_vs32_19045, XX_PSW_COUNT(xx_pswhsw_vs32_19045), 0x18u},
+    {19045, 0x014c, "WOW64 HEAP_LFH_SUBSEGMENT32; exact selected NTDLL PDB profile", xx_pswhsw_lfh_subsegment32_19045, XX_PSW_COUNT(xx_pswhsw_lfh_subsegment32_19045),
+     0x24u},
+    {19045, 0x014c, "WOW64 HEAP_LFH_BUCKET32; exact selected NTDLL PDB profile", xx_pswhsw_lfh_bucket32_19045, XX_PSW_COUNT(xx_pswhsw_lfh_bucket32_19045), 0x38u},
+    {19045, 0x014c, "WOW64 HEAP_LFH_AFFINITY_SLOT32; exact selected NTDLL PDB profile", xx_pswhsw_lfh_slot32_19045, XX_PSW_COUNT(xx_pswhsw_lfh_slot32_19045), 0x20u},
+    {19045, 0x014c, "WOW64 HEAP_LFH_SUBSEGMENT_OWNER32; exact selected NTDLL PDB profile", xx_pswhsw_lfh_owner32_19045, XX_PSW_COUNT(xx_pswhsw_lfh_owner32_19045), 0x1Cu},
 };
 
 static const xx_psw_nt_layout xx_pswhsw_profiles_26100[] = {
-    {26100, 0x014c, "WOW64 HEAP_VS_SUBSEGMENT32; exact selected NTDLL PDB profile",
-        xx_pswhsw_vs32_26100, XX_PSW_COUNT(xx_pswhsw_vs32_26100), 0x18u},
-    {26100, 0x014c, "WOW64 HEAP_LFH_SUBSEGMENT32; exact selected NTDLL PDB profile",
-        xx_pswhsw_lfh_subsegment32_26100, XX_PSW_COUNT(xx_pswhsw_lfh_subsegment32_26100), 0x34u},
-    {26100, 0x014c, "WOW64 HEAP_LFH_BUCKET32; exact selected NTDLL PDB profile",
-        xx_pswhsw_lfh_bucket32_26100, XX_PSW_COUNT(xx_pswhsw_lfh_bucket32_26100), 0x48u},
-    {26100, 0x014c, "WOW64 HEAP_LFH_AFFINITY_SLOT32; exact selected NTDLL PDB profile",
-        xx_pswhsw_lfh_slot32_26100, XX_PSW_COUNT(xx_pswhsw_lfh_slot32_26100), 0x28u},
-    {26100, 0x014c, "WOW64 HEAP_LFH_SUBSEGMENT_OWNER32; exact selected NTDLL PDB profile",
-        xx_pswhsw_lfh_owner32_26100, XX_PSW_COUNT(xx_pswhsw_lfh_owner32_26100), 0x24u},
+    {26100, 0x014c, "WOW64 HEAP_VS_SUBSEGMENT32; exact selected NTDLL PDB profile", xx_pswhsw_vs32_26100, XX_PSW_COUNT(xx_pswhsw_vs32_26100), 0x18u},
+    {26100, 0x014c, "WOW64 HEAP_LFH_SUBSEGMENT32; exact selected NTDLL PDB profile", xx_pswhsw_lfh_subsegment32_26100, XX_PSW_COUNT(xx_pswhsw_lfh_subsegment32_26100),
+     0x34u},
+    {26100, 0x014c, "WOW64 HEAP_LFH_BUCKET32; exact selected NTDLL PDB profile", xx_pswhsw_lfh_bucket32_26100, XX_PSW_COUNT(xx_pswhsw_lfh_bucket32_26100), 0x48u},
+    {26100, 0x014c, "WOW64 HEAP_LFH_AFFINITY_SLOT32; exact selected NTDLL PDB profile", xx_pswhsw_lfh_slot32_26100, XX_PSW_COUNT(xx_pswhsw_lfh_slot32_26100), 0x28u},
+    {26100, 0x014c, "WOW64 HEAP_LFH_SUBSEGMENT_OWNER32; exact selected NTDLL PDB profile", xx_pswhsw_lfh_owner32_26100, XX_PSW_COUNT(xx_pswhsw_lfh_owner32_26100), 0x24u},
 };
 
-static const xx_psw_nt_layout *xx_pswhsw_profile(const xx_psw_nt_layout *parent,
-    unsigned width, size_t kind)
+static const xx_psw_nt_layout *xx_pswhsw_profile(const xx_psw_nt_layout *parent, unsigned width, size_t kind)
 {
     if (!parent || width != 4 || kind >= XX_PSW_COUNT(xx_pswhsw_profiles_19045)) return NULL;
     if (parent->fields == xx_pswh_wow_segment32_19045) return xx_pswhsw_profiles_19045 + kind;

@@ -83,7 +83,8 @@ static int signature_literal_compare(xx_io_device *pFile, cd_i64 nOffset, const 
         char c = pNormalized[i];
         if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return -1;
     }
-    if (nOffset < 0 || xx_io_total_size(pFile) < 0 || (cd_u64)nOffset > (cd_u64)xx_io_total_size(pFile) || (cd_u64)(nLength / 2) > (cd_u64)xx_io_total_size(pFile) - (cd_u64)nOffset) {
+    if (nOffset < 0 || xx_io_total_size(pFile) < 0 || (cd_u64)nOffset > (cd_u64)xx_io_total_size(pFile) ||
+        (cd_u64)(nLength / 2) > (cd_u64)xx_io_total_size(pFile) - (cd_u64)nOffset) {
         return 0;
     }
     return xx_sig_compare_nibbles(pFile, nOffset, pNormalized, nLength);
@@ -130,8 +131,8 @@ int die_engine_signature_compare(DieEngine *pEngine, cd_i64 nOffset, const char 
     /* Binary_Script's cached QString comparison precedes the overlay range
      * check. Keep that behavior for short literal patterns, but reject DOS/NE
      * extended signatures seeking before or beyond the actual overlay. */
-    if (nKind == 2 && (pEngine->pMap->file_type == XX_FILE_TYPE_NE ||
-                       (pEngine->pMap->file_type == XX_FILE_TYPE_MSDOS && pEngine->pMap->mode == XX_MEMORY_MAP_MODE_SEGMENTS)) &&
+    if (nKind == 2 &&
+        (pEngine->pMap->file_type == XX_FILE_TYPE_NE || (pEngine->pMap->file_type == XX_FILE_TYPE_MSDOS && pEngine->pMap->mode == XX_MEMORY_MAP_MODE_SEGMENTS)) &&
         (nCacheBase <= 0 || nOffset < nCacheBase || nOffset >= xx_io_total_size(pEngine->device))) {
         xx_str_free(pNormalized);
         return 0;
@@ -197,9 +198,8 @@ int die_engine_signature_find_any(DieEngine *pEngine, cd_i64 nOffset, cd_i64 nSi
     size_t i;
     int bResult = 0;
 
-    if (!pEngine || !pEngine->device || !ppTexts || !nCount || nCount > (size_t)-1 / sizeof(*pSignatures) ||
-        nOffset < 0 || nOffset >= xx_io_total_size(pEngine->device) || nSize == 0 || nSize < -1 ||
-        pEngine->bStop || xx_pd_is_stopped(pEngine->pd)) {
+    if (!pEngine || !pEngine->device || !ppTexts || !nCount || nCount > (size_t)-1 / sizeof(*pSignatures) || nOffset < 0 ||
+        nOffset >= xx_io_total_size(pEngine->device) || nSize == 0 || nSize < -1 || pEngine->bStop || xx_pd_is_stopped(pEngine->pd)) {
         return 0;
     }
     pSignatures = (xx_data_signature *)xx_mem_calloc(nCount, sizeof(*pSignatures));
@@ -327,8 +327,7 @@ static void run_script(DieEngine *pEngine, DBSignature *pRecord, int bCallDetect
     JSVal callResult;
     cd_i64 nProfileStart = -1;
     int bEvalResult = 0;
-    const char *source_name = pEngine->pDebug && pRecord->pFilePath && pRecord->pFilePath[0]
-        ? pRecord->pFilePath : pRecord->pName;
+    const char *source_name = pEngine->pDebug && pRecord->pFilePath && pRecord->pFilePath[0] ? pRecord->pFilePath : pRecord->pName;
 
     pEngine->pCurrentScript = pRecord->pName;
     pEngine->pCurrentScriptPath = pRecord->pFilePath && pRecord->pFilePath[0] ? pRecord->pFilePath : pRecord->pName;
@@ -451,10 +450,11 @@ static int script_msdos_memory_map(xx_io_device *device, xx_memory_map *map, xx_
     map->endian = XX_ENDIAN_LITTLE;
     map->mode = XX_MEMORY_MAP_MODE_SEGMENTS;
     if (!xx_memory_map_add_part(map, 0, header_size, XX_INVALID_ADDRESS, 0, XX_FILE_PART_HEADER, 0, "MSDOS Header", false) ||
-        !xx_memory_map_add_part(map, header_size, image_size - header_size, UINT64_C(0x10000000), image_size - header_size,
-                                XX_FILE_PART_SEGMENT, 1, "MSDOS image", false) ||
-        !xx_memory_map_add_part(map, image_size, size - image_size, XX_INVALID_ADDRESS, 0, XX_FILE_PART_OVERLAY, 2, "Overlay", false) ||
-        xx_pd_is_stopped(pd) || !xx_memory_map_finalize(map)) return -1;
+        !xx_memory_map_add_part(map, header_size, image_size - header_size, UINT64_C(0x10000000), image_size - header_size, XX_FILE_PART_SEGMENT, 1, "MSDOS image",
+                                false) ||
+        !xx_memory_map_add_part(map, image_size, size - image_size, XX_INVALID_ADDRESS, 0, XX_FILE_PART_OVERLAY, 2, "Overlay", false) || xx_pd_is_stopped(pd) ||
+        !xx_memory_map_finalize(map))
+        return -1;
     /* Finalization derives a module base from mapped addresses (none when the
      * header covers the whole image). XMSDOS's module base is the 0x10000000
      * load address in every case. */
@@ -648,7 +648,8 @@ static int script_linear_memory_map(xx_io_device *device, int bLX, xx_memory_map
     map->mode = XX_MEMORY_MAP_MODE_OBJECTS;
     map->entry_point_address = XX_INVALID_ADDRESS;
     if (start_object != 0U && start_object <= objects)
-        map->entry_point_address = (cd_u64)xx_io_get_u32(device, object_offset + (cd_i64)(start_object - 1U) * 24 + 4, false) + xx_io_get_u32(device, header + 0x1c, false);
+        map->entry_point_address =
+            (cd_u64)xx_io_get_u32(device, object_offset + (cd_i64)(start_object - 1U) * 24 + 4, false) + xx_io_get_u32(device, header + 0x1c, false);
     for (index = 0; index < count; ++index) {
         char name[32];
         if (parts[index].part == XX_FILE_PART_HEADER) x_snprintf(name, sizeof(name), "Header");
@@ -714,8 +715,7 @@ static int script_ne_memory_map(xx_io_device *device, xx_memory_map *map, xx_pd_
         ++parts;
         if (offset + length > end) end = offset + length;
     }
-    if (parts < 1000 && end < size &&
-        !xx_memory_map_add_part(map, end, size - end, XX_INVALID_ADDRESS, 0, XX_FILE_PART_OVERLAY, (int)parts, "Overlay", false)) return -1;
+    if (parts < 1000 && end < size && !xx_memory_map_add_part(map, end, size - end, XX_INVALID_ADDRESS, 0, XX_FILE_PART_OVERLAY, (int)parts, "Overlay", false)) return -1;
     return !xx_pd_is_stopped(pd) && xx_memory_map_finalize(map) ? 1 : -1;
 }
 
@@ -737,7 +737,8 @@ static int die_engine_script_debug_hook(JSCtx *context, const JSDebugEvent *even
  * for subsequent COM/Binary passes. bAddUnknown mirrors the
  * reference's _processDetect flag: when it is 0 an empty pass stays empty
  * instead of gaining the "Unknown" record.                                 */
-static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAssembly, DBase *pDb, xx_scan_options *pOptions, xx_scan_result *pResult, int bAddUnknown, xx_pd_struct *pd, const die_engine_debug_config *debug)
+static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAssembly, DBase *pDb, xx_scan_options *pOptions, xx_scan_result *pResult, int bAddUnknown,
+                         xx_pd_struct *pd, const die_engine_debug_config *debug)
 {
     /* Heap, not stack: DieEngine embeds every parser state by value and is
      * over 3 KB on its own. Keeping it off the stack reduces pressure during
@@ -763,9 +764,8 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
      * are already resident, large ones stay in a temporary file, and stored
      * members stay borrowed views. Cache reads without whole-file copies. */
     if (xx_io_seek64(device, 0, SEEK_SET) != 0 ||
-        !(pEngine->device = pOptions->scan_part == XX_SCAN_PART_ARCHIVE
-                               ? xx_io_buffer_open(device, 0, 0, false)
-                               : xx_io_buffer_open_auto(device, 0, xx_get_file_memory_limit(), false))) {
+        !(pEngine->device = pOptions->scan_part == XX_SCAN_PART_ARCHIVE ? xx_io_buffer_open(device, 0, 0, false)
+                                                                        : xx_io_buffer_open_auto(device, 0, xx_get_file_memory_limit(), false))) {
         if (xx_io_alloc_failures() != nAllocFailures) xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate DIE signature input buffer");
         else xx_pd_set_error(pd, XXFC_ERR_IO, "Cannot open DIE signature input");
         cd_free(pEngine);
@@ -867,12 +867,12 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
      * lookup as XBinary's address conversions, including segments/objects
      * overlapping headers (both script maps copy XNE/XLE file parts).
      * Other formats retain their existing signature lookup policy. */
-    xx_data_sig_context_from_memory_map_ex(&pEngine->sigContext, pEngine->pMap,
-                                         (pEngine->pMap->file_type == XX_FILE_TYPE_NE || pEngine->pMap->file_type == XX_FILE_TYPE_LE ||
-                                          pEngine->pMap->file_type == XX_FILE_TYPE_LX)
-                                             ? XX_MEMORY_MAP_LOOKUP_LAST_PHYSICAL
-                                             : XX_MEMORY_MAP_LOOKUP_FIRST_MATCH,
-                                         true);
+    xx_data_sig_context_from_memory_map_ex(
+        &pEngine->sigContext, pEngine->pMap,
+        (pEngine->pMap->file_type == XX_FILE_TYPE_NE || pEngine->pMap->file_type == XX_FILE_TYPE_LE || pEngine->pMap->file_type == XX_FILE_TYPE_LX)
+            ? XX_MEMORY_MAP_LOOKUP_LAST_PHYSICAL
+            : XX_MEMORY_MAP_LOOKUP_FIRST_MATCH,
+        true);
 
     pResult->file_type = die_engine_native_from_xft(pEngine->fileType);
     pResult->compatibility_file_type = (uint32_t)pEngine->fileType;
@@ -928,8 +928,7 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
         edited.nSize = x_strlen(debug->signature_source);
         edited.fileType = pEngine->fileType;
         edited.databaseType = DB_CUSTOM;
-        if (!pEngine->bStop && !cd_alloc_oom() && !xx_io_buffer_failed(pEngine->device) && !xx_pd_is_stopped(pd))
-            run_script(pEngine, &edited, 1);
+        if (!pEngine->bStop && !cd_alloc_oom() && !xx_io_buffer_failed(pEngine->device) && !xx_pd_is_stopped(pd)) run_script(pEngine, &edited, 1);
         pEngine->pCurrentScript = NULL;
         pEngine->pCurrentScriptPath = NULL;
         i = pDb->nCount;
@@ -1117,8 +1116,7 @@ static ssize_t scan_detection_read(xx_io_device *device, void *buffer, size_t si
     scan_detection_device *state = (scan_detection_device *)device->priv;
     int64_t position = xx_io_tell(state->source);
     ssize_t count = xx_io_read(state->source, buffer, size);
-    if (count < 0 || (uint64_t)count > (uint64_t)size ||
-        (size && !count && position >= 0 && position < xx_io_total_size(state->source))) state->failed = true;
+    if (count < 0 || (uint64_t)count > (uint64_t)size || (size && !count && position >= 0 && position < xx_io_total_size(state->source))) state->failed = true;
     return count;
 }
 
@@ -1150,7 +1148,8 @@ static int64_t scan_detection_size(xx_io_device *device)
 /* Orchestrate signature passes over the borrowed, bounded input device.
  * Type detection, input metadata and pass selection use xx_io directly;
  * only scan_run_pass creates the buffered input device. */
-static int scan_engine_run(xx_io_device *device, DBase *pDb, xx_scan_options *pOptions, XFileType selectedType, xx_scan_result *pResult, xx_pd_struct *pd, const die_engine_debug_config *debug)
+static int scan_engine_run(xx_io_device *device, DBase *pDb, xx_scan_options *pOptions, XFileType selectedType, xx_scan_result *pResult, xx_pd_struct *pd,
+                           const die_engine_debug_config *debug)
 {
     xx_scan_file_type_set set;
     scan_detection_device detection = {0};
@@ -1330,17 +1329,15 @@ int die_engine_detect_file_types(const char *pFileName, die_engine_file_type_fn 
     return 1;
 }
 
-int die_engine_scan_pass_device(xx_io_device *device, DBase *database, xx_scan_options *options,
-                                XFileType type, xx_scan_result *result, xx_pd_struct *pd)
+int die_engine_scan_pass_device(xx_io_device *device, DBase *database, xx_scan_options *options, XFileType type, xx_scan_result *result, xx_pd_struct *pd)
 {
     return scan_engine_run(device, database, options, type, result, pd, NULL);
 }
 
 /* A debugger owns a single target/rule execution, not archive recursion. Keep
  * the standard scan-pass construction, format objects and cleanup unchanged. */
-int die_engine_scan_file_type_debug_pd(const char *file_name, DBase *database,
-    xx_scan_options *options, XFileType file_type, xx_scan_result *result,
-    xx_pd_struct *progress, const die_engine_debug_config *config)
+int die_engine_scan_file_type_debug_pd(const char *file_name, DBase *database, xx_scan_options *options, XFileType file_type, xx_scan_result *result,
+                                       xx_pd_struct *progress, const die_engine_debug_config *config)
 {
     xx_scan_options local;
     xx_pd_struct private_progress = {0};
@@ -1357,20 +1354,17 @@ int die_engine_scan_file_type_debug_pd(const char *file_name, DBase *database,
         xx_pd_set_error(pd, XXFC_ERR_NULL_PARAM, "Missing DIE debugger argument");
         goto done;
     }
-    if (config->size < sizeof(*config) || config->version != DIE_ENGINE_DEBUG_VERSION ||
-        (unsigned int)file_type >= (unsigned int)XFT_COUNT) {
+    if (config->size < sizeof(*config) || config->version != DIE_ENGINE_DEBUG_VERSION || (unsigned int)file_type >= (unsigned int)XFT_COUNT) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Invalid DIE debugger configuration");
         goto done;
     }
     local = *options;
     local.file_name = file_name;
-    if (local.recursive_scan || local.first_wrapper_only || local.all_types_scan ||
-        local.overlay_scan || local.resources_scan || local.archives_scan) {
+    if (local.recursive_scan || local.first_wrapper_only || local.all_types_scan || local.overlay_scan || local.resources_scan || local.archives_scan) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "DIE debugger requires a single input pass");
         goto done;
     }
-    if (local.offset < 0 || local.size < -1 ||
-        (local.size >= 0 && local.offset > INT64_MAX - local.size)) {
+    if (local.offset < 0 || local.size < -1 || (local.size >= 0 && local.offset > INT64_MAX - local.size)) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Invalid DIE debugger input range");
         goto done;
     }

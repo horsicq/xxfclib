@@ -6,12 +6,10 @@
 
 #include "xx_die_engine_api_internal.h"
 
-static const ApiEntry g_dex_api_table[] = {
-    {"isDexStringPresent", A_isDexStringPresent, 1},
-    {"isDexItemStringPresent", A_isDexItemStringPresent, 1},
-    {"getMapItemsHash", A_getMapItemsHash, 0},
-    {NULL, A_NONE, 0}
-};
+static const ApiEntry g_dex_api_table[] = {{"isDexStringPresent", A_isDexStringPresent, 1},
+                                           {"isDexItemStringPresent", A_isDexItemStringPresent, 1},
+                                           {"getMapItemsHash", A_getMapItemsHash, 0},
+                                           {NULL, A_NONE, 0}};
 
 void die_engine_api_register_dex(JSCtx *pCtx, JSVal object)
 {
@@ -40,12 +38,9 @@ bool die_engine_api_dispatch_dex(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int 
             return true;
         }
 
-        case A_getMapItemsHash:
-            *pResult = js_num((double)(pEngine->bHasDex ? xx_dex_get_map_hash(&pEngine->dex) : 0));
-            return true;
+        case A_getMapItemsHash: *pResult = js_num((double)(pEngine->bHasDex ? xx_dex_get_map_hash(&pEngine->dex) : 0)); return true;
 
-        default:
-            break;
+        default: break;
     }
 
     return false;

@@ -17,7 +17,6 @@ xx_file_type_t xx_scan_type_detect_dex(const uint8_t *head, size_t head_size)
 
 xx_file_type_t xx_scan_type_detect_pyc(const uint8_t *head, size_t head_size)
 {
-    return head_size >= 4U && head[2] == 0x0dU && head[3] == 0x0aU &&
-                   xx_pyc_is_known_magic((uint16_t)head[0] | ((uint16_t)head[1] << 8U)) ?
-               XX_FILE_TYPE_PYC : XX_FILE_TYPE_UNKNOWN;
+    return head_size >= 4U && head[2] == 0x0dU && head[3] == 0x0aU && xx_pyc_is_known_magic((uint16_t)head[0] | ((uint16_t)head[1] << 8U)) ? XX_FILE_TYPE_PYC
+                                                                                                                                           : XX_FILE_TYPE_UNKNOWN;
 }

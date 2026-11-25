@@ -139,7 +139,8 @@ static char *xx_cork_member_name(const uint8_t *field)
     while (length < XX_CORK_NAME_FIELD && field[length] != 0U) ++length;
     for (index = 0U; index < length; ++index) {
         uint8_t c = field[index];
-        buffer[index] = (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') ? '_' : (char)c;
+        buffer[index] =
+            (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') ? '_' : (char)c;
     }
     buffer[length] = '\0';
     while (length > 0U && (buffer[length - 1U] == ' ' || buffer[length - 1U] == '.')) buffer[--length] = '\0';

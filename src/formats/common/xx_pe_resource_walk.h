@@ -27,7 +27,7 @@ typedef struct rw_leaf_info {
     uint32_t type_id;      /* 0 for a string-named type */
     const char *name;      /* NULL for a numbered entry */
     uint32_t name_id;      /* 0 for a string-named entry */
-    int64_t at; /* the data, relative to the carrier's base */
+    int64_t at;            /* the data, relative to the carrier's base */
     uint32_t bytes;
 } rw_leaf_info;
 

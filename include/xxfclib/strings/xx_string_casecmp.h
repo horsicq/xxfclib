@@ -35,16 +35,10 @@ extern "C" {
 #endif
 
 /** @brief YARA-X `haystack icontains needle`; an empty needle matches. */
-XXFC_API bool xx_string_unicode_icontains(const uint8_t *haystack,
-                                          size_t haystack_length,
-                                          const uint8_t *needle,
-                                          size_t needle_length);
+XXFC_API bool xx_string_unicode_icontains(const uint8_t *haystack, size_t haystack_length, const uint8_t *needle, size_t needle_length);
 
 /** @brief YARA-X `haystack istartswith prefix`. */
-XXFC_API bool xx_string_unicode_istarts_with(const uint8_t *haystack,
-                                             size_t haystack_length,
-                                             const uint8_t *prefix,
-                                             size_t prefix_length);
+XXFC_API bool xx_string_unicode_istarts_with(const uint8_t *haystack, size_t haystack_length, const uint8_t *prefix, size_t prefix_length);
 
 /**
  * @brief YARA-X `haystack iendswith suffix`.
@@ -52,14 +46,10 @@ XXFC_API bool xx_string_unicode_istarts_with(const uint8_t *haystack,
  * Items are taken from the end with bstr's decode_last_utf8 rules, as
  * YARA-X does.
  */
-XXFC_API bool xx_string_unicode_iends_with(const uint8_t *haystack,
-                                           size_t haystack_length,
-                                           const uint8_t *suffix,
-                                           size_t suffix_length);
+XXFC_API bool xx_string_unicode_iends_with(const uint8_t *haystack, size_t haystack_length, const uint8_t *suffix, size_t suffix_length);
 
 /** @brief YARA-X `lhs iequals rhs`. */
-XXFC_API bool xx_string_unicode_iequals(const uint8_t *lhs, size_t lhs_length,
-                                        const uint8_t *rhs, size_t rhs_length);
+XXFC_API bool xx_string_unicode_iequals(const uint8_t *lhs, size_t lhs_length, const uint8_t *rhs, size_t rhs_length);
 
 #ifdef __cplusplus
 }

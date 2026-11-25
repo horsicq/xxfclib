@@ -841,7 +841,8 @@ static bool epsf_write_all(xx_io_device *destination, const uint8_t *data, size_
 }
 
 /* Decode a member completely in memory and verify it. */
-static bool epsf_decode_member(Abstractformat *format, const epsf_stream *stream, const epsf_member *member, uint64_t limit, uint8_t **plain, size_t *plain_size, xx_pd_struct *pd)
+static bool epsf_decode_member(Abstractformat *format, const epsf_stream *stream, const epsf_member *member, uint64_t limit, uint8_t **plain, size_t *plain_size,
+                               xx_pd_struct *pd)
 {
     uint8_t *packed = NULL;
     uint8_t *output = NULL;
@@ -850,14 +851,13 @@ static bool epsf_decode_member(Abstractformat *format, const epsf_stream *stream
     *plain = NULL;
     *plain_size = 0U;
     if (xx_pd_is_stopped(pd) || member->original_size > limit || member->original_size > EPSF_MAX_MEMBER || member->original_size > (uint64_t)SIZE_MAX - 1U) return false;
-    if(member->kind==EPSF_KIND_ARCV && member->method==2U && !member->check && member->packed_size<=UINT32_MAX && member->data_offset>=40) {
+    if (member->kind == EPSF_KIND_ARCV && member->method == 2U && !member->check && member->packed_size <= UINT32_MAX && member->data_offset >= 40) {
         uint8_t h[40];
-        if(epsf_read_at(format->device,member->data_offset-40,h,sizeof(h)) &&
-           xx_data_get_u32(h,4,0,false)==UINT32_MAX && xx_data_get_u32(h+4,4,0,false)==2U &&
-           !xx_rt_memcmp(h+8,"DATA",4U) && (h[12]&0xffU)==1U &&
-           xx_data_get_u32(h+20,4,0,false)==member->packed_size && !xx_data_get_u32(h+28,4,0,false))
-            return xx_arcv4_recover_split_prefix(format,member->data_offset,(uint32_t)member->packed_size,
-                (uint32_t)member->original_size,member->method,member->name,plain,plain_size,pd);
+        if (epsf_read_at(format->device, member->data_offset - 40, h, sizeof(h)) && xx_data_get_u32(h, 4, 0, false) == UINT32_MAX &&
+            xx_data_get_u32(h + 4, 4, 0, false) == 2U && !xx_rt_memcmp(h + 8, "DATA", 4U) && (h[12] & 0xffU) == 1U &&
+            xx_data_get_u32(h + 20, 4, 0, false) == member->packed_size && !xx_data_get_u32(h + 28, 4, 0, false))
+            return xx_arcv4_recover_split_prefix(format, member->data_offset, (uint32_t)member->packed_size, (uint32_t)member->original_size, member->method,
+                                                 member->name, plain, plain_size, pd);
     }
     if (member->kind == EPSF_KIND_SCRIPT) {
         size_t decoded = 0U;

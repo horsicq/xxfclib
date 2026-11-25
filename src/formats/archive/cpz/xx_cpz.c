@@ -136,7 +136,8 @@ static char *xx_cpz_member_name(const uint8_t *field, size_t ordinal)
     while (length < XX_CPZ_NAME_FIELD && field[length] != 0U) ++length;
     for (index = 0U; index < length; ++index) {
         uint8_t c = field[index];
-        buffer[index] = (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') ? '_' : (char)c;
+        buffer[index] =
+            (c < 0x20U || c == 0x7FU || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') ? '_' : (char)c;
     }
     buffer[length] = '\0';
     while (length > 0U && (buffer[length - 1U] == ' ' || buffer[length - 1U] == '.')) buffer[--length] = '\0';
@@ -285,8 +286,8 @@ static bool xx_cpz_decode(Abstractformat *self, const xx_cpz_member *member, uin
         xx_mem_free(input);
         return false;
     }
-    if (member->uncompressed_size != 0 &&
-        (!xx_dcl_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written) || written != (size_t)member->uncompressed_size)) {
+    if (member->uncompressed_size != 0 && (!xx_dcl_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written) ||
+                                           written != (size_t)member->uncompressed_size)) {
         xx_mem_free(output);
         xx_mem_free(input);
         return false;
@@ -426,8 +427,8 @@ static bool xx_cpz_set_record(xx_archive_record *record, const xx_cpz_member *me
             * low half (the reverse of the usual packing), so they are taken that way. */
            xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->dos_stamp & 0xFFFFU) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, (member->dos_stamp >> 16) & 0xFFFFU) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->attributes) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
 static bool xx_cpz_copy_options(xx_list_s *target, const xx_list_s *options)

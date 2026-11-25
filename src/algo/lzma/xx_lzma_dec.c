@@ -30,9 +30,17 @@
 #include "Lzma2Dec.c"
 
 /* Memory allocator adapter for 7-Zip CLzmaDec */
-static void *xx_sz_alloc(ISzAllocPtr p, size_t size) { (void)p; return xx_mem_alloc(size); }
-static void xx_sz_free(ISzAllocPtr p, void *address) { (void)p; xx_mem_free(address); }
-static const ISzAlloc g_xx_sz_alloc = { xx_sz_alloc, xx_sz_free };
+static void *xx_sz_alloc(ISzAllocPtr p, size_t size)
+{
+    (void)p;
+    return xx_mem_alloc(size);
+}
+static void xx_sz_free(ISzAllocPtr p, void *address)
+{
+    (void)p;
+    xx_mem_free(address);
+}
+static const ISzAlloc g_xx_sz_alloc = {xx_sz_alloc, xx_sz_free};
 
 /* =========================================================================
  * Range decoder
@@ -48,8 +56,7 @@ static bool rd_refill(lzma_range_dec *rd)
         if (rd->ibuf_capacity < (256 * 1024)) rd->ibuf_capacity = (256 * 1024);
         /* No more than a sized stream, or the memory input, still holds. */
         if (rd->remaining >= 0) rd->ibuf_capacity = xx_io_buffer_size_for(rd->ibuf_capacity, (uint64_t)rd->remaining);
-        if (!rd->dev && rd->mem && rd->mem_pos <= rd->mem_size)
-            rd->ibuf_capacity = xx_io_buffer_size_for(rd->ibuf_capacity, (uint64_t)(rd->mem_size - rd->mem_pos));
+        if (!rd->dev && rd->mem && rd->mem_pos <= rd->mem_size) rd->ibuf_capacity = xx_io_buffer_size_for(rd->ibuf_capacity, (uint64_t)(rd->mem_size - rd->mem_pos));
         rd->ibuf = (uint8_t *)xx_mem_alloc(rd->ibuf_capacity);
         if (!rd->ibuf) {
             xx_io_note_alloc_failure();
@@ -222,7 +229,6 @@ static bool flush_direct(lzma_out *o, const uint8_t *src, size_t count)
  * Decoder state lifecycle
  * ========================================================================= */
 
-
 static bool lzma_dict_flush(lzma_decoder *dec, lzma_out *o)
 {
     while (dec->dec.dicPos > dec->dict_flush_pos) {
@@ -235,7 +241,6 @@ static bool lzma_dict_flush(lzma_decoder *dec, lzma_out *o)
     }
     return true;
 }
-
 
 lzma_decoder *lzma_dec_create(const lzma_props *props)
 {

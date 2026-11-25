@@ -93,8 +93,7 @@ static bool macho_relative_range(const Abstractformat *format, uint64_t offset, 
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     available = (uint64_t)(total - format->base_address);
-    if (format->base_info_handled && format->format_size >= 0 &&
-        (uint64_t)format->format_size < available) {
+    if (format->base_info_handled && format->format_size >= 0 && (uint64_t)format->format_size < available) {
         available = (uint64_t)format->format_size;
     }
     return offset <= available && size <= available - offset;
@@ -189,22 +188,19 @@ static bool macho_layout_parse(xx_macho *macho, macho_exception_layout *layout)
     }
     layout->is_64 = magic == XX_MACHO_MAGIC_64 || magic == XX_MACHO_CIGAM_64;
     header_size = layout->is_64 ? 32U : 28U;
-    if (!macho_read_u32(format, 16U, layout->big_endian, &command_count) ||
-        !macho_read_u32(format, 20U, layout->big_endian, &commands_size) ||
-        command_count > UINT32_C(65536) || commands_size < (uint64_t)command_count * 8U ||
-        !macho_relative_range(format, header_size, commands_size)) return false;
+    if (!macho_read_u32(format, 16U, layout->big_endian, &command_count) || !macho_read_u32(format, 20U, layout->big_endian, &commands_size) ||
+        command_count > UINT32_C(65536) || commands_size < (uint64_t)command_count * 8U || !macho_relative_range(format, header_size, commands_size))
+        return false;
     cursor = header_size;
     commands_end = header_size + commands_size;
     for (command_index = 0U; command_index < command_count; ++command_index) {
         uint32_t command, command_size;
-        if (!macho_read_u32(format, cursor, layout->big_endian, &command) ||
-            !macho_read_u32(format, cursor + 4U, layout->big_endian, &command_size) ||
+        if (!macho_read_u32(format, cursor, layout->big_endian, &command) || !macho_read_u32(format, cursor + 4U, layout->big_endian, &command_size) ||
             command_size < 8U || command_size > commands_end - cursor) {
             macho_layout_free(layout);
             return false;
         }
-        if ((!layout->is_64 && command == XX_MACHO_LOAD_SEGMENT) ||
-            (layout->is_64 && command == XX_MACHO_LOAD_SEGMENT_64)) {
+        if ((!layout->is_64 && command == XX_MACHO_LOAD_SEGMENT) || (layout->is_64 && command == XX_MACHO_LOAD_SEGMENT_64)) {
             uint64_t segment_header = layout->is_64 ? 72U : 56U;
             uint64_t section_size = layout->is_64 ? 80U : 68U;
             uint64_t virtual_address, virtual_size, file_offset, file_size;
@@ -215,10 +211,8 @@ static bool macho_layout_parse(xx_macho *macho, macho_exception_layout *layout)
             }
             if (layout->is_64) {
                 if (!macho_read_u64(format, cursor + 24U, layout->big_endian, &virtual_address) ||
-                    !macho_read_u64(format, cursor + 32U, layout->big_endian, &virtual_size) ||
-                    !macho_read_u64(format, cursor + 40U, layout->big_endian, &file_offset) ||
-                    !macho_read_u64(format, cursor + 48U, layout->big_endian, &file_size) ||
-                    !macho_read_u32(format, cursor + 64U, layout->big_endian, &section_count)) {
+                    !macho_read_u64(format, cursor + 32U, layout->big_endian, &virtual_size) || !macho_read_u64(format, cursor + 40U, layout->big_endian, &file_offset) ||
+                    !macho_read_u64(format, cursor + 48U, layout->big_endian, &file_size) || !macho_read_u32(format, cursor + 64U, layout->big_endian, &section_count)) {
                     macho_layout_free(layout);
                     return false;
                 }
@@ -239,17 +233,15 @@ static bool macho_layout_parse(xx_macho *macho, macho_exception_layout *layout)
                     return false;
                 }
                 file_offset = value;
-                if (!macho_read_u32(format, cursor + 36U, layout->big_endian, &value) ||
-                    !macho_read_u32(format, cursor + 48U, layout->big_endian, &section_count)) {
+                if (!macho_read_u32(format, cursor + 36U, layout->big_endian, &value) || !macho_read_u32(format, cursor + 48U, layout->big_endian, &section_count)) {
                     macho_layout_free(layout);
                     return false;
                 }
                 file_size = value;
             }
-            if (section_count > MACHO_EXCEPTION_SECTION_LIMIT - layout->section_count ||
-                (uint64_t)section_count > (UINT64_MAX - segment_header) / section_size ||
-                segment_header + (uint64_t)section_count * section_size > command_size ||
-                !macho_relative_range(format, file_offset, file_size) || virtual_size < file_size) {
+            if (section_count > MACHO_EXCEPTION_SECTION_LIMIT - layout->section_count || (uint64_t)section_count > (UINT64_MAX - segment_header) / section_size ||
+                segment_header + (uint64_t)section_count * section_size > command_size || !macho_relative_range(format, file_offset, file_size) ||
+                virtual_size < file_size) {
                 macho_layout_free(layout);
                 return false;
             }
@@ -266,8 +258,7 @@ static bool macho_layout_parse(xx_macho *macho, macho_exception_layout *layout)
                     return false;
                 }
                 if (layout->is_64) {
-                    if (!macho_read_u64(format, at + 32U, layout->big_endian, &section.address) ||
-                        !macho_read_u64(format, at + 40U, layout->big_endian, &section.size) ||
+                    if (!macho_read_u64(format, at + 32U, layout->big_endian, &section.address) || !macho_read_u64(format, at + 40U, layout->big_endian, &section.size) ||
                         !macho_read_u32(format, at + 48U, layout->big_endian, &value)) {
                         macho_layout_free(layout);
                         return false;
@@ -321,16 +312,15 @@ static const macho_exception_section *macho_find_section(const macho_exception_l
 
 static bool macho_section_u32(const macho_exception_layout *layout, const macho_exception_section *section, uint64_t offset, uint32_t *value)
 {
-    if (!layout || !section || !value || offset > section->size || section->size - offset < 4U ||
-        section->offset > UINT64_MAX - offset) return false;
+    if (!layout || !section || !value || offset > section->size || section->size - offset < 4U || section->offset > UINT64_MAX - offset) return false;
     return macho_read_u32(layout->format, section->offset + offset, layout->big_endian, value);
 }
 
 static bool macho_eh_u8(macho_eh_reader *reader, uint8_t *value)
 {
-    if (!reader || !value || reader->position >= reader->end ||
-        reader->section->offset > UINT64_MAX - reader->position ||
-        !macho_read_u8(reader->layout->format, reader->section->offset + reader->position, value)) return false;
+    if (!reader || !value || reader->position >= reader->end || reader->section->offset > UINT64_MAX - reader->position ||
+        !macho_read_u8(reader->layout->format, reader->section->offset + reader->position, value))
+        return false;
     ++reader->position;
     return true;
 }
@@ -416,7 +406,8 @@ static bool macho_eh_encoded(macho_eh_reader *reader, uint8_t encoding, uint64_t
     size_t size = 0U;
     bool is_signed = false;
     if (!reader || !value || encoding == MACHO_DW_EH_PE_OMIT || reader->position >= reader->end ||
-        !macho_add_u64(reader->section->address, reader->position, &field_address)) return false;
+        !macho_add_u64(reader->section->address, reader->position, &field_address))
+        return false;
     switch (encoding & UINT8_C(0x0f)) {
         case MACHO_DW_EH_PE_ABSPTR:
             size = reader->bits / 8U;
@@ -433,9 +424,18 @@ static bool macho_eh_encoded(macho_eh_reader *reader, uint8_t encoding, uint64_t
             raw = (uint64_t)signed_raw;
             is_signed = true;
             goto decoded;
-        case MACHO_DW_EH_PE_SDATA2: size = 2U; is_signed = true; break;
-        case MACHO_DW_EH_PE_SDATA4: size = 4U; is_signed = true; break;
-        case MACHO_DW_EH_PE_SDATA8: size = 8U; is_signed = true; break;
+        case MACHO_DW_EH_PE_SDATA2:
+            size = 2U;
+            is_signed = true;
+            break;
+        case MACHO_DW_EH_PE_SDATA4:
+            size = 4U;
+            is_signed = true;
+            break;
+        case MACHO_DW_EH_PE_SDATA8:
+            size = 8U;
+            is_signed = true;
+            break;
         default: return false;
     }
     if (!macho_eh_fixed(reader, size, &raw)) return false;
@@ -497,9 +497,8 @@ static bool macho_type_is_catch_all(const macho_eh_reader *lsda, uint64_t type_t
     return true;
 }
 
-static bool macho_add_action(macho_exception_stream *stream, const macho_eh_reader *lsda, uint64_t action_table,
-                             uint64_t type_table, uint8_t type_encoding, uint64_t action,
-                             uint64_t source, uint64_t from, uint64_t to, uint64_t handler)
+static bool macho_add_action(macho_exception_stream *stream, const macho_eh_reader *lsda, uint64_t action_table, uint64_t type_table, uint8_t type_encoding,
+                             uint64_t action, uint64_t source, uint64_t from, uint64_t to, uint64_t handler)
 {
     uint64_t record;
     unsigned int depth;
@@ -532,8 +531,7 @@ static bool macho_add_action(macho_exception_stream *stream, const macho_eh_read
         region.handler = handler;
         region.type_filter = type_filter;
         region.kind = type_filter < 0 ? XX_MACHO_EXCEPTION_FILTER : XX_MACHO_EXCEPTION_CATCH;
-        if (!macho_type_is_catch_all(lsda, type_table, type_encoding, type_filter, &region.catch_all) ||
-            !macho_append_region(stream, &region)) return false;
+        if (!macho_type_is_catch_all(lsda, type_table, type_encoding, type_filter, &region.catch_all) || !macho_append_region(stream, &region)) return false;
         if (!next) return true;
         if (!macho_add_s64(next_field, next, &target) || target < action_table || target >= lsda->end) return false;
         record = target;
@@ -547,15 +545,15 @@ static bool macho_relocate_to_module(const macho_exception_layout *layout, uint6
     return macho_add_u64(layout->module_base, preferred_address - layout->preferred_base, module_address);
 }
 
-static bool macho_parse_lsda(const macho_exception_layout *layout, const macho_exception_section *section,
-                             macho_exception_stream *stream, uint64_t function_offset, uint64_t lsda_address)
+static bool macho_parse_lsda(const macho_exception_layout *layout, const macho_exception_section *section, macho_exception_stream *stream, uint64_t function_offset,
+                             uint64_t lsda_address)
 {
     macho_eh_reader reader;
     uint64_t source, preferred_function, lpstart, type_table = 0U, callsite_size, callsite_end, action_table;
     uint8_t lp_encoding, type_encoding, callsite_encoding;
-    if (!layout || !section || !stream || lsda_address < section->address ||
-        !macho_add_u64(layout->module_base, function_offset, &source) ||
-        !macho_add_u64(layout->preferred_base, function_offset, &preferred_function)) return false;
+    if (!layout || !section || !stream || lsda_address < section->address || !macho_add_u64(layout->module_base, function_offset, &source) ||
+        !macho_add_u64(layout->preferred_base, function_offset, &preferred_function))
+        return false;
     memset(&reader, 0, sizeof(reader));
     reader.layout = layout;
     reader.section = section;
@@ -570,8 +568,7 @@ static bool macho_parse_lsda(const macho_exception_layout *layout, const macho_e
     lpstart = source;
     if (lp_encoding != MACHO_DW_EH_PE_OMIT) {
         uint64_t preferred_lp;
-        if (!macho_eh_encoded(&reader, lp_encoding, &preferred_lp, true) ||
-            !macho_relocate_to_module(layout, preferred_lp, &lpstart)) return false;
+        if (!macho_eh_encoded(&reader, lp_encoding, &preferred_lp, true) || !macho_relocate_to_module(layout, preferred_lp, &lpstart)) return false;
     }
     if (!macho_eh_u8(&reader, &type_encoding)) return false;
     if (type_encoding != MACHO_DW_EH_PE_OMIT) {
@@ -579,21 +576,18 @@ static bool macho_parse_lsda(const macho_exception_layout *layout, const macho_e
         if (!macho_eh_uleb(&reader, &type_offset) || type_offset > reader.end - reader.position) return false;
         type_table = reader.position + type_offset;
     }
-    if (!macho_eh_u8(&reader, &callsite_encoding) || !macho_eh_uleb(&reader, &callsite_size) ||
-        callsite_size > reader.end - reader.position) return false;
+    if (!macho_eh_u8(&reader, &callsite_encoding) || !macho_eh_uleb(&reader, &callsite_size) || callsite_size > reader.end - reader.position) return false;
     callsite_end = reader.position + callsite_size;
     action_table = callsite_end;
     while (reader.position < callsite_end) {
         uint64_t start, length, landing, action, from, to, handler;
-        if (!macho_eh_encoded(&reader, callsite_encoding, &start, false) ||
-            !macho_eh_encoded(&reader, callsite_encoding, &length, false) ||
-            !macho_eh_encoded(&reader, callsite_encoding, &landing, false) ||
-            !macho_eh_uleb(&reader, &action) || reader.position > callsite_end) return false;
+        if (!macho_eh_encoded(&reader, callsite_encoding, &start, false) || !macho_eh_encoded(&reader, callsite_encoding, &length, false) ||
+            !macho_eh_encoded(&reader, callsite_encoding, &landing, false) || !macho_eh_uleb(&reader, &action) || reader.position > callsite_end)
+            return false;
         if (!landing) continue;
-        if (!macho_add_u64(source, start, &from) || !macho_add_u64(from, length, &to) ||
-            !macho_add_u64(lpstart, landing, &handler) || to < from ||
-            !macho_add_action(stream, &reader, action_table, type_table, type_encoding, action,
-                              source, from, to, handler)) return false;
+        if (!macho_add_u64(source, start, &from) || !macho_add_u64(from, length, &to) || !macho_add_u64(lpstart, landing, &handler) || to < from ||
+            !macho_add_action(stream, &reader, action_table, type_table, type_encoding, action, source, from, to, handler))
+            return false;
     }
     return reader.position == callsite_end;
 }
@@ -610,30 +604,26 @@ static bool macho_collect_exceptions(xx_macho *macho, macho_exception_stream *st
     if (!macho_layout_parse(macho, &layout)) return false;
     if (layout.unwind_index == SIZE_MAX) goto done;
     unwind = &layout.sections[layout.unwind_index];
-    if (unwind->size < 28U ||
-        !macho_section_u32(&layout, unwind, 0U, &version) ||
-        !macho_section_u32(&layout, unwind, 20U, &index_offset) ||
-        !macho_section_u32(&layout, unwind, 24U, &index_count) ||
-        version != 1U || index_count < 2U || index_count > MACHO_EXCEPTION_INDEX_LIMIT ||
-        (uint64_t)index_count > unwind->size / 12U ||
-        index_offset > unwind->size - (uint64_t)index_count * 12U) goto done;
+    if (unwind->size < 28U || !macho_section_u32(&layout, unwind, 0U, &version) || !macho_section_u32(&layout, unwind, 20U, &index_offset) ||
+        !macho_section_u32(&layout, unwind, 24U, &index_count) || version != 1U || index_count < 2U || index_count > MACHO_EXCEPTION_INDEX_LIMIT ||
+        (uint64_t)index_count > unwind->size / 12U || index_offset > unwind->size - (uint64_t)index_count * 12U)
+        goto done;
     for (index = 0U; index + 1U < index_count && !xx_pd_is_stopped(pd); ++index) {
         uint64_t entry = (uint64_t)index_offset + (uint64_t)index * 12U;
         uint32_t lsda_offset, next_lsda_offset;
         uint64_t at;
-        if (!macho_section_u32(&layout, unwind, entry + 8U, &lsda_offset) ||
-            !macho_section_u32(&layout, unwind, entry + 20U, &next_lsda_offset) ||
-            lsda_offset > next_lsda_offset || next_lsda_offset > unwind->size ||
-            (next_lsda_offset - lsda_offset) % 8U != 0U) continue;
+        if (!macho_section_u32(&layout, unwind, entry + 8U, &lsda_offset) || !macho_section_u32(&layout, unwind, entry + 20U, &next_lsda_offset) ||
+            lsda_offset > next_lsda_offset || next_lsda_offset > unwind->size || (next_lsda_offset - lsda_offset) % 8U != 0U)
+            continue;
         for (at = lsda_offset; at < next_lsda_offset && !xx_pd_is_stopped(pd); at += 8U) {
             uint32_t function_offset, lsda_offset_from_base;
             uint64_t lsda_address;
             const macho_exception_section *section;
             size_t before;
             if (++lsda_seen > MACHO_EXCEPTION_LSDA_LIMIT) goto done;
-            if (!macho_section_u32(&layout, unwind, at, &function_offset) ||
-                !macho_section_u32(&layout, unwind, at + 4U, &lsda_offset_from_base) ||
-                !macho_add_u64(layout.preferred_base, lsda_offset_from_base, &lsda_address)) continue;
+            if (!macho_section_u32(&layout, unwind, at, &function_offset) || !macho_section_u32(&layout, unwind, at + 4U, &lsda_offset_from_base) ||
+                !macho_add_u64(layout.preferred_base, lsda_offset_from_base, &lsda_address))
+                continue;
             section = macho_find_section(&layout, lsda_address);
             if (!section) continue;
             before = stream->count;
@@ -692,8 +682,7 @@ bool xx_macho_exception_region_move_to_next(Abstractformat *format, xx_macho_exc
 {
     macho_exception_stream *stream;
     int64_t next;
-    if (!format || !state || state->format != format || xx_pd_is_stopped(pd) ||
-        !(stream = (macho_exception_stream *)state->internal_state)) {
+    if (!format || !state || state->format != format || xx_pd_is_stopped(pd) || !(stream = (macho_exception_stream *)state->internal_state)) {
         if (state) state->has_region = false;
         return false;
     }

@@ -14,9 +14,7 @@ static size_t xx_terminal_text_size(const char *text)
     return size;
 }
 
-void xx_terminal_writer_init(xx_terminal_writer *writer,
-                             xx_terminal_write_fn write,
-                             void *context)
+void xx_terminal_writer_init(xx_terminal_writer *writer, xx_terminal_write_fn write, void *context)
 {
     if (!writer) return;
     writer->write = write;
@@ -29,9 +27,7 @@ xxfc_status_t xx_terminal_writer_status(const xx_terminal_writer *writer)
     return writer ? writer->status : XXFC_ERR_NULL_PARAM;
 }
 
-xxfc_status_t xx_terminal_writer_write(xx_terminal_writer *writer,
-                                       const char *data,
-                                       size_t size)
+xxfc_status_t xx_terminal_writer_write(xx_terminal_writer *writer, const char *data, size_t size)
 {
     xxfc_status_t status;
     if (!writer) return XXFC_ERR_NULL_PARAM;
@@ -51,9 +47,7 @@ xxfc_status_t xx_terminal_writer_write(xx_terminal_writer *writer,
 }
 
 /* Decode one shortest-form UTF-8 sequence.  Zero means invalid UTF-8. */
-static size_t xx_terminal_utf8_decode(const unsigned char *data,
-                                      size_t available,
-                                      uint32_t *codepoint)
+static size_t xx_terminal_utf8_decode(const unsigned char *data, size_t available, uint32_t *codepoint)
 {
     unsigned char first;
     uint32_t value;
@@ -83,10 +77,8 @@ static size_t xx_terminal_utf8_decode(const unsigned char *data,
         if ((data[index] & 0xc0U) != 0x80U) return 0U;
         value = (value << 6U) | (uint32_t)(data[index] & 0x3fU);
     }
-    if ((length == 2U && value < 0x80U) ||
-        (length == 3U && value < 0x800U) ||
-        (length == 4U && value < 0x10000U) ||
-        (value >= 0xd800U && value <= 0xdfffU) || value > 0x10ffffU) {
+    if ((length == 2U && value < 0x80U) || (length == 3U && value < 0x800U) || (length == 4U && value < 0x10000U) || (value >= 0xd800U && value <= 0xdfffU) ||
+        value > 0x10ffffU) {
         return 0U;
     }
     *codepoint = value;
@@ -95,32 +87,22 @@ static size_t xx_terminal_utf8_decode(const unsigned char *data,
 
 static bool xx_terminal_xml_codepoint_allowed(uint32_t codepoint)
 {
-    bool xml10 = codepoint == 0x09U || codepoint == 0x0aU ||
-                 codepoint == 0x0dU ||
-                 (codepoint >= 0x20U && codepoint <= 0xd7ffU) ||
-                 (codepoint >= 0xe000U && codepoint <= 0xfffdU) ||
-                 (codepoint >= 0x10000U && codepoint <= 0x10ffffU);
-    return xml10 && !(codepoint >= 0xfdd0U && codepoint <= 0xfdefU) &&
-           (codepoint & 0xffffU) != 0xfffeU &&
-           (codepoint & 0xffffU) != 0xffffU;
+    bool xml10 = codepoint == 0x09U || codepoint == 0x0aU || codepoint == 0x0dU || (codepoint >= 0x20U && codepoint <= 0xd7ffU) ||
+                 (codepoint >= 0xe000U && codepoint <= 0xfffdU) || (codepoint >= 0x10000U && codepoint <= 0x10ffffU);
+    return xml10 && !(codepoint >= 0xfdd0U && codepoint <= 0xfdefU) && (codepoint & 0xffffU) != 0xfffeU && (codepoint & 0xffffU) != 0xffffU;
 }
 
-xxfc_status_t xx_terminal_writer_json_string_n(xx_terminal_writer *writer,
-                                                const char *text,
-                                                size_t size)
+xxfc_status_t xx_terminal_writer_json_string_n(xx_terminal_writer *writer, const char *text, size_t size)
 {
     static const char hex[] = "0123456789ABCDEF";
     const unsigned char *data = (const unsigned char *)text;
     size_t position = 0U;
 
     if (!writer || (!text && size)) return XXFC_ERR_NULL_PARAM;
-    if (xx_terminal_writer_write(writer, "\"", 1U) != XXFC_OK)
-        return xx_terminal_writer_status(writer);
+    if (xx_terminal_writer_write(writer, "\"", 1U) != XXFC_OK) return xx_terminal_writer_status(writer);
     while (position < size && xx_terminal_writer_status(writer) == XXFC_OK) {
         uint32_t codepoint = 0U;
-        size_t sequence = xx_terminal_utf8_decode(data + position,
-                                                  size - position,
-                                                  &codepoint);
+        size_t sequence = xx_terminal_utf8_decode(data + position, size - position, &codepoint);
         const char *escape = NULL;
         size_t escape_size = 0U;
 
@@ -130,20 +112,38 @@ xxfc_status_t xx_terminal_writer_json_string_n(xx_terminal_writer *writer,
             sequence = 1U;
         } else if (sequence == 1U) {
             switch (data[position]) {
-                case '"': escape = "\\\""; escape_size = 2U; break;
-                case '\\': escape = "\\\\"; escape_size = 2U; break;
-                case '\b': escape = "\\b"; escape_size = 2U; break;
-                case '\f': escape = "\\f"; escape_size = 2U; break;
-                case '\n': escape = "\\n"; escape_size = 2U; break;
-                case '\r': escape = "\\r"; escape_size = 2U; break;
-                case '\t': escape = "\\t"; escape_size = 2U; break;
+                case '"':
+                    escape = "\\\"";
+                    escape_size = 2U;
+                    break;
+                case '\\':
+                    escape = "\\\\";
+                    escape_size = 2U;
+                    break;
+                case '\b':
+                    escape = "\\b";
+                    escape_size = 2U;
+                    break;
+                case '\f':
+                    escape = "\\f";
+                    escape_size = 2U;
+                    break;
+                case '\n':
+                    escape = "\\n";
+                    escape_size = 2U;
+                    break;
+                case '\r':
+                    escape = "\\r";
+                    escape_size = 2U;
+                    break;
+                case '\t':
+                    escape = "\\t";
+                    escape_size = 2U;
+                    break;
                 default:
                     if (data[position] < 0x20U) {
-                        char control[6] = {'\\', 'u', '0', '0',
-                                           hex[data[position] >> 4U],
-                                           hex[data[position] & 0x0fU]};
-                        (void)xx_terminal_writer_write(writer, control,
-                                                       sizeof(control));
+                        char control[6] = {'\\', 'u', '0', '0', hex[data[position] >> 4U], hex[data[position] & 0x0fU]};
+                        (void)xx_terminal_writer_write(writer, control, sizeof(control));
                         position += sequence;
                         continue;
                     }
@@ -153,28 +153,20 @@ xxfc_status_t xx_terminal_writer_json_string_n(xx_terminal_writer *writer,
         if (escape) {
             (void)xx_terminal_writer_write(writer, escape, escape_size);
         } else {
-            (void)xx_terminal_writer_write(writer,
-                                           (const char *)(data + position),
-                                           sequence);
+            (void)xx_terminal_writer_write(writer, (const char *)(data + position), sequence);
         }
         position += sequence;
     }
-    if (xx_terminal_writer_status(writer) == XXFC_OK)
-        (void)xx_terminal_writer_write(writer, "\"", 1U);
+    if (xx_terminal_writer_status(writer) == XXFC_OK) (void)xx_terminal_writer_write(writer, "\"", 1U);
     return xx_terminal_writer_status(writer);
 }
 
-xxfc_status_t xx_terminal_writer_json_string(xx_terminal_writer *writer,
-                                              const char *text)
+xxfc_status_t xx_terminal_writer_json_string(xx_terminal_writer *writer, const char *text)
 {
-    return xx_terminal_writer_json_string_n(writer, text ? text : "",
-                                             xx_terminal_text_size(text));
+    return xx_terminal_writer_json_string_n(writer, text ? text : "", xx_terminal_text_size(text));
 }
 
-static xxfc_status_t xx_terminal_writer_xml_n(xx_terminal_writer *writer,
-                                               const char *text,
-                                               size_t size,
-                                               bool attribute)
+static xxfc_status_t xx_terminal_writer_xml_n(xx_terminal_writer *writer, const char *text, size_t size, bool attribute)
 {
     const unsigned char *data = (const unsigned char *)text;
     size_t position = 0U;
@@ -182,9 +174,7 @@ static xxfc_status_t xx_terminal_writer_xml_n(xx_terminal_writer *writer,
     if (!writer || (!text && size)) return XXFC_ERR_NULL_PARAM;
     while (position < size && xx_terminal_writer_status(writer) == XXFC_OK) {
         uint32_t codepoint = 0U;
-        size_t sequence = xx_terminal_utf8_decode(data + position,
-                                                  size - position,
-                                                  &codepoint);
+        size_t sequence = xx_terminal_utf8_decode(data + position, size - position, &codepoint);
         const char *escape = NULL;
         size_t escape_size = 0U;
 
@@ -194,9 +184,18 @@ static xxfc_status_t xx_terminal_writer_xml_n(xx_terminal_writer *writer,
             sequence = sequence ? sequence : 1U;
         } else if (sequence == 1U) {
             switch (data[position]) {
-                case '&': escape = "&amp;"; escape_size = 5U; break;
-                case '<': escape = "&lt;"; escape_size = 4U; break;
-                case '>': escape = "&gt;"; escape_size = 4U; break;
+                case '&':
+                    escape = "&amp;";
+                    escape_size = 5U;
+                    break;
+                case '<':
+                    escape = "&lt;";
+                    escape_size = 4U;
+                    break;
+                case '>':
+                    escape = "&gt;";
+                    escape_size = 4U;
+                    break;
                 case '"':
                     if (attribute) {
                         escape = "&quot;";
@@ -233,41 +232,31 @@ static xxfc_status_t xx_terminal_writer_xml_n(xx_terminal_writer *writer,
         if (escape) {
             (void)xx_terminal_writer_write(writer, escape, escape_size);
         } else {
-            (void)xx_terminal_writer_write(writer,
-                                           (const char *)(data + position),
-                                           sequence);
+            (void)xx_terminal_writer_write(writer, (const char *)(data + position), sequence);
         }
         position += sequence;
     }
     return xx_terminal_writer_status(writer);
 }
 
-xxfc_status_t xx_terminal_writer_xml_text_n(xx_terminal_writer *writer,
-                                             const char *text,
-                                             size_t size)
+xxfc_status_t xx_terminal_writer_xml_text_n(xx_terminal_writer *writer, const char *text, size_t size)
 {
     return xx_terminal_writer_xml_n(writer, text, size, false);
 }
 
-xxfc_status_t xx_terminal_writer_xml_text(xx_terminal_writer *writer,
-                                           const char *text)
+xxfc_status_t xx_terminal_writer_xml_text(xx_terminal_writer *writer, const char *text)
 {
-    return xx_terminal_writer_xml_text_n(writer, text ? text : "",
-                                          xx_terminal_text_size(text));
+    return xx_terminal_writer_xml_text_n(writer, text ? text : "", xx_terminal_text_size(text));
 }
 
-xxfc_status_t xx_terminal_writer_xml_attribute_n(xx_terminal_writer *writer,
-                                                  const char *text,
-                                                  size_t size)
+xxfc_status_t xx_terminal_writer_xml_attribute_n(xx_terminal_writer *writer, const char *text, size_t size)
 {
     return xx_terminal_writer_xml_n(writer, text, size, true);
 }
 
-xxfc_status_t xx_terminal_writer_xml_attribute(xx_terminal_writer *writer,
-                                                const char *text)
+xxfc_status_t xx_terminal_writer_xml_attribute(xx_terminal_writer *writer, const char *text)
 {
-    return xx_terminal_writer_xml_attribute_n(writer, text ? text : "",
-                                               xx_terminal_text_size(text));
+    return xx_terminal_writer_xml_attribute_n(writer, text ? text : "", xx_terminal_text_size(text));
 }
 
 static bool xx_terminal_option_equals(const char *option, const char *expected)
@@ -284,8 +273,7 @@ bool xx_terminal_handle_option(const char *option)
     if (!option) {
         return false;
     }
-#if defined(_M_IX86) || (defined(_M_X64) && !defined(_M_ARM64EC)) || defined(__i386__) || \
-    (defined(__x86_64__) && !defined(_M_ARM64EC))
+#if defined(_M_IX86) || (defined(_M_X64) && !defined(_M_ARM64EC)) || defined(__i386__) || (defined(__x86_64__) && !defined(_M_ARM64EC))
     bool enable;
     if (xx_terminal_option_equals(option, "--sse2") || xx_terminal_option_equals(option, "--nosse2") || xx_terminal_option_equals(option, "--no-sse2")) {
         enable = xx_terminal_option_equals(option, "--sse2");
@@ -333,40 +321,39 @@ bool xx_terminal_handle_option(const char *option)
     }
 #elif defined(_M_ARM) || defined(_M_ARM64) || defined(_M_ARM64EC) || defined(__arm__) || defined(__aarch64__)
     bool enable;
-    if (xx_terminal_option_equals(option, "--neon") || xx_terminal_option_equals(option, "--noneon") ||
-        xx_terminal_option_equals(option, "--no-neon")) {
+    if (xx_terminal_option_equals(option, "--neon") || xx_terminal_option_equals(option, "--noneon") || xx_terminal_option_equals(option, "--no-neon")) {
         enable = xx_terminal_option_equals(option, "--neon");
         if (xx_has_neon()) {
             xx_set_neon_enabled(enable);
         }
         return true;
     }
-    if (xx_terminal_option_equals(option, "--armcrc32") || xx_terminal_option_equals(option, "--arm-crc32") ||
-        xx_terminal_option_equals(option, "--noarmcrc32") || xx_terminal_option_equals(option, "--no-arm-crc32")) {
+    if (xx_terminal_option_equals(option, "--armcrc32") || xx_terminal_option_equals(option, "--arm-crc32") || xx_terminal_option_equals(option, "--noarmcrc32") ||
+        xx_terminal_option_equals(option, "--no-arm-crc32")) {
         enable = xx_terminal_option_equals(option, "--armcrc32") || xx_terminal_option_equals(option, "--arm-crc32");
         if (xx_has_arm_crc32()) {
             xx_set_arm_crc32_enabled(enable);
         }
         return true;
     }
-    if (xx_terminal_option_equals(option, "--armcrypto") || xx_terminal_option_equals(option, "--arm-crypto") ||
-        xx_terminal_option_equals(option, "--noarmcrypto") || xx_terminal_option_equals(option, "--no-arm-crypto")) {
+    if (xx_terminal_option_equals(option, "--armcrypto") || xx_terminal_option_equals(option, "--arm-crypto") || xx_terminal_option_equals(option, "--noarmcrypto") ||
+        xx_terminal_option_equals(option, "--no-arm-crypto")) {
         enable = xx_terminal_option_equals(option, "--armcrypto") || xx_terminal_option_equals(option, "--arm-crypto");
         if (xx_has_arm_crypto()) {
             xx_set_arm_crypto_enabled(enable);
         }
         return true;
     }
-    if (xx_terminal_option_equals(option, "--armdotprod") || xx_terminal_option_equals(option, "--arm-dotprod") ||
-        xx_terminal_option_equals(option, "--noarmdotprod") || xx_terminal_option_equals(option, "--no-arm-dotprod")) {
+    if (xx_terminal_option_equals(option, "--armdotprod") || xx_terminal_option_equals(option, "--arm-dotprod") || xx_terminal_option_equals(option, "--noarmdotprod") ||
+        xx_terminal_option_equals(option, "--no-arm-dotprod")) {
         enable = xx_terminal_option_equals(option, "--armdotprod") || xx_terminal_option_equals(option, "--arm-dotprod");
         if (xx_has_arm_dotprod()) {
             xx_set_arm_dotprod_enabled(enable);
         }
         return true;
     }
-    if (xx_terminal_option_equals(option, "--armpmull") || xx_terminal_option_equals(option, "--arm-pmull") ||
-        xx_terminal_option_equals(option, "--noarmpmull") || xx_terminal_option_equals(option, "--no-arm-pmull")) {
+    if (xx_terminal_option_equals(option, "--armpmull") || xx_terminal_option_equals(option, "--arm-pmull") || xx_terminal_option_equals(option, "--noarmpmull") ||
+        xx_terminal_option_equals(option, "--no-arm-pmull")) {
         enable = xx_terminal_option_equals(option, "--armpmull") || xx_terminal_option_equals(option, "--arm-pmull");
         if (xx_has_arm_pmull()) {
             xx_set_arm_pmull_enabled(enable);
@@ -464,15 +451,13 @@ static bool xx_terminal_ansi_color_valid(xx_terminal_ansi_color_t color)
     return code == 0U || (code >= 30U && code <= 37U) || (code >= 90U && code <= 97U);
 }
 
-xxfc_status_t xx_terminal_writer_ansi_style(xx_terminal_writer *writer,
-    xx_terminal_ansi_color_t foreground, uint32_t flags)
+xxfc_status_t xx_terminal_writer_ansi_style(xx_terminal_writer *writer, xx_terminal_ansi_color_t foreground, uint32_t flags)
 {
     char sequence[9];
     size_t length = 0U;
     unsigned int code = (unsigned int)foreground;
     if (!writer) return XXFC_ERR_NULL_PARAM;
-    if (!xx_terminal_ansi_color_valid(foreground) || (flags & ~XX_TERMINAL_ANSI_BOLD))
-        return XXFC_ERR_INVALID_ARG;
+    if (!xx_terminal_ansi_color_valid(foreground) || (flags & ~XX_TERMINAL_ANSI_BOLD)) return XXFC_ERR_INVALID_ARG;
     if (code) {
         sequence[length++] = '\033';
         sequence[length++] = '[';
@@ -494,8 +479,7 @@ xxfc_status_t xx_terminal_writer_ansi_reset(xx_terminal_writer *writer)
     return xx_terminal_writer_write(writer, "\033[0m", 4U);
 }
 
-xxfc_status_t xx_terminal_writer_ansi_span(xx_terminal_writer *writer,
-    const char *text, size_t size, xx_terminal_ansi_color_t foreground, uint32_t flags)
+xxfc_status_t xx_terminal_writer_ansi_span(xx_terminal_writer *writer, const char *text, size_t size, xx_terminal_ansi_color_t foreground, uint32_t flags)
 {
     xxfc_status_t status;
     if (!writer || (!text && size)) return XXFC_ERR_NULL_PARAM;
@@ -505,8 +489,7 @@ xxfc_status_t xx_terminal_writer_ansi_span(xx_terminal_writer *writer,
     return xx_terminal_writer_ansi_reset(writer);
 }
 
-xxfc_status_t xx_terminal_writer_ansi_link_begin(xx_terminal_writer *writer,
-    const char *url, size_t size)
+xxfc_status_t xx_terminal_writer_ansi_link_begin(xx_terminal_writer *writer, const char *url, size_t size)
 {
     if (!writer) return XXFC_ERR_NULL_PARAM;
     (void)xx_terminal_writer_write(writer, "\033]8;;", 5U);

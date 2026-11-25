@@ -328,7 +328,8 @@ static xx_ibmzpak_stream *xx_ibmzpak_parse_width(Abstractformat *self, xx_pd_str
 
         if (pd && xx_pd_is_stopped(pd)) goto fail;
         entry_offset = directory_offset + index * (int64_t)(name_size + 8U);
-        if (!xx_ibmzpak_range_within(span, entry_offset, (int64_t)(name_size + 8U)) || !xx_ibmzpak_read_at(self, self->base_address + entry_offset, entry, name_size + 8U)) {
+        if (!xx_ibmzpak_range_within(span, entry_offset, (int64_t)(name_size + 8U)) ||
+            !xx_ibmzpak_read_at(self, self->base_address + entry_offset, entry, name_size + 8U)) {
             goto fail;
         }
 
@@ -377,8 +378,7 @@ static xx_ibmzpak_stream *xx_ibmzpak_parse_width(Abstractformat *self, xx_pd_str
         member.uncompressed_size = (int64_t)produced;
         member.method = XX_IBMZPAK_METHOD_DCL;
         /* Date at +0x54, time at +0x56, published as the usual packed dword. */
-        member.timestamp =
-            ((uint64_t)xx_data_get_u16(entry + name_size + 4U, 2, 0, false) << 16) | (uint64_t)xx_data_get_u16(entry + name_size + 6U, 2, 0, false);
+        member.timestamp = ((uint64_t)xx_data_get_u16(entry + name_size + 4U, 2, 0, false) << 16) | (uint64_t)xx_data_get_u16(entry + name_size + 6U, 2, 0, false);
         member.is_folder = false;
         if (!xx_ibmzpak_add(stream, &member)) {
             xx_str_free(name);

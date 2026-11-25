@@ -85,8 +85,7 @@ JSVal js_regex_string_split(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv,
             }
             js_set_index(pCtx, result, nCount++, js_strn(pCtx, pData + nLast, (size_t)pCaps[0] - nLast));
             for (g = 1; g <= nGroups && nCount < nLimit; g++) {
-                js_set_index(pCtx, result, nCount++, pCaps[g * 2] >= 0 ?
-                    js_strn(pCtx, pData + pCaps[g * 2], (size_t)(pCaps[g * 2 + 1] - pCaps[g * 2])) : js_undefined());
+                js_set_index(pCtx, result, nCount++, pCaps[g * 2] >= 0 ? js_strn(pCtx, pData + pCaps[g * 2], (size_t)(pCaps[g * 2 + 1] - pCaps[g * 2])) : js_undefined());
             }
             nLast = (size_t)pCaps[1];
             nPos = nLast;
@@ -159,8 +158,7 @@ static JSRegExp *coerce_regexp(JSCtx *pCtx, JSVal value, JSVal *pOwned)
 
     {
         JSVal text = value.tag == JT_UNDEF ? js_str(pCtx, "") : js_to_string(pCtx, value);
-        JSVal created = pCtx->bException ? js_undefined() :
-            js_new_regexp_n_val(pCtx, js_str_data(text), js_str_len(text), "", 0);
+        JSVal created = pCtx->bException ? js_undefined() : js_new_regexp_n_val(pCtx, js_str_data(text), js_str_len(text), "", 0);
 
         js_release(pCtx, text);
         *pOwned = created;

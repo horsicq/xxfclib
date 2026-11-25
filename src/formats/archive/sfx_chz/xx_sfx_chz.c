@@ -42,8 +42,14 @@ static Abstractformat *member_child_create(xx_io_device *d, int64_t at)
     xx_chz *child = xx_chz_create(d, at);
     return child ? &child->format : NULL;
 }
-static void member_child_free(Abstractformat *f) { xx_chz_free((xx_chz *)f); }
-static bool member_child_complete(Abstractformat *f) { return ((xx_chz *)f)->is_complete; }
+static void member_child_free(Abstractformat *f)
+{
+    xx_chz_free((xx_chz *)f);
+}
+static bool member_child_complete(Abstractformat *f)
+{
+    return ((xx_chz *)f)->is_complete;
+}
 #include "xx_sfx_member_delegate.h"
 
 void xx_sfx_chz_init(xx_sfx_chz *r, xx_io_device *d, int64_t b)

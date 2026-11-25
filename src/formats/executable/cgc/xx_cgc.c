@@ -19,10 +19,8 @@ static bool cgc_read_header(const Abstractformat *format, xx_cgc_header *header)
 {
     uint8_t bytes[XX_CGC_HEADER_SIZE];
     bool big_endian;
-    if (!format || !format->device || !header || format->base_address < 0 ||
-        !xx_io_read_at(format->device, format->base_address, bytes, sizeof(bytes)) ||
-        bytes[0] != 0x7fU || bytes[1] != 'C' || bytes[2] != 'G' || bytes[3] != 'C' || bytes[4] != 1U ||
-        (bytes[5] != 1U && bytes[5] != 2U) || bytes[6] != 1U) {
+    if (!format || !format->device || !header || format->base_address < 0 || !xx_io_read_at(format->device, format->base_address, bytes, sizeof(bytes)) ||
+        bytes[0] != 0x7fU || bytes[1] != 'C' || bytes[2] != 'G' || bytes[3] != 'C' || bytes[4] != 1U || (bytes[5] != 1U && bytes[5] != 2U) || bytes[6] != 1U) {
         return false;
     }
     big_endian = bytes[5] == 2U;
@@ -143,12 +141,12 @@ bool xx_cgc_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
     total = xx_io_total_size(self->device);
     if (total < self->base_address) return false;
     file_size = (uint64_t)(total - self->base_address);
-    if (header.program_header_count &&
-        (header.program_header_entry_size < XX_CGC_PROGRAM_HEADER_SIZE ||
-         !cgc_span(header.program_header_offset, (uint64_t)header.program_header_count * header.program_header_entry_size, file_size))) return false;
-    if (header.section_header_count &&
-        (header.section_header_entry_size < XX_CGC_SECTION_HEADER_SIZE ||
-         !cgc_span(header.section_header_offset, (uint64_t)header.section_header_count * header.section_header_entry_size, file_size))) return false;
+    if (header.program_header_count && (header.program_header_entry_size < XX_CGC_PROGRAM_HEADER_SIZE ||
+                                        !cgc_span(header.program_header_offset, (uint64_t)header.program_header_count * header.program_header_entry_size, file_size)))
+        return false;
+    if (header.section_header_count && (header.section_header_entry_size < XX_CGC_SECTION_HEADER_SIZE ||
+                                        !cgc_span(header.section_header_offset, (uint64_t)header.section_header_count * header.section_header_entry_size, file_size)))
+        return false;
     return true;
 }
 
@@ -185,7 +183,8 @@ bool xx_cgc_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_m
     uint16_t index;
     bool added = false;
     if (!reader || !output || (mode != XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_SEGMENTS && mode != XX_MEMORY_MAP_MODE_REGIONS) ||
-        (!self->base_info_handled && !xx_cgc_handle_base_info(self, pd))) return false;
+        (!self->base_info_handled && !xx_cgc_handle_base_info(self, pd)))
+        return false;
     output->binary_offset = self->base_address;
     output->binary_size = self->format_size;
     output->module_address = XX_INVALID_ADDRESS;
@@ -202,11 +201,13 @@ bool xx_cgc_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_m
         const xx_cgc_program_header *program = &reader->program_headers[index];
         if (program->type != XX_CGC_PT_LOAD || (!program->file_size && !program->memory_size)) continue;
         if (!xx_memory_map_add_part(output, self->base_address + program->offset, program->file_size, program->virtual_address, program->memory_size,
-                                    XX_FILE_PART_SEGMENT, index, "LOAD", false)) return false;
+                                    XX_FILE_PART_SEGMENT, index, "LOAD", false))
+            return false;
         added = true;
     }
     if (!added && self->format_size > 0 &&
-        !xx_memory_map_add_part(output, self->base_address, self->format_size, 0U, self->format_size, XX_FILE_PART_REGION, 0, "CGC image", false)) return false;
+        !xx_memory_map_add_part(output, self->base_address, self->format_size, 0U, self->format_size, XX_FILE_PART_REGION, 0, "CGC image", false))
+        return false;
     return xx_memory_map_finalize(output);
 }
 

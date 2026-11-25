@@ -42,7 +42,6 @@ bool xx_xxds_reader_table(Abstractformat *format, const char *name, xx_xxds_tabl
 /* Decodes one field of an occurrence into a record: the common formatter
  * plus the extended field types (xx_xxds_fields.c). `format` is the format
  * the script ran on; the record is owned by the caller on success. */
-bool xx_xxds_populate_field(xx_data_struct_record *record, Abstractformat *format, const xx_data_struct *parent, const xx_data_struct_field_desc *field,
-                            bool big_endian);
+bool xx_xxds_populate_field(xx_data_struct_record *record, Abstractformat *format, const xx_data_struct *parent, const xx_data_struct_field_desc *field, bool big_endian);
 
 #endif /* XX_XXDS_INTERNAL_H */

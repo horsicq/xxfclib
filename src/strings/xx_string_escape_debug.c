@@ -26,8 +26,7 @@
 
 XXFC_API bool xx_string_scalar_debug_escaped(uint32_t scalar)
 {
-    size_t lo = 0, hi = sizeof(xx_string_debug_escaped_ranges) /
-                        sizeof(xx_string_debug_escaped_ranges[0]);
+    size_t lo = 0, hi = sizeof(xx_string_debug_escaped_ranges) / sizeof(xx_string_debug_escaped_ranges[0]);
     if (scalar < 0x80) return scalar < 0x20 || scalar == 0x7f;
     while (lo < hi) {
         size_t mid = lo + (hi - lo) / 2;

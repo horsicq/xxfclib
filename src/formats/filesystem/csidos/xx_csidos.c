@@ -104,7 +104,6 @@ typedef struct csidos_tree_s {
 
 /* KOI8-R's upper half, kept as Unicode scalar values before UTF-8 emission. */
 
-
 static bool csidos_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
 {
     size_t transfer_capacity = xx_get_file_buffer_size();

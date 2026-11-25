@@ -82,8 +82,7 @@ static bool elf_gresource_absolute(const xx_elf *elf, uint64_t relative, size_t 
 {
     int64_t total;
     int64_t base;
-    if (!elf || !elf->format.device || !absolute || elf->format.base_address < 0 ||
-        relative > (uint64_t)(INT64_MAX - elf->format.base_address))
+    if (!elf || !elf->format.device || !absolute || elf->format.base_address < 0 || relative > (uint64_t)(INT64_MAX - elf->format.base_address))
         return elf_gresource_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "ELF GResource offset outside input");
     base = elf->format.base_address + (int64_t)relative;
     total = xx_io_total_size(elf->format.device);
@@ -97,19 +96,16 @@ static bool elf_gresource_read(const xx_elf *elf, uint64_t relative, void *buffe
 {
     int64_t absolute;
     if (!elf_gresource_absolute(elf, relative, size, &absolute, pd)) return false;
-    if (!xx_io_read_at(elf->format.device, absolute, buffer, size))
-        return elf_gresource_error(pd, XXFC_ERR_IO, "Cannot read ELF GResource bytes");
+    if (!xx_io_read_at(elf->format.device, absolute, buffer, size)) return elf_gresource_error(pd, XXFC_ERR_IO, "Cannot read ELF GResource bytes");
     return true;
 }
 
-static char *elf_gresource_read_string(const xx_elf *elf, const xx_elf_section_header *strings,
-                                       uint32_t offset, uint64_t maximum, xx_pd_struct *pd)
+static char *elf_gresource_read_string(const xx_elf *elf, const xx_elf_section_header *strings, uint32_t offset, uint64_t maximum, xx_pd_struct *pd)
 {
     uint64_t remaining;
     uint64_t length = 0U;
     char *result;
-    if (!strings || strings->type != XX_ELF_SECTION_STRTAB || offset >= strings->size)
-        return NULL;
+    if (!strings || strings->type != XX_ELF_SECTION_STRTAB || offset >= strings->size) return NULL;
     remaining = strings->size - offset;
     if (remaining > maximum + 1U) remaining = maximum + 1U;
     result = (char *)xx_mem_alloc((size_t)remaining);
@@ -151,8 +147,7 @@ static void elf_gresource_cursor_free(void *pointer)
     xx_mem_free(cursor);
 }
 
-static bool elf_gresource_append(elf_gresource_cursor *cursor, const char *name, const char *type_name,
-                                 uint64_t relative_offset, uint64_t size, xx_pd_struct *pd)
+static bool elf_gresource_append(elf_gresource_cursor *cursor, const char *name, const char *type_name, uint64_t relative_offset, uint64_t size, xx_pd_struct *pd)
 {
     elf_gresource_entry *grown;
     elf_gresource_entry *entry;
@@ -165,8 +160,7 @@ static bool elf_gresource_append(elf_gresource_cursor *cursor, const char *name,
         return false;
     name_size = xx_str_len(name) + 1U;
     type_size = xx_str_len(type_name) + 1U;
-    if (name_size > ELF_GRESOURCE_NAME_LIMIT || type_size > ELF_GRESOURCE_NAME_LIMIT ||
-        cursor->names_size > ELF_GRESOURCE_NAMES_LIMIT - name_size ||
+    if (name_size > ELF_GRESOURCE_NAME_LIMIT || type_size > ELF_GRESOURCE_NAME_LIMIT || cursor->names_size > ELF_GRESOURCE_NAMES_LIMIT - name_size ||
         cursor->names_size + name_size > ELF_GRESOURCE_NAMES_LIMIT - type_size)
         return elf_gresource_error(pd, XXFC_ERR_OUT_OF_MEMORY, "ELF GResource names exceed bounded budget");
     if (cursor->count == cursor->capacity) {
@@ -196,16 +190,15 @@ static bool elf_gresource_append(elf_gresource_cursor *cursor, const char *name,
     return true;
 }
 
-static bool elf_gresource_section_read(const elf_gresource_cursor *cursor, const xx_elf_section_header *section,
-                                       uint64_t offset, void *buffer, size_t size, xx_pd_struct *pd)
+static bool elf_gresource_section_read(const elf_gresource_cursor *cursor, const xx_elf_section_header *section, uint64_t offset, void *buffer, size_t size,
+                                       xx_pd_struct *pd)
 {
     if (!section || offset > section->size || (uint64_t)size > section->size - offset || section->offset > UINT64_MAX - offset)
         return elf_gresource_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "ELF GResource section range outside input");
     return elf_gresource_read(cursor->elf, section->offset + offset, buffer, size, pd);
 }
 
-static bool elf_gresource_read_item(const elf_gresource_cursor *cursor, const xx_elf_section_header *section,
-                                    uint64_t offset, elf_gresource_item *item, xx_pd_struct *pd)
+static bool elf_gresource_read_item(const elf_gresource_cursor *cursor, const xx_elf_section_header *section, uint64_t offset, elf_gresource_item *item, xx_pd_struct *pd)
 {
     uint8_t bytes[24];
     if (!elf_gresource_section_read(cursor, section, offset, bytes, sizeof(bytes), pd)) return false;
@@ -218,15 +211,13 @@ static bool elf_gresource_read_item(const elf_gresource_cursor *cursor, const xx
     return true;
 }
 
-static char *elf_gresource_item_name(const elf_gresource_cursor *cursor, const xx_elf_section_header *section,
-                                     const elf_gresource_item *item, const char *parent, uint64_t *names_size,
-                                     xx_pd_struct *pd)
+static char *elf_gresource_item_name(const elf_gresource_cursor *cursor, const xx_elf_section_header *section, const elf_gresource_item *item, const char *parent,
+                                     uint64_t *names_size, xx_pd_struct *pd)
 {
     size_t parent_size = parent ? xx_str_len(parent) : 0U;
     size_t name_size;
     char *name;
-    if (!item || !names_size || item->key_start > section->size || item->key_size > section->size - item->key_start ||
-        parent_size > SIZE_MAX - item->key_size)
+    if (!item || !names_size || item->key_start > section->size || item->key_size > section->size - item->key_start || parent_size > SIZE_MAX - item->key_size)
         return NULL;
     name_size = parent_size + item->key_size;
     if (name_size >= ELF_GRESOURCE_NAME_LIMIT || *names_size > ELF_GRESOURCE_NAMES_LIMIT - name_size - 1U) return NULL;
@@ -243,8 +234,8 @@ static char *elf_gresource_item_name(const elf_gresource_cursor *cursor, const x
     return name;
 }
 
-static bool elf_gresource_build_names(const elf_gresource_cursor *cursor, const xx_elf_section_header *section,
-                                      const elf_gresource_item *items, size_t count, char **names, xx_pd_struct *pd)
+static bool elf_gresource_build_names(const elf_gresource_cursor *cursor, const xx_elf_section_header *section, const elf_gresource_item *items, size_t count,
+                                      char **names, xx_pd_struct *pd)
 {
     uint8_t *status;
     size_t *stack;
@@ -305,8 +296,8 @@ static int elf_gresource_leaf_compare(const void *left, const void *right)
     return xx_str_cmp(a->name, b->name);
 }
 
-static bool elf_gresource_add_value(elf_gresource_cursor *cursor, const xx_elf_section_header *section,
-                                    const elf_gresource_item *item, const char *name, xx_pd_struct *pd)
+static bool elf_gresource_add_value(elf_gresource_cursor *cursor, const xx_elf_section_header *section, const elf_gresource_item *item, const char *name,
+                                    xx_pd_struct *pd)
 {
     static const uint8_t variant_type[6] = {'(', 'u', 'u', 'a', 'y', ')'};
     uint8_t trailer[7];
@@ -329,8 +320,7 @@ static bool elf_gresource_add_value(elf_gresource_cursor *cursor, const xx_elf_s
     data_offset = (uint64_t)item->value_start + ELF_GRESOURCE_VALUE_HEADER_SIZE;
     data_size = value_size - ELF_GRESOURCE_VALUE_HEADER_SIZE - ELF_GRESOURCE_VARIANT_TRAILER_SIZE;
     if (!(flags & ELF_GRESOURCE_FLAG_COMPRESSED)) {
-        if (!data_size || logical_size != data_size - 1U ||
-            !elf_gresource_section_read(cursor, section, data_offset + logical_size, &terminator, 1U, pd)) return false;
+        if (!data_size || logical_size != data_size - 1U || !elf_gresource_section_read(cursor, section, data_offset + logical_size, &terminator, 1U, pd)) return false;
         if (terminator) return true;
         data_size = logical_size;
     }
@@ -338,8 +328,7 @@ static bool elf_gresource_add_value(elf_gresource_cursor *cursor, const xx_elf_s
     return elf_gresource_append(cursor, name, "gresource", section->offset + data_offset, data_size, pd);
 }
 
-static bool elf_gresource_parse_section(elf_gresource_cursor *cursor, const xx_elf_section_header *section,
-                                        const char *section_name, xx_pd_struct *pd)
+static bool elf_gresource_parse_section(elf_gresource_cursor *cursor, const xx_elf_section_header *section, const char *section_name, xx_pd_struct *pd)
 {
     uint8_t header[24];
     uint8_t hash_header[8];
@@ -377,7 +366,8 @@ static bool elf_gresource_parse_section(elf_gresource_cursor *cursor, const xx_e
         return elf_gresource_error(pd, XXFC_ERR_INVALID_ARG, "Invalid ELF GResource item table");
     items_size = (uint64_t)root_end - items_offset;
     item_count64 = items_size / ELF_GRESOURCE_ITEM_SIZE;
-    if (item_count64 > ELF_GRESOURCE_ITEM_LIMIT || item_count64 > SIZE_MAX) return elf_gresource_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "ELF GResource item count exceeds bounded limit");
+    if (item_count64 > ELF_GRESOURCE_ITEM_LIMIT || item_count64 > SIZE_MAX)
+        return elf_gresource_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "ELF GResource item count exceeds bounded limit");
     item_count = (size_t)item_count64;
     if (item_count) {
         if (item_count > SIZE_MAX / sizeof(*items) || item_count > SIZE_MAX / sizeof(*names) || item_count > SIZE_MAX / sizeof(*leaves))
@@ -421,8 +411,7 @@ static bool elf_gresource_collect(elf_gresource_cursor *cursor, xx_pd_struct *pd
 {
     const xx_elf_section_header *name_section;
     uint64_t index;
-    if (cursor->elf->section_name_index == 0 ||
-        cursor->elf->section_name_index >= cursor->elf->section_header_count) return true;
+    if (cursor->elf->section_name_index == 0 || cursor->elf->section_name_index >= cursor->elf->section_header_count) return true;
     name_section = &cursor->elf->section_headers[cursor->elf->section_name_index];
     for (index = 0U; index < cursor->elf->section_header_count; ++index) {
         const xx_elf_section_header *section = &cursor->elf->section_headers[index];
@@ -542,12 +531,10 @@ uint64_t xx_elf_get_number_of_resources(Abstractformat *format, xx_pd_struct *pd
 
 const StreamResources *xx_elf_get_stream_resources(void)
 {
-    static const StreamResources stream = {
-        .get_number_of_resources = xx_elf_get_number_of_resources,
-        .create_resources_reading = xx_elf_create_resources_reading,
-        .get_current_resource = xx_elf_get_current_resource,
-        .resource_move_to_next = xx_elf_resource_move_to_next,
-        .free_resources_reading = xx_elf_free_resources_reading
-    };
+    static const StreamResources stream = {.get_number_of_resources = xx_elf_get_number_of_resources,
+                                           .create_resources_reading = xx_elf_create_resources_reading,
+                                           .get_current_resource = xx_elf_get_current_resource,
+                                           .resource_move_to_next = xx_elf_resource_move_to_next,
+                                           .free_resources_reading = xx_elf_free_resources_reading};
     return &stream;
 }

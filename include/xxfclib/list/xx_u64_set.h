@@ -37,7 +37,7 @@ typedef struct xx_u64_set_s {
     uint8_t *used;
     size_t capacity; /**< Power of two, or 0 before the first insert. */
     size_t count;
-    bool failed;     /**< Sticky: a growth failed since the last clear / free. */
+    bool failed; /**< Sticky: a growth failed since the last clear / free. */
 } xx_u64_set_t;
 
 /** @brief Empty set; allocates nothing (same as zeroing the struct). */

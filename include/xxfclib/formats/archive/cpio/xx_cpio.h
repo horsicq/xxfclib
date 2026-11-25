@@ -45,8 +45,7 @@ XXFC_API void xx_cpio_destroy(xx_cpio *archive);
 XXFC_API void xx_cpio_free(xx_cpio *archive);
 /* Set legacy read options before validating or enumerating the archive.
  * Changing options invalidates cached format and member metadata. */
-XXFC_API bool xx_cpio_set_read_options(xx_cpio *archive, bool names_cp437,
-                                       bool pwb_binary_mode);
+XXFC_API bool xx_cpio_set_read_options(xx_cpio *archive, bool names_cp437, bool pwb_binary_mode);
 
 XXFC_API bool xx_cpio_check_is_valid(Abstractformat *self, xx_pd_struct *pd);
 XXFC_API bool xx_cpio_handle_base_info(Abstractformat *self, xx_pd_struct *pd);

@@ -63,8 +63,8 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     string_size = (uint32_t)st.cli.nStringIndexSize;
     implementation_size = (uint32_t)st.cli.nImplementationSize;
     if (!rows || rows > DR_MAX_MEMBERS || table <= 0 || element != 8U + string_size + implementation_size || element > sizeof(row) ||
-        (string_size != 2U && string_size != 4U) || (implementation_size != 2U && implementation_size != 4U) || st.cli.nCliOffset <= 0 ||
-        st.cli.nStringsOffset <= 0 || st.cli.nStringsSize <= 0 || !pm_read(f, st.cli.nCliOffset, cor, sizeof(cor)))
+        (string_size != 2U && string_size != 4U) || (implementation_size != 2U && implementation_size != 4U) || st.cli.nCliOffset <= 0 || st.cli.nStringsOffset <= 0 ||
+        st.cli.nStringsSize <= 0 || !pm_read(f, st.cli.nCliOffset, cor, sizeof(cor)))
         goto done;
     resources_rva = xx_data_get_u32(cor + 24, 4, 0, false);
     resources_size = xx_data_get_u32(cor + 28, 4, 0, false);
@@ -80,7 +80,8 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
         name_index = string_size == 4U ? xx_data_get_u32(row + 8, 4, 0, false) : xx_data_get_u16(row + 8, 2, 0, false);
         implementation = implementation_size == 4U ? xx_data_get_u32(row + 8 + string_size, 4, 0, false) : xx_data_get_u16(row + 8 + string_size, 2, 0, false);
         if (implementation) continue; /* in another file or assembly */
-        if (offset > resources_size - 4U || !pm_read(f, blob + (int64_t)offset, head, 4) || !dr_name(f, st.cli.nStringsOffset, st.cli.nStringsSize, name_index, name)) goto done;
+        if (offset > resources_size - 4U || !pm_read(f, blob + (int64_t)offset, head, 4) || !dr_name(f, st.cli.nStringsOffset, st.cli.nStringsSize, name_index, name))
+            goto done;
         size = xx_data_get_u32(head, 4, 0, false);
         if (size > resources_size - 4U - offset) goto done;
         if (!size) continue;

@@ -149,31 +149,26 @@ static const xx_data_struct_field_desc xx_pswhcc_lfh64_26100_extra[] = {
     XX_PSW_FIELD("SlotMaps[0].Map", "uint16[128]", 0x5C0, 256, 0),
 };
 
-static bool xx_pswhcc_one(xx_ps_context *context, xx_io_device *device,
-    uint64_t heap_address, unsigned width, const xx_psw_nt_layout *selected,
-    const wchar_t *member, const char *name,
-    const xx_data_struct_field_desc *extra, size_t extra_count)
+static bool xx_pswhcc_one(xx_ps_context *context, xx_io_device *device, uint64_t heap_address, unsigned width, const xx_psw_nt_layout *selected, const wchar_t *member,
+                          const char *name, const xx_data_struct_field_desc *extra, size_t extra_count)
 {
     const xx_data_struct_field_desc *parent = xx_pswr_field(selected, member);
     xx_data_struct_field_desc *fields;
     uint64_t address;
     size_t prefix = wcslen(member), capacity, count = 0;
     bool result;
-    if (!parent || parent->rel_offset < 0 || parent->size <= 0 || parent->size > 65536 ||
-        (uint64_t)parent->rel_offset > (uint64_t)selected->size ||
+    if (!parent || parent->rel_offset < 0 || parent->size <= 0 || parent->size > 65536 || (uint64_t)parent->rel_offset > (uint64_t)selected->size ||
         (uint64_t)parent->size > (uint64_t)selected->size - (uint64_t)parent->rel_offset) {
         xx_psw_warn_once(context, "A selected heap context descriptor had an invalid extent.");
         return true;
     }
-    if (!xx_pswr_member_address(selected, member, heap_address, width, &address) ||
-        !xx_pswr_span(address, (uint64_t)parent->size, width)) {
+    if (!xx_pswr_member_address(selected, member, heap_address, width, &address) || !xx_pswr_span(address, (uint64_t)parent->size, width)) {
         xx_psw_warn_once(context, "An embedded heap context exceeded the target address range.");
         return true;
     }
     if (xx_pswr_seen(context, name, address, 0)) return true;
     if (!xx_pswr_room(context)) return false;
-    if (selected->count > SIZE_MAX - extra_count ||
-        selected->count + extra_count > SIZE_MAX / sizeof(*fields)) {
+    if (selected->count > SIZE_MAX - extra_count || selected->count + extra_count > SIZE_MAX / sizeof(*fields)) {
         context->status = XX_PROCESS_STRUCTS_OUT_OF_MEMORY;
         return false;
     }
@@ -189,8 +184,7 @@ static bool xx_pswhcc_one(xx_ps_context *context, xx_io_device *device,
         if (!field->name || wcsncmp(field->name, member, prefix) || field->name[prefix] != L'.') continue;
         if (field->rel_offset < parent->rel_offset || field->size < 0) goto invalid_descriptor;
         relative = (uint64_t)(field->rel_offset - parent->rel_offset);
-        if (relative > (uint64_t)parent->size ||
-            (uint64_t)field->size > (uint64_t)parent->size - relative) goto invalid_descriptor;
+        if (relative > (uint64_t)parent->size || (uint64_t)field->size > (uint64_t)parent->size - relative) goto invalid_descriptor;
         fields[count] = *field;
         fields[count].name = field->name + prefix + 1;
         fields[count].rel_offset -= parent->rel_offset;
@@ -199,8 +193,7 @@ static bool xx_pswhcc_one(xx_ps_context *context, xx_io_device *device,
     for (size_t i = 0; i < extra_count; ++i) {
         const xx_data_struct_field_desc *field = extra + i;
         size_t duplicate;
-        if (!field->name || field->rel_offset < 0 || field->size < 0 ||
-            (uint64_t)field->rel_offset > (uint64_t)parent->size ||
+        if (!field->name || field->rel_offset < 0 || field->size < 0 || (uint64_t)field->rel_offset > (uint64_t)parent->size ||
             (uint64_t)field->size > (uint64_t)parent->size - (uint64_t)field->rel_offset)
             goto invalid_descriptor;
         for (duplicate = 0; duplicate < count; ++duplicate)
@@ -212,8 +205,7 @@ static bool xx_pswhcc_one(xx_ps_context *context, xx_io_device *device,
         free(fields);
         return true;
     }
-    result = xx_psw_memory(context, device, name, selected->label, address,
-        (size_t)parent->size, 0, fields, count) != NULL;
+    result = xx_psw_memory(context, device, name, selected->label, address, (size_t)parent->size, 0, fields, count) != NULL;
     free(fields);
     return result;
 
@@ -223,31 +215,31 @@ invalid_descriptor:
     return false;
 }
 
-static void xx_pswhc_context_children(xx_ps_context *context, xx_io_device *device,
-    uint64_t heap_address, unsigned width, const xx_psw_nt_layout *selected)
+static void xx_pswhc_context_children(xx_ps_context *context, xx_io_device *device, uint64_t heap_address, unsigned width, const xx_psw_nt_layout *selected)
 {
     const xx_data_struct_field_desc *vs_extra = NULL, *lfh_extra = NULL;
     size_t vs_count = 0, lfh_count = 0;
-    if (!context || !context->snapshot || !device || !selected ||
-        context->status != XX_PROCESS_STRUCTS_OK || (width != 4 && width != 8)) return;
+    if (!context || !context->snapshot || !device || !selected || context->status != XX_PROCESS_STRUCTS_OK || (width != 4 && width != 8)) return;
     if (width == 4 && selected->fields == xx_pswh_segment32_19045) {
-        vs_extra = xx_pswhcc_vs32_19045_extra; vs_count = XX_PSW_COUNT(xx_pswhcc_vs32_19045_extra);
-        lfh_extra = xx_pswhcc_lfh32_19045_extra; lfh_count = XX_PSW_COUNT(xx_pswhcc_lfh32_19045_extra);
+        vs_extra = xx_pswhcc_vs32_19045_extra;
+        vs_count = XX_PSW_COUNT(xx_pswhcc_vs32_19045_extra);
+        lfh_extra = xx_pswhcc_lfh32_19045_extra;
+        lfh_count = XX_PSW_COUNT(xx_pswhcc_lfh32_19045_extra);
     } else if (width == 8 && selected->fields == xx_pswh_segment64_19045) {
-        vs_extra = xx_pswhcc_vs64_19045_extra; vs_count = XX_PSW_COUNT(xx_pswhcc_vs64_19045_extra);
-        lfh_extra = xx_pswhcc_lfh64_19045_extra; lfh_count = XX_PSW_COUNT(xx_pswhcc_lfh64_19045_extra);
+        vs_extra = xx_pswhcc_vs64_19045_extra;
+        vs_count = XX_PSW_COUNT(xx_pswhcc_vs64_19045_extra);
+        lfh_extra = xx_pswhcc_lfh64_19045_extra;
+        lfh_count = XX_PSW_COUNT(xx_pswhcc_lfh64_19045_extra);
     } else if (width == 8 && selected->fields == xx_pswh_segment64_26100) {
-        vs_extra = xx_pswhcc_vs64_26100_extra; vs_count = XX_PSW_COUNT(xx_pswhcc_vs64_26100_extra);
-        lfh_extra = xx_pswhcc_lfh64_26100_extra; lfh_count = XX_PSW_COUNT(xx_pswhcc_lfh64_26100_extra);
-    } else if (width != 4 || (selected->fields != xx_pswh_wow_segment32_19045 &&
-        selected->fields != xx_pswh_wow_segment32_26100)) {
+        vs_extra = xx_pswhcc_vs64_26100_extra;
+        vs_count = XX_PSW_COUNT(xx_pswhcc_vs64_26100_extra);
+        lfh_extra = xx_pswhcc_lfh64_26100_extra;
+        lfh_count = XX_PSW_COUNT(xx_pswhcc_lfh64_26100_extra);
+    } else if (width != 4 || (selected->fields != xx_pswh_wow_segment32_19045 && selected->fields != xx_pswh_wow_segment32_26100)) {
         return; /* Prefix fallbacks and unrelated heap families have no child view. */
     }
-    if (!xx_pswhcc_one(context, device, heap_address, width, selected, L"VsContext",
-            width == 8 ? "HEAP_VS_CONTEXT64" : "HEAP_VS_CONTEXT32", vs_extra, vs_count)) return;
-    (void)xx_pswhcc_one(context, device, heap_address, width, selected, L"LfhContext",
-        width == 8 ? "HEAP_LFH_CONTEXT64" : "HEAP_LFH_CONTEXT32", lfh_extra, lfh_count);
+    if (!xx_pswhcc_one(context, device, heap_address, width, selected, L"VsContext", width == 8 ? "HEAP_VS_CONTEXT64" : "HEAP_VS_CONTEXT32", vs_extra, vs_count)) return;
+    (void)xx_pswhcc_one(context, device, heap_address, width, selected, L"LfhContext", width == 8 ? "HEAP_LFH_CONTEXT64" : "HEAP_LFH_CONTEXT32", lfh_extra, lfh_count);
 }
 
 #endif /* XX_PROCESS_HEAP_CONTEXT_CHILDREN_H */
-

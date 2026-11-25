@@ -190,8 +190,7 @@ static bool squeeze1_sink_put(squeeze1_sink *sink, uint8_t value)
 {
     if (!sink || (uint64_t)sink->size >= sink->maximum) return false;
     if (sink->work) {
-        if (++*sink->work > (uint64_t)16U * 1024U * 1024U ||
-            ((*sink->work & 1023U) == 0U && sink->pd && xx_pd_is_stopped(sink->pd))) return false;
+        if (++*sink->work > (uint64_t)16U * 1024U * 1024U || ((*sink->work & 1023U) == 0U && sink->pd && xx_pd_is_stopped(sink->pd))) return false;
     }
     if (sink->materialize) {
         if (sink->size == sink->capacity) {
@@ -214,8 +213,7 @@ static bool squeeze1_sink_put(squeeze1_sink *sink, uint8_t value)
 static bool squeeze1_read_bit(squeeze1_bit_reader *reader, uint32_t *bit)
 {
     if (!reader || !bit) return false;
-    if (reader->work && (++*reader->work > (uint64_t)16U * 1024U * 1024U ||
-        ((*reader->work & 1023U) == 0U && reader->pd && xx_pd_is_stopped(reader->pd)))) return false;
+    if (reader->work && (++*reader->work > (uint64_t)16U * 1024U * 1024U || ((*reader->work & 1023U) == 0U && reader->pd && xx_pd_is_stopped(reader->pd)))) return false;
     if (reader->bits_left == 0U) {
         if (reader->position >= reader->size) return false;
         reader->current = reader->data[reader->position++];
@@ -250,7 +248,7 @@ static bool squeeze1_decode_symbol(squeeze1_bit_reader *reader, const uint8_t *t
  * @p materialize false nothing is allocated and only the length and checksum
  * come back, which is what validation needs. */
 static bool squeeze1_decode_impl(const uint8_t *input, size_t input_size, const squeeze1_context *context, bool materialize, uint8_t **output, uint64_t *output_size,
-                            uint16_t *checksum, size_t *consumed, xx_pd_struct *pd, uint64_t maximum, bool strict)
+                                 uint16_t *checksum, size_t *consumed, xx_pd_struct *pd, uint64_t maximum, bool strict)
 {
     squeeze1_sink sink;
     squeeze1_bit_reader reader;
@@ -337,8 +335,8 @@ fail:
     return false;
 }
 
-static bool squeeze1_decode(const uint8_t *input, size_t input_size, const squeeze1_context *context, bool materialize,
-                            uint8_t **output, uint64_t *output_size, uint16_t *checksum, size_t *consumed, xx_pd_struct *pd)
+static bool squeeze1_decode(const uint8_t *input, size_t input_size, const squeeze1_context *context, bool materialize, uint8_t **output, uint64_t *output_size,
+                            uint16_t *checksum, size_t *consumed, xx_pd_struct *pd)
 {
     return squeeze1_decode_impl(input, input_size, context, materialize, output, output_size, checksum, consumed, pd, XX_SQUEEZE1_MAX_OUTPUT, false);
 }
@@ -427,15 +425,20 @@ typedef struct squeeze1_recovery_s {
 static void squeeze1_recovery_release(void *pointer)
 {
     squeeze1_recovery *c = (squeeze1_recovery *)pointer;
-    if (c && --c->references == 0U) { xx_mem_free(c->snapshot); xx_mem_free(c); }
+    if (c && --c->references == 0U) {
+        xx_mem_free(c->snapshot);
+        xx_mem_free(c);
+    }
 }
 static int squeeze1_close(Abstractformat *self)
 {
     if (self && self->priv) {
-        squeeze1_recovery_release(self->priv); self->priv = NULL;
+        squeeze1_recovery_release(self->priv);
+        self->priv = NULL;
         /* A fresh iterator must rebuild authority after explicit close. Old
          * iterators retain their own reference and extraction metadata. */
-        self->base_info_handled = false; self->is_valid = false;
+        self->base_info_handled = false;
+        self->is_valid = false;
     }
     return 0;
 }
@@ -447,8 +450,7 @@ static uint64_t squeeze1_budget(Abstractformat *self, const xx_list_s *options, 
     if (v && xx_var_get_u64(v) < n) n = xx_var_get_u64(v);
     return n;
 }
-static bool squeeze1_recovery_limit(Abstractformat *self, const xx_list_s *options, size_t size,
-                                    uint64_t raw, uint64_t *maximum)
+static bool squeeze1_recovery_limit(Abstractformat *self, const xx_list_s *options, size_t size, uint64_t raw, uint64_t *maximum)
 {
     uint64_t memory = squeeze1_budget(self, options, XX_META_ID_OPT_MEMORY_LIMIT);
     uint64_t member = squeeze1_budget(self, options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
@@ -466,9 +468,10 @@ static bool squeeze1_recovery_unchanged(Abstractformat *self, const squeeze1_rec
     size_t at = 0U;
     if (!self || !c || self->base_address != c->base || xx_io_total_size(self->device) != c->total) return false;
     while (at < c->size) {
-        size_t n = c->size - at; if (n > sizeof(bytes)) n = sizeof(bytes);
-        if ((pd && xx_pd_is_stopped(pd)) || !squeeze1_read_exact_at(self->device, c->base + (int64_t)at, bytes, n) ||
-            memcmp(bytes, c->snapshot + at, n) != 0) return false;
+        size_t n = c->size - at;
+        if (n > sizeof(bytes)) n = sizeof(bytes);
+        if ((pd && xx_pd_is_stopped(pd)) || !squeeze1_read_exact_at(self->device, c->base + (int64_t)at, bytes, n) || memcmp(bytes, c->snapshot + at, n) != 0)
+            return false;
         at += n;
     }
     return !(pd && xx_pd_is_stopped(pd));
@@ -490,23 +493,28 @@ static bool squeeze1_strict_tree(const uint8_t *input, const squeeze1_context *c
         }
     }
     if (incoming[0] != 0U || !leaves[256]) return false;
-    for (i = 1U; i < c->node_count; ++i) if (incoming[i] != 1U) return false;
+    for (i = 1U; i < c->node_count; ++i)
+        if (incoming[i] != 1U) return false;
     stack[pending++] = 0U;
     while (pending) {
-        uint16_t node = stack[--pending]; unsigned side;
+        uint16_t node = stack[--pending];
+        unsigned side;
         if (seen[node]) return false;
-        seen[node] = true; ++visited;
+        seen[node] = true;
+        ++visited;
         for (side = 0U; side < 2U; ++side) {
             int32_t child = squeeze1_read_signed16le(input + c->tree_offset + (size_t)node * 4U + side * 2U);
-            if (child >= 0) { if (pending >= 256U) return false; stack[pending++] = (uint16_t)child; }
+            if (child >= 0) {
+                if (pending >= 256U) return false;
+                stack[pending++] = (uint16_t)child;
+            }
         }
     }
     return visited == c->node_count;
 }
 /* Every LF must have exactly the transport's immediately preceding CR. A
  * genuine CRLF becomes CR-CR-LF on expansion and therefore retains its CR. */
-static bool squeeze1_transport(const uint8_t *input, size_t size, uint8_t *normalized,
-                               size_t *out_size, size_t *removed, xx_pd_struct *pd)
+static bool squeeze1_transport(const uint8_t *input, size_t size, uint8_t *normalized, size_t *out_size, size_t *removed, xx_pd_struct *pd)
 {
     size_t i, n = 0U, count = 0U;
     for (i = 0U; i < size; ++i) {
@@ -520,7 +528,8 @@ static bool squeeze1_transport(const uint8_t *input, size_t size, uint8_t *norma
         ++n;
     }
     if (!count) return false;
-    *out_size = n; *removed = count;
+    *out_size = n;
+    *removed = count;
     return !(pd && xx_pd_is_stopped(pd));
 }
 static uint32_t squeeze1_physical_boundary(const uint8_t *input, size_t size, uint32_t logical)
@@ -534,11 +543,13 @@ static uint32_t squeeze1_physical_boundary(const uint8_t *input, size_t size, ui
 }
 static int squeeze1_header_valid(Abstractformat *self)
 {
-    uint8_t prefix[1290]; squeeze1_context parsed;
+    uint8_t prefix[1290];
+    squeeze1_context parsed;
     int64_t total = xx_io_total_size(self->device), span;
     size_t n;
     if (self->base_address < 0 || total < self->base_address) return -1;
-    span = total - self->base_address; n = span < (int64_t)sizeof(prefix) ? (size_t)span : sizeof(prefix);
+    span = total - self->base_address;
+    n = span < (int64_t)sizeof(prefix) ? (size_t)span : sizeof(prefix);
     if (!squeeze1_read_exact_at(self->device, self->base_address, prefix, n)) return -1;
     return squeeze1_parse_header(prefix, n, &parsed) ? 1 : 0;
 }
@@ -547,7 +558,8 @@ static squeeze1_recovery *squeeze1_recover(Abstractformat *self, const xx_list_s
     squeeze1_recovery *c = NULL;
     uint8_t *normalized = NULL, block[1024];
     int64_t total = xx_io_total_size(self->device), span;
-    uint64_t maximum, raw = 0U; uint16_t sum = 0U;
+    uint64_t maximum, raw = 0U;
+    uint16_t sum = 0U;
     size_t at = 0U, removed = 0U, logical = 0U, consumed = 0U;
     uint8_t previous = 0U;
     squeeze1_context original;
@@ -558,45 +570,58 @@ static squeeze1_recovery *squeeze1_recover(Abstractformat *self, const xx_list_s
     /* Preflight transport count and caller budgets before allocating either
      * original snapshot or normalized input. */
     while (at < (size_t)span) {
-        size_t n = (size_t)span - at, i; if (n > sizeof(block)) n = sizeof(block);
+        size_t n = (size_t)span - at, i;
+        if (n > sizeof(block)) n = sizeof(block);
         if ((pd && xx_pd_is_stopped(pd)) || !squeeze1_read_exact_at(self->device, self->base_address + (int64_t)at, block, n)) return NULL;
         for (i = 0U; i < n; ++i) {
-            if (block[i] == 10U) { if (previous != 13U || ++removed > SQ_REC_REMOVED) return NULL; }
+            if (block[i] == 10U) {
+                if (previous != 13U || ++removed > SQ_REC_REMOVED) return NULL;
+            }
             previous = block[i];
         }
         at += n;
     }
     if (!removed) return NULL;
-    c = (squeeze1_recovery *)xx_mem_alloc(sizeof(*c)); if (!c) return NULL;
-    xx_rt_memset(c, 0, sizeof(*c)); c->references = 1U; c->size = (size_t)span; c->base = self->base_address; c->total = total;
-    c->snapshot = (uint8_t *)xx_mem_alloc(c->size); normalized = (uint8_t *)xx_mem_alloc(c->size);
+    c = (squeeze1_recovery *)xx_mem_alloc(sizeof(*c));
+    if (!c) return NULL;
+    xx_rt_memset(c, 0, sizeof(*c));
+    c->references = 1U;
+    c->size = (size_t)span;
+    c->base = self->base_address;
+    c->total = total;
+    c->snapshot = (uint8_t *)xx_mem_alloc(c->size);
+    normalized = (uint8_t *)xx_mem_alloc(c->size);
     if (!c->snapshot || !normalized) goto done;
     at = 0U;
     while (at < c->size) {
-        size_t n = c->size - at; if (n > sizeof(block)) n = sizeof(block);
+        size_t n = c->size - at;
+        if (n > sizeof(block)) n = sizeof(block);
         if ((pd && xx_pd_is_stopped(pd)) || !squeeze1_read_exact_at(self->device, c->base + (int64_t)at, c->snapshot + at, n)) goto done;
         at += n;
     }
     /* Failure of the original bounded header/child-index parser, rather than
      * a checksum or payload failure, is mandatory for this new authority. */
-    if (squeeze1_parse_header(c->snapshot, c->size, &original) ||
-        !squeeze1_transport(c->snapshot, c->size, normalized, &logical, &removed, pd) ||
+    if (squeeze1_parse_header(c->snapshot, c->size, &original) || !squeeze1_transport(c->snapshot, c->size, normalized, &logical, &removed, pd) ||
         !squeeze1_parse_header(normalized, logical, &c->parsed) || !squeeze1_strict_tree(normalized, &c->parsed) ||
         !squeeze1_decode_impl(normalized, logical, &c->parsed, false, NULL, &raw, &sum, &consumed, pd, maximum, true) || raw == 0U ||
-        c->size - squeeze1_physical_boundary(c->snapshot, c->size, (uint32_t)consumed) > 127U ||
-        !squeeze1_recovery_limit(self, options, c->size, raw, NULL)) goto done;
-    c->normalized_size = logical; c->removed = removed; c->parsed.uncompressed_size = raw;
+        c->size - squeeze1_physical_boundary(c->snapshot, c->size, (uint32_t)consumed) > 127U || !squeeze1_recovery_limit(self, options, c->size, raw, NULL))
+        goto done;
+    c->normalized_size = logical;
+    c->removed = removed;
+    c->parsed.uncompressed_size = raw;
     c->physical_tree = squeeze1_physical_boundary(c->snapshot, c->size, c->parsed.tree_offset);
     c->physical_data = squeeze1_physical_boundary(c->snapshot, c->size, c->parsed.data_offset);
     if (!squeeze1_recovery_unchanged(self, c, pd)) goto done;
     ok = true;
 done:
     xx_mem_free(normalized);
-    if (!ok) { squeeze1_recovery_release(c); c = NULL; }
+    if (!ok) {
+        squeeze1_recovery_release(c);
+        c = NULL;
+    }
     return c;
 }
-static bool squeeze1_resolve(Abstractformat *self, const xx_list_s *options, squeeze1_context *parsed,
-                             squeeze1_recovery **recovery, xx_pd_struct *pd)
+static bool squeeze1_resolve(Abstractformat *self, const xx_list_s *options, squeeze1_context *parsed, squeeze1_recovery **recovery, xx_pd_struct *pd)
 {
     squeeze1_recovery *c;
     int original_header;
@@ -607,29 +632,42 @@ static bool squeeze1_resolve(Abstractformat *self, const xx_list_s *options, squ
     original_header = squeeze1_header_valid(self);
     if (original_header < 0) return false;
     if (original_header > 0) return squeeze1_process(self, parsed, NULL, NULL, pd);
-    c = squeeze1_recover(self, options, pd); if (!c) return false;
-    *parsed = c->parsed; parsed->stream_size = (int64_t)c->size;
-    parsed->tree_offset = c->physical_tree; parsed->data_offset = c->physical_data;
-    *recovery = c; return true;
+    c = squeeze1_recover(self, options, pd);
+    if (!c) return false;
+    *parsed = c->parsed;
+    parsed->stream_size = (int64_t)c->size;
+    parsed->tree_offset = c->physical_tree;
+    parsed->data_offset = c->physical_data;
+    *recovery = c;
+    return true;
 }
-static bool squeeze1_recovery_decode(Abstractformat *self, const xx_list_s *options, const squeeze1_recovery *c,
-                                     uint8_t **plain, uint64_t *size, xx_pd_struct *pd)
+static bool squeeze1_recovery_decode(Abstractformat *self, const xx_list_s *options, const squeeze1_recovery *c, uint8_t **plain, uint64_t *size, xx_pd_struct *pd)
 {
-    uint8_t *normalized = NULL, *output = NULL; uint64_t raw = 0U;
-    uint16_t sum = 0U; size_t logical, removed; bool ok = false;
+    uint8_t *normalized = NULL, *output = NULL;
+    uint64_t raw = 0U;
+    uint16_t sum = 0U;
+    size_t logical, removed;
+    bool ok = false;
     if (plain) *plain = NULL;
     if (size) *size = 0U;
     if (!squeeze1_recovery_limit(self, options, c->size, c->parsed.uncompressed_size, NULL) || !squeeze1_recovery_unchanged(self, c, pd)) return false;
-    normalized = (uint8_t *)xx_mem_alloc(c->size); if (!normalized) return false;
+    normalized = (uint8_t *)xx_mem_alloc(c->size);
+    if (!normalized) return false;
     if (!squeeze1_transport(c->snapshot, c->size, normalized, &logical, &removed, pd) || logical != c->normalized_size || removed != c->removed ||
         !squeeze1_strict_tree(normalized, &c->parsed) ||
         !squeeze1_decode_impl(normalized, logical, &c->parsed, plain != NULL, &output, &raw, &sum, NULL, pd, c->parsed.uncompressed_size, true) ||
-        raw != c->parsed.uncompressed_size || sum != c->parsed.checksum || !squeeze1_recovery_unchanged(self, c, pd)) goto done;
-    if (plain) { *plain = output; output = NULL; }
+        raw != c->parsed.uncompressed_size || sum != c->parsed.checksum || !squeeze1_recovery_unchanged(self, c, pd))
+        goto done;
+    if (plain) {
+        *plain = output;
+        output = NULL;
+    }
     if (size) *size = raw;
     ok = true;
 done:
-    xx_mem_free(output); xx_mem_free(normalized); return ok;
+    xx_mem_free(output);
+    xx_mem_free(normalized);
+    return ok;
 }
 static bool squeeze1_stage_alias(const char *name, const char *suffix)
 {
@@ -643,33 +681,48 @@ static bool squeeze1_stage_alias(const char *name, const char *suffix)
     }
     return true;
 }
-static bool squeeze1_recovery_publish(Abstractformat *self, xx_archive_record_state *state, const squeeze1_recovery *c,
-                                      const char *target, const uint8_t *plain, size_t size, xx_pd_struct *pd)
+static bool squeeze1_recovery_publish(Abstractformat *self, xx_archive_record_state *state, const squeeze1_recovery *c, const char *target, const uint8_t *plain,
+                                      size_t size, xx_pd_struct *pd)
 {
     const xx_var *v = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
     bool overwrite = v && xx_var_get_bool(v), ok = false;
-    char *parent = NULL, *stage = NULL; size_t i, cut = 0U;
-    unsigned attempt; xx_io_device *output = NULL;
-    if ((!overwrite && xx_io_file_exists_a(target)) || !squeeze1_recovery_limit(self, &state->options, c->size, size, NULL) ||
-        !squeeze1_recovery_unchanged(self, c, pd)) return false;
-    parent = xx_str_dup(target); if (!parent || !xx_store_create_dirs_a(target, false)) goto done;
-    for (i = 0U; parent[i]; ++i) if (parent[i] == '/' || parent[i] == '\\') cut = i + 1U;
+    char *parent = NULL, *stage = NULL;
+    size_t i, cut = 0U;
+    unsigned attempt;
+    xx_io_device *output = NULL;
+    if ((!overwrite && xx_io_file_exists_a(target)) || !squeeze1_recovery_limit(self, &state->options, c->size, size, NULL) || !squeeze1_recovery_unchanged(self, c, pd))
+        return false;
+    parent = xx_str_dup(target);
+    if (!parent || !xx_store_create_dirs_a(target, false)) goto done;
+    for (i = 0U; parent[i]; ++i)
+        if (parent[i] == '/' || parent[i] == '\\') cut = i + 1U;
     parent[cut] = 0;
     for (attempt = 0U; attempt < 128U; ++attempt) {
-        char suffix[40]; (void)xx_rt_snprintf(suffix, sizeof(suffix), ".xx_sq.tmp.%u", attempt);
-        stage = xx_str_concat(parent, suffix); if (!stage) goto done;
+        char suffix[40];
+        (void)xx_rt_snprintf(suffix, sizeof(suffix), ".xx_sq.tmp.%u", attempt);
+        stage = xx_str_concat(parent, suffix);
+        if (!stage) goto done;
         if (!squeeze1_stage_alias(c->parsed.file_name, suffix)) output = xx_io_file_open(stage, "wbx");
         if (output) break;
-        xx_str_free(stage); stage = NULL;
+        xx_str_free(stage);
+        stage = NULL;
     }
     if (!output || !squeeze1_write_all(output, plain, size, pd)) goto done;
-    { int closed = xx_io_close(output); output = NULL; if (closed != 0) goto done; }
+    {
+        int closed = xx_io_close(output);
+        output = NULL;
+        if (closed != 0) goto done;
+    }
     if (!squeeze1_recovery_limit(self, &state->options, c->size, size, NULL) || !squeeze1_recovery_unchanged(self, c, pd)) goto done;
     ok = xx_io_file_replace_a(stage, target, overwrite);
 done:
     if (output) xx_io_close(output);
-    if (stage) { if (!ok) xx_rt_remove(stage); xx_str_free(stage); }
-    xx_str_free(parent); return ok;
+    if (stage) {
+        if (!ok) xx_rt_remove(stage);
+        xx_str_free(stage);
+    }
+    xx_str_free(parent);
+    return ok;
 }
 
 static bool squeeze1_populate_record(Abstractformat *self, xx_archive_record *record)
@@ -782,7 +835,8 @@ static bool squeeze1_handle_options(Abstractformat *self, const xx_list_s *optio
         }
         return false;
     }
-    squeeze1_close(self); self->priv = recovery;
+    squeeze1_close(self);
+    self->priv = recovery;
     archive = (xx_squeeze1 *)self;
     archive->uncompressed_size = context.uncompressed_size;
     archive->stream_end = self->base_address + context.stream_size;
@@ -832,10 +886,10 @@ bool xx_squeeze1_unpack_to_device(xx_squeeze1 *archive, xx_io_device *destinatio
     if (archive->format.priv) {
         squeeze1_recovery *c = (squeeze1_recovery *)archive->format.priv;
         if (!squeeze1_recovery_decode(&archive->format, NULL, c, &plain, &plain_size, pd)) return false;
-        result = squeeze1_write_all(destination, plain, (size_t)plain_size, pd) &&
-                 squeeze1_recovery_limit(&archive->format, NULL, c->size, plain_size, NULL) &&
+        result = squeeze1_write_all(destination, plain, (size_t)plain_size, pd) && squeeze1_recovery_limit(&archive->format, NULL, c->size, plain_size, NULL) &&
                  squeeze1_recovery_unchanged(&archive->format, c, pd);
-        xx_mem_free(plain); return result;
+        xx_mem_free(plain);
+        return result;
     }
     if (!squeeze1_process(&archive->format, &context, &plain, &plain_size, pd)) return false;
     result = context.checksum == archive->checksum && context.uncompressed_size == archive->uncompressed_size && plain_size <= (uint64_t)SIZE_MAX &&
@@ -851,18 +905,19 @@ xx_archive_record_state *xx_squeeze1_create_archive_records_reading(Abstractform
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) return NULL;
     xx_archive_record_state_init(state, self);
-    if (!squeeze1_copy_options(&state->options, options) ||
-        (!self->base_info_handled && !squeeze1_handle_options(self, &state->options, pd)) || !self->is_valid ||
-        (self->priv && (!squeeze1_recovery_limit(self, &state->options, ((squeeze1_recovery *)self->priv)->size,
-                                               ((squeeze1_recovery *)self->priv)->parsed.uncompressed_size, NULL) ||
-                        !squeeze1_recovery_unchanged(self, (squeeze1_recovery *)self->priv, pd))) ||
+    if (!squeeze1_copy_options(&state->options, options) || (!self->base_info_handled && !squeeze1_handle_options(self, &state->options, pd)) || !self->is_valid ||
+        (self->priv &&
+         (!squeeze1_recovery_limit(self, &state->options, ((squeeze1_recovery *)self->priv)->size, ((squeeze1_recovery *)self->priv)->parsed.uncompressed_size, NULL) ||
+          !squeeze1_recovery_unchanged(self, (squeeze1_recovery *)self->priv, pd))) ||
         !squeeze1_populate_record(self, &state->current_record)) {
         xx_archive_record_state_free(state);
         return NULL;
     }
     if (self->priv) {
         squeeze1_recovery *c = (squeeze1_recovery *)self->priv;
-        ++c->references; state->internal_state = c; state->free_internal = squeeze1_recovery_release;
+        ++c->references;
+        state->internal_state = c;
+        state->free_internal = squeeze1_recovery_release;
     }
     state->has_record = true;
     state->current_index = 0;
@@ -898,7 +953,8 @@ bool xx_squeeze1_unpack_current_archive_record(Abstractformat *self, xx_archive_
     path_value = squeeze1_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (state->internal_state) {
         squeeze1_recovery *c = (squeeze1_recovery *)state->internal_state;
-        uint8_t *plain = NULL; uint64_t size = 0U;
+        uint8_t *plain = NULL;
+        uint64_t size = 0U;
         if (!path_value) return squeeze1_recovery_decode(self, &state->options, c, NULL, NULL, pd);
         if (path_value->type == XX_VAR_TYPE_STRING || path_value->type == XX_VAR_TYPE_STRING_VIEW) base_path = xx_var_get_str(path_value);
         else if (path_value->type == XX_VAR_TYPE_WSTRING || path_value->type == XX_VAR_TYPE_WSTRING_VIEW) {
@@ -906,19 +962,25 @@ bool xx_squeeze1_unpack_current_archive_record(Abstractformat *self, xx_archive_
             size_t units = 0U;
             /* Bound conversion before it allocates, including on platforms
              * whose wchar_t may require four UTF-8 bytes per code unit. */
-            if (wide) while (units <= 1024U && wide[units]) ++units;
+            if (wide)
+                while (units <= 1024U && wide[units]) ++units;
             if (wide && units <= 1024U) owned_path = xx_str_unicode_to_utf8(wide);
             base_path = owned_path;
         }
-        if (!base_path || xx_str_len(base_path) > 4096U) { xx_str_free(owned_path); return false; }
+        if (!base_path || xx_str_len(base_path) > 4096U) {
+            xx_str_free(owned_path);
+            return false;
+        }
         if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\')
             destination_path = xx_str_concat3(base_path, "/", c->parsed.file_name);
         else destination_path = xx_str_concat(base_path, c->parsed.file_name);
         xx_str_free(owned_path);
         if (!destination_path) return false;
-        result = squeeze1_recovery_decode(self, &state->options, c, &plain, &size, pd) &&
-                 squeeze1_recovery_publish(self, state, c, destination_path, plain, (size_t)size, pd);
-        xx_mem_free(plain); xx_str_free(destination_path); return result;
+        result =
+            squeeze1_recovery_decode(self, &state->options, c, &plain, &size, pd) && squeeze1_recovery_publish(self, state, c, destination_path, plain, (size_t)size, pd);
+        xx_mem_free(plain);
+        xx_str_free(destination_path);
+        return result;
     }
     if (!path_value) {
         squeeze1_context context;

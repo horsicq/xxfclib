@@ -187,8 +187,7 @@ XXFC_API size_t xx_crt_strftime(char *pBuffer, size_t nSize, const char *pFormat
 
 /* The same with a time zone for %Z (pZoneName, may be NULL) and %z
  * (nUtcOffsetSeconds east of UTC, printed as +hhmm or -hhmm). */
-XXFC_API size_t xx_crt_strftime_zone(char *pBuffer, size_t nSize, const char *pFormat, const int pFields[9], const char *pZoneName,
-                                     long nUtcOffsetSeconds);
+XXFC_API size_t xx_crt_strftime_zone(char *pBuffer, size_t nSize, const char *pFormat, const int pFields[9], const char *pZoneName, long nUtcOffsetSeconds);
 
 /* ------------------------------------------------------- errno messages -- */
 

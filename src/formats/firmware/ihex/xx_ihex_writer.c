@@ -81,9 +81,7 @@ static bool emit_data(xx_io_device *dest, uint16_t addr_16, const uint8_t *data,
     return write_line(dest, line, pos);
 }
 
-XXFC_API bool xx_ihex_write_buffer_ex(const uint8_t *data, size_t size,
-                                      uint64_t base_address, unsigned line_length,
-                                      bool has_start_address, uint32_t start_address,
+XXFC_API bool xx_ihex_write_buffer_ex(const uint8_t *data, size_t size, uint64_t base_address, unsigned line_length, bool has_start_address, uint32_t start_address,
                                       xx_io_device *dest, xx_pd_struct *pd)
 {
     if (!dest) return false;
@@ -135,17 +133,13 @@ XXFC_API bool xx_ihex_write_buffer_ex(const uint8_t *data, size_t size,
     return emit_eof(dest);
 }
 
-XXFC_API bool xx_ihex_write_buffer(const uint8_t *data, size_t size,
-                                   uint64_t base_address, unsigned line_length,
-                                   xx_io_device *dest, xx_pd_struct *pd)
+XXFC_API bool xx_ihex_write_buffer(const uint8_t *data, size_t size, uint64_t base_address, unsigned line_length, xx_io_device *dest, xx_pd_struct *pd)
 {
     return xx_ihex_write_buffer_ex(data, size, base_address, line_length, false, 0U, dest, pd);
 }
 
-XXFC_API bool xx_ihex_write_device_ex(xx_io_device *src, int64_t src_offset, size_t count,
-                                      uint64_t base_address, unsigned line_length,
-                                      bool has_start_address, uint32_t start_address,
-                                      xx_io_device *dest, xx_pd_struct *pd)
+XXFC_API bool xx_ihex_write_device_ex(xx_io_device *src, int64_t src_offset, size_t count, uint64_t base_address, unsigned line_length, bool has_start_address,
+                                      uint32_t start_address, xx_io_device *dest, xx_pd_struct *pd)
 {
     if (!src || !dest || src_offset < 0) return false;
     if (count > 0U && base_address > UINT64_MAX - count) return false;
@@ -171,11 +165,20 @@ XXFC_API bool xx_ihex_write_device_ex(xx_io_device *src, int64_t src_offset, siz
     bool ok = true;
 
     while (remaining > 0U) {
-        if (pd && xx_pd_is_stopped(pd)) { ok = false; break; }
+        if (pd && xx_pd_is_stopped(pd)) {
+            ok = false;
+            break;
+        }
         size_t to_read = remaining > 65536 ? 65536 : remaining;
-        if (xx_io_seek64(src, cur_src, SEEK_SET) != 0) { ok = false; break; }
+        if (xx_io_seek64(src, cur_src, SEEK_SET) != 0) {
+            ok = false;
+            break;
+        }
         ssize_t bytes_read = xx_io_read(src, buffer, to_read);
-        if (bytes_read <= 0 || (size_t)bytes_read != to_read) { ok = false; break; }
+        if (bytes_read <= 0 || (size_t)bytes_read != to_read) {
+            ok = false;
+            break;
+        }
 
         const uint8_t *ptr = buffer;
         size_t buf_remain = to_read;
@@ -183,7 +186,10 @@ XXFC_API bool xx_ihex_write_device_ex(xx_io_device *src, int64_t src_offset, siz
         while (buf_remain > 0U) {
             uint32_t upper = (uint32_t)((cur_base >> 16) & 0xFFFFU);
             if (upper != active_linear) {
-                if (!emit_type04(dest, (uint16_t)upper)) { ok = false; break; }
+                if (!emit_type04(dest, (uint16_t)upper)) {
+                    ok = false;
+                    break;
+                }
                 active_linear = upper;
             }
 
@@ -193,7 +199,10 @@ XXFC_API bool xx_ihex_write_device_ex(xx_io_device *src, int64_t src_offset, siz
             if (chunk > max_in_segment) chunk = max_in_segment;
             if (chunk > buf_remain) chunk = buf_remain;
 
-            if (!emit_data(dest, addr_16, ptr, chunk)) { ok = false; break; }
+            if (!emit_data(dest, addr_16, ptr, chunk)) {
+                ok = false;
+                break;
+            }
 
             ptr += chunk;
             buf_remain -= chunk;
@@ -215,9 +224,7 @@ XXFC_API bool xx_ihex_write_device_ex(xx_io_device *src, int64_t src_offset, siz
     return emit_eof(dest);
 }
 
-XXFC_API bool xx_ihex_write_device(xx_io_device *src, int64_t src_offset, size_t count,
-                                   uint64_t base_address, unsigned line_length,
-                                   xx_io_device *dest, xx_pd_struct *pd)
+XXFC_API bool xx_ihex_write_device(xx_io_device *src, int64_t src_offset, size_t count, uint64_t base_address, unsigned line_length, xx_io_device *dest, xx_pd_struct *pd)
 {
     return xx_ihex_write_device_ex(src, src_offset, count, base_address, line_length, false, 0U, dest, pd);
 }

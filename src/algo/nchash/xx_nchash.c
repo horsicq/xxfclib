@@ -8,46 +8,60 @@
 #include <string.h>
 
 /* Helper bit rotation functions */
-static inline uint32_t xx_nchash_rotl32(uint32_t x, unsigned r) {
+static inline uint32_t xx_nchash_rotl32(uint32_t x, unsigned r)
+{
     return (x << r) | (x >> (32U - r));
 }
 
-static inline uint32_t xx_nchash_rotr32(uint32_t x, unsigned r) {
+static inline uint32_t xx_nchash_rotr32(uint32_t x, unsigned r)
+{
     return (x >> r) | (x << (32U - r));
 }
 
-static inline uint64_t xx_nchash_rotl64(uint64_t x, unsigned r) {
+static inline uint64_t xx_nchash_rotl64(uint64_t x, unsigned r)
+{
     return (x << r) | (x >> (64U - r));
 }
 
-static inline uint64_t xx_nchash_rotr64(uint64_t x, unsigned r) {
+static inline uint64_t xx_nchash_rotr64(uint64_t x, unsigned r)
+{
     return (x >> r) | (x << (64U - r));
 }
 
-static inline uint32_t xx_nchash_load32_le(const uint8_t *p) {
+static inline uint32_t xx_nchash_load32_le(const uint8_t *p)
+{
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
-static inline uint64_t xx_nchash_load64_le(const uint8_t *p) {
+static inline uint64_t xx_nchash_load64_le(const uint8_t *p)
+{
     return (uint64_t)xx_nchash_load32_le(p) | ((uint64_t)xx_nchash_load32_le(p + 4) << 32);
 }
 
-static inline void xx_nchash_store32_be(uint8_t *p, uint32_t v) {
-    p[0] = (uint8_t)(v >> 24); p[1] = (uint8_t)(v >> 16);
-    p[2] = (uint8_t)(v >> 8);  p[3] = (uint8_t)v;
+static inline void xx_nchash_store32_be(uint8_t *p, uint32_t v)
+{
+    p[0] = (uint8_t)(v >> 24);
+    p[1] = (uint8_t)(v >> 16);
+    p[2] = (uint8_t)(v >> 8);
+    p[3] = (uint8_t)v;
 }
 
-static inline void xx_nchash_store64_be(uint8_t *p, uint64_t v) {
+static inline void xx_nchash_store64_be(uint8_t *p, uint64_t v)
+{
     xx_nchash_store32_be(p, (uint32_t)(v >> 32));
     xx_nchash_store32_be(p + 4, (uint32_t)v);
 }
 
-static inline void xx_nchash_store32_le(uint8_t *p, uint32_t v) {
-    p[0] = (uint8_t)v;        p[1] = (uint8_t)(v >> 8);
-    p[2] = (uint8_t)(v >> 16); p[3] = (uint8_t)(v >> 24);
+static inline void xx_nchash_store32_le(uint8_t *p, uint32_t v)
+{
+    p[0] = (uint8_t)v;
+    p[1] = (uint8_t)(v >> 8);
+    p[2] = (uint8_t)(v >> 16);
+    p[3] = (uint8_t)(v >> 24);
 }
 
-static inline void xx_nchash_store64_le(uint8_t *p, uint64_t v) {
+static inline void xx_nchash_store64_le(uint8_t *p, uint64_t v)
+{
     xx_nchash_store32_le(p, (uint32_t)v);
     xx_nchash_store32_le(p + 4, (uint32_t)(v >> 32));
 }
@@ -61,7 +75,8 @@ static inline void xx_nchash_store64_le(uint8_t *p, uint64_t v) {
 #define FNV1_64_INIT 0xCBF29CE484222325ULL
 #define FNV1_64_PRIME 0x100000001B3ULL
 
-uint32_t xx_nchash_fnv1_32(const void *data, size_t size) {
+uint32_t xx_nchash_fnv1_32(const void *data, size_t size)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint32_t h = FNV1_32_INIT;
     if (p) {
@@ -72,7 +87,8 @@ uint32_t xx_nchash_fnv1_32(const void *data, size_t size) {
     return h;
 }
 
-uint32_t xx_nchash_fnv1a_32(const void *data, size_t size) {
+uint32_t xx_nchash_fnv1a_32(const void *data, size_t size)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint32_t h = FNV1_32_INIT;
     if (p) {
@@ -83,7 +99,8 @@ uint32_t xx_nchash_fnv1a_32(const void *data, size_t size) {
     return h;
 }
 
-uint64_t xx_nchash_fnv1_64(const void *data, size_t size) {
+uint64_t xx_nchash_fnv1_64(const void *data, size_t size)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint64_t h = FNV1_64_INIT;
     if (p) {
@@ -94,7 +111,8 @@ uint64_t xx_nchash_fnv1_64(const void *data, size_t size) {
     return h;
 }
 
-uint64_t xx_nchash_fnv1a_64(const void *data, size_t size) {
+uint64_t xx_nchash_fnv1a_64(const void *data, size_t size)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint64_t h = FNV1_64_INIT;
     if (p) {
@@ -109,7 +127,8 @@ uint64_t xx_nchash_fnv1a_64(const void *data, size_t size) {
 /* --- Classic Non-Crypto 32-bit Hashes                                  --- */
 /* ========================================================================= */
 
-uint32_t xx_nchash_djb2(const void *data, size_t size) {
+uint32_t xx_nchash_djb2(const void *data, size_t size)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint32_t h = 5381U;
     if (p) {
@@ -120,7 +139,8 @@ uint32_t xx_nchash_djb2(const void *data, size_t size) {
     return h;
 }
 
-uint32_t xx_nchash_sdbm(const void *data, size_t size) {
+uint32_t xx_nchash_sdbm(const void *data, size_t size)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint32_t h = 0U;
     if (p) {
@@ -131,7 +151,8 @@ uint32_t xx_nchash_sdbm(const void *data, size_t size) {
     return h;
 }
 
-uint32_t xx_nchash_elf(const void *data, size_t size) {
+uint32_t xx_nchash_elf(const void *data, size_t size)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint32_t h = 0U;
     if (p) {
@@ -145,11 +166,13 @@ uint32_t xx_nchash_elf(const void *data, size_t size) {
     return h;
 }
 
-uint32_t xx_nchash_pjw(const void *data, size_t size) {
+uint32_t xx_nchash_pjw(const void *data, size_t size)
+{
     return xx_nchash_elf(data, size);
 }
 
-uint32_t xx_nchash_bkdr(const void *data, size_t size) {
+uint32_t xx_nchash_bkdr(const void *data, size_t size)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint32_t h = 0U;
     if (p) {
@@ -160,7 +183,8 @@ uint32_t xx_nchash_bkdr(const void *data, size_t size) {
     return h;
 }
 
-uint32_t xx_nchash_ap(const void *data, size_t size) {
+uint32_t xx_nchash_ap(const void *data, size_t size)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint32_t h = 0xAAAAAAAAU;
     if (p) {
@@ -175,7 +199,8 @@ uint32_t xx_nchash_ap(const void *data, size_t size) {
     return h;
 }
 
-uint32_t xx_nchash_dek(const void *data, size_t size) {
+uint32_t xx_nchash_dek(const void *data, size_t size)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint32_t h = (uint32_t)size;
     if (p) {
@@ -186,7 +211,8 @@ uint32_t xx_nchash_dek(const void *data, size_t size) {
     return h;
 }
 
-uint32_t xx_nchash_js(const void *data, size_t size) {
+uint32_t xx_nchash_js(const void *data, size_t size)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint32_t h = 1315423911U;
     if (p) {
@@ -197,7 +223,8 @@ uint32_t xx_nchash_js(const void *data, size_t size) {
     return h;
 }
 
-uint32_t xx_nchash_rs(const void *data, size_t size) {
+uint32_t xx_nchash_rs(const void *data, size_t size)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint32_t a = 63689U;
     uint32_t h = 0U;
@@ -210,7 +237,8 @@ uint32_t xx_nchash_rs(const void *data, size_t size) {
     return h;
 }
 
-uint32_t xx_nchash_oat(const void *data, size_t size) {
+uint32_t xx_nchash_oat(const void *data, size_t size)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint32_t h = 0U;
     if (p) {
@@ -230,7 +258,8 @@ uint32_t xx_nchash_oat(const void *data, size_t size) {
 /* --- MurmurHash3                                                       --- */
 /* ========================================================================= */
 
-static inline uint32_t xx_nchash_fmix32(uint32_t h) {
+static inline uint32_t xx_nchash_fmix32(uint32_t h)
+{
     h ^= h >> 16;
     h *= 0x85EBCA6BU;
     h ^= h >> 13;
@@ -239,7 +268,8 @@ static inline uint32_t xx_nchash_fmix32(uint32_t h) {
     return h;
 }
 
-static inline uint64_t xx_nchash_fmix64(uint64_t k) {
+static inline uint64_t xx_nchash_fmix64(uint64_t k)
+{
     k ^= k >> 33;
     k *= 0xFF51AFD7ED558CCDULL;
     k ^= k >> 33;
@@ -248,7 +278,8 @@ static inline uint64_t xx_nchash_fmix64(uint64_t k) {
     return k;
 }
 
-uint32_t xx_nchash_murmur3_32(const void *data, size_t size, uint32_t seed) {
+uint32_t xx_nchash_murmur3_32(const void *data, size_t size, uint32_t seed)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint32_t h = seed;
     const uint32_t c1 = 0xCC9E2D51U;
@@ -271,12 +302,13 @@ uint32_t xx_nchash_murmur3_32(const void *data, size_t size, uint32_t seed) {
         switch (size & 3) {
             case 3: k1 ^= (uint32_t)tail[2] << 16; /* fallthrough */
             case 2: k1 ^= (uint32_t)tail[1] << 8;  /* fallthrough */
-            case 1: k1 ^= (uint32_t)tail[0];
-                    k1 *= c1;
-                    k1 = xx_nchash_rotl32(k1, 15);
-                    k1 *= c2;
-                    h ^= k1;
-                    break;
+            case 1:
+                k1 ^= (uint32_t)tail[0];
+                k1 *= c1;
+                k1 = xx_nchash_rotl32(k1, 15);
+                k1 *= c2;
+                h ^= k1;
+                break;
             default: break;
         }
     }
@@ -285,7 +317,8 @@ uint32_t xx_nchash_murmur3_32(const void *data, size_t size, uint32_t seed) {
     return xx_nchash_fmix32(h);
 }
 
-void xx_nchash_murmur3_128(const void *data, size_t size, uint64_t seed, uint8_t out[16]) {
+void xx_nchash_murmur3_128(const void *data, size_t size, uint64_t seed, uint8_t out[16])
+{
     const uint8_t *p = (const uint8_t *)data;
     uint64_t h1 = seed;
     uint64_t h2 = seed;
@@ -298,13 +331,21 @@ void xx_nchash_murmur3_128(const void *data, size_t size, uint64_t seed, uint8_t
             uint64_t k1 = xx_nchash_load64_le(p + i * 16);
             uint64_t k2 = xx_nchash_load64_le(p + i * 16 + 8);
 
-            k1 *= c1; k1 = xx_nchash_rotl64(k1, 31); k1 *= c2;
+            k1 *= c1;
+            k1 = xx_nchash_rotl64(k1, 31);
+            k1 *= c2;
             h1 ^= k1;
-            h1 = xx_nchash_rotl64(h1, 27); h1 += h2; h1 = h1 * 5ULL + 0x52DCE729ULL;
+            h1 = xx_nchash_rotl64(h1, 27);
+            h1 += h2;
+            h1 = h1 * 5ULL + 0x52DCE729ULL;
 
-            k2 *= c2; k2 = xx_nchash_rotl64(k2, 33); k2 *= c1;
+            k2 *= c2;
+            k2 = xx_nchash_rotl64(k2, 33);
+            k2 *= c1;
             h2 ^= k2;
-            h2 = xx_nchash_rotl64(h2, 31); h2 += h1; h2 = h2 * 5ULL + 0x38495AB5ULL;
+            h2 = xx_nchash_rotl64(h2, 31);
+            h2 += h1;
+            h2 = h2 * 5ULL + 0x38495AB5ULL;
         }
 
         const uint8_t *tail = p + nblocks * 16;
@@ -317,19 +358,27 @@ void xx_nchash_murmur3_128(const void *data, size_t size, uint64_t seed, uint8_t
             case 12: k2 ^= (uint64_t)tail[11] << 24; /* fallthrough */
             case 11: k2 ^= (uint64_t)tail[10] << 16; /* fallthrough */
             case 10: k2 ^= (uint64_t)tail[9] << 8;   /* fallthrough */
-            case  9: k2 ^= (uint64_t)tail[8];
-                     k2 *= c2; k2 = xx_nchash_rotl64(k2, 33); k2 *= c1; h2 ^= k2;
-                     /* fallthrough */
-            case  8: k1 ^= (uint64_t)tail[7] << 56; /* fallthrough */
-            case  7: k1 ^= (uint64_t)tail[6] << 48; /* fallthrough */
-            case  6: k1 ^= (uint64_t)tail[5] << 40; /* fallthrough */
-            case  5: k1 ^= (uint64_t)tail[4] << 32; /* fallthrough */
-            case  4: k1 ^= (uint64_t)tail[3] << 24; /* fallthrough */
-            case  3: k1 ^= (uint64_t)tail[2] << 16; /* fallthrough */
-            case  2: k1 ^= (uint64_t)tail[1] << 8;  /* fallthrough */
-            case  1: k1 ^= (uint64_t)tail[0];
-                     k1 *= c1; k1 = xx_nchash_rotl64(k1, 31); k1 *= c2; h1 ^= k1;
-                     break;
+            case 9:
+                k2 ^= (uint64_t)tail[8];
+                k2 *= c2;
+                k2 = xx_nchash_rotl64(k2, 33);
+                k2 *= c1;
+                h2 ^= k2;
+                /* fallthrough */
+            case 8: k1 ^= (uint64_t)tail[7] << 56; /* fallthrough */
+            case 7: k1 ^= (uint64_t)tail[6] << 48; /* fallthrough */
+            case 6: k1 ^= (uint64_t)tail[5] << 40; /* fallthrough */
+            case 5: k1 ^= (uint64_t)tail[4] << 32; /* fallthrough */
+            case 4: k1 ^= (uint64_t)tail[3] << 24; /* fallthrough */
+            case 3: k1 ^= (uint64_t)tail[2] << 16; /* fallthrough */
+            case 2: k1 ^= (uint64_t)tail[1] << 8;  /* fallthrough */
+            case 1:
+                k1 ^= (uint64_t)tail[0];
+                k1 *= c1;
+                k1 = xx_nchash_rotl64(k1, 31);
+                k1 *= c2;
+                h1 ^= k1;
+                break;
             default: break;
         }
     }
@@ -359,7 +408,8 @@ void xx_nchash_murmur3_128(const void *data, size_t size, uint64_t seed, uint8_t
 #define XXH32_PRIME4 0x27D4EB2FU
 #define XXH32_PRIME5 0x165667B1U
 
-uint32_t xx_nchash_xxhash32(const void *data, size_t size, uint32_t seed) {
+uint32_t xx_nchash_xxhash32(const void *data, size_t size, uint32_t seed)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint32_t h;
 
@@ -410,21 +460,24 @@ uint32_t xx_nchash_xxhash32(const void *data, size_t size, uint32_t seed) {
 #define XXH64_PRIME4 0x85EBCA77C2B2AE63ULL
 #define XXH64_PRIME5 0x27D4EB2F165667C5ULL
 
-static inline uint64_t xx_nchash_xxh64_round(uint64_t acc, uint64_t input) {
+static inline uint64_t xx_nchash_xxh64_round(uint64_t acc, uint64_t input)
+{
     acc += input * XXH64_PRIME2;
     acc = xx_nchash_rotl64(acc, 31);
     acc *= XXH64_PRIME1;
     return acc;
 }
 
-static inline uint64_t xx_nchash_xxh64_merge_round(uint64_t acc, uint64_t val) {
+static inline uint64_t xx_nchash_xxh64_merge_round(uint64_t acc, uint64_t val)
+{
     val = xx_nchash_xxh64_round(0, val);
     acc ^= val;
     acc = acc * XXH64_PRIME1 + XXH64_PRIME4;
     return acc;
 }
 
-uint64_t xx_nchash_xxhash64(const void *data, size_t size, uint64_t seed) {
+uint64_t xx_nchash_xxhash64(const void *data, size_t size, uint64_t seed)
+{
     const uint8_t *p = (const uint8_t *)data;
     uint64_t h;
 
@@ -483,14 +536,26 @@ uint64_t xx_nchash_xxhash64(const void *data, size_t size, uint64_t seed) {
 /* --- SipHash-2-4                                                       --- */
 /* ========================================================================= */
 
-#define SIPROUND(v0, v1, v2, v3) do { \
-    v0 += v1; v1 = xx_nchash_rotl64(v1, 13); v1 ^= v0; v0 = xx_nchash_rotl64(v0, 32); \
-    v2 += v3; v3 = xx_nchash_rotl64(v3, 16); v3 ^= v2; \
-    v0 += v3; v3 = xx_nchash_rotl64(v3, 21); v3 ^= v0; \
-    v2 += v1; v1 = xx_nchash_rotl64(v1, 17); v1 ^= v2; v2 = xx_nchash_rotl64(v2, 32); \
-} while (0)
+#define SIPROUND(v0, v1, v2, v3)       \
+    do {                               \
+        v0 += v1;                      \
+        v1 = xx_nchash_rotl64(v1, 13); \
+        v1 ^= v0;                      \
+        v0 = xx_nchash_rotl64(v0, 32); \
+        v2 += v3;                      \
+        v3 = xx_nchash_rotl64(v3, 16); \
+        v3 ^= v2;                      \
+        v0 += v3;                      \
+        v3 = xx_nchash_rotl64(v3, 21); \
+        v3 ^= v0;                      \
+        v2 += v1;                      \
+        v1 = xx_nchash_rotl64(v1, 17); \
+        v1 ^= v2;                      \
+        v2 = xx_nchash_rotl64(v2, 32); \
+    } while (0)
 
-static void xx_nchash_siphash_core(const void *data, size_t size, const uint8_t key[16], bool is128, uint64_t *out0, uint64_t *out1) {
+static void xx_nchash_siphash_core(const void *data, size_t size, const uint8_t key[16], bool is128, uint64_t *out0, uint64_t *out1)
+{
     uint64_t k0 = key ? xx_nchash_load64_le(key) : 0;
     uint64_t k1 = key ? xx_nchash_load64_le(key + 8) : 0;
     uint64_t v0 = k0 ^ 0x736F6D6570736575ULL;
@@ -531,29 +596,37 @@ static void xx_nchash_siphash_core(const void *data, size_t size, const uint8_t 
 
     if (!is128) {
         v2 ^= 0xFF;
-        SIPROUND(v0, v1, v2, v3); SIPROUND(v0, v1, v2, v3);
-        SIPROUND(v0, v1, v2, v3); SIPROUND(v0, v1, v2, v3);
+        SIPROUND(v0, v1, v2, v3);
+        SIPROUND(v0, v1, v2, v3);
+        SIPROUND(v0, v1, v2, v3);
+        SIPROUND(v0, v1, v2, v3);
         *out0 = v0 ^ v1 ^ v2 ^ v3;
         *out1 = 0;
     } else {
         v2 ^= 0xEE;
-        SIPROUND(v0, v1, v2, v3); SIPROUND(v0, v1, v2, v3);
-        SIPROUND(v0, v1, v2, v3); SIPROUND(v0, v1, v2, v3);
+        SIPROUND(v0, v1, v2, v3);
+        SIPROUND(v0, v1, v2, v3);
+        SIPROUND(v0, v1, v2, v3);
+        SIPROUND(v0, v1, v2, v3);
         *out0 = v0 ^ v1 ^ v2 ^ v3;
         v1 ^= 0xDD;
-        SIPROUND(v0, v1, v2, v3); SIPROUND(v0, v1, v2, v3);
-        SIPROUND(v0, v1, v2, v3); SIPROUND(v0, v1, v2, v3);
+        SIPROUND(v0, v1, v2, v3);
+        SIPROUND(v0, v1, v2, v3);
+        SIPROUND(v0, v1, v2, v3);
+        SIPROUND(v0, v1, v2, v3);
         *out1 = v0 ^ v1 ^ v2 ^ v3;
     }
 }
 
-uint64_t xx_nchash_siphash64(const void *data, size_t size, const uint8_t key[16]) {
+uint64_t xx_nchash_siphash64(const void *data, size_t size, const uint8_t key[16])
+{
     uint64_t o0, o1;
     xx_nchash_siphash_core(data, size, key, false, &o0, &o1);
     return o0;
 }
 
-void xx_nchash_siphash128(const void *data, size_t size, const uint8_t key[16], uint8_t out[16]) {
+void xx_nchash_siphash128(const void *data, size_t size, const uint8_t key[16], uint8_t out[16])
+{
     uint64_t o0, o1;
     xx_nchash_siphash_core(data, size, key, true, &o0, &o1);
     if (out) {
@@ -566,46 +639,37 @@ void xx_nchash_siphash128(const void *data, size_t size, const uint8_t key[16], 
 /* --- BLAKE2b-512 & BLAKE2s-256 (RFC 7693)                              --- */
 /* ========================================================================= */
 
-static const uint8_t xx_blake2_sigma[12][16] = {
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-    {14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3},
-    {11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4},
-    {7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8},
-    {9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13},
-    {2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9},
-    {12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11},
-    {13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10},
-    {6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5},
-    {10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0},
-    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-    {14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3}
-};
+static const uint8_t xx_blake2_sigma[12][16] = {{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3},
+                                                {11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4}, {7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8},
+                                                {9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13}, {2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9},
+                                                {12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11}, {13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10},
+                                                {6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5}, {10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0},
+                                                {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, {14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3}};
 
-static const uint64_t xx_blake2b_iv[8] = {
-    0x6A09E667F3BCC908ULL, 0xBB67AE8584CAA73BULL,
-    0x3C6EF372FE94F82BULL, 0xA54FF53A5F1D36F1ULL,
-    0x510E527FADE682D1ULL, 0x9B05688C2B3E6C1FULL,
-    0x1F83D9ABFB41BD6BULL, 0x5BE0CD19137E2179ULL
-};
+static const uint64_t xx_blake2b_iv[8] = {0x6A09E667F3BCC908ULL, 0xBB67AE8584CAA73BULL, 0x3C6EF372FE94F82BULL, 0xA54FF53A5F1D36F1ULL,
+                                          0x510E527FADE682D1ULL, 0x9B05688C2B3E6C1FULL, 0x1F83D9ABFB41BD6BULL, 0x5BE0CD19137E2179ULL};
 
-static const uint32_t xx_blake2s_iv[8] = {
-    0x6A09E667U, 0xBB67AE85U, 0x3C6EF372U, 0xA54FF53AU,
-    0x510E527FU, 0x9B05688CU, 0x1F83D9ABU, 0x5BE0CD19U
-};
+static const uint32_t xx_blake2s_iv[8] = {0x6A09E667U, 0xBB67AE85U, 0x3C6EF372U, 0xA54FF53AU, 0x510E527FU, 0x9B05688CU, 0x1F83D9ABU, 0x5BE0CD19U};
 
-#define B2B_G(a, b, c, d, x, y) do { \
-    a = a + b + x; d = xx_nchash_rotr64(d ^ a, 32); \
-    c = c + d;     b = xx_nchash_rotr64(b ^ c, 24); \
-    a = a + b + y; d = xx_nchash_rotr64(d ^ a, 16); \
-    c = c + d;     b = xx_nchash_rotr64(b ^ c, 63); \
-} while (0)
+#define B2B_G(a, b, c, d, x, y)          \
+    do {                                 \
+        a = a + b + x;                   \
+        d = xx_nchash_rotr64(d ^ a, 32); \
+        c = c + d;                       \
+        b = xx_nchash_rotr64(b ^ c, 24); \
+        a = a + b + y;                   \
+        d = xx_nchash_rotr64(d ^ a, 16); \
+        c = c + d;                       \
+        b = xx_nchash_rotr64(b ^ c, 63); \
+    } while (0)
 
-static void xx_blake2b_compress(xx_nchash_blake2b_ctx *ctx, const uint8_t block[128]) {
+static void xx_blake2b_compress(xx_nchash_blake2b_ctx *ctx, const uint8_t block[128])
+{
     uint64_t m[16], v[16];
     for (size_t i = 0; i < 16; ++i) m[i] = xx_nchash_load64_le(block + i * 8);
     for (size_t i = 0; i < 8; ++i) v[i] = ctx->h[i];
-    v[8]  = xx_blake2b_iv[0];
-    v[9]  = xx_blake2b_iv[1];
+    v[8] = xx_blake2b_iv[0];
+    v[9] = xx_blake2b_iv[1];
     v[10] = xx_blake2b_iv[2];
     v[11] = xx_blake2b_iv[3];
     v[12] = xx_blake2b_iv[4] ^ ctx->t[0];
@@ -615,26 +679,28 @@ static void xx_blake2b_compress(xx_nchash_blake2b_ctx *ctx, const uint8_t block[
 
     for (size_t r = 0; r < 12; ++r) {
         const uint8_t *s = xx_blake2_sigma[r];
-        B2B_G(v[0], v[4], v[8],  v[12], m[s[0]],  m[s[1]]);
-        B2B_G(v[1], v[5], v[9],  v[13], m[s[2]],  m[s[3]]);
-        B2B_G(v[2], v[6], v[10], v[14], m[s[4]],  m[s[5]]);
-        B2B_G(v[3], v[7], v[11], v[15], m[s[6]],  m[s[7]]);
-        B2B_G(v[0], v[5], v[10], v[15], m[s[8]],  m[s[9]]);
+        B2B_G(v[0], v[4], v[8], v[12], m[s[0]], m[s[1]]);
+        B2B_G(v[1], v[5], v[9], v[13], m[s[2]], m[s[3]]);
+        B2B_G(v[2], v[6], v[10], v[14], m[s[4]], m[s[5]]);
+        B2B_G(v[3], v[7], v[11], v[15], m[s[6]], m[s[7]]);
+        B2B_G(v[0], v[5], v[10], v[15], m[s[8]], m[s[9]]);
         B2B_G(v[1], v[6], v[11], v[12], m[s[10]], m[s[11]]);
-        B2B_G(v[2], v[7], v[8],  v[13], m[s[12]], m[s[13]]);
-        B2B_G(v[3], v[4], v[9],  v[14], m[s[14]], m[s[15]]);
+        B2B_G(v[2], v[7], v[8], v[13], m[s[12]], m[s[13]]);
+        B2B_G(v[3], v[4], v[9], v[14], m[s[14]], m[s[15]]);
     }
 
     for (size_t i = 0; i < 8; ++i) ctx->h[i] ^= v[i] ^ v[i + 8];
 }
 
-static void xx_blake2b_init(xx_nchash_blake2b_ctx *ctx) {
+static void xx_blake2b_init(xx_nchash_blake2b_ctx *ctx)
+{
     memset(ctx, 0, sizeof(*ctx));
     for (size_t i = 0; i < 8; ++i) ctx->h[i] = xx_blake2b_iv[i];
     ctx->h[0] ^= 0x01010040ULL; /* unkeyed, 64-byte digest */
 }
 
-static void xx_blake2b_update(xx_nchash_blake2b_ctx *ctx, const uint8_t *in, size_t inlen) {
+static void xx_blake2b_update(xx_nchash_blake2b_ctx *ctx, const uint8_t *in, size_t inlen)
+{
     while (inlen > 0) {
         if (ctx->buflen == 128) {
             ctx->t[0] += 128;
@@ -651,7 +717,8 @@ static void xx_blake2b_update(xx_nchash_blake2b_ctx *ctx, const uint8_t *in, siz
     }
 }
 
-static void xx_blake2b_final(xx_nchash_blake2b_ctx *ctx, uint8_t digest[64]) {
+static void xx_blake2b_final(xx_nchash_blake2b_ctx *ctx, uint8_t digest[64])
+{
     ctx->t[0] += (uint64_t)ctx->buflen;
     if (ctx->t[0] < (uint64_t)ctx->buflen) ctx->t[1]++;
     ctx->f[0] = ~0ULL;
@@ -662,7 +729,8 @@ static void xx_blake2b_final(xx_nchash_blake2b_ctx *ctx, uint8_t digest[64]) {
     }
 }
 
-bool xx_nchash_blake2b_512(const void *data, size_t size, uint8_t digest[64]) {
+bool xx_nchash_blake2b_512(const void *data, size_t size, uint8_t digest[64])
+{
     if (!digest) return false;
     xx_nchash_blake2b_ctx ctx;
     xx_blake2b_init(&ctx);
@@ -671,19 +739,25 @@ bool xx_nchash_blake2b_512(const void *data, size_t size, uint8_t digest[64]) {
     return true;
 }
 
-#define B2S_G(a, b, c, d, x, y) do { \
-    a = a + b + x; d = xx_nchash_rotr32(d ^ a, 16); \
-    c = c + d;     b = xx_nchash_rotr32(b ^ c, 12); \
-    a = a + b + y; d = xx_nchash_rotr32(d ^ a, 8);  \
-    c = c + d;     b = xx_nchash_rotr32(b ^ c, 7);  \
-} while (0)
+#define B2S_G(a, b, c, d, x, y)          \
+    do {                                 \
+        a = a + b + x;                   \
+        d = xx_nchash_rotr32(d ^ a, 16); \
+        c = c + d;                       \
+        b = xx_nchash_rotr32(b ^ c, 12); \
+        a = a + b + y;                   \
+        d = xx_nchash_rotr32(d ^ a, 8);  \
+        c = c + d;                       \
+        b = xx_nchash_rotr32(b ^ c, 7);  \
+    } while (0)
 
-static void xx_blake2s_compress(xx_nchash_blake2s_ctx *ctx, const uint8_t block[64]) {
+static void xx_blake2s_compress(xx_nchash_blake2s_ctx *ctx, const uint8_t block[64])
+{
     uint32_t m[16], v[16];
     for (size_t i = 0; i < 16; ++i) m[i] = xx_nchash_load32_le(block + i * 4);
     for (size_t i = 0; i < 8; ++i) v[i] = ctx->h[i];
-    v[8]  = xx_blake2s_iv[0];
-    v[9]  = xx_blake2s_iv[1];
+    v[8] = xx_blake2s_iv[0];
+    v[9] = xx_blake2s_iv[1];
     v[10] = xx_blake2s_iv[2];
     v[11] = xx_blake2s_iv[3];
     v[12] = xx_blake2s_iv[4] ^ ctx->t[0];
@@ -693,26 +767,28 @@ static void xx_blake2s_compress(xx_nchash_blake2s_ctx *ctx, const uint8_t block[
 
     for (size_t r = 0; r < 10; ++r) {
         const uint8_t *s = xx_blake2_sigma[r];
-        B2S_G(v[0], v[4], v[8],  v[12], m[s[0]],  m[s[1]]);
-        B2S_G(v[1], v[5], v[9],  v[13], m[s[2]],  m[s[3]]);
-        B2S_G(v[2], v[6], v[10], v[14], m[s[4]],  m[s[5]]);
-        B2S_G(v[3], v[7], v[11], v[15], m[s[6]],  m[s[7]]);
-        B2S_G(v[0], v[5], v[10], v[15], m[s[8]],  m[s[9]]);
+        B2S_G(v[0], v[4], v[8], v[12], m[s[0]], m[s[1]]);
+        B2S_G(v[1], v[5], v[9], v[13], m[s[2]], m[s[3]]);
+        B2S_G(v[2], v[6], v[10], v[14], m[s[4]], m[s[5]]);
+        B2S_G(v[3], v[7], v[11], v[15], m[s[6]], m[s[7]]);
+        B2S_G(v[0], v[5], v[10], v[15], m[s[8]], m[s[9]]);
         B2S_G(v[1], v[6], v[11], v[12], m[s[10]], m[s[11]]);
-        B2S_G(v[2], v[7], v[8],  v[13], m[s[12]], m[s[13]]);
-        B2S_G(v[3], v[4], v[9],  v[14], m[s[14]], m[s[15]]);
+        B2S_G(v[2], v[7], v[8], v[13], m[s[12]], m[s[13]]);
+        B2S_G(v[3], v[4], v[9], v[14], m[s[14]], m[s[15]]);
     }
 
     for (size_t i = 0; i < 8; ++i) ctx->h[i] ^= v[i] ^ v[i + 8];
 }
 
-static void xx_blake2s_init(xx_nchash_blake2s_ctx *ctx) {
+static void xx_blake2s_init(xx_nchash_blake2s_ctx *ctx)
+{
     memset(ctx, 0, sizeof(*ctx));
     for (size_t i = 0; i < 8; ++i) ctx->h[i] = xx_blake2s_iv[i];
     ctx->h[0] ^= 0x01010020U; /* unkeyed, 32-byte digest */
 }
 
-static void xx_blake2s_update(xx_nchash_blake2s_ctx *ctx, const uint8_t *in, size_t inlen) {
+static void xx_blake2s_update(xx_nchash_blake2s_ctx *ctx, const uint8_t *in, size_t inlen)
+{
     while (inlen > 0) {
         if (ctx->buflen == 64) {
             ctx->t[0] += 64;
@@ -729,7 +805,8 @@ static void xx_blake2s_update(xx_nchash_blake2s_ctx *ctx, const uint8_t *in, siz
     }
 }
 
-static void xx_blake2s_final(xx_nchash_blake2s_ctx *ctx, uint8_t digest[32]) {
+static void xx_blake2s_final(xx_nchash_blake2s_ctx *ctx, uint8_t digest[32])
+{
     ctx->t[0] += (uint32_t)ctx->buflen;
     if (ctx->t[0] < (uint32_t)ctx->buflen) ctx->t[1]++;
     ctx->f[0] = ~0U;
@@ -740,7 +817,8 @@ static void xx_blake2s_final(xx_nchash_blake2s_ctx *ctx, uint8_t digest[32]) {
     }
 }
 
-bool xx_nchash_blake2s_256(const void *data, size_t size, uint8_t digest[32]) {
+bool xx_nchash_blake2s_256(const void *data, size_t size, uint8_t digest[32])
+{
     if (!digest) return false;
     xx_nchash_blake2s_ctx ctx;
     xx_blake2s_init(&ctx);
@@ -753,7 +831,8 @@ bool xx_nchash_blake2s_256(const void *data, size_t size, uint8_t digest[32]) {
 /* --- Unified Streaming API                                             --- */
 /* ========================================================================= */
 
-const char *xx_nchash_type_to_string(xx_nchash_type_t type) {
+const char *xx_nchash_type_to_string(xx_nchash_type_t type)
+{
     switch (type) {
         case XX_NCHASH_FNV1_32: return "FNV-1 (32-bit)";
         case XX_NCHASH_FNV1A_32: return "FNV-1a (32-bit)";
@@ -781,7 +860,8 @@ const char *xx_nchash_type_to_string(xx_nchash_type_t type) {
     }
 }
 
-xx_nchash_type_t xx_nchash_string_to_type(const char *name) {
+xx_nchash_type_t xx_nchash_string_to_type(const char *name)
+{
     if (!name) return XX_NCHASH_COUNT;
     char norm[64];
     size_t pos = 0;
@@ -818,7 +898,8 @@ xx_nchash_type_t xx_nchash_string_to_type(const char *name) {
     return XX_NCHASH_COUNT;
 }
 
-size_t xx_nchash_digest_size(xx_nchash_type_t type) {
+size_t xx_nchash_digest_size(xx_nchash_type_t type)
+{
     switch (type) {
         case XX_NCHASH_FNV1_32:
         case XX_NCHASH_FNV1A_32:
@@ -833,49 +914,51 @@ size_t xx_nchash_digest_size(xx_nchash_type_t type) {
         case XX_NCHASH_RS:
         case XX_NCHASH_OAT:
         case XX_NCHASH_MURMUR3_32:
-        case XX_NCHASH_XXHASH32:
-            return 4;
+        case XX_NCHASH_XXHASH32: return 4;
         case XX_NCHASH_FNV1_64:
         case XX_NCHASH_FNV1A_64:
         case XX_NCHASH_XXHASH64:
-        case XX_NCHASH_SIPHASH64:
-            return 8;
+        case XX_NCHASH_SIPHASH64: return 8;
         case XX_NCHASH_MURMUR3_128:
-        case XX_NCHASH_SIPHASH128:
-            return 16;
-        case XX_NCHASH_BLAKE2S_256:
-            return 32;
-        case XX_NCHASH_BLAKE2B_512:
-            return 64;
-        default:
-            return 0;
+        case XX_NCHASH_SIPHASH128: return 16;
+        case XX_NCHASH_BLAKE2S_256: return 32;
+        case XX_NCHASH_BLAKE2B_512: return 64;
+        default: return 0;
     }
 }
 
-bool xx_nchash_context_init(xx_nchash_context *ctx, xx_nchash_type_t type) {
+bool xx_nchash_context_init(xx_nchash_context *ctx, xx_nchash_type_t type)
+{
     if (!ctx || type >= XX_NCHASH_COUNT) return false;
     memset(ctx, 0, sizeof(*ctx));
     ctx->type = type;
     ctx->initialized = true;
 
     switch (type) {
-        case XX_NCHASH_FNV1_32:  ctx->u.fnv1_32.state = FNV1_32_INIT; break;
+        case XX_NCHASH_FNV1_32: ctx->u.fnv1_32.state = FNV1_32_INIT; break;
         case XX_NCHASH_FNV1A_32: ctx->u.fnv1a_32.state = FNV1_32_INIT; break;
-        case XX_NCHASH_FNV1_64:  ctx->u.fnv1_64.state = FNV1_64_INIT; break;
+        case XX_NCHASH_FNV1_64: ctx->u.fnv1_64.state = FNV1_64_INIT; break;
         case XX_NCHASH_FNV1A_64: ctx->u.fnv1a_64.state = FNV1_64_INIT; break;
-        case XX_NCHASH_DJB2:     ctx->u.djb2.state = 5381U; break;
-        case XX_NCHASH_SDBM:     ctx->u.sdbm.state = 0U; break;
-        case XX_NCHASH_ELF:      ctx->u.elf.state = 0U; break;
-        case XX_NCHASH_PJW:      ctx->u.pjw.state = 0U; break;
-        case XX_NCHASH_BKDR:     ctx->u.bkdr.state = 0U; break;
-        case XX_NCHASH_AP:       ctx->u.ap.state = 0xAAAAAAAAU; ctx->u.ap.index = 0; break;
-        case XX_NCHASH_DEK:      ctx->u.dek.state = 0U; ctx->u.dek.length = 0; break;
-        case XX_NCHASH_JS:       ctx->u.js.state = 1315423911U; break;
-        case XX_NCHASH_RS:       ctx->u.rs.state = 0U; ctx->u.rs.a = 63689U; break;
-        case XX_NCHASH_OAT:      ctx->u.oat.state = 0U; break;
-        case XX_NCHASH_MURMUR3_32:
-            ctx->u.murmur3_32.h = 0U;
+        case XX_NCHASH_DJB2: ctx->u.djb2.state = 5381U; break;
+        case XX_NCHASH_SDBM: ctx->u.sdbm.state = 0U; break;
+        case XX_NCHASH_ELF: ctx->u.elf.state = 0U; break;
+        case XX_NCHASH_PJW: ctx->u.pjw.state = 0U; break;
+        case XX_NCHASH_BKDR: ctx->u.bkdr.state = 0U; break;
+        case XX_NCHASH_AP:
+            ctx->u.ap.state = 0xAAAAAAAAU;
+            ctx->u.ap.index = 0;
             break;
+        case XX_NCHASH_DEK:
+            ctx->u.dek.state = 0U;
+            ctx->u.dek.length = 0;
+            break;
+        case XX_NCHASH_JS: ctx->u.js.state = 1315423911U; break;
+        case XX_NCHASH_RS:
+            ctx->u.rs.state = 0U;
+            ctx->u.rs.a = 63689U;
+            break;
+        case XX_NCHASH_OAT: ctx->u.oat.state = 0U; break;
+        case XX_NCHASH_MURMUR3_32: ctx->u.murmur3_32.h = 0U; break;
         case XX_NCHASH_MURMUR3_128:
             ctx->u.murmur3_128.h1 = 0ULL;
             ctx->u.murmur3_128.h2 = 0ULL;
@@ -902,18 +985,15 @@ bool xx_nchash_context_init(xx_nchash_context *ctx, xx_nchash_type_t type) {
             ctx->u.siphash.is128 = true;
             xx_nchash_context_set_key(ctx, NULL);
             break;
-        case XX_NCHASH_BLAKE2B_512:
-            xx_blake2b_init(&ctx->u.blake2b);
-            break;
-        case XX_NCHASH_BLAKE2S_256:
-            xx_blake2s_init(&ctx->u.blake2s);
-            break;
+        case XX_NCHASH_BLAKE2B_512: xx_blake2b_init(&ctx->u.blake2b); break;
+        case XX_NCHASH_BLAKE2S_256: xx_blake2s_init(&ctx->u.blake2s); break;
         default: break;
     }
     return true;
 }
 
-void xx_nchash_context_set_seed(xx_nchash_context *ctx, uint64_t seed) {
+void xx_nchash_context_set_seed(xx_nchash_context *ctx, uint64_t seed)
+{
     if (!ctx) return;
     if (ctx->type == XX_NCHASH_MURMUR3_32) {
         ctx->u.murmur3_32.h = (uint32_t)seed;
@@ -935,7 +1015,8 @@ void xx_nchash_context_set_seed(xx_nchash_context *ctx, uint64_t seed) {
     }
 }
 
-void xx_nchash_context_set_key(xx_nchash_context *ctx, const uint8_t key[16]) {
+void xx_nchash_context_set_key(xx_nchash_context *ctx, const uint8_t key[16])
+{
     if (!ctx) return;
     if (ctx->type == XX_NCHASH_SIPHASH64 || ctx->type == XX_NCHASH_SIPHASH128) {
         uint64_t k0 = key ? xx_nchash_load64_le(key) : 0;
@@ -948,7 +1029,8 @@ void xx_nchash_context_set_key(xx_nchash_context *ctx, const uint8_t key[16]) {
     }
 }
 
-void xx_nchash_context_update(xx_nchash_context *ctx, const void *data, size_t size) {
+void xx_nchash_context_update(xx_nchash_context *ctx, const void *data, size_t size)
+{
     if (!ctx || !ctx->initialized || !data || !size) return;
     const uint8_t *p = (const uint8_t *)data;
     ctx->total_size += size;
@@ -1026,15 +1108,23 @@ void xx_nchash_context_update(xx_nchash_context *ctx, const void *data, size_t s
                 }
                 if (m->buffered == 4) {
                     uint32_t k = xx_nchash_load32_le(m->buffer);
-                    k *= c1; k = xx_nchash_rotl32(k, 15); k *= c2;
-                    m->h ^= k; m->h = xx_nchash_rotl32(m->h, 13); m->h = m->h * 5U + 0xE6546B64U;
+                    k *= c1;
+                    k = xx_nchash_rotl32(k, 15);
+                    k *= c2;
+                    m->h ^= k;
+                    m->h = xx_nchash_rotl32(m->h, 13);
+                    m->h = m->h * 5U + 0xE6546B64U;
                     m->buffered = 0;
                 }
             }
             while (offset + 4 <= size) {
                 uint32_t k = xx_nchash_load32_le(p + offset);
-                k *= c1; k = xx_nchash_rotl32(k, 15); k *= c2;
-                m->h ^= k; m->h = xx_nchash_rotl32(m->h, 13); m->h = m->h * 5U + 0xE6546B64U;
+                k *= c1;
+                k = xx_nchash_rotl32(k, 15);
+                k *= c2;
+                m->h ^= k;
+                m->h = xx_nchash_rotl32(m->h, 13);
+                m->h = m->h * 5U + 0xE6546B64U;
                 offset += 4;
             }
             while (offset < size) {
@@ -1053,20 +1143,40 @@ void xx_nchash_context_update(xx_nchash_context *ctx, const void *data, size_t s
                 if (m->buffered == 16) {
                     uint64_t k1 = xx_nchash_load64_le(m->buffer);
                     uint64_t k2 = xx_nchash_load64_le(m->buffer + 8);
-                    k1 *= c1; k1 = xx_nchash_rotl64(k1, 31); k1 *= c2;
-                    m->h1 ^= k1; m->h1 = xx_nchash_rotl64(m->h1, 27); m->h1 += m->h2; m->h1 = m->h1 * 5ULL + 0x52DCE729ULL;
-                    k2 *= c2; k2 = xx_nchash_rotl64(k2, 33); k2 *= c1;
-                    m->h2 ^= k2; m->h2 = xx_nchash_rotl64(m->h2, 31); m->h2 += m->h1; m->h2 = m->h2 * 5ULL + 0x38495AB5ULL;
+                    k1 *= c1;
+                    k1 = xx_nchash_rotl64(k1, 31);
+                    k1 *= c2;
+                    m->h1 ^= k1;
+                    m->h1 = xx_nchash_rotl64(m->h1, 27);
+                    m->h1 += m->h2;
+                    m->h1 = m->h1 * 5ULL + 0x52DCE729ULL;
+                    k2 *= c2;
+                    k2 = xx_nchash_rotl64(k2, 33);
+                    k2 *= c1;
+                    m->h2 ^= k2;
+                    m->h2 = xx_nchash_rotl64(m->h2, 31);
+                    m->h2 += m->h1;
+                    m->h2 = m->h2 * 5ULL + 0x38495AB5ULL;
                     m->buffered = 0;
                 }
             }
             while (offset + 16 <= size) {
                 uint64_t k1 = xx_nchash_load64_le(p + offset);
                 uint64_t k2 = xx_nchash_load64_le(p + offset + 8);
-                k1 *= c1; k1 = xx_nchash_rotl64(k1, 31); k1 *= c2;
-                m->h1 ^= k1; m->h1 = xx_nchash_rotl64(m->h1, 27); m->h1 += m->h2; m->h1 = m->h1 * 5ULL + 0x52DCE729ULL;
-                k2 *= c2; k2 = xx_nchash_rotl64(k2, 33); k2 *= c1;
-                m->h2 ^= k2; m->h2 = xx_nchash_rotl64(m->h2, 31); m->h2 += m->h1; m->h2 = m->h2 * 5ULL + 0x38495AB5ULL;
+                k1 *= c1;
+                k1 = xx_nchash_rotl64(k1, 31);
+                k1 *= c2;
+                m->h1 ^= k1;
+                m->h1 = xx_nchash_rotl64(m->h1, 27);
+                m->h1 += m->h2;
+                m->h1 = m->h1 * 5ULL + 0x52DCE729ULL;
+                k2 *= c2;
+                k2 = xx_nchash_rotl64(k2, 33);
+                k2 *= c1;
+                m->h2 ^= k2;
+                m->h2 = xx_nchash_rotl64(m->h2, 31);
+                m->h2 += m->h1;
+                m->h2 = m->h2 * 5ULL + 0x38495AB5ULL;
                 offset += 16;
             }
             while (offset < size) {
@@ -1158,17 +1268,14 @@ void xx_nchash_context_update(xx_nchash_context *ctx, const void *data, size_t s
             }
             break;
         }
-        case XX_NCHASH_BLAKE2B_512:
-            xx_blake2b_update(&ctx->u.blake2b, p, size);
-            break;
-        case XX_NCHASH_BLAKE2S_256:
-            xx_blake2s_update(&ctx->u.blake2s, p, size);
-            break;
+        case XX_NCHASH_BLAKE2B_512: xx_blake2b_update(&ctx->u.blake2b, p, size); break;
+        case XX_NCHASH_BLAKE2S_256: xx_blake2s_update(&ctx->u.blake2s, p, size); break;
         default: break;
     }
 }
 
-bool xx_nchash_context_final(xx_nchash_context *ctx, void *digest, size_t digest_size) {
+bool xx_nchash_context_final(xx_nchash_context *ctx, void *digest, size_t digest_size)
+{
     if (!ctx || !ctx->initialized || !digest) return false;
     size_t required = xx_nchash_digest_size(ctx->type);
     if (digest_size < required) return false;
@@ -1176,46 +1283,24 @@ bool xx_nchash_context_final(xx_nchash_context *ctx, void *digest, size_t digest
     uint8_t *out = (uint8_t *)digest;
 
     switch (ctx->type) {
-        case XX_NCHASH_FNV1_32:
-            xx_nchash_store32_be(out, ctx->u.fnv1_32.state);
-            break;
-        case XX_NCHASH_FNV1A_32:
-            xx_nchash_store32_be(out, ctx->u.fnv1a_32.state);
-            break;
-        case XX_NCHASH_FNV1_64:
-            xx_nchash_store64_be(out, ctx->u.fnv1_64.state);
-            break;
-        case XX_NCHASH_FNV1A_64:
-            xx_nchash_store64_be(out, ctx->u.fnv1a_64.state);
-            break;
-        case XX_NCHASH_DJB2:
-            xx_nchash_store32_be(out, ctx->u.djb2.state);
-            break;
-        case XX_NCHASH_SDBM:
-            xx_nchash_store32_be(out, ctx->u.sdbm.state);
-            break;
+        case XX_NCHASH_FNV1_32: xx_nchash_store32_be(out, ctx->u.fnv1_32.state); break;
+        case XX_NCHASH_FNV1A_32: xx_nchash_store32_be(out, ctx->u.fnv1a_32.state); break;
+        case XX_NCHASH_FNV1_64: xx_nchash_store64_be(out, ctx->u.fnv1_64.state); break;
+        case XX_NCHASH_FNV1A_64: xx_nchash_store64_be(out, ctx->u.fnv1a_64.state); break;
+        case XX_NCHASH_DJB2: xx_nchash_store32_be(out, ctx->u.djb2.state); break;
+        case XX_NCHASH_SDBM: xx_nchash_store32_be(out, ctx->u.sdbm.state); break;
         case XX_NCHASH_ELF:
-        case XX_NCHASH_PJW:
-            xx_nchash_store32_be(out, ctx->u.elf.state);
-            break;
-        case XX_NCHASH_BKDR:
-            xx_nchash_store32_be(out, ctx->u.bkdr.state);
-            break;
-        case XX_NCHASH_AP:
-            xx_nchash_store32_be(out, ctx->u.ap.state);
-            break;
+        case XX_NCHASH_PJW: xx_nchash_store32_be(out, ctx->u.elf.state); break;
+        case XX_NCHASH_BKDR: xx_nchash_store32_be(out, ctx->u.bkdr.state); break;
+        case XX_NCHASH_AP: xx_nchash_store32_be(out, ctx->u.ap.state); break;
         case XX_NCHASH_DEK: {
             uint32_t len = (uint32_t)ctx->u.dek.length;
             uint32_t final_h = ctx->u.dek.state ^ xx_nchash_rotl32(len, (5U * (len % 32U)) % 32U);
             xx_nchash_store32_be(out, final_h);
             break;
         }
-        case XX_NCHASH_JS:
-            xx_nchash_store32_be(out, ctx->u.js.state);
-            break;
-        case XX_NCHASH_RS:
-            xx_nchash_store32_be(out, ctx->u.rs.state);
-            break;
+        case XX_NCHASH_JS: xx_nchash_store32_be(out, ctx->u.js.state); break;
+        case XX_NCHASH_RS: xx_nchash_store32_be(out, ctx->u.rs.state); break;
         case XX_NCHASH_OAT: {
             uint32_t h = ctx->u.oat.state;
             h += (h << 3);
@@ -1231,9 +1316,13 @@ bool xx_nchash_context_final(xx_nchash_context *ctx, void *digest, size_t digest
             switch (m->buffered) {
                 case 3: k1 ^= (uint32_t)m->buffer[2] << 16; /* fallthrough */
                 case 2: k1 ^= (uint32_t)m->buffer[1] << 8;  /* fallthrough */
-                case 1: k1 ^= (uint32_t)m->buffer[0];
-                        k1 *= c1; k1 = xx_nchash_rotl32(k1, 15); k1 *= c2; m->h ^= k1;
-                        break;
+                case 1:
+                    k1 ^= (uint32_t)m->buffer[0];
+                    k1 *= c1;
+                    k1 = xx_nchash_rotl32(k1, 15);
+                    k1 *= c2;
+                    m->h ^= k1;
+                    break;
                 default: break;
             }
             m->h ^= (uint32_t)ctx->total_size;
@@ -1252,27 +1341,37 @@ bool xx_nchash_context_final(xx_nchash_context *ctx, void *digest, size_t digest
                 case 12: k2 ^= (uint64_t)m->buffer[11] << 24; /* fallthrough */
                 case 11: k2 ^= (uint64_t)m->buffer[10] << 16; /* fallthrough */
                 case 10: k2 ^= (uint64_t)m->buffer[9] << 8;   /* fallthrough */
-                case  9: k2 ^= (uint64_t)m->buffer[8];
-                         k2 *= c2; k2 = xx_nchash_rotl64(k2, 33); k2 *= c1; m->h2 ^= k2;
-                         /* fallthrough */
-                case  8: k1 ^= (uint64_t)m->buffer[7] << 56; /* fallthrough */
-                case  7: k1 ^= (uint64_t)m->buffer[6] << 48; /* fallthrough */
-                case  6: k1 ^= (uint64_t)m->buffer[5] << 40; /* fallthrough */
-                case  5: k1 ^= (uint64_t)m->buffer[4] << 32; /* fallthrough */
-                case  4: k1 ^= (uint64_t)m->buffer[3] << 24; /* fallthrough */
-                case  3: k1 ^= (uint64_t)m->buffer[2] << 16; /* fallthrough */
-                case  2: k1 ^= (uint64_t)m->buffer[1] << 8;  /* fallthrough */
-                case  1: k1 ^= (uint64_t)m->buffer[0];
-                         k1 *= c1; k1 = xx_nchash_rotl64(k1, 31); k1 *= c2; m->h1 ^= k1;
-                         break;
+                case 9:
+                    k2 ^= (uint64_t)m->buffer[8];
+                    k2 *= c2;
+                    k2 = xx_nchash_rotl64(k2, 33);
+                    k2 *= c1;
+                    m->h2 ^= k2;
+                    /* fallthrough */
+                case 8: k1 ^= (uint64_t)m->buffer[7] << 56; /* fallthrough */
+                case 7: k1 ^= (uint64_t)m->buffer[6] << 48; /* fallthrough */
+                case 6: k1 ^= (uint64_t)m->buffer[5] << 40; /* fallthrough */
+                case 5: k1 ^= (uint64_t)m->buffer[4] << 32; /* fallthrough */
+                case 4: k1 ^= (uint64_t)m->buffer[3] << 24; /* fallthrough */
+                case 3: k1 ^= (uint64_t)m->buffer[2] << 16; /* fallthrough */
+                case 2: k1 ^= (uint64_t)m->buffer[1] << 8;  /* fallthrough */
+                case 1:
+                    k1 ^= (uint64_t)m->buffer[0];
+                    k1 *= c1;
+                    k1 = xx_nchash_rotl64(k1, 31);
+                    k1 *= c2;
+                    m->h1 ^= k1;
+                    break;
                 default: break;
             }
             m->h1 ^= ctx->total_size;
             m->h2 ^= ctx->total_size;
-            m->h1 += m->h2; m->h2 += m->h1;
+            m->h1 += m->h2;
+            m->h2 += m->h1;
             m->h1 = xx_nchash_fmix64(m->h1);
             m->h2 = xx_nchash_fmix64(m->h2);
-            m->h1 += m->h2; m->h2 += m->h1;
+            m->h1 += m->h2;
+            m->h2 += m->h1;
             xx_nchash_store64_le(out, m->h1);
             xx_nchash_store64_le(out + 8, m->h2);
             break;
@@ -1281,8 +1380,7 @@ bool xx_nchash_context_final(xx_nchash_context *ctx, void *digest, size_t digest
             xx_nchash_xxhash32_ctx *x = &ctx->u.xxhash32;
             uint32_t h;
             if (ctx->total_size >= 16) {
-                h = xx_nchash_rotl32(x->v1, 1) + xx_nchash_rotl32(x->v2, 7) +
-                    xx_nchash_rotl32(x->v3, 12) + xx_nchash_rotl32(x->v4, 18);
+                h = xx_nchash_rotl32(x->v1, 1) + xx_nchash_rotl32(x->v2, 7) + xx_nchash_rotl32(x->v3, 12) + xx_nchash_rotl32(x->v4, 18);
             } else {
                 h = x->seed + XXH32_PRIME5;
             }
@@ -1310,8 +1408,7 @@ bool xx_nchash_context_final(xx_nchash_context *ctx, void *digest, size_t digest
             xx_nchash_xxhash64_ctx *x = &ctx->u.xxhash64;
             uint64_t h;
             if (ctx->total_size >= 32) {
-                h = xx_nchash_rotl64(x->v1, 1) + xx_nchash_rotl64(x->v2, 7) +
-                    xx_nchash_rotl64(x->v3, 12) + xx_nchash_rotl64(x->v4, 18);
+                h = xx_nchash_rotl64(x->v1, 1) + xx_nchash_rotl64(x->v2, 7) + xx_nchash_rotl64(x->v3, 12) + xx_nchash_rotl64(x->v4, 18);
                 h = xx_nchash_xxh64_merge_round(h, x->v1);
                 h = xx_nchash_xxh64_merge_round(h, x->v2);
                 h = xx_nchash_xxh64_merge_round(h, x->v3);
@@ -1359,30 +1456,32 @@ bool xx_nchash_context_final(xx_nchash_context *ctx, void *digest, size_t digest
 
             if (!s->is128) {
                 s->v2 ^= 0xFF;
-                SIPROUND(s->v0, s->v1, s->v2, s->v3); SIPROUND(s->v0, s->v1, s->v2, s->v3);
-                SIPROUND(s->v0, s->v1, s->v2, s->v3); SIPROUND(s->v0, s->v1, s->v2, s->v3);
+                SIPROUND(s->v0, s->v1, s->v2, s->v3);
+                SIPROUND(s->v0, s->v1, s->v2, s->v3);
+                SIPROUND(s->v0, s->v1, s->v2, s->v3);
+                SIPROUND(s->v0, s->v1, s->v2, s->v3);
                 uint64_t res = s->v0 ^ s->v1 ^ s->v2 ^ s->v3;
                 xx_nchash_store64_le(out, res);
             } else {
                 s->v2 ^= 0xEE;
-                SIPROUND(s->v0, s->v1, s->v2, s->v3); SIPROUND(s->v0, s->v1, s->v2, s->v3);
-                SIPROUND(s->v0, s->v1, s->v2, s->v3); SIPROUND(s->v0, s->v1, s->v2, s->v3);
+                SIPROUND(s->v0, s->v1, s->v2, s->v3);
+                SIPROUND(s->v0, s->v1, s->v2, s->v3);
+                SIPROUND(s->v0, s->v1, s->v2, s->v3);
+                SIPROUND(s->v0, s->v1, s->v2, s->v3);
                 uint64_t out0 = s->v0 ^ s->v1 ^ s->v2 ^ s->v3;
                 s->v1 ^= 0xDD;
-                SIPROUND(s->v0, s->v1, s->v2, s->v3); SIPROUND(s->v0, s->v1, s->v2, s->v3);
-                SIPROUND(s->v0, s->v1, s->v2, s->v3); SIPROUND(s->v0, s->v1, s->v2, s->v3);
+                SIPROUND(s->v0, s->v1, s->v2, s->v3);
+                SIPROUND(s->v0, s->v1, s->v2, s->v3);
+                SIPROUND(s->v0, s->v1, s->v2, s->v3);
+                SIPROUND(s->v0, s->v1, s->v2, s->v3);
                 uint64_t out1 = s->v0 ^ s->v1 ^ s->v2 ^ s->v3;
                 xx_nchash_store64_le(out, out0);
                 xx_nchash_store64_le(out + 8, out1);
             }
             break;
         }
-        case XX_NCHASH_BLAKE2B_512:
-            xx_blake2b_final(&ctx->u.blake2b, out);
-            break;
-        case XX_NCHASH_BLAKE2S_256:
-            xx_blake2s_final(&ctx->u.blake2s, out);
-            break;
+        case XX_NCHASH_BLAKE2B_512: xx_blake2b_final(&ctx->u.blake2b, out); break;
+        case XX_NCHASH_BLAKE2S_256: xx_blake2s_final(&ctx->u.blake2s, out); break;
         default: return false;
     }
 
@@ -1393,10 +1492,9 @@ bool xx_nchash_context_final(xx_nchash_context *ctx, void *digest, size_t digest
 /* --- Device Helper                                                     --- */
 /* ========================================================================= */
 
-bool xx_nchash_device(xx_io_device *device, int64_t offset, int64_t size,
-                       xx_nchash_type_t type, const uint8_t *key_or_null,
-                       uint64_t seed, void *digest, size_t digest_size,
-                       xx_pd_struct *pd) {
+bool xx_nchash_device(xx_io_device *device, int64_t offset, int64_t size, xx_nchash_type_t type, const uint8_t *key_or_null, uint64_t seed, void *digest,
+                      size_t digest_size, xx_pd_struct *pd)
+{
     if (!device || !digest || type >= XX_NCHASH_COUNT) return false;
     int64_t dev_size = xx_io_total_size(device);
     if (offset < 0) offset = 0;

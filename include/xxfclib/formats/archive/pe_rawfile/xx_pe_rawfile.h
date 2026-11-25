@@ -5,10 +5,12 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct xx_pe_rawfile { Abstractformat format; } xx_pe_rawfile;
-XXFC_API void xx_pe_rawfile_init(xx_pe_rawfile *,xx_io_device *,int64_t);
+typedef struct xx_pe_rawfile {
+    Abstractformat format;
+} xx_pe_rawfile;
+XXFC_API void xx_pe_rawfile_init(xx_pe_rawfile *, xx_io_device *, int64_t);
 XXFC_API void xx_pe_rawfile_destroy(xx_pe_rawfile *);
-XXFC_API xx_pe_rawfile *xx_pe_rawfile_create(xx_io_device *,int64_t);
+XXFC_API xx_pe_rawfile *xx_pe_rawfile_create(xx_io_device *, int64_t);
 XXFC_API void xx_pe_rawfile_free(xx_pe_rawfile *);
 #ifdef __cplusplus
 }

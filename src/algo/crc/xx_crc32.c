@@ -153,8 +153,7 @@ uint32_t xx_crc32_calc(uint32_t crc, const void *data, size_t size)
         return crc;
     }
 #ifdef XX_CRC32_ARM
-    if (size >= 3072U && xx_is_arm_crc32_enabled() && xx_is_arm_pmull_enabled())
-        return xx_crc32_arm_pmull(crc, data, size);
+    if (size >= 3072U && xx_is_arm_crc32_enabled() && xx_is_arm_pmull_enabled()) return xx_crc32_arm_pmull(crc, data, size);
     if (xx_is_arm_crc32_enabled()) return xx_crc32_arm(crc, data, size);
 #endif
     const uint8_t *p = (const uint8_t *)data;
@@ -205,8 +204,7 @@ uint32_t xx_crc32c_calc(uint32_t crc, const void *data, size_t size)
         return crc;
     }
 #ifdef XX_CRC32_ARM
-    if (size >= 3072U && xx_is_arm_crc32_enabled() && xx_is_arm_pmull_enabled())
-        return xx_crc32c_arm_pmull(crc, data, size);
+    if (size >= 3072U && xx_is_arm_crc32_enabled() && xx_is_arm_pmull_enabled()) return xx_crc32c_arm_pmull(crc, data, size);
     if (xx_is_arm_crc32_enabled()) return xx_crc32c_arm(crc, data, size);
 #endif
 #ifdef XX_CRC32C_SSE42_X86

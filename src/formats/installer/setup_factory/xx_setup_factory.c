@@ -658,7 +658,6 @@ typedef struct sf_name_s {
 
 /* Windows-1252 0x80..0x9F (0 = unassigned, written as '_'). */
 
-
 static void sf_put(sf_name *name, uint32_t code_point)
 {
     uint8_t bytes[3];

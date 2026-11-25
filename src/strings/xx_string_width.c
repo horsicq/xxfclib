@@ -33,8 +33,7 @@ typedef struct {
 XXFC_API unsigned xx_string_scalar_display_width(uint32_t scalar)
 {
     size_t first = 0;
-    size_t last = sizeof(xx_string_width_ranges) /
-                  sizeof(xx_string_width_ranges[0]);
+    size_t last = sizeof(xx_string_width_ranges) / sizeof(xx_string_width_ranges[0]);
     while (first < last) {
         size_t middle = first + (last - first) / 2;
         const xx_string_width_range *range = &xx_string_width_ranges[middle];

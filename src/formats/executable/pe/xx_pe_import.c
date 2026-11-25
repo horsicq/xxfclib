@@ -227,7 +227,6 @@ void xx_pe_free_imports_reading(Abstractformat *format, xx_import_state *state)
     xx_import_state_free(state);
 }
 
-
 uint64_t xx_pe_get_number_of_imports(Abstractformat *format, xx_pd_struct *pd)
 {
     return format && (format->base_info_handled || xx_pe_handle_base_info(format, pd)) ? format->number_of_imports : 0U;
@@ -235,12 +234,10 @@ uint64_t xx_pe_get_number_of_imports(Abstractformat *format, xx_pd_struct *pd)
 
 const StreamImport *xx_pe_get_stream_import(void)
 {
-    static const StreamImport stream = {
-        .get_number_of_imports = xx_pe_get_number_of_imports,
-        .create_imports_reading = xx_pe_create_imports_reading,
-        .get_current_import = xx_pe_get_current_import,
-        .import_move_to_next = xx_pe_import_move_to_next,
-        .free_imports_reading = xx_pe_free_imports_reading
-    };
+    static const StreamImport stream = {.get_number_of_imports = xx_pe_get_number_of_imports,
+                                        .create_imports_reading = xx_pe_create_imports_reading,
+                                        .get_current_import = xx_pe_get_current_import,
+                                        .import_move_to_next = xx_pe_import_move_to_next,
+                                        .free_imports_reading = xx_pe_free_imports_reading};
     return &stream;
 }

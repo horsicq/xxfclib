@@ -579,7 +579,6 @@ static bool xx_diskdoubler_publish_raw(xx_diskdoubler_stream *stream, char *name
 /* Mac OS Roman 0x80..0xFF as Unicode (Apple's ROMAN.TXT, with the euro sign
  * Mac OS 8.5 put at 0xDB). */
 
-
 static size_t xx_diskdoubler_put_utf8(char *out, uint32_t code)
 {
     if (code < 0x80U) {

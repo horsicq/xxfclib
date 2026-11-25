@@ -157,16 +157,9 @@ uint64_t xx_data_get_u48(const void *data, size_t data_size, size_t offset, bool
     if (!data || !xx_dv_range_ok(data_size, offset, 6)) return 0;
     const uint8_t *b = (const uint8_t *)data + offset;
     if (big_endian) {
-        return ((uint64_t)b[0] << 40) | ((uint64_t)b[1] << 32) |
-               ((uint64_t)b[2] << 24) | ((uint64_t)b[3] << 16) |
-               ((uint64_t)b[4] << 8)  | (uint64_t)b[5];
+        return ((uint64_t)b[0] << 40) | ((uint64_t)b[1] << 32) | ((uint64_t)b[2] << 24) | ((uint64_t)b[3] << 16) | ((uint64_t)b[4] << 8) | (uint64_t)b[5];
     }
-    return (uint64_t)b[0] |
-           ((uint64_t)b[1] << 8)  |
-           ((uint64_t)b[2] << 16) |
-           ((uint64_t)b[3] << 24) |
-           ((uint64_t)b[4] << 32) |
-           ((uint64_t)b[5] << 40);
+    return (uint64_t)b[0] | ((uint64_t)b[1] << 8) | ((uint64_t)b[2] << 16) | ((uint64_t)b[3] << 24) | ((uint64_t)b[4] << 32) | ((uint64_t)b[5] << 40);
 }
 
 int64_t xx_data_get_i48(const void *data, size_t data_size, size_t offset, bool big_endian)
@@ -556,8 +549,8 @@ bool xx_data_set_filetime(void *data, size_t data_size, size_t offset, const xx_
     }
     ft_sec += carry;
 
-    if (ft_sec < 0) return false;                  /* before 1601-01-01 */
-    if ((uint64_t)ft_sec > max_sec) return false;  /* beyond UINT64_MAX ticks */
+    if (ft_sec < 0) return false;                 /* before 1601-01-01 */
+    if ((uint64_t)ft_sec > max_sec) return false; /* beyond UINT64_MAX ticks */
     uint64_t ft = (uint64_t)ft_sec * UINT64_C(10000000);
     if ((uint64_t)sub > UINT64_MAX - ft) return false;
     ft += (uint64_t)sub;
@@ -699,14 +692,14 @@ bool xx_data_guid_to_string(const xx_data_guid *guid, char *buf, size_t cap)
     /* XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX */
     byte_to_hex((uint8_t)(guid->data1 >> 24), buf + 0);
     byte_to_hex((uint8_t)(guid->data1 >> 16), buf + 2);
-    byte_to_hex((uint8_t)(guid->data1 >> 8),  buf + 4);
-    byte_to_hex((uint8_t)(guid->data1),       buf + 6);
+    byte_to_hex((uint8_t)(guid->data1 >> 8), buf + 4);
+    byte_to_hex((uint8_t)(guid->data1), buf + 6);
     buf[8] = '-';
-    byte_to_hex((uint8_t)(guid->data2 >> 8),  buf + 9);
-    byte_to_hex((uint8_t)(guid->data2),       buf + 11);
+    byte_to_hex((uint8_t)(guid->data2 >> 8), buf + 9);
+    byte_to_hex((uint8_t)(guid->data2), buf + 11);
     buf[13] = '-';
-    byte_to_hex((uint8_t)(guid->data3 >> 8),  buf + 14);
-    byte_to_hex((uint8_t)(guid->data3),       buf + 16);
+    byte_to_hex((uint8_t)(guid->data3 >> 8), buf + 14);
+    byte_to_hex((uint8_t)(guid->data3), buf + 16);
     buf[18] = '-';
     byte_to_hex(guid->data4[0], buf + 19);
     byte_to_hex(guid->data4[1], buf + 21);
@@ -731,7 +724,10 @@ bool xx_data_guid_from_string(const char *str, xx_data_guid *guid)
     if (!str || !guid) return false;
     while (*str == ' ' || *str == '\t') ++str;
     bool has_brace = false;
-    if (*str == '{') { has_brace = true; ++str; }
+    if (*str == '{') {
+        has_brace = true;
+        ++str;
+    }
 
     uint8_t bytes[16];
     size_t byte_idx = 0;

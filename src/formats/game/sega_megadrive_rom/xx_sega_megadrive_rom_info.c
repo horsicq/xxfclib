@@ -8,15 +8,11 @@
 #include "xxfclib/rt/xx_rt.h"
 
 static const char *const smd_vector_names[XX_SEGA_MEGADRIVE_ROM_VECTOR_COUNT] = {
-    "SSP", "Reset", "BusErr", "AdrErr", "InvOpCode", "DivBy0", "Check", "TrapV",
-    "GPF", "Trace", "Reserv0", "Reserv1", "Reserv2", "Reserv3", "Reserv4", "BadInt",
-    "Reserv10", "Reserv11", "Reserv12", "Reserv13", "Reserv14", "Reserv15", "Reserv16", "Reserv17",
-    "BadIRQ", "IRQ1", "EXT", "IRQ3", "HBLANK", "IRQ5", "VBLANK", "IRQ7",
-    "Trap0", "Trap1", "Trap2", "Trap3", "Trap4", "Trap5", "Trap6", "Trap7",
-    "Trap8", "Trap9", "Trap10", "Trap11", "Trap12", "Trap13", "Trap14", "Trap15",
-    "Reserv30", "Reserv31", "Reserv32", "Reserv33", "Reserv34", "Reserv35", "Reserv36", "Reserv37",
-    "Reserv38", "Reserv39", "Reserv3A", "Reserv3B", "Reserv3C", "Reserv3D", "Reserv3E", "Reserv3F"
-};
+    "SSP",      "Reset",    "BusErr",   "AdrErr",   "InvOpCode", "DivBy0",   "Check",    "TrapV",    "GPF",      "Trace",    "Reserv0",  "Reserv1",  "Reserv2",
+    "Reserv3",  "Reserv4",  "BadInt",   "Reserv10", "Reserv11",  "Reserv12", "Reserv13", "Reserv14", "Reserv15", "Reserv16", "Reserv17", "BadIRQ",   "IRQ1",
+    "EXT",      "IRQ3",     "HBLANK",   "IRQ5",     "VBLANK",    "IRQ7",     "Trap0",    "Trap1",    "Trap2",    "Trap3",    "Trap4",    "Trap5",    "Trap6",
+    "Trap7",    "Trap8",    "Trap9",    "Trap10",   "Trap11",    "Trap12",   "Trap13",   "Trap14",   "Trap15",   "Reserv30", "Reserv31", "Reserv32", "Reserv33",
+    "Reserv34", "Reserv35", "Reserv36", "Reserv37", "Reserv38",  "Reserv39", "Reserv3A", "Reserv3B", "Reserv3C", "Reserv3D", "Reserv3E", "Reserv3F"};
 
 const char *xx_sega_megadrive_rom_vector_name(uint32_t index)
 {
@@ -52,8 +48,7 @@ bool xx_sega_megadrive_rom_read_info(Abstractformat *format, xx_sega_megadrive_r
     uint32_t index;
     bool result = false;
     if (info) xx_mem_zero(info, sizeof(*info));
-    if (!format || !info || !format->device || format->base_address < 0 ||
-        format->file_type != XX_FILE_TYPE_SEGA_MEGADRIVE_ROM || (pd && xx_pd_is_stopped(pd)))
+    if (!format || !info || !format->device || format->base_address < 0 || format->file_type != XX_FILE_TYPE_SEGA_MEGADRIVE_ROM || (pd && xx_pd_is_stopped(pd)))
         return false;
     saved = xx_io_tell(format->device);
     if (!format->base_info_handled && !xx_sega_megadrive_rom_handle_base_info(format, pd)) goto done;
@@ -72,8 +67,7 @@ bool xx_sega_megadrive_rom_read_info(Abstractformat *format, xx_sega_megadrive_r
     info->rom_end = xx_data_get_u32(bytes + 0x1a4U, 4U, 0U, true);
     info->ram_start = xx_data_get_u32(bytes + 0x1a8U, 4U, 0U, true);
     info->ram_end = xx_data_get_u32(bytes + 0x1acU, 4U, 0U, true);
-    for (index = 0U; index < XX_SEGA_MEGADRIVE_ROM_VECTOR_COUNT; ++index)
-        info->vectors[index] = xx_data_get_u32(bytes + index * 4U, 4U, 0U, true);
+    for (index = 0U; index < XX_SEGA_MEGADRIVE_ROM_VECTOR_COUNT; ++index) info->vectors[index] = xx_data_get_u32(bytes + index * 4U, 4U, 0U, true);
     info->image_size = (uint64_t)format->format_size;
     result = true;
 

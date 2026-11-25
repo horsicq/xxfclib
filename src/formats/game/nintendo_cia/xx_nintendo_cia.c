@@ -80,8 +80,8 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
         }
         seen[index / 8] |= (uint8_t)(1U << (7 - index % 8));
         if (!(h[32 + index / 8] & (1U << (7 - index % 8)))) continue;
-        if ((type & 1) || !n || !span(at, n, content + content_size) ||
-            !xx_sha256_device(f->device, f->base_address + (int64_t)at, (int64_t)n, digest, 32, pd) || xx_mem_compare(digest, e + 16, 32) != 0)
+        if ((type & 1) || !n || !span(at, n, content + content_size) || !xx_sha256_device(f->device, f->base_address + (int64_t)at, (int64_t)n, digest, 32, pd) ||
+            xx_mem_compare(digest, e + 16, 32) != 0)
             return false;
         xx_rt_snprintf(label, sizeof(label), "content-%u.bin", index);
         if (!emit(f, s, label, at, n, total)) return false;

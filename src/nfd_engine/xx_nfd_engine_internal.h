@@ -81,12 +81,9 @@ typedef struct xx_nfd_binary_state_s {
     char *header_text;
 } xx_nfd_binary_state;
 
-bool xx_nfd_binary_scan(xx_nfd_binary_state *state, xx_scan_result *result,
-                        xx_pd_struct *pd);
+bool xx_nfd_binary_scan(xx_nfd_binary_state *state, xx_scan_result *result, xx_pd_struct *pd);
 bool xx_nfd_text_scan(xx_nfd_binary_state *state, xx_pd_struct *pd);
-bool xx_nfd_pending_put(xx_nfd_binary_state *state, xx_nfd_result_group group,
-                        const char *name_token, const char *type, const char *name,
-                        const char *version, const char *info, bool heuristic,
-                        bool aggressive, bool unknown, xx_pd_struct *pd);
+bool xx_nfd_pending_put(xx_nfd_binary_state *state, xx_nfd_result_group group, const char *name_token, const char *type, const char *name, const char *version,
+                        const char *info, bool heuristic, bool aggressive, bool unknown, xx_pd_struct *pd);
 
 #endif /* XX_NFD_ENGINE_INTERNAL_H */

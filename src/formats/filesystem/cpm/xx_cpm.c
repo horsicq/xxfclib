@@ -551,10 +551,9 @@ bool xx_cpm_get_directory_slot(Abstractformat *self, const xx_archive_record_sta
     xx_cpm_directory_slot slot;
     uint64_t physical;
     if (!self || !state || !out || !self->device || self->file_type != CPM_TYPE || CPM_TYPE == XX_FILE_TYPE_UNKNOWN ||
-        self->create_archive_records_reading != xx_cpm_create_archive_records_reading ||
-        self->free_archive_records_reading != xx_cpm_free_archive_records_reading || state->format != self ||
-        state->free_internal != cpm_view_free || !(v = (const cpm_view *)state->internal_state) ||
-        v->device != self->device || v->base != self->base_address || v->base < 0 || index >= v->slots)
+        self->create_archive_records_reading != xx_cpm_create_archive_records_reading || self->free_archive_records_reading != xx_cpm_free_archive_records_reading ||
+        state->format != self || state->free_internal != cpm_view_free || !(v = (const cpm_view *)state->internal_state) || v->device != self->device ||
+        v->base != self->base_address || v->base < 0 || index >= v->slots)
         return false;
     physical = cpm_physical(v, v->heap + (uint64_t)index * 32U);
     if (physical > v->bytes || 32U > v->bytes - physical || physical > (uint64_t)(INT64_MAX - v->base)) return false;

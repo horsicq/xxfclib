@@ -34,9 +34,7 @@ typedef struct xx_terminal_state_s {
  * other byte sink.  Keeping the sink abstract lets the terminal module remain
  * usable by CRT-free builds.
  */
-typedef xxfc_status_t (*xx_terminal_write_fn)(void *context,
-                                               const char *data,
-                                               size_t size);
+typedef xxfc_status_t (*xx_terminal_write_fn)(void *context, const char *data, size_t size);
 
 /** @brief Sticky writer state shared by JSON and XML string emitters. */
 typedef struct xx_terminal_writer_s {
@@ -46,13 +44,10 @@ typedef struct xx_terminal_writer_s {
 } xx_terminal_writer;
 
 /** @brief Initialize a structured-output writer. */
-XXFC_API void xx_terminal_writer_init(xx_terminal_writer *writer,
-                                      xx_terminal_write_fn write,
-                                      void *context);
+XXFC_API void xx_terminal_writer_init(xx_terminal_writer *writer, xx_terminal_write_fn write, void *context);
 
 /** @brief Return the first error reported by the writer or its callback. */
-XXFC_API xxfc_status_t xx_terminal_writer_status(
-    const xx_terminal_writer *writer);
+XXFC_API xxfc_status_t xx_terminal_writer_status(const xx_terminal_writer *writer);
 
 /**
  * @brief Write bytes through the callback and preserve the first error.
@@ -60,9 +55,7 @@ XXFC_API xxfc_status_t xx_terminal_writer_status(
  * Once a write fails, later calls return the same error without invoking the
  * callback again.
  */
-XXFC_API xxfc_status_t xx_terminal_writer_write(xx_terminal_writer *writer,
-                                                const char *data,
-                                                size_t size);
+XXFC_API xxfc_status_t xx_terminal_writer_write(xx_terminal_writer *writer, const char *data, size_t size);
 
 /**
  * @brief Write a NUL-terminated UTF-8 value as one complete JSON string.
@@ -71,12 +64,10 @@ XXFC_API xxfc_status_t xx_terminal_writer_write(xx_terminal_writer *writer,
  * input is replaced with \uFFFD and JSON control characters are escaped.
  * NULL is treated as an empty string.
  */
-XXFC_API xxfc_status_t xx_terminal_writer_json_string(
-    xx_terminal_writer *writer, const char *text);
+XXFC_API xxfc_status_t xx_terminal_writer_json_string(xx_terminal_writer *writer, const char *text);
 
 /** @brief Length-delimited form of xx_terminal_writer_json_string(). */
-XXFC_API xxfc_status_t xx_terminal_writer_json_string_n(
-    xx_terminal_writer *writer, const char *text, size_t size);
+XXFC_API xxfc_status_t xx_terminal_writer_json_string_n(xx_terminal_writer *writer, const char *text, size_t size);
 
 /**
  * @brief Write NUL-terminated UTF-8 as XML 1.0 character data.
@@ -85,12 +76,10 @@ XXFC_API xxfc_status_t xx_terminal_writer_json_string_n(
  * and Unicode noncharacters are replaced with &#xFFFD;.  NULL is treated as an
  * empty string.
  */
-XXFC_API xxfc_status_t xx_terminal_writer_xml_text(
-    xx_terminal_writer *writer, const char *text);
+XXFC_API xxfc_status_t xx_terminal_writer_xml_text(xx_terminal_writer *writer, const char *text);
 
 /** @brief Length-delimited form of xx_terminal_writer_xml_text(). */
-XXFC_API xxfc_status_t xx_terminal_writer_xml_text_n(
-    xx_terminal_writer *writer, const char *text, size_t size);
+XXFC_API xxfc_status_t xx_terminal_writer_xml_text_n(xx_terminal_writer *writer, const char *text, size_t size);
 
 /**
  * @brief Write NUL-terminated UTF-8 as an XML 1.0 attribute value.
@@ -99,12 +88,10 @@ XXFC_API xxfc_status_t xx_terminal_writer_xml_text_n(
  * quotation marks and attribute whitespace are escaped so parsing preserves
  * the original value.
  */
-XXFC_API xxfc_status_t xx_terminal_writer_xml_attribute(
-    xx_terminal_writer *writer, const char *text);
+XXFC_API xxfc_status_t xx_terminal_writer_xml_attribute(xx_terminal_writer *writer, const char *text);
 
 /** @brief Length-delimited form of xx_terminal_writer_xml_attribute(). */
-XXFC_API xxfc_status_t xx_terminal_writer_xml_attribute_n(
-    xx_terminal_writer *writer, const char *text, size_t size);
+XXFC_API xxfc_status_t xx_terminal_writer_xml_attribute_n(xx_terminal_writer *writer, const char *text, size_t size);
 
 /* ANSI escape sequences written through a structured-output writer.
  *
@@ -147,8 +134,7 @@ typedef enum xx_terminal_ansi_color_e {
  * writes no color sequence.  An unknown color or flag returns
  * XXFC_ERR_INVALID_ARG and writes nothing.
  */
-XXFC_API xxfc_status_t xx_terminal_writer_ansi_style(xx_terminal_writer *writer,
-    xx_terminal_ansi_color_t foreground, uint32_t flags);
+XXFC_API xxfc_status_t xx_terminal_writer_ansi_style(xx_terminal_writer *writer, xx_terminal_ansi_color_t foreground, uint32_t flags);
 
 /** @brief Write the SGR reset sequence "\033[0m". */
 XXFC_API xxfc_status_t xx_terminal_writer_ansi_reset(xx_terminal_writer *writer);
@@ -160,8 +146,7 @@ XXFC_API xxfc_status_t xx_terminal_writer_ansi_reset(xx_terminal_writer *writer)
  * and xx_terminal_writer_ansi_reset() in turn; the reset is written even
  * for an empty span.
  */
-XXFC_API xxfc_status_t xx_terminal_writer_ansi_span(xx_terminal_writer *writer,
-    const char *text, size_t size, xx_terminal_ansi_color_t foreground, uint32_t flags);
+XXFC_API xxfc_status_t xx_terminal_writer_ansi_span(xx_terminal_writer *writer, const char *text, size_t size, xx_terminal_ansi_color_t foreground, uint32_t flags);
 
 /**
  * @brief Open an OSC 8 hyperlink: "\033]8;;" URL "\033\\".
@@ -170,8 +155,7 @@ XXFC_API xxfc_status_t xx_terminal_writer_ansi_span(xx_terminal_writer *writer,
  * text; xx_terminal_writer_ansi_link_end() closes the link.  A NULL or empty
  * URL writes the closing sequence.
  */
-XXFC_API xxfc_status_t xx_terminal_writer_ansi_link_begin(xx_terminal_writer *writer,
-    const char *url, size_t size);
+XXFC_API xxfc_status_t xx_terminal_writer_ansi_link_begin(xx_terminal_writer *writer, const char *url, size_t size);
 
 /** @brief Close an OSC 8 hyperlink: "\033]8;;\033\\". */
 XXFC_API xxfc_status_t xx_terminal_writer_ansi_link_end(xx_terminal_writer *writer);
@@ -219,8 +203,7 @@ XXFC_API xxfc_status_t xx_terminal_print(const xx_terminal_state *state, const c
  * Redirected/unsupported streams and disabled global colors stay plain.
  * The caller must flush any separately buffered output before calling this.
  * Color restoration is attempted even if writing the span fails. */
-XXFC_API xxfc_status_t xx_terminal_write_color(const xx_terminal_state *state,
-    const char *text, size_t size, uint32_t foreground, uint32_t background);
+XXFC_API xxfc_status_t xx_terminal_write_color(const xx_terminal_state *state, const char *text, size_t size, uint32_t foreground, uint32_t background);
 
 /** @brief xx_terminal_write_color() flag: on ANSI terminals, write the colors
  * exactly instead of their 16-color approximation. A color equal to one of
@@ -234,8 +217,8 @@ XXFC_API xxfc_status_t xx_terminal_write_color(const xx_terminal_state *state,
  * escape sequence, the text and the reset are composed into one write when
  * they fit in a small stack buffer, so a terminal never renders a span in
  * pieces. */
-XXFC_API xxfc_status_t xx_terminal_write_color_ex(const xx_terminal_state *state,
-    const char *text, size_t size, uint32_t foreground, uint32_t background, uint32_t flags);
+XXFC_API xxfc_status_t xx_terminal_write_color_ex(const xx_terminal_state *state, const char *text, size_t size, uint32_t foreground, uint32_t background,
+                                                  uint32_t flags);
 XXFC_API xxfc_status_t xx_terminal_flush(const xx_terminal_state *state);
 
 /** @brief Read/write raw native Windows attributes. Color mapping is the caller's responsibility. */

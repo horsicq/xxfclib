@@ -103,8 +103,9 @@ bool xx_binsh_starkit_get_container_span(Abstractformat *f, int64_t *base, int64
 {
     int64_t cursor, total, outer, at;
     binsh_starkit_carrier *c;
-    if (!f || !base || !size || !inner || !f->device || f->file_type != XX_FILE_TYPE_BINSH_STARKIT ||
-        f->handle_base_info != binsh_starkit_carrier_info || f->destroy != binsh_starkit_carrier_destroy || !f->priv) return false;
+    if (!f || !base || !size || !inner || !f->device || f->file_type != XX_FILE_TYPE_BINSH_STARKIT || f->handle_base_info != binsh_starkit_carrier_info ||
+        f->destroy != binsh_starkit_carrier_destroy || !f->priv)
+        return false;
     c = (binsh_starkit_carrier *)f->priv;
     cursor = xx_io_tell(f->device);
     total = xx_io_total_size(f->device);

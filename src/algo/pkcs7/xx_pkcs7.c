@@ -20,7 +20,7 @@ static bool content_type_oid_text(const uint8_t *der, size_t size, char *out, si
     size_t i = 1U, written;
     int n;
     if (!der || !size || size > 39U || der[0] > 119U || !out || !capacity) return false;
-    n = snprintf(out, capacity, "%u.%u", (unsigned)(der[0]/40U), (unsigned)(der[0]%40U));
+    n = snprintf(out, capacity, "%u.%u", (unsigned)(der[0] / 40U), (unsigned)(der[0] % 40U));
     if (n < 0 || (size_t)n >= capacity) return false;
     written = (size_t)n;
     while (i < size) {
@@ -28,7 +28,8 @@ static bool content_type_oid_text(const uint8_t *der, size_t size, char *out, si
         uint8_t byte;
         do {
             if (i >= size) return false;
-            byte = der[i++]; arc = (arc << 7U) | (uint32_t)(byte & 0x7fU);
+            byte = der[i++];
+            arc = (arc << 7U) | (uint32_t)(byte & 0x7fU);
         } while (byte & 0x80U);
         n = snprintf(out + written, capacity - written, ".%u", (unsigned)arc);
         if (n < 0 || (size_t)n >= capacity - written) return false;
@@ -265,8 +266,7 @@ bool xx_pkcs7_certificates_next(xx_asn1_cursor *cursor, xx_pkcs7_certificate_cho
     xx_asn1_tlv choice;
     if (!cursor || !out) return false;
     memset(out, 0, sizeof(*out));
-    if (!xx_asn1_cursor_next(cursor, &choice) ||
-        !xx_x509_parse_certificate(choice.header, choice.total_size, &out->certificate)) {
+    if (!xx_asn1_cursor_next(cursor, &choice) || !xx_x509_parse_certificate(choice.header, choice.total_size, &out->certificate)) {
         cursor->pos = cursor->limit; /* valid prefix, as parse_certificates upstream */
         return false;
     }
@@ -386,7 +386,8 @@ bool xx_pkcs7_find_signer_certificate(const xx_pkcs7_signed_data *sd, const xx_p
 
         if (si->sid.kind == XX_PKCS7_SID_ISSUER_AND_SERIAL) {
             if (xx_x509_serial_equal(choice.certificate.serial, choice.certificate.serial_size, si->sid.serial, si->sid.serial_size) &&
-                choice.certificate.issuer.der_size == si->sid.issuer.der_size && memcmp(choice.certificate.issuer.der, si->sid.issuer.der, si->sid.issuer.der_size) == 0) {
+                choice.certificate.issuer.der_size == si->sid.issuer.der_size &&
+                memcmp(choice.certificate.issuer.der, si->sid.issuer.der, si->sid.issuer.der_size) == 0) {
                 *out = choice.certificate;
                 return true;
             }
@@ -438,10 +439,11 @@ bool xx_pkcs7_verify_signer_info(const xx_pkcs7_signer_info *si, const xx_x509_c
 
     if (!si || !signer_cert) return false;
     if (si->digest_algorithm.oid_der_size) {
-        char canonical[96]; bool nonminimal = false;
-        if (!xx_asn1_oid_to_text(si->digest_algorithm.oid_der, si->digest_algorithm.oid_der_size,
-                                 canonical, sizeof(canonical), &nonminimal) || nonminimal ||
-            strcmp(canonical, si->digest_algorithm.oid_text)) return false;
+        char canonical[96];
+        bool nonminimal = false;
+        if (!xx_asn1_oid_to_text(si->digest_algorithm.oid_der, si->digest_algorithm.oid_der_size, canonical, sizeof(canonical), &nonminimal) || nonminimal ||
+            strcmp(canonical, si->digest_algorithm.oid_text))
+            return false;
     }
     alg = xx_pki_hash_from_oid(si->digest_algorithm.oid_text);
     if (alg == XX_PKI_HASH_NONE) return false;
@@ -452,19 +454,17 @@ bool xx_pkcs7_verify_signer_info(const xx_pkcs7_signer_info *si, const xx_x509_c
         uint8_t header[16];
         size_t header_size;
         xx_pki_hash_part parts[2];
-        header_size = xx_asn1_encode_header(XX_ASN1_CLASS_UNIVERSAL, true, XX_ASN1_TAG_SET,
-                                           si->signed_attrs_content_size, header, sizeof(header));
+        header_size = xx_asn1_encode_header(XX_ASN1_CLASS_UNIVERSAL, true, XX_ASN1_TAG_SET, si->signed_attrs_content_size, header, sizeof(header));
         if (!header_size) return false;
-        parts[0].data = header; parts[0].size = header_size;
-        parts[1].data = si->signed_attrs_content; parts[1].size = si->signed_attrs_content_size;
+        parts[0].data = header;
+        parts[0].size = header_size;
+        parts[1].data = si->signed_attrs_content;
+        parts[1].size = si->signed_attrs_content_size;
         if (!xx_pki_hash_memoryv(alg, parts, 2U, digest)) return false;
     } else {
         if (!econtent) return false;
         if (!xx_pki_hash_memory(alg, econtent, econtent_size, digest)) return false;
     }
 
-    return xx_pki_verify_digest(signer_cert->spki_der, signer_cert->spki_der_size,
-                                 NULL, NULL, 0U,
-                                 alg, digest, digest_size,
-                                 si->signature, si->signature_size);
+    return xx_pki_verify_digest(signer_cert->spki_der, signer_cert->spki_der_size, NULL, NULL, 0U, alg, digest, digest_size, si->signature, si->signature_size);
 }

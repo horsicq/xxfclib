@@ -144,21 +144,28 @@ static bool warc_valid_utf8(const uint8_t *data, size_t length)
         uint8_t c = data[at];
         uint32_t value;
         unsigned remaining;
-        if (c < 0x80U) { ++at; continue; }
-        if (c >= 0xC2U && c <= 0xDFU) { value = c & 0x1FU; remaining = 1U; }
-        else if (c >= 0xE0U && c <= 0xEFU) { value = c & 0x0FU; remaining = 2U; }
-        else if (c >= 0xF0U && c <= 0xF4U) { value = c & 0x07U; remaining = 3U; }
-        else return false;
+        if (c < 0x80U) {
+            ++at;
+            continue;
+        }
+        if (c >= 0xC2U && c <= 0xDFU) {
+            value = c & 0x1FU;
+            remaining = 1U;
+        } else if (c >= 0xE0U && c <= 0xEFU) {
+            value = c & 0x0FU;
+            remaining = 2U;
+        } else if (c >= 0xF0U && c <= 0xF4U) {
+            value = c & 0x07U;
+            remaining = 3U;
+        } else return false;
         if (length - at - 1U < remaining) return false;
         while (remaining--) {
             uint8_t tail = data[++at];
             if ((tail & 0xC0U) != 0x80U) return false;
             value = (value << 6U) | (tail & 0x3FU);
         }
-        if ((c <= 0xDFU && value < 0x80U) ||
-            (c >= 0xE0U && c <= 0xEFU && value < 0x800U) ||
-            (c >= 0xF0U && value < 0x10000U) ||
-            value > 0x10FFFFU || (value >= 0xD800U && value <= 0xDFFFU))
+        if ((c <= 0xDFU && value < 0x80U) || (c >= 0xE0U && c <= 0xEFU && value < 0x800U) || (c >= 0xF0U && value < 0x10000U) || value > 0x10FFFFU ||
+            (value >= 0xD800U && value <= 0xDFFFU))
             return false;
         ++at;
     }
@@ -413,13 +420,16 @@ static bool warc_parse_record(Abstractformat *format, int64_t relative_offset, w
     }
     if (member->type != 0U && target && warc_safe_uri_name(target, target_size, &member->name)) {
         char *safe = xx_archive_output_name(member->name, 0, 0);
-        xx_mem_free(member->name); member->name = safe;
+        xx_mem_free(member->name);
+        member->name = safe;
         member->directory_uri = target_size && target[target_size - 1] == '/';
         member->target_uri = xx_str_create_len(target_size);
         member->record_id = xx_str_create_len(record_id_size);
         if (!member->name || !member->target_uri || !member->record_id) goto done;
-        memcpy(member->target_uri, target, target_size); member->target_uri[target_size] = 0;
-        memcpy(member->record_id, record_id, record_id_size); member->record_id[record_id_size] = 0;
+        memcpy(member->target_uri, target, target_size);
+        member->target_uri[target_size] = 0;
+        memcpy(member->record_id, record_id, record_id_size);
+        member->record_id[record_id_size] = 0;
         *visible = true;
     }
     *next_offset = data_relative + (int64_t)data_size + 4U;
@@ -429,8 +439,14 @@ done:
         xx_mem_free(member->name);
         member->name = NULL;
     }
-    if (!result && member->target_uri) { xx_mem_free(member->target_uri); member->target_uri = NULL; }
-    if (!result && member->record_id) { xx_mem_free(member->record_id); member->record_id = NULL; }
+    if (!result && member->target_uri) {
+        xx_mem_free(member->target_uri);
+        member->target_uri = NULL;
+    }
+    if (!result && member->record_id) {
+        xx_mem_free(member->record_id);
+        member->record_id = NULL;
+    }
     if (header) xx_mem_free(header);
     return result;
 }
@@ -476,19 +492,21 @@ static bool warc_parse(Abstractformat *format, warc_stream **result, xx_pd_struc
         size_t i, j;
         if (stream->count && !indexed) goto fail;
         for (i = 0; i < stream->count; ++i) {
-            indexed[i] = stream->count > 2048 || stream->items[i].directory_uri ||
-                xx_archive_output_equal_prefix("records", stream->items[i].name);
+            indexed[i] = stream->count > 2048 || stream->items[i].directory_uri || xx_archive_output_equal_prefix("records", stream->items[i].name);
             for (j = 0; !indexed[i] && j < stream->count; ++j)
                 if (i != j && xx_archive_output_equal_prefix(stream->items[i].name, stream->items[j].name)) indexed[i] = true;
         }
         for (i = 0; i < stream->count; ++i) {
             if (indexed[i]) {
                 char name[64], *copy;
-                snprintf(name, sizeof(name), "records/%016llx/block.warc",
-                         (unsigned long long)(stream->items[i].header_offset - format->base_address));
+                snprintf(name, sizeof(name), "records/%016llx/block.warc", (unsigned long long)(stream->items[i].header_offset - format->base_address));
                 copy = xx_str_dup(name);
-                if (!copy) { xx_mem_free(indexed); goto fail; }
-                xx_mem_free(stream->items[i].name); stream->items[i].name = copy;
+                if (!copy) {
+                    xx_mem_free(indexed);
+                    goto fail;
+                }
+                xx_mem_free(stream->items[i].name);
+                stream->items[i].name = copy;
             }
         }
         xx_mem_free(indexed);
@@ -538,8 +556,7 @@ static bool warc_set_record(xx_archive_record *record, const warc_member *member
     record->header_size = member->header_size;
     record->data_offset = member->data_offset;
     record->compressed_size = member->data_size;
-    return xx_archive_record_set_original_name(record, member->name) &&
-           xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, member->target_uri) &&
+    return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, member->target_uri) &&
            xx_archive_record_set_meta_str(record, XX_META_ID_EXTRA_FIELD, member->record_id) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, member->data_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->data_size) &&

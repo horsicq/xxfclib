@@ -550,10 +550,22 @@ typedef struct xx_bcj2_filter_device_s {
 static void xx_bcj2_filter_cleanup(xx_bcj2_filter_device *f)
 {
     if (!f) return;
-    if (f->mem1) { xx_mem_zero(f->mem1, f->size1 ? f->size1 : 1U); xx_mem_free(f->mem1); }
-    if (f->mem2) { xx_mem_zero(f->mem2, f->size2 ? f->size2 : 1U); xx_mem_free(f->mem2); }
-    if (f->mem3) { xx_mem_zero(f->mem3, f->size3 ? f->size3 : 1U); xx_mem_free(f->mem3); }
-    if (f->out_buf) { xx_mem_zero(f->out_buf, XX_7ZIP_BCJ2_CHUNK); xx_mem_free(f->out_buf); }
+    if (f->mem1) {
+        xx_mem_zero(f->mem1, f->size1 ? f->size1 : 1U);
+        xx_mem_free(f->mem1);
+    }
+    if (f->mem2) {
+        xx_mem_zero(f->mem2, f->size2 ? f->size2 : 1U);
+        xx_mem_free(f->mem2);
+    }
+    if (f->mem3) {
+        xx_mem_zero(f->mem3, f->size3 ? f->size3 : 1U);
+        xx_mem_free(f->mem3);
+    }
+    if (f->out_buf) {
+        xx_mem_zero(f->out_buf, XX_7ZIP_BCJ2_CHUNK);
+        xx_mem_free(f->out_buf);
+    }
     xx_mem_zero(f, sizeof(*f));
 }
 
@@ -623,7 +635,10 @@ static ssize_t xx_bcj2_filter_write_cb(xx_io_device *device, const void *buffer,
         if (branch) {
             uint16_t *probability = opcode == 0xE8U ? &probabilities[2U + previous] : &probabilities[opcode == 0xE9U ? 1U : 0U];
             if (range < (UINT32_C(1) << 24U)) {
-                if (p3 >= p3_end) { f->error = true; return -1; }
+                if (p3 >= p3_end) {
+                    f->error = true;
+                    return -1;
+                }
                 range <<= 8U;
                 code = (code << 8U) | (*p3++);
             }
@@ -639,17 +654,20 @@ static ssize_t xx_bcj2_filter_write_cb(xx_io_device *device, const void *buffer,
 
                 const uint8_t *sel_ptr = (opcode == 0xE8U) ? p1 : p2;
                 const uint8_t *sel_end = (opcode == 0xE8U) ? p1_end : p2_end;
-                if (sel_ptr + 4U > sel_end) { f->error = true; return -1; }
+                if (sel_ptr + 4U > sel_end) {
+                    f->error = true;
+                    return -1;
+                }
 
 #if defined(_M_IX86) || defined(_M_X64)
                 uint32_t target = _byteswap_ulong(*(const uint32_t *)(const void *)sel_ptr);
 #elif (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
                 uint32_t target = __builtin_bswap32(*(const uint32_t *)(const void *)sel_ptr);
 #else
-                uint32_t target = ((uint32_t)sel_ptr[0] << 24U) | ((uint32_t)sel_ptr[1] << 16U) |
-                                  ((uint32_t)sel_ptr[2] << 8U)  | (uint32_t)sel_ptr[3];
+                uint32_t target = ((uint32_t)sel_ptr[0] << 24U) | ((uint32_t)sel_ptr[1] << 16U) | ((uint32_t)sel_ptr[2] << 8U) | (uint32_t)sel_ptr[3];
 #endif
-                if (opcode == 0xE8U) p1 += 4U; else p2 += 4U;
+                if (opcode == 0xE8U) p1 += 4U;
+                else p2 += 4U;
 
                 ip += 4U;
                 target -= ip;
@@ -689,21 +707,17 @@ static int64_t xx_bcj2_filter_size_cb(xx_io_device *device)
     return f ? (int64_t)(f->total_written + f->out_used) : -1;
 }
 
-static bool xx_bcj2_filter_init(xx_bcj2_filter_device *f,
-                                xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3],
-                                const uint8_t *properties, size_t properties_size,
-                                uint64_t expected_size, xx_io_device *destination, xx_pd_struct *pd)
+static bool xx_bcj2_filter_init(xx_bcj2_filter_device *f, xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3], const uint8_t *properties,
+                                size_t properties_size, uint64_t expected_size, xx_io_device *destination, xx_pd_struct *pd)
 {
     uint8_t first;
     size_t i;
     xx_mem_zero(f, sizeof(*f));
-    if (!secondary_sources || !secondary_sizes || !destination || (!properties && properties_size) ||
-        !xx_7zip_branch_properties_supported(properties_size) || expected_size > INT64_MAX ||
-        secondary_sizes[2] < 5U || (secondary_sizes[0] & 3U) || (secondary_sizes[1] & 3U) || xx_pd_is_stopped(pd))
+    if (!secondary_sources || !secondary_sizes || !destination || (!properties && properties_size) || !xx_7zip_branch_properties_supported(properties_size) ||
+        expected_size > INT64_MAX || secondary_sizes[2] < 5U || (secondary_sizes[0] & 3U) || (secondary_sizes[1] & 3U) || xx_pd_is_stopped(pd))
         return false;
 
-    if (secondary_sizes[0] > 64U * 1024U * 1024U || secondary_sizes[1] > 64U * 1024U * 1024U || secondary_sizes[2] > 64U * 1024U * 1024U)
-        return false;
+    if (secondary_sizes[0] > 64U * 1024U * 1024U || secondary_sizes[1] > 64U * 1024U * 1024U || secondary_sizes[2] > 64U * 1024U * 1024U) return false;
 
     f->size1 = (size_t)secondary_sizes[0];
     f->size2 = (size_t)secondary_sizes[1];
@@ -738,9 +752,12 @@ static bool xx_bcj2_filter_init(xx_bcj2_filter_device *f,
         }
     }
 
-    f->p1 = f->mem1; f->p1_end = f->mem1 + f->size1;
-    f->p2 = f->mem2; f->p2_end = f->mem2 + f->size2;
-    f->p3 = f->mem3; f->p3_end = f->mem3 + f->size3;
+    f->p1 = f->mem1;
+    f->p1_end = f->mem1 + f->size1;
+    f->p2 = f->mem2;
+    f->p2_end = f->mem2 + f->size2;
+    f->p3 = f->mem3;
+    f->p3_end = f->mem3 + f->size3;
 
     f->ip = properties_size == 4U ? xx_data_get_u32(properties, 4, 0, false) : 0U;
     for (i = 0U; i < 258U; ++i) f->probabilities[i] = 1024U;
@@ -790,8 +807,7 @@ bool xx_7zip_stream_bcj2(xx_io_device *const sources[4], const uint64_t sizes[4]
     uint64_t in0_consumed = 0U;
     bool success = false;
 
-    if (!sources || !sizes || !xx_bcj2_filter_init(&filter, &sources[1], &sizes[1], properties, properties_size, expected_size, destination, pd))
-        return false;
+    if (!sources || !sizes || !xx_bcj2_filter_init(&filter, &sources[1], &sizes[1], properties, properties_size, expected_size, destination, pd)) return false;
 
     in0_buffer = (uint8_t *)xx_mem_alloc(XX_7ZIP_BCJ2_CHUNK);
     if (!in0_buffer || !xx_7zip_stream_window_init(&in0_window, sources[0], 0, sizes[0], pd)) goto done;
@@ -810,26 +826,26 @@ bool xx_7zip_stream_bcj2(xx_io_device *const sources[4], const uint64_t sizes[4]
     success = xx_bcj2_filter_finish(&filter);
 
 done:
-    if (in0_buffer) { xx_mem_zero(in0_buffer, XX_7ZIP_BCJ2_CHUNK); xx_mem_free(in0_buffer); }
+    if (in0_buffer) {
+        xx_mem_zero(in0_buffer, XX_7ZIP_BCJ2_CHUNK);
+        xx_mem_free(in0_buffer);
+    }
     xx_bcj2_filter_cleanup(&filter);
     return success;
 }
 
-bool xx_7zip_stream_bcj2_streaming(xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3],
-                                   const uint8_t *properties, size_t properties_size, uint64_t in0_size, uint64_t expected_size,
-                                   xx_io_device *u_source, int64_t u_source_offset, uint64_t u_compressed_size,
-                                   uint64_t u_method, const uint8_t *u_properties, size_t u_properties_size,
-                                   xx_io_device *destination, const uint8_t *password_utf16le, size_t password_size, xx_pd_struct *pd)
+bool xx_7zip_stream_bcj2_streaming(xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3], const uint8_t *properties, size_t properties_size,
+                                   uint64_t in0_size, uint64_t expected_size, xx_io_device *u_source, int64_t u_source_offset, uint64_t u_compressed_size,
+                                   uint64_t u_method, const uint8_t *u_properties, size_t u_properties_size, xx_io_device *destination, const uint8_t *password_utf16le,
+                                   size_t password_size, xx_pd_struct *pd)
 {
     xx_bcj2_filter_device filter;
     bool ok;
 
-    if (!xx_bcj2_filter_init(&filter, secondary_sources, secondary_sizes, properties, properties_size, expected_size, destination, pd))
-        return false;
+    if (!xx_bcj2_filter_init(&filter, secondary_sources, secondary_sizes, properties, properties_size, expected_size, destination, pd)) return false;
 
-    ok = xx_7zip_stream_decode(u_method, u_properties, u_properties_size,
-                               u_source, u_source_offset, u_compressed_size,
-                               in0_size, &filter.device, password_utf16le, password_size, pd);
+    ok = xx_7zip_stream_decode(u_method, u_properties, u_properties_size, u_source, u_source_offset, u_compressed_size, in0_size, &filter.device, password_utf16le,
+                               password_size, pd);
     if (ok) {
         ok = xx_bcj2_filter_finish(&filter);
     }

@@ -385,7 +385,8 @@ static bool xx_lzh5_decode_impl(const uint8_t *input, size_t input_size, uint8_t
      * zero fill within its last byte is permitted; whole trailing bytes,
      * unconsumed symbols and clipped matches are never accepted here. */
     if (exact && (bits.overrun || bits.position != input_size || bits.available < 0 || bits.available > 7 ||
-                  (bits.available && (bits.cache & ((1U << bits.available) - 1U)) != 0U))) return false;
+                  (bits.available && (bits.cache & ((1U << bits.available) - 1U)) != 0U)))
+        return false;
     if (written) *written = produced;
     return produced == output_size;
 }

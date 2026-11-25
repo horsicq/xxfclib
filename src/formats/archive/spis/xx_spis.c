@@ -136,8 +136,14 @@ static void xx_spis_stream_free(void *pointer)
     for (index = 0U; index < stream->count; ++index) {
         xx_str_free(stream->items[index].name);
     }
-    if (stream->small) { xx_mem_free(stream->small->snapshot); xx_mem_free(stream->small); }
-    if (stream->multi) { xx_mem_free(stream->multi->snapshot); xx_mem_free(stream->multi); }
+    if (stream->small) {
+        xx_mem_free(stream->small->snapshot);
+        xx_mem_free(stream->small);
+    }
+    if (stream->multi) {
+        xx_mem_free(stream->multi->snapshot);
+        xx_mem_free(stream->multi);
+    }
     xx_mem_free(stream->items);
     xx_mem_free(stream);
 }
@@ -205,11 +211,17 @@ static size_t xx_spis_name_slot(char **slots, size_t capacity, const char *name)
     const unsigned char *p = (const unsigned char *)name;
     uint32_t hash = UINT32_C(2166136261);
     size_t slot;
-    while (*p) { hash ^= xx_spis_fold(*p++); hash *= UINT32_C(16777619); }
+    while (*p) {
+        hash ^= xx_spis_fold(*p++);
+        hash *= UINT32_C(16777619);
+    }
     slot = (size_t)hash & (capacity - 1U);
     while (slots[slot]) {
         const unsigned char *a = (const unsigned char *)slots[slot], *b = (const unsigned char *)name;
-        while (*a && *b && xx_spis_fold(*a) == xx_spis_fold(*b)) { ++a; ++b; }
+        while (*a && *b && xx_spis_fold(*a) == xx_spis_fold(*b)) {
+            ++a;
+            ++b;
+        }
         if (!*a && !*b) break;
         slot = (slot + 1U) & (capacity - 1U);
     }
@@ -237,13 +249,17 @@ static bool xx_spis_unique_names(xx_spis_stream *stream, xx_pd_struct *pd)
             unsigned serial;
             char *candidate = (char *)xx_mem_alloc(length + 32U);
             if (!candidate) goto done;
-            for (j = 0U; j < length; ++j) if (name[j] == '/') prefix = j + 1U;
+            for (j = 0U; j < length; ++j)
+                if (name[j] == '/') prefix = j + 1U;
             for (serial = 0U; serial <= stream->count; ++serial) {
                 xx_rt_snprintf(candidate, length + 32U, "%.*s(%u)%s", (int)prefix, name, serial, name + prefix);
                 slot = xx_spis_name_slot(used, capacity, candidate);
                 if (!used[slot] && !reserved[xx_spis_name_slot(reserved, capacity, candidate)]) break;
             }
-            if (serial > stream->count) { xx_mem_free(candidate); goto done; }
+            if (serial > stream->count) {
+                xx_mem_free(candidate);
+                goto done;
+            }
             stream->items[i].name = candidate;
             xx_str_free(name);
             name = candidate;
@@ -1158,8 +1174,7 @@ static bool xx_spis_small_name_safe(const char *name)
 static bool xx_spis_small_limits(Abstractformat *self, xx_archive_record_state *state, const xx_spis_stream *stream)
 {
     const xx_spis_member *m = &stream->items[0];
-    uint64_t charge = XX_SPIS_SMALL_FIXED_MEMORY + (uint64_t)stream->archive_size +
-                      (uint64_t)m->compressed_size + (uint64_t)m->uncompressed_size;
+    uint64_t charge = XX_SPIS_SMALL_FIXED_MEMORY + (uint64_t)stream->archive_size + (uint64_t)m->compressed_size + (uint64_t)m->uncompressed_size;
     const xx_var *v;
     /* An operation may tighten, but never raise, a format-level budget. */
     v = xx_format_resolve_extra_parameter(self, NULL, XX_META_ID_OPT_MEMORY_LIMIT);
@@ -1177,13 +1192,12 @@ static bool xx_spis_small_unchanged(Abstractformat *self, const xx_spis_small_co
     uint8_t chunk[256];
     size_t at = 0U;
     int64_t total = xx_io_total_size(self->device);
-    if (self->base_address != context->base || total < context->base ||
-        (uint64_t)(total - context->base) != context->size) return false;
+    if (self->base_address != context->base || total < context->base || (uint64_t)(total - context->base) != context->size) return false;
     while (at < context->size) {
         size_t n = context->size - at;
         if (n > sizeof(chunk)) n = sizeof(chunk);
-        if ((pd && xx_pd_is_stopped(pd)) || !xx_spis_read_at(self, context->base + (int64_t)at, chunk, n) ||
-            xx_rt_memcmp(chunk, context->snapshot + at, n) != 0) return false;
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_spis_read_at(self, context->base + (int64_t)at, chunk, n) || xx_rt_memcmp(chunk, context->snapshot + at, n) != 0)
+            return false;
         at += n;
     }
     return !(pd && xx_pd_is_stopped(pd));
@@ -1193,21 +1207,15 @@ static bool xx_spis_small_shape(Abstractformat *self, const xx_spis_stream *stre
 {
     const xx_spis_member *m = &stream->items[0];
     const uint8_t *h = header + XX_SPIS_HEADER_SIZE;
-    return xx_rt_memcmp(header, "SPIS\x1aLH5", 8U) == 0 && header[12] == 1U &&
-        xx_data_get_u32(header + 8, 4, 0, false) == (uint32_t)m->uncompressed_size &&
-        xx_data_get_u32(header + 17, 4, 0, false) == 2U &&
-        xx_data_get_u16(h, 2, 0, false) == (uint16_t)(m->header_size - XX_SPIS_RECORD_HEADER_SIZE) &&
-        xx_data_get_u32(h + 2, 4, 0, false) == m->timestamp &&
-        xx_data_get_u32(h + 8, 4, 0, false) == (uint32_t)m->uncompressed_size &&
-        xx_data_get_u32(h + 12, 4, 0, false) == (uint32_t)m->compressed_size && h[16] == XX_SPIS_METHOD_LH5 &&
-        xx_data_get_u32(h + 21, 4, 0, false) == 2U &&
-        m->header_offset == self->base_address + XX_SPIS_HEADER_SIZE &&
-        m->data_offset == m->header_offset + m->header_size &&
-        m->data_offset - self->base_address + m->compressed_size == stream->archive_size;
+    return xx_rt_memcmp(header, "SPIS\x1aLH5", 8U) == 0 && header[12] == 1U && xx_data_get_u32(header + 8, 4, 0, false) == (uint32_t)m->uncompressed_size &&
+           xx_data_get_u32(header + 17, 4, 0, false) == 2U && xx_data_get_u16(h, 2, 0, false) == (uint16_t)(m->header_size - XX_SPIS_RECORD_HEADER_SIZE) &&
+           xx_data_get_u32(h + 2, 4, 0, false) == m->timestamp && xx_data_get_u32(h + 8, 4, 0, false) == (uint32_t)m->uncompressed_size &&
+           xx_data_get_u32(h + 12, 4, 0, false) == (uint32_t)m->compressed_size && h[16] == XX_SPIS_METHOD_LH5 && xx_data_get_u32(h + 21, 4, 0, false) == 2U &&
+           m->header_offset == self->base_address + XX_SPIS_HEADER_SIZE && m->data_offset == m->header_offset + m->header_size &&
+           m->data_offset - self->base_address + m->compressed_size == stream->archive_size;
 }
 
-static bool xx_spis_small_candidate(const uint8_t *packed, size_t packed_size, uint8_t *input, uint8_t *plain,
-                                    size_t raw_size, uint32_t stored, uint32_t key)
+static bool xx_spis_small_candidate(const uint8_t *packed, size_t packed_size, uint8_t *input, uint8_t *plain, size_t raw_size, uint32_t stored, uint32_t key)
 {
     size_t i, written = 0U;
     uint32_t sum = 0U;
@@ -1234,15 +1242,13 @@ static bool xx_spis_small_prepare(Abstractformat *self, xx_archive_record_state 
     if (pd && xx_pd_is_stopped(pd)) return false;
     if (stream->count != 1U || stream->truncated_tail) return true;
     m = &stream->items[0];
-    if (m->is_folder || m->method != XX_SPIS_METHOD_LH5 || m->uncompressed_size <= 0 ||
-        m->uncompressed_size > XX_SPIS_SMALL_RAW || m->compressed_size <= 0 || m->compressed_size > XX_SPIS_SMALL_PACKED ||
-        m->header_size <= XX_SPIS_RECORD_HEADER_SIZE || m->header_size > XX_SPIS_RECORD_HEADER_SIZE + XX_SPIS_SMALL_NAME ||
+    if (m->is_folder || m->method != XX_SPIS_METHOD_LH5 || m->uncompressed_size <= 0 || m->uncompressed_size > XX_SPIS_SMALL_RAW || m->compressed_size <= 0 ||
+        m->compressed_size > XX_SPIS_SMALL_PACKED || m->header_size <= XX_SPIS_RECORD_HEADER_SIZE || m->header_size > XX_SPIS_RECORD_HEADER_SIZE + XX_SPIS_SMALL_NAME ||
         self->base_address < 0 || self->base_address > INT64_MAX - XX_SPIS_HEADER_SIZE ||
-        stream->archive_size != XX_SPIS_HEADER_SIZE + m->header_size + m->compressed_size ||
-        xx_io_total_size(self->device) - self->base_address != stream->archive_size) return true;
+        stream->archive_size != XX_SPIS_HEADER_SIZE + m->header_size + m->compressed_size || xx_io_total_size(self->device) - self->base_address != stream->archive_size)
+        return true;
     bound = (uint32_t)m->uncompressed_size * 255U;
-    if ((uint64_t)(bound + 1U) * (uint64_t)(m->compressed_size + m->uncompressed_size) > XX_SPIS_SMALL_WORK ||
-        !xx_spis_small_limits(self, state, stream)) return true;
+    if ((uint64_t)(bound + 1U) * (uint64_t)(m->compressed_size + m->uncompressed_size) > XX_SPIS_SMALL_WORK || !xx_spis_small_limits(self, state, stream)) return true;
     if (!xx_spis_read_at(self, self->base_address, header, sizeof(header))) return false;
     if (!xx_spis_small_shape(self, stream, header)) return true;
     if (!xx_spis_small_name_safe(m->name)) return true;
@@ -1251,28 +1257,46 @@ static bool xx_spis_small_prepare(Abstractformat *self, xx_archive_record_state 
     context->base = self->base_address;
     context->size = (size_t)stream->archive_size;
     context->snapshot = (uint8_t *)xx_mem_alloc(context->size);
-    if (!context->snapshot || !xx_spis_read_at(self, context->base, context->snapshot, context->size) ||
-        xx_rt_memcmp(header, context->snapshot, sizeof(header)) != 0) { result = false; goto done; }
+    if (!context->snapshot || !xx_spis_read_at(self, context->base, context->snapshot, context->size) || xx_rt_memcmp(header, context->snapshot, sizeof(header)) != 0) {
+        result = false;
+        goto done;
+    }
     name = xx_spis_make_name(context->snapshot + sizeof(header), (size_t)m->header_size - XX_SPIS_RECORD_HEADER_SIZE);
-    if (!name || xx_rt_strcmp(name, m->name) != 0) { result = false; goto done; }
-    xx_str_free(name); name = NULL;
+    if (!name || xx_rt_strcmp(name, m->name) != 0) {
+        result = false;
+        goto done;
+    }
+    xx_str_free(name);
+    name = NULL;
     /* Preserve historical default-key acceptance, including its tolerant LH5
      * boundaries. Failed recovery never blocks an otherwise valid default. */
     if (xx_spis_decode(self, m, XX_SPIS_FLAG_KEY, &legacy, &legacy_size, pd)) goto done;
-    if (pd && xx_pd_is_stopped(pd)) { result = false; goto done; }
+    if (pd && xx_pd_is_stopped(pd)) {
+        result = false;
+        goto done;
+    }
     input = (uint8_t *)xx_mem_alloc((size_t)m->compressed_size);
     plain = (uint8_t *)xx_mem_alloc((size_t)m->uncompressed_size);
-    if (!input || !plain) { result = false; goto done; }
+    if (!input || !plain) {
+        result = false;
+        goto done;
+    }
     stored = xx_data_get_u32(context->snapshot + XX_SPIS_HEADER_SIZE + 17U, 4, 0, false);
     for (delta = 0U; delta <= bound; ++delta) {
         uint32_t candidate = stored - delta;
-        if ((pd && xx_pd_is_stopped(pd)) || !xx_spis_small_limits(self, state, stream)) { result = false; goto done; }
-        if (xx_spis_small_candidate(context->snapshot + (size_t)(m->data_offset - self->base_address),
-                (size_t)m->compressed_size, input, plain, (size_t)m->uncompressed_size, stored, candidate))
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_spis_small_limits(self, state, stream)) {
+            result = false;
+            goto done;
+        }
+        if (xx_spis_small_candidate(context->snapshot + (size_t)(m->data_offset - self->base_address), (size_t)m->compressed_size, input, plain,
+                                    (size_t)m->uncompressed_size, stored, candidate))
             xx_spis_key_selection_add(&selection, candidate);
     }
     /* Complete the entire domain even after a match, and reject ambiguity. */
-    if (!xx_spis_small_unchanged(self, context, pd)) { result = false; goto done; }
+    if (!xx_spis_small_unchanged(self, context, pd)) {
+        result = false;
+        goto done;
+    }
     if (xx_spis_key_selection_unique(&selection)) {
         context->key = selection.key;
         stream->small = context;
@@ -1283,7 +1307,10 @@ done:
     xx_mem_free(legacy);
     xx_mem_free(input);
     xx_mem_free(plain);
-    if (context) { xx_mem_free(context->snapshot); xx_mem_free(context); }
+    if (context) {
+        xx_mem_free(context->snapshot);
+        xx_mem_free(context);
+    }
     return result;
 }
 
@@ -1295,17 +1322,24 @@ static bool xx_spis_small_decode(Abstractformat *self, xx_archive_record_state *
     uint8_t *input = NULL, *plain = NULL;
     uint32_t stored;
     bool result = false;
-    *out = NULL; *out_size = 0U;
+    *out = NULL;
+    *out_size = 0U;
     if (!c || !xx_spis_small_name_safe(m->name) || !xx_spis_small_limits(self, state, s) || !xx_spis_small_unchanged(self, c, pd)) return false;
     input = (uint8_t *)xx_mem_alloc((size_t)m->compressed_size);
     plain = (uint8_t *)xx_mem_alloc((size_t)m->uncompressed_size);
     if (!input || !plain) goto done;
     stored = xx_data_get_u32(c->snapshot + XX_SPIS_HEADER_SIZE + 17U, 4, 0, false);
-    if (!xx_spis_small_candidate(c->snapshot + (size_t)(m->data_offset - c->base), (size_t)m->compressed_size,
-            input, plain, (size_t)m->uncompressed_size, stored, c->key) || !xx_spis_small_unchanged(self, c, pd)) goto done;
-    *out = plain; *out_size = (size_t)m->uncompressed_size; plain = NULL; result = true;
+    if (!xx_spis_small_candidate(c->snapshot + (size_t)(m->data_offset - c->base), (size_t)m->compressed_size, input, plain, (size_t)m->uncompressed_size, stored,
+                                 c->key) ||
+        !xx_spis_small_unchanged(self, c, pd))
+        goto done;
+    *out = plain;
+    *out_size = (size_t)m->uncompressed_size;
+    plain = NULL;
+    result = true;
 done:
-    xx_mem_free(input); xx_mem_free(plain);
+    xx_mem_free(input);
+    xx_mem_free(plain);
     return result;
 }
 
@@ -1326,30 +1360,37 @@ static bool xx_spis_multi_bounds_get(Abstractformat *self, const xx_spis_stream 
 {
     size_t i;
     uint64_t at = XX_SPIS_HEADER_SIZE, seed_work = UINT64_MAX;
-    xx_mem_zero(b, sizeof(*b)); b->seed = SIZE_MAX;
-    if (s->count < 2U || s->count > XX_SPIS_MULTI_MEMBERS || s->truncated_tail || s->archive_size <= 0 ||
-        s->archive_size > XX_SPIS_MULTI_SPAN || self->base_address < 0 || self->base_address > INT64_MAX - s->archive_size) return false;
+    xx_mem_zero(b, sizeof(*b));
+    b->seed = SIZE_MAX;
+    if (s->count < 2U || s->count > XX_SPIS_MULTI_MEMBERS || s->truncated_tail || s->archive_size <= 0 || s->archive_size > XX_SPIS_MULTI_SPAN ||
+        self->base_address < 0 || self->base_address > INT64_MAX - s->archive_size)
+        return false;
     for (i = 0U; i < s->count; ++i) {
         const xx_spis_member *m = &s->items[i];
         uint64_t work;
-        if (m->is_folder || m->method != XX_SPIS_METHOD_LH5 || m->uncompressed_size <= 0 ||
-            m->uncompressed_size > XX_SPIS_MULTI_MEMBER || m->compressed_size <= 0 || m->compressed_size > XX_SPIS_MULTI_MEMBER ||
-            m->header_size <= XX_SPIS_RECORD_HEADER_SIZE || m->header_size > XX_SPIS_RECORD_HEADER_SIZE + XX_SPIS_SMALL_NAME ||
-            m->header_offset != self->base_address + (int64_t)at || m->data_offset != m->header_offset + m->header_size) return false;
+        if (m->is_folder || m->method != XX_SPIS_METHOD_LH5 || m->uncompressed_size <= 0 || m->uncompressed_size > XX_SPIS_MULTI_MEMBER || m->compressed_size <= 0 ||
+            m->compressed_size > XX_SPIS_MULTI_MEMBER || m->header_size <= XX_SPIS_RECORD_HEADER_SIZE ||
+            m->header_size > XX_SPIS_RECORD_HEADER_SIZE + XX_SPIS_SMALL_NAME || m->header_offset != self->base_address + (int64_t)at ||
+            m->data_offset != m->header_offset + m->header_size)
+            return false;
         at += (uint64_t)m->header_size + (uint64_t)m->compressed_size;
         if (at > (uint64_t)s->archive_size) return false;
-        b->packed += (uint64_t)m->compressed_size; b->raw += (uint64_t)m->uncompressed_size;
+        b->packed += (uint64_t)m->compressed_size;
+        b->raw += (uint64_t)m->uncompressed_size;
         if ((size_t)m->compressed_size > b->max_packed) b->max_packed = (size_t)m->compressed_size;
         if ((size_t)m->uncompressed_size > b->max_raw) b->max_raw = (size_t)m->uncompressed_size;
         if (m->uncompressed_size <= XX_SPIS_SMALL_RAW && m->compressed_size <= XX_SPIS_SMALL_PACKED) {
             work = ((uint64_t)m->uncompressed_size * 255U + 1U) * (uint64_t)(m->compressed_size + m->uncompressed_size);
-            if (work < seed_work) { seed_work = work; b->seed = i; }
+            if (work < seed_work) {
+                seed_work = work;
+                b->seed = i;
+            }
         }
     }
     /* Reserve one complete historical-default pass plus at most sixteen
      * authenticated seed candidates checked against every member. */
     return at == (uint64_t)s->archive_size && b->seed != SIZE_MAX && b->packed <= XX_SPIS_MULTI_PACKED && b->raw <= XX_SPIS_MULTI_RAW &&
-        seed_work + (XX_SPIS_MULTI_CANDIDATES + 1U) * (b->packed + b->raw) <= XX_SPIS_SMALL_WORK;
+           seed_work + (XX_SPIS_MULTI_CANDIDATES + 1U) * (b->packed + b->raw) <= XX_SPIS_SMALL_WORK;
 }
 
 static bool xx_spis_multi_limits(Abstractformat *self, xx_archive_record_state *state, const xx_spis_stream *s)
@@ -1375,55 +1416,62 @@ static bool xx_spis_multi_name_safe(const char *name)
     if (!xx_spis_small_name_safe(name)) return false;
     /* Multiple published records need unambiguous Win32 components. Preserve
      * the older single-member route's separately tested alias behavior. */
-    for (p = name; *p; ++p) if ((!p[1] || p[1] == '/') && (*p == '.' || *p == ' ')) return false;
+    for (p = name; *p; ++p)
+        if ((!p[1] || p[1] == '/') && (*p == '.' || *p == ' ')) return false;
     return true;
 }
 
 static bool xx_spis_multi_conflict(const char *a, const char *b)
 {
-    while (*a && *b && xx_spis_fold((unsigned char)*a) == xx_spis_fold((unsigned char)*b)) { ++a; ++b; }
+    while (*a && *b && xx_spis_fold((unsigned char)*a) == xx_spis_fold((unsigned char)*b)) {
+        ++a;
+        ++b;
+    }
     return (!*a && (!*b || *b == '/')) || (!*b && *a == '/');
 }
 
-static bool xx_spis_multi_shape(Abstractformat *self, const xx_spis_stream *s, const xx_spis_small_context *c,
-                                 const xx_spis_multi_bounds *bounds, xx_pd_struct *pd)
+static bool xx_spis_multi_shape(Abstractformat *self, const xx_spis_stream *s, const xx_spis_small_context *c, const xx_spis_multi_bounds *bounds, xx_pd_struct *pd)
 {
     size_t i, j;
     const uint8_t *h = c->snapshot;
-    if (xx_rt_memcmp(h, "SPIS\x1aLH5", 8U) != 0 || h[12] != 1U ||
-        xx_data_get_u32(h + 8, 4, 0, false) != bounds->raw || xx_data_get_u32(h + 17, 4, 0, false) != 2U) return false;
+    if (xx_rt_memcmp(h, "SPIS\x1aLH5", 8U) != 0 || h[12] != 1U || xx_data_get_u32(h + 8, 4, 0, false) != bounds->raw || xx_data_get_u32(h + 17, 4, 0, false) != 2U)
+        return false;
     for (i = 0U; i < s->count; ++i) {
         const xx_spis_member *m = &s->items[i];
         char *name;
         bool same;
         if (pd && xx_pd_is_stopped(pd)) return false;
         h = c->snapshot + (size_t)(m->header_offset - self->base_address);
-        if (xx_data_get_u16(h, 2, 0, false) != m->header_size - XX_SPIS_RECORD_HEADER_SIZE ||
-            xx_data_get_u32(h + 2, 4, 0, false) != m->timestamp ||
-            xx_data_get_u32(h + 8, 4, 0, false) != (uint32_t)m->uncompressed_size ||
-            xx_data_get_u32(h + 12, 4, 0, false) != (uint32_t)m->compressed_size || h[16] != XX_SPIS_METHOD_LH5 ||
-            xx_data_get_u32(h + 21, 4, 0, false) != 2U) return false;
+        if (xx_data_get_u16(h, 2, 0, false) != m->header_size - XX_SPIS_RECORD_HEADER_SIZE || xx_data_get_u32(h + 2, 4, 0, false) != m->timestamp ||
+            xx_data_get_u32(h + 8, 4, 0, false) != (uint32_t)m->uncompressed_size || xx_data_get_u32(h + 12, 4, 0, false) != (uint32_t)m->compressed_size ||
+            h[16] != XX_SPIS_METHOD_LH5 || xx_data_get_u32(h + 21, 4, 0, false) != 2U)
+            return false;
         name = xx_spis_make_name(h + XX_SPIS_RECORD_HEADER_SIZE, (size_t)m->header_size - XX_SPIS_RECORD_HEADER_SIZE);
         same = name && xx_rt_strcmp(name, m->name) == 0 && xx_spis_multi_name_safe(name);
         xx_str_free(name);
         if (!same) return false; /* Includes raw duplicates renamed by legacy parsing. */
-        for (j = 0U; j < i; ++j) if (xx_spis_multi_conflict(m->name, s->items[j].name)) return false;
+        for (j = 0U; j < i; ++j)
+            if (xx_spis_multi_conflict(m->name, s->items[j].name)) return false;
     }
     return true;
 }
 
-static bool xx_spis_multi_candidate(const xx_spis_stream *s, const xx_spis_small_context *c, uint32_t key,
-                                     uint8_t *input, uint8_t *plain, xx_archive_record_state *state, Abstractformat *self, xx_pd_struct *pd, bool *interrupted)
+static bool xx_spis_multi_candidate(const xx_spis_stream *s, const xx_spis_small_context *c, uint32_t key, uint8_t *input, uint8_t *plain, xx_archive_record_state *state,
+                                    Abstractformat *self, xx_pd_struct *pd, bool *interrupted)
 {
     size_t i;
     *interrupted = false;
     for (i = 0U; i < s->count; ++i) {
         const xx_spis_member *m = &s->items[i];
         uint32_t stored;
-        if ((pd && xx_pd_is_stopped(pd)) || !xx_spis_multi_limits(self, state, s)) { *interrupted = true; return false; }
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_spis_multi_limits(self, state, s)) {
+            *interrupted = true;
+            return false;
+        }
         stored = xx_data_get_u32(c->snapshot + (size_t)(m->header_offset - c->base) + 17U, 4, 0, false);
-        if (!xx_spis_small_candidate(c->snapshot + (size_t)(m->data_offset - c->base), (size_t)m->compressed_size,
-                input, plain, (size_t)m->uncompressed_size, stored, key)) return false;
+        if (!xx_spis_small_candidate(c->snapshot + (size_t)(m->data_offset - c->base), (size_t)m->compressed_size, input, plain, (size_t)m->uncompressed_size, stored,
+                                     key))
+            return false;
     }
     return true;
 }
@@ -1442,12 +1490,12 @@ static bool xx_spis_multi_prepare(Abstractformat *self, xx_archive_record_state 
     bool result = true, default_ok = true, too_many = false;
     xx_spis_key_selection selected = {0U, 0U};
     if (pd && xx_pd_is_stopped(pd)) return false;
-    if (!xx_spis_multi_bounds_get(self, s, &bounds) || !xx_spis_multi_limits(self, state, s) ||
-        xx_io_total_size(self->device) - self->base_address != s->archive_size) return true;
+    if (!xx_spis_multi_bounds_get(self, s, &bounds) || !xx_spis_multi_limits(self, state, s) || xx_io_total_size(self->device) - self->base_address != s->archive_size)
+        return true;
     if (!xx_spis_read_at(self, self->base_address, archive_header, sizeof(archive_header))) return false;
-    if (xx_rt_memcmp(archive_header, "SPIS\x1aLH5", 8U) != 0 || archive_header[12] != 1U ||
-        xx_data_get_u32(archive_header + 8, 4, 0, false) != bounds.raw ||
-        xx_data_get_u32(archive_header + 17, 4, 0, false) != 2U) return true;
+    if (xx_rt_memcmp(archive_header, "SPIS\x1aLH5", 8U) != 0 || archive_header[12] != 1U || xx_data_get_u32(archive_header + 8, 4, 0, false) != bounds.raw ||
+        xx_data_get_u32(archive_header + 17, 4, 0, false) != 2U)
+        return true;
     /* Check the masked-only scope using small header reads before allocating
      * a potentially larger snapshot. Captured shape is verified again below. */
     for (i = 0U; i < s->count; ++i) {
@@ -1457,40 +1505,83 @@ static bool xx_spis_multi_prepare(Abstractformat *self, xx_archive_record_state 
     }
     c = (xx_spis_small_context *)xx_mem_calloc(1U, sizeof(*c));
     if (!c) return false;
-    c->base = self->base_address; c->size = (size_t)s->archive_size;
+    c->base = self->base_address;
+    c->size = (size_t)s->archive_size;
     c->snapshot = (uint8_t *)xx_mem_alloc(c->size);
-    if (!c->snapshot || !xx_spis_read_at(self, c->base, c->snapshot, c->size)) { result = false; goto done; }
-    if (!xx_spis_multi_shape(self, s, c, &bounds, pd)) { if (pd && xx_pd_is_stopped(pd)) result = false; goto done; }
+    if (!c->snapshot || !xx_spis_read_at(self, c->base, c->snapshot, c->size)) {
+        result = false;
+        goto done;
+    }
+    if (!xx_spis_multi_shape(self, s, c, &bounds, pd)) {
+        if (pd && xx_pd_is_stopped(pd)) result = false;
+        goto done;
+    }
     /* A complete successful default-key pass keeps all legacy behavior. */
     for (i = 0U; i < s->count; ++i) {
-        if (!xx_spis_multi_limits(self, state, s) || (pd && xx_pd_is_stopped(pd))) { result = false; goto done; }
+        if (!xx_spis_multi_limits(self, state, s) || (pd && xx_pd_is_stopped(pd))) {
+            result = false;
+            goto done;
+        }
         default_ok = xx_spis_decode(self, &s->items[i], XX_SPIS_FLAG_KEY, &legacy, &legacy_size, pd);
-        xx_mem_free(legacy); legacy = NULL;
+        xx_mem_free(legacy);
+        legacy = NULL;
         if (!default_ok) break;
     }
-    if (pd && xx_pd_is_stopped(pd)) { result = false; goto done; }
+    if (pd && xx_pd_is_stopped(pd)) {
+        result = false;
+        goto done;
+    }
     if (default_ok) goto done;
     input = (uint8_t *)xx_mem_alloc(bounds.max_packed);
     plain = (uint8_t *)xx_mem_alloc(bounds.max_raw);
-    if (!input || !plain) { result = false; goto done; }
-    seed = &s->items[bounds.seed]; bound = (uint32_t)seed->uncompressed_size * 255U;
+    if (!input || !plain) {
+        result = false;
+        goto done;
+    }
+    seed = &s->items[bounds.seed];
+    bound = (uint32_t)seed->uncompressed_size * 255U;
     stored = xx_data_get_u32(c->snapshot + (size_t)(seed->header_offset - c->base) + 17U, 4, 0, false);
     for (delta = 0U; delta <= bound; ++delta) {
         uint32_t key = stored - delta;
         bool interrupted;
-        if ((pd && xx_pd_is_stopped(pd)) || !xx_spis_multi_limits(self, state, s)) { result = false; goto done; }
-        if (!xx_spis_small_candidate(c->snapshot + (size_t)(seed->data_offset - c->base), (size_t)seed->compressed_size,
-                input, plain, (size_t)seed->uncompressed_size, stored, key)) continue;
-        if (++seed_matches > XX_SPIS_MULTI_CANDIDATES) { too_many = true; continue; }
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_spis_multi_limits(self, state, s)) {
+            result = false;
+            goto done;
+        }
+        if (!xx_spis_small_candidate(c->snapshot + (size_t)(seed->data_offset - c->base), (size_t)seed->compressed_size, input, plain, (size_t)seed->uncompressed_size,
+                                     stored, key))
+            continue;
+        if (++seed_matches > XX_SPIS_MULTI_CANDIDATES) {
+            too_many = true;
+            continue;
+        }
         if (xx_spis_multi_candidate(s, c, key, input, plain, state, self, pd, &interrupted)) xx_spis_key_selection_add(&selected, key);
-        if (interrupted) { result = false; goto done; }
-        if (pd && xx_pd_is_stopped(pd)) { result = false; goto done; }
+        if (interrupted) {
+            result = false;
+            goto done;
+        }
+        if (pd && xx_pd_is_stopped(pd)) {
+            result = false;
+            goto done;
+        }
     }
-    if (!xx_spis_multi_limits(self, state, s) || !xx_spis_small_unchanged(self, c, pd)) { result = false; goto done; }
-    if (!too_many && xx_spis_key_selection_unique(&selected)) { c->key = selected.key; s->multi = c; c = NULL; }
+    if (!xx_spis_multi_limits(self, state, s) || !xx_spis_small_unchanged(self, c, pd)) {
+        result = false;
+        goto done;
+    }
+    if (!too_many && xx_spis_key_selection_unique(&selected)) {
+        c->key = selected.key;
+        s->multi = c;
+        c = NULL;
+    }
 done:
-    xx_mem_free(legacy); xx_mem_free(input); xx_mem_free(plain);
-    if (c) { xx_mem_free(c->snapshot); xx_mem_free(c); }
+    xx_mem_free(legacy);
+    xx_mem_free(input);
+    xx_mem_free(plain);
+    if (c) {
+        xx_mem_free(c->snapshot);
+        xx_mem_free(c);
+    }
     return result;
 }
 
@@ -1502,40 +1593,53 @@ static bool xx_spis_multi_decode(Abstractformat *self, xx_archive_record_state *
     uint8_t *input = NULL, *plain = NULL;
     uint32_t stored;
     bool result = false;
-    *out = NULL; *out_size = 0U;
+    *out = NULL;
+    *out_size = 0U;
     if (!c || !xx_spis_multi_limits(self, state, s) || !xx_spis_small_unchanged(self, c, pd)) return false;
-    input = (uint8_t *)xx_mem_alloc((size_t)m->compressed_size); plain = (uint8_t *)xx_mem_alloc((size_t)m->uncompressed_size);
+    input = (uint8_t *)xx_mem_alloc((size_t)m->compressed_size);
+    plain = (uint8_t *)xx_mem_alloc((size_t)m->uncompressed_size);
     if (!input || !plain) goto done;
     stored = xx_data_get_u32(c->snapshot + (size_t)(m->header_offset - c->base) + 17U, 4, 0, false);
-    if (!xx_spis_small_candidate(c->snapshot + (size_t)(m->data_offset - c->base), (size_t)m->compressed_size,
-            input, plain, (size_t)m->uncompressed_size, stored, c->key) || !xx_spis_small_unchanged(self, c, pd)) goto done;
-    *out = plain; *out_size = (size_t)m->uncompressed_size; plain = NULL; result = true;
+    if (!xx_spis_small_candidate(c->snapshot + (size_t)(m->data_offset - c->base), (size_t)m->compressed_size, input, plain, (size_t)m->uncompressed_size, stored,
+                                 c->key) ||
+        !xx_spis_small_unchanged(self, c, pd))
+        goto done;
+    *out = plain;
+    *out_size = (size_t)m->uncompressed_size;
+    plain = NULL;
+    result = true;
 done:
-    xx_mem_free(input); xx_mem_free(plain); return result;
+    xx_mem_free(input);
+    xx_mem_free(plain);
+    return result;
 }
 
 static bool xx_spis_verified_limits(Abstractformat *self, xx_archive_record_state *state, const xx_spis_stream *s)
 {
     return s->multi ? xx_spis_multi_limits(self, state, s) : xx_spis_small_limits(self, state, s);
 }
-static xx_spis_small_context *xx_spis_verified_context(const xx_spis_stream *s) { return s->multi ? s->multi : s->small; }
+static xx_spis_small_context *xx_spis_verified_context(const xx_spis_stream *s)
+{
+    return s->multi ? s->multi : s->small;
+}
 
 static bool xx_spis_small_stage_alias(const char *target, const char *suffix)
 {
     const char *base = target, *p;
     size_t n, i;
-    for (p = target; *p; ++p) if (*p == '/' || *p == '\\') base = p + 1;
+    for (p = target; *p; ++p)
+        if (*p == '/' || *p == '\\') base = p + 1;
     n = (size_t)(p - base);
     /* Short Win32 paths fold case and trim final dots/spaces. Avoid publishing
      * a temporary directly through a member alias of our staging basename. */
     while (n && (base[n - 1U] == '.' || base[n - 1U] == ' ')) --n;
     if (n != xx_rt_strlen(suffix)) return false;
-    for (i = 0U; i < n; ++i) if (xx_spis_fold((unsigned char)base[i]) != xx_spis_fold((unsigned char)suffix[i])) return false;
+    for (i = 0U; i < n; ++i)
+        if (xx_spis_fold((unsigned char)base[i]) != xx_spis_fold((unsigned char)suffix[i])) return false;
     return true;
 }
 
-static bool xx_spis_small_publish(Abstractformat *self, xx_archive_record_state *state, const char *target,
-                                  const uint8_t *plain, size_t size, xx_pd_struct *pd)
+static bool xx_spis_small_publish(Abstractformat *self, xx_archive_record_state *state, const char *target, const uint8_t *plain, size_t size, xx_pd_struct *pd)
 {
     xx_spis_stream *s = (xx_spis_stream *)state->internal_state;
     const xx_var *v = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_OVERWRITE);
@@ -1544,11 +1648,12 @@ static bool xx_spis_small_publish(Abstractformat *self, xx_archive_record_state 
     size_t i, cut = 0U, completed = 0U;
     unsigned attempt;
     xx_io_device *output = NULL;
-    if ((!overwrite && xx_io_file_exists_a(target)) || !xx_spis_verified_limits(self, state, s) ||
-        !xx_spis_small_unchanged(self, xx_spis_verified_context(s), pd)) return false;
+    if ((!overwrite && xx_io_file_exists_a(target)) || !xx_spis_verified_limits(self, state, s) || !xx_spis_small_unchanged(self, xx_spis_verified_context(s), pd))
+        return false;
     parent = xx_str_dup(target);
     if (!parent || !xx_store_create_dirs_a(target, false)) goto done;
-    for (i = 0U; parent[i]; ++i) if (parent[i] == '/' || parent[i] == '\\') cut = i + 1U;
+    for (i = 0U; parent[i]; ++i)
+        if (parent[i] == '/' || parent[i] == '\\') cut = i + 1U;
     parent[cut] = 0;
     for (attempt = 0U; attempt < 128U; ++attempt) {
         char suffix[40];
@@ -1558,7 +1663,8 @@ static bool xx_spis_small_publish(Abstractformat *self, xx_archive_record_state 
         /* A member whose name is itself the staging basename must not alias. */
         if (!xx_spis_small_stage_alias(target, suffix)) output = xx_io_file_open(stage, "wbx");
         if (output) break;
-        xx_str_free(stage); stage = NULL;
+        xx_str_free(stage);
+        stage = NULL;
     }
     if (!output) goto done;
     while (completed < size) {
@@ -1568,12 +1674,19 @@ static bool xx_spis_small_publish(Abstractformat *self, xx_archive_record_state 
         if (n <= 0 || (size_t)n > size - completed) goto done;
         completed += (size_t)n;
     }
-    { int closed = xx_io_close(output); output = NULL; if (closed != 0) goto done; }
+    {
+        int closed = xx_io_close(output);
+        output = NULL;
+        if (closed != 0) goto done;
+    }
     if (!xx_spis_verified_limits(self, state, s) || !xx_spis_small_unchanged(self, xx_spis_verified_context(s), pd)) goto done;
     result = xx_io_file_replace_a(stage, target, overwrite);
 done:
     if (output) xx_io_close(output);
-    if (stage) { if (!result) xx_rt_remove(stage); xx_str_free(stage); }
+    if (stage) {
+        if (!result) xx_rt_remove(stage);
+        xx_str_free(stage);
+    }
     xx_str_free(parent);
     return result;
 }
@@ -1595,7 +1708,8 @@ xx_archive_record_state *xx_spis_create_archive_records_reading(Abstractformat *
     state->internal_state = stream;
     state->free_internal = xx_spis_stream_free;
     state->total_records = (int64_t)stream->count;
-    if (!xx_spis_copy_options(&state->options, options) || !xx_spis_small_prepare(self, state, pd) || !xx_spis_multi_prepare(self, state, pd) || (stream->count != 0U && !xx_spis_set_record(&state->current_record, &stream->items[0]))) {
+    if (!xx_spis_copy_options(&state->options, options) || !xx_spis_small_prepare(self, state, pd) || !xx_spis_multi_prepare(self, state, pd) ||
+        (stream->count != 0U && !xx_spis_set_record(&state->current_record, &stream->items[0]))) {
         xx_archive_record_state_free(state);
         return NULL;
     }
@@ -1609,8 +1723,10 @@ const xx_archive_record *xx_spis_get_current_archive_record(Abstractformat *self
     xx_spis_stream *stream;
     if (!self || !state || state->format != self || !state->has_record) return NULL;
     stream = (xx_spis_stream *)state->internal_state;
-    if (stream && stream->truncated_tail && !xx_archive_record_set_meta_str(&state->current_record, XX_META_ID_COMMENT,
-            "Truncated SPIS tail; only complete members with verified decoded checksums can be extracted")) return NULL;
+    if (stream && stream->truncated_tail &&
+        !xx_archive_record_set_meta_str(&state->current_record, XX_META_ID_COMMENT,
+                                        "Truncated SPIS tail; only complete members with verified decoded checksums can be extracted"))
+        return NULL;
     return &state->current_record;
 }
 
@@ -1656,15 +1772,15 @@ bool xx_spis_unpack_current_archive_record(Abstractformat *self, xx_archive_reco
     if (!xx_spis_path_safe(member->name)) return false;
     if (!stream->small && !stream->multi && !xx_spis_prepare_key(self, stream, pd)) return false;
 
-    path_option = (stream->small || stream->multi) ? xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_UNPACK_PATH) :
-                                 xx_spis_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
+    path_option = (stream->small || stream->multi) ? xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_UNPACK_PATH)
+                                                   : xx_spis_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
         /* No destination: decode and discard, which verifies the member
          * without writing anything. */
         if (member->is_folder) return true;
-        result = stream->multi ? xx_spis_multi_decode(self, state, &plain, &plain_size, pd) :
-                 stream->small ? xx_spis_small_decode(self, state, &plain, &plain_size, pd) :
-                                 xx_spis_decode(self, member, stream->key, &plain, &plain_size, pd);
+        result = stream->multi   ? xx_spis_multi_decode(self, state, &plain, &plain_size, pd)
+                 : stream->small ? xx_spis_small_decode(self, state, &plain, &plain_size, pd)
+                                 : xx_spis_decode(self, member, stream->key, &plain, &plain_size, pd);
         xx_mem_free(plain);
         return result;
     }
@@ -1692,10 +1808,10 @@ bool xx_spis_unpack_current_archive_record(Abstractformat *self, xx_archive_reco
         return result;
     }
     if (stream->small || stream->multi) {
-        if (stream->multi ? xx_spis_multi_decode(self, state, &plain, &plain_size, pd) :
-                            xx_spis_small_decode(self, state, &plain, &plain_size, pd))
+        if (stream->multi ? xx_spis_multi_decode(self, state, &plain, &plain_size, pd) : xx_spis_small_decode(self, state, &plain, &plain_size, pd))
             result = xx_spis_small_publish(self, state, target_path, plain, plain_size, pd);
-        xx_mem_free(plain); xx_str_free(target_path);
+        xx_mem_free(plain);
+        xx_str_free(target_path);
         return result;
     }
     if (!xx_store_create_dirs_a(target_path, false) || !xx_spis_decode(self, member, stream->key, &plain, &plain_size, pd)) {

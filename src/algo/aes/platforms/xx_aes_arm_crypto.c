@@ -21,9 +21,7 @@
 /* A zero AESE/AESD round key keeps the operation order explicit and lets this
  * backend consume the same unmodified schedule as scalar code and AES-NI. */
 XX_AES_ARM_TARGET
-void xx_aes_encrypt_block_arm_crypto(const xx_aes_context *context,
-                                     const uint8_t input[XX_AES_BLOCK_SIZE],
-                                     uint8_t output[XX_AES_BLOCK_SIZE])
+void xx_aes_encrypt_block_arm_crypto(const xx_aes_context *context, const uint8_t input[XX_AES_BLOCK_SIZE], uint8_t output[XX_AES_BLOCK_SIZE])
 {
     const uint8x16_t zero = vdupq_n_u8(0U);
     uint8x16_t state = veorq_u8(vld1q_u8(input), vld1q_u8(context->round_keys));
@@ -39,13 +37,10 @@ void xx_aes_encrypt_block_arm_crypto(const xx_aes_context *context,
 }
 
 XX_AES_ARM_TARGET
-void xx_aes_decrypt_block_arm_crypto(const xx_aes_context *context,
-                                     const uint8_t input[XX_AES_BLOCK_SIZE],
-                                     uint8_t output[XX_AES_BLOCK_SIZE])
+void xx_aes_decrypt_block_arm_crypto(const xx_aes_context *context, const uint8_t input[XX_AES_BLOCK_SIZE], uint8_t output[XX_AES_BLOCK_SIZE])
 {
     const uint8x16_t zero = vdupq_n_u8(0U);
-    uint8x16_t state = veorq_u8(vld1q_u8(input),
-                                vld1q_u8(context->round_keys + ((size_t)context->rounds * XX_AES_BLOCK_SIZE)));
+    uint8x16_t state = veorq_u8(vld1q_u8(input), vld1q_u8(context->round_keys + ((size_t)context->rounds * XX_AES_BLOCK_SIZE)));
     unsigned round;
 
     for (round = (unsigned)context->rounds - 1U; round != 0U; --round) {

@@ -275,7 +275,10 @@ int jsprops_del(JSCtx *pCtx, JSPropMap *pMap, const char *pKey)
         int32_t nIndex = pMap->pIndex[nSlot];
         JSProp *pProp;
         if (nIndex == -1) return 0;
-        if (nIndex < 0) { nSlot = (nSlot + 1) & (pMap->nIndexSize - 1); continue; }
+        if (nIndex < 0) {
+            nSlot = (nSlot + 1) & (pMap->nIndexSize - 1);
+            continue;
+        }
         pProp = &pMap->pEntries[nIndex];
         if (pProp->nHash == nHash && pProp->nKeySize == nKeySize && !xx_rt_memcmp(pProp->pKey, pKey, nKeySize)) {
             jsprop_store(pCtx, pProp, js_undefined());
@@ -295,8 +298,8 @@ int jsprops_del(JSCtx *pCtx, JSPropMap *pMap, const char *pKey)
     return 0;
 }
 
-#define JS_ARRAY_HOLE ((JSTag)-1)
-#define JS_ARRAY_GAP ((JSTag)-2)
+#define JS_ARRAY_HOLE ((JSTag) - 1)
+#define JS_ARRAY_GAP ((JSTag) - 2)
 #define JS_IS_ARRAY_HOLE(value) ((int)(value).tag < 0)
 #define JS_DENSE_ARRAY_LIMIT 1048576u
 
@@ -418,9 +421,11 @@ int js_array_shift_dense(JSCtx *pCtx, JSObj *pObj, JSVal *pResult)
 {
     JSVal value;
     (void)pCtx;
-    if (pObj->cls != JCLASS_ARRAY || pObj->bArraySparse || pObj->nArrayHoles ||
-        (uint64_t)pObj->nArrayLen != pObj->nArrayUsed) return 0;
-    if (!pObj->nArrayUsed) { *pResult = js_undefined(); return 1; }
+    if (pObj->cls != JCLASS_ARRAY || pObj->bArraySparse || pObj->nArrayHoles || (uint64_t)pObj->nArrayLen != pObj->nArrayUsed) return 0;
+    if (!pObj->nArrayUsed) {
+        *pResult = js_undefined();
+        return 1;
+    }
     value = pObj->pArrayData[pObj->nArrayStart];
     if (value.tag == JT_OBJ) value.u.o->nMapRefs--;
     pObj->pArrayData[pObj->nArrayStart].tag = JS_ARRAY_HOLE;
@@ -435,8 +440,9 @@ int js_array_shift_dense(JSCtx *pCtx, JSObj *pObj, JSVal *pResult)
 int js_array_unshift_dense(JSCtx *pCtx, JSObj *pObj, int nArgc, JSVal *pArgv)
 {
     size_t i, nTotal;
-    if (pObj->cls != JCLASS_ARRAY || pObj->bArraySparse || pObj->nArrayHoles || nArgc < 0 ||
-        (uint64_t)pObj->nArrayLen != pObj->nArrayUsed || (size_t)nArgc > JS_DENSE_ARRAY_LIMIT - pObj->nArrayUsed) return 0;
+    if (pObj->cls != JCLASS_ARRAY || pObj->bArraySparse || pObj->nArrayHoles || nArgc < 0 || (uint64_t)pObj->nArrayLen != pObj->nArrayUsed ||
+        (size_t)nArgc > JS_DENSE_ARRAY_LIMIT - pObj->nArrayUsed)
+        return 0;
     if (!nArgc) return 1;
     /* Named keys must remain between the old prefix and subsequent entries. */
     if (!jsarray_can_grow(pObj)) return 0;
@@ -672,10 +678,8 @@ typedef struct {
 
 static int jsgc_object_boundary(JSCtx *pCtx, JSObj *pObj)
 {
-    return pObj == pCtx->pGlobal || pObj == pCtx->pObjectProto || pObj == pCtx->pFunctionProto ||
-           pObj == pCtx->pArrayProto || pObj == pCtx->pUint32ArrayProto || pObj == pCtx->pStringProto ||
-           pObj == pCtx->pNumberProto || pObj == pCtx->pBooleanProto || pObj == pCtx->pRegExpProto ||
-           pObj == pCtx->pErrorProto;
+    return pObj == pCtx->pGlobal || pObj == pCtx->pObjectProto || pObj == pCtx->pFunctionProto || pObj == pCtx->pArrayProto || pObj == pCtx->pUint32ArrayProto ||
+           pObj == pCtx->pStringProto || pObj == pCtx->pNumberProto || pObj == pCtx->pBooleanProto || pObj == pCtx->pRegExpProto || pObj == pCtx->pErrorProto;
 }
 
 static void jsgc_add(JSGCTrial *pTrial, void *pNode, int bScope)
@@ -685,7 +689,8 @@ static void jsgc_add(JSGCTrial *pTrial, void *pNode, int bScope)
     if (bScope) {
         JSScope *pScope = (JSScope *)pNode, *pAncestor;
         if (pScope == pTrial->pCtx->pGlobalScope || pScope->bSweeping) return;
-        for (pAncestor = pTrial->pBoundary; pAncestor; pAncestor = pAncestor->pParent) if (pScope == pAncestor) return;
+        for (pAncestor = pTrial->pBoundary; pAncestor; pAncestor = pAncestor->pParent)
+            if (pScope == pAncestor) return;
         pState = &pScope->bGCState;
     } else {
         JSObj *pObj = (JSObj *)pNode;
@@ -693,7 +698,10 @@ static void jsgc_add(JSGCTrial *pTrial, void *pNode, int bScope)
         pState = &pObj->bGCState;
     }
     if (*pState & JS_GC_CANDIDATE) return;
-    if (pTrial->nSize >= JS_GC_MAX_NODES) { pTrial->bOverflow = 1; return; }
+    if (pTrial->nSize >= JS_GC_MAX_NODES) {
+        pTrial->bOverflow = 1;
+        return;
+    }
     if (pTrial->nSize == pTrial->nCapacity) {
         pTrial->nCapacity = pTrial->nCapacity ? pTrial->nCapacity * 2 : 16;
         pTrial->pNodes = (JSGCNode *)xx_js_realloc(pTrial->pNodes, pTrial->nCapacity * sizeof(JSGCNode));
@@ -712,8 +720,14 @@ static void jsgc_edge(JSGCTrial *pTrial, void *pNode, int bScope, int nPhase)
     uint8_t *pState;
     int32_t *pRef;
     if (!pNode || pTrial->bOverflow) return;
-    if (++pTrial->nEdges > JS_GC_MAX_EDGES) { pTrial->bOverflow = 1; return; }
-    if (!nPhase) { jsgc_add(pTrial, pNode, bScope); return; }
+    if (++pTrial->nEdges > JS_GC_MAX_EDGES) {
+        pTrial->bOverflow = 1;
+        return;
+    }
+    if (!nPhase) {
+        jsgc_add(pTrial, pNode, bScope);
+        return;
+    }
     pState = bScope ? &((JSScope *)pNode)->bGCState : &((JSObj *)pNode)->bGCState;
     if (!(*pState & JS_GC_CANDIDATE)) return;
     pRef = bScope ? &((JSScope *)pNode)->nGCRef : &((JSObj *)pNode)->nGCRef;
@@ -735,7 +749,8 @@ static void jsgc_edges(JSGCTrial *pTrial, JSGCNode node, int nPhase)
         jsgc_edge(pTrial, pObj->pScope, 1, nPhase);
         if (pObj->primitive.tag == JT_OBJ) jsgc_edge(pTrial, pObj->primitive.u.o, 0, nPhase);
         if (pObj->boundThis.tag == JT_OBJ) jsgc_edge(pTrial, pObj->boundThis.u.o, 0, nPhase);
-        for (i = 0; i < (size_t)pObj->nBoundArgs; i++) if (pObj->pBoundArgs[i].tag == JT_OBJ) jsgc_edge(pTrial, pObj->pBoundArgs[i].u.o, 0, nPhase);
+        for (i = 0; i < (size_t)pObj->nBoundArgs; i++)
+            if (pObj->pBoundArgs[i].tag == JT_OBJ) jsgc_edge(pTrial, pObj->pBoundArgs[i].u.o, 0, nPhase);
         for (i = 0; i < pObj->props.nSize; i++) {
             JSProp *pProp = &pObj->props.pEntries[i];
             if (!pProp->bDeleted && pProp->value.tag == JT_OBJ) jsgc_edge(pTrial, pProp->value.u.o, 0, nPhase);
@@ -774,7 +789,10 @@ static void jsscope_collect_cycle(JSCtx *pCtx, JSScope *pScope)
         bChanged = 0;
         for (i = 0; i < trial.nSize && !trial.bOverflow; i++) {
             JSGCNode node = trial.pNodes[i];
-            if (++trial.nEdges > JS_GC_MAX_EDGES) { trial.bOverflow = 1; break; }
+            if (++trial.nEdges > JS_GC_MAX_EDGES) {
+                trial.bOverflow = 1;
+                break;
+            }
             uint8_t *pState = node.bScope ? &((JSScope *)node.pNode)->bGCState : &((JSObj *)node.pNode)->bGCState;
             if ((*pState & (JS_GC_MARKED | 4)) == JS_GC_MARKED) {
                 *pState |= 4;
@@ -798,18 +816,24 @@ static void jsscope_collect_cycle(JSCtx *pCtx, JSScope *pScope)
         JSGCNode node = trial.pNodes[i];
         if (node.bScope) {
             JSScope *p = (JSScope *)node.pNode;
-            if (p->bGCState & JS_GC_MARKED) { jsscope_ref(p); p->bGCState = JS_GC_MARKED; }
-            else {
+            if (p->bGCState & JS_GC_MARKED) {
+                jsscope_ref(p);
+                p->bGCState = JS_GC_MARKED;
+            } else {
                 p->bSweeping = 1;
-                if (p->pPrevAll) p->pPrevAll->pNextAll = p->pNextAll; else pCtx->pAllScopes = p->pNextAll;
+                if (p->pPrevAll) p->pPrevAll->pNextAll = p->pNextAll;
+                else pCtx->pAllScopes = p->pNextAll;
                 if (p->pNextAll) p->pNextAll->pPrevAll = p->pPrevAll;
             }
         } else {
             JSObj *p = (JSObj *)node.pNode;
-            if (p->bGCState & JS_GC_MARKED) { jsobj_ref(p); p->bGCState = JS_GC_MARKED; }
-            else {
+            if (p->bGCState & JS_GC_MARKED) {
+                jsobj_ref(p);
+                p->bGCState = JS_GC_MARKED;
+            } else {
                 p->bSweeping = 1;
-                if (p->pPrevAll) p->pPrevAll->pNextAll = p->pNextAll; else pCtx->pAllObjects = p->pNextAll;
+                if (p->pPrevAll) p->pPrevAll->pNextAll = p->pNextAll;
+                else pCtx->pAllObjects = p->pNextAll;
                 if (p->pNextAll) p->pNextAll->pPrevAll = p->pPrevAll;
             }
         }
@@ -818,7 +842,10 @@ static void jsscope_collect_cycle(JSCtx *pCtx, JSScope *pScope)
         JSGCNode node = trial.pNodes[i];
         if (node.bScope) {
             JSScope *p = (JSScope *)node.pNode;
-            if (!(p->bGCState & JS_GC_MARKED)) { jsobj_unref(pCtx, p->pVars); jsscope_unref(pCtx, p->pParent); }
+            if (!(p->bGCState & JS_GC_MARKED)) {
+                jsobj_unref(pCtx, p->pVars);
+                jsscope_unref(pCtx, p->pParent);
+            }
         } else {
             JSObj *p = (JSObj *)node.pNode;
             size_t j;
@@ -841,8 +868,10 @@ static void jsscope_collect_cycle(JSCtx *pCtx, JSScope *pScope)
         JSGCNode node = trial.pNodes[i];
         if (node.bScope) {
             JSScope *p = (JSScope *)node.pNode;
-            if (!(p->bGCState & JS_GC_MARKED)) { xx_js_free(p); trial.pNodes[i].bScope = -1; }
-            else trial.pNodes[i].bScope = 2;
+            if (!(p->bGCState & JS_GC_MARKED)) {
+                xx_js_free(p);
+                trial.pNodes[i].bScope = -1;
+            } else trial.pNodes[i].bScope = 2;
         } else {
             JSObj *p = (JSObj *)node.pNode;
             if (!(p->bGCState & JS_GC_MARKED)) {
@@ -1423,7 +1452,10 @@ JSVal js_concat_str_assign(JSCtx *pCtx, JSVal left, JSVal right)
     if (nNeeded > pStr->nCapacity) {
         nCapacity = pStr->nCapacity < 32 ? 32 : pStr->nCapacity;
         while (nCapacity < nNeeded) {
-            if (nCapacity > (SIZE_MAX - 1) / 2) { nCapacity = nNeeded; break; }
+            if (nCapacity > (SIZE_MAX - 1) / 2) {
+                nCapacity = nNeeded;
+                break;
+            }
             nCapacity *= 2;
         }
         pStr->pData = (char *)xx_js_realloc(pStr->pData, nCapacity + 1);
@@ -1742,11 +1774,12 @@ JSVal jsobj_keys(JSCtx *pCtx, JSObj *pObj)
     JSVal result = js_new_array(pCtx);
     size_t i;
     if (pObj->cls == JCLASS_ARRAY && !pObj->bArraySparse) {
-        for (i = 0; i < pObj->nArrayUsed; i++) if (!JS_IS_ARRAY_HOLE(pObj->pArrayData[pObj->nArrayStart + i])) {
-            char key[32];
-            size_t nKeySize = js_index_key(key, (int64_t)i);
-            js_array_push(pCtx, result, js_strn(pCtx, key, nKeySize));
-        }
+        for (i = 0; i < pObj->nArrayUsed; i++)
+            if (!JS_IS_ARRAY_HOLE(pObj->pArrayData[pObj->nArrayStart + i])) {
+                char key[32];
+                size_t nKeySize = js_index_key(key, (int64_t)i);
+                js_array_push(pCtx, result, js_strn(pCtx, key, nKeySize));
+            }
     }
     for (i = 0; i < pObj->props.nSize; i++) {
         JSProp *pProp = &pObj->props.pEntries[i];
@@ -1759,7 +1792,9 @@ int jsobj_property_is_enumerable(JSObj *pObj, const char *pKey, size_t nKeySize)
 {
     JSProp *pProp;
     int64_t nIndex;
-    if (pObj->cls == JCLASS_ARRAY && !pObj->bArraySparse && js_is_array_index(pKey, nKeySize, &nIndex) && (uint64_t)nIndex < pObj->nArrayUsed && !JS_IS_ARRAY_HOLE(pObj->pArrayData[pObj->nArrayStart + nIndex])) return 1;
+    if (pObj->cls == JCLASS_ARRAY && !pObj->bArraySparse && js_is_array_index(pKey, nKeySize, &nIndex) && (uint64_t)nIndex < pObj->nArrayUsed &&
+        !JS_IS_ARRAY_HOLE(pObj->pArrayData[pObj->nArrayStart + nIndex]))
+        return 1;
     pProp = jsprops_find(&pObj->props, pKey, nKeySize);
     return pProp && !pProp->bDontEnum;
 }
@@ -1873,7 +1908,9 @@ JSVal js_get_index(JSCtx *pCtx, JSVal object, int64_t nIndex)
     if (object.u.o->cls == JCLASS_UINT32_ARRAY && nIndex >= 0 && nIndex < object.u.o->nArrayLen) {
         return js_num((double)object.u.o->pUint32Data[nIndex]);
     }
-    if (object.u.o->cls == JCLASS_ARRAY && !object.u.o->bArraySparse && nIndex >= 0 && (uint64_t)nIndex < object.u.o->nArrayUsed && !JS_IS_ARRAY_HOLE(object.u.o->pArrayData[object.u.o->nArrayStart + nIndex])) return js_dup(object.u.o->pArrayData[object.u.o->nArrayStart + nIndex]);
+    if (object.u.o->cls == JCLASS_ARRAY && !object.u.o->bArraySparse && nIndex >= 0 && (uint64_t)nIndex < object.u.o->nArrayUsed &&
+        !JS_IS_ARRAY_HOLE(object.u.o->pArrayData[object.u.o->nArrayStart + nIndex]))
+        return js_dup(object.u.o->pArrayData[object.u.o->nArrayStart + nIndex]);
     nKeySize = js_index_key(sKey, nIndex);
     return jsobj_get(pCtx, object.u.o, sKey, nKeySize);
 }
@@ -1882,7 +1919,10 @@ void js_set_index(JSCtx *pCtx, JSVal object, int64_t nIndex, JSVal value)
 {
     char sKey[32];
     size_t nKeySize;
-    if (object.tag != JT_OBJ) { js_release(pCtx, value); return; }
+    if (object.tag != JT_OBJ) {
+        js_release(pCtx, value);
+        return;
+    }
     if (object.u.o->cls == JCLASS_UINT32_ARRAY && nIndex >= 0 && nIndex < 0xFFFFFFFFll) {
         if (nIndex < object.u.o->nArrayLen) object.u.o->pUint32Data[nIndex] = (uint32_t)js_to_int32(pCtx, value);
         js_release(pCtx, value);

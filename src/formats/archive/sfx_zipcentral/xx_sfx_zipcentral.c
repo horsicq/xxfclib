@@ -260,12 +260,11 @@ static ssize_t sfx_carrier_view_read(xx_io_device *device, void *buffer, size_t 
     if (xx_io_seek64(view->source, view->begin + view->position, SEEK_SET) != 0) return -1;
     received = xx_io_read(view->source, buffer, size);
     if (received < 0 || (size_t)received > size) return -1;
-    if(view->patch_offset>=0){
+    if (view->patch_offset >= 0) {
         unsigned i;
-        for(i=0;i<4;i++){
-            int64_t at=view->patch_offset+i;
-            if(at>=view->position && at-view->position<received)
-                ((uint8_t*)buffer)[at-view->position]=(uint8_t)(view->patch_value>>(i*8U));
+        for (i = 0; i < 4; i++) {
+            int64_t at = view->patch_offset + i;
+            if (at >= view->position && at - view->position < received) ((uint8_t *)buffer)[at - view->position] = (uint8_t)(view->patch_value >> (i * 8U));
         }
     }
     view->position += received;
@@ -392,20 +391,28 @@ done:
 static bool sfx_carrier_ensure(xx_sfx_zipcentral *r, xx_pd_struct *pd)
 {
     int resource;
-    if(!r)return false;
-    if(r->inner_ready)return true;
-    resource=sfx_zip_bundle_ensure(r,pd);if(resource)return resource>0;
-    resource=sfx_zip_resource_ensure(r,pd);if(resource)return resource>0;
-    resource=sfx_bs_zip_crc_ensure(r,pd);if(resource)return resource>0;
-    resource=sfx_atari_zip_ensure(r,pd);if(resource)return resource>0;
-    resource=sfx_ne_zip_ensure(r,pd);if(resource)return resource>0;
-    resource=sfx_dos_zip_disk_ensure(r,pd);if(resource)return resource>0;
-    resource=sfx_dos_zip_bias_ensure(r,pd);if(resource)return resource>0;
-    resource=sfx_dos_zip_duplicate_ensure(r,pd);if(resource)return resource>0;
-    if(sfx_carrier_absolute_ensure(r,pd)||sfx_carrier_relative_ensure(r,pd))return true;
+    if (!r) return false;
+    if (r->inner_ready) return true;
+    resource = sfx_zip_bundle_ensure(r, pd);
+    if (resource) return resource > 0;
+    resource = sfx_zip_resource_ensure(r, pd);
+    if (resource) return resource > 0;
+    resource = sfx_bs_zip_crc_ensure(r, pd);
+    if (resource) return resource > 0;
+    resource = sfx_atari_zip_ensure(r, pd);
+    if (resource) return resource > 0;
+    resource = sfx_ne_zip_ensure(r, pd);
+    if (resource) return resource > 0;
+    resource = sfx_dos_zip_disk_ensure(r, pd);
+    if (resource) return resource > 0;
+    resource = sfx_dos_zip_bias_ensure(r, pd);
+    if (resource) return resource > 0;
+    resource = sfx_dos_zip_duplicate_ensure(r, pd);
+    if (resource) return resource > 0;
+    if (sfx_carrier_absolute_ensure(r, pd) || sfx_carrier_relative_ensure(r, pd)) return true;
     /* Last: an encrypted DOS self-extractor ZIP recoverable via the key-state
      * dictionary (only claims the file when a key is actually confirmed). */
-    return sfx_dos_zip_crypto_ensure(r,pd)>0;
+    return sfx_dos_zip_crypto_ensure(r, pd) > 0;
 }
 
 static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
@@ -423,7 +430,6 @@ static uint64_t sfx_carrier_count(Abstractformat *f, xx_pd_struct *pd)
 /* ZIP's historical default name encoding is DOS OEM 437. The generic ZIP
  * reader follows the host ANSI code page for unflagged names, so normalize
  * only validated SFX ZIP members here; flag 11 still denotes UTF-8. */
-
 
 static bool sfx_carrier_read_device(xx_io_device *device, int64_t at, void *data, size_t size)
 {
@@ -612,19 +618,22 @@ void xx_sfx_zipcentral_free(xx_sfx_zipcentral *r)
 }
 bool xx_sfx_zipcentral_check_is_valid(Abstractformat *f, xx_pd_struct *pd)
 {
-    if(!f)return false;
-    if(sfx_carrier_ensure((xx_sfx_zipcentral*)f,pd))return true;
-    return f->priv!=&sfx_zip_resource_invalid && pm_valid(f,pd);
+    if (!f) return false;
+    if (sfx_carrier_ensure((xx_sfx_zipcentral *)f, pd)) return true;
+    return f->priv != &sfx_zip_resource_invalid && pm_valid(f, pd);
 }
 bool xx_sfx_zipcentral_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
 {
     xx_sfx_zipcentral *r = (xx_sfx_zipcentral *)f;
     if (!f) return false;
     if (!sfx_carrier_ensure(r, pd)) {
-        if(f->priv==&sfx_zip_resource_invalid){f->is_valid=false;return false;}
-        return pm_handle(f,pd);
+        if (f->priv == &sfx_zip_resource_invalid) {
+            f->is_valid = false;
+            return false;
+        }
+        return pm_handle(f, pd);
     }
-    f->is_crypted=sfx_zip_bundle_get(f) ? sfx_zip_bundle_get(f)->encrypted : r->inner.format.is_crypted;
+    f->is_crypted = sfx_zip_bundle_get(f) ? sfx_zip_bundle_get(f)->encrypted : r->inner.format.is_crypted;
     f->format_size = pm_available(f);
     f->number_of_archive_records = sfx_zip_bundle_get(f) ? sfx_zip_bundle_get(f)->records : r->inner.format.number_of_archive_records;
     f->overlay_size = 0;

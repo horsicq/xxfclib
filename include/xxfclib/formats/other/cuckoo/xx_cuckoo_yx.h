@@ -54,15 +54,10 @@ extern "C" {
 
 typedef struct xx_cuckoo_yx_report xx_cuckoo_yx_report;
 
-typedef bool (*xx_cuckoo_yx_match_fn)(const uint8_t *bytes, size_t length,
-                                      void *opaque);
+typedef bool (*xx_cuckoo_yx_match_fn)(const uint8_t *bytes, size_t length, void *opaque);
 
-XXFC_API bool xx_cuckoo_yx_report_parse(const uint8_t *json, size_t size,
-                                        xx_cuckoo_yx_report **out);
-XXFC_API bool xx_cuckoo_yx_report_parse_ex(const uint8_t *json, size_t size,
-                                           xx_cuckoo_yx_report **out,
-                                           char *error,
-                                           size_t error_capacity);
+XXFC_API bool xx_cuckoo_yx_report_parse(const uint8_t *json, size_t size, xx_cuckoo_yx_report **out);
+XXFC_API bool xx_cuckoo_yx_report_parse_ex(const uint8_t *json, size_t size, xx_cuckoo_yx_report **out, char *error, size_t error_capacity);
 XXFC_API void xx_cuckoo_yx_report_free(xx_cuckoo_yx_report *report);
 
 /* `function` is one of the exported names after `cuckoo.`: network.dns_lookup,
@@ -71,10 +66,7 @@ XXFC_API void xx_cuckoo_yx_report_free(xx_cuckoo_yx_report *report);
  * network.http_user_agent, network.tcp, network.udp. TCP and UDP require a
  * port argument; other functions require has_port=false. Counts follow
  * YARA-X's integer-valued exports, including zero when a field is absent. */
-XXFC_API bool xx_cuckoo_yx_query(const xx_cuckoo_yx_report *report,
-                                 const char *function,
-                                 xx_cuckoo_yx_match_fn matches, void *opaque,
-                                 bool has_port, int64_t port,
+XXFC_API bool xx_cuckoo_yx_query(const xx_cuckoo_yx_report *report, const char *function, xx_cuckoo_yx_match_fn matches, void *opaque, bool has_port, int64_t port,
                                  uint64_t *count);
 
 #ifdef __cplusplus

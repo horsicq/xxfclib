@@ -289,8 +289,7 @@ int64_t xx_io_platform_file_size_read_only(void *handle)
         return -1;
     }
     descriptor = fileno((FILE *)handle);
-    if (descriptor >= 0 && fstat(descriptor, &info) == 0 && S_ISREG(info.st_mode) &&
-        info.st_size >= 0 && (uintmax_t)info.st_size <= INT64_MAX) {
+    if (descriptor >= 0 && fstat(descriptor, &info) == 0 && S_ISREG(info.st_mode) && info.st_size >= 0 && (uintmax_t)info.st_size <= INT64_MAX) {
         return (int64_t)info.st_size;
     }
     /* Preserve the existing handling of nonregular streams and failures.
@@ -326,8 +325,7 @@ intptr_t xx_io_platform_read_regular_at(intptr_t directory, const char *name, in
     int flags = O_RDONLY | O_NONBLOCK | O_NOCTTY;
 
     if (size) *size = 0;
-    if (directory < 0 || directory > INT_MAX || !name || !size ||
-        !xx_io_policy_file_open_allowed("rb")) return -1;
+    if (directory < 0 || directory > INT_MAX || !name || !size || !xx_io_policy_file_open_allowed("rb")) return -1;
     /* Preserve the loader's pre-open regular-file check: do not knowingly
      * open a device or other special entry. Flags 0 follow symlinks. */
     if (fstatat((int)directory, name, &info, 0) != 0 || !S_ISREG(info.st_mode)) return -1;
@@ -341,8 +339,7 @@ intptr_t xx_io_platform_read_regular_at(intptr_t directory, const char *name, in
         descriptor = openat((int)directory, name, flags);
     } while (descriptor < 0 && errno == EINTR);
     if (descriptor < 0) return -1;
-    if (fstat(descriptor, &info) != 0 || !S_ISREG(info.st_mode) ||
-        info.st_size < 0 || (uintmax_t)info.st_size > INT64_MAX) {
+    if (fstat(descriptor, &info) != 0 || !S_ISREG(info.st_mode) || info.st_size < 0 || (uintmax_t)info.st_size > INT64_MAX) {
         (void)close(descriptor);
         return -1;
     }
@@ -420,8 +417,7 @@ int xx_io_platform_file_resize(void *handle, int64_t new_size)
      * A stdio implementation may refill its input buffer during that seek.
      * POSIX fflush after ftruncate discards those now-stale input bytes as
      * well as synchronizing the descriptor with the logical file position. */
-    if (fflush(file) != 0 || fseeko(file, position, SEEK_SET) != 0 ||
-        ftruncate(descriptor, (off_t)new_size) != 0 || fflush(file) != 0) {
+    if (fflush(file) != 0 || fseeko(file, position, SEEK_SET) != 0 || ftruncate(descriptor, (off_t)new_size) != 0 || fflush(file) != 0) {
         xx_io_extract_fail(errno);
         return -1;
     }

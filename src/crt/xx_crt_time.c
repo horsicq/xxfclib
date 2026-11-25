@@ -33,8 +33,7 @@ static int xx_crt_is_leap(long long nYear)
 
 int xx_crt_gmtime(long long nTime, int pFields[9])
 {
-    static const int s_days_before[2][13] = {{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365},
-                                             {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366}};
+    static const int s_days_before[2][13] = {{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365}, {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366}};
     long long nDays;
     long long nSeconds;
     long long nYear = 1970;
@@ -145,8 +144,7 @@ size_t xx_crt_strftime(char *pBuffer, size_t nSize, const char *pFormat, const i
 size_t xx_crt_strftime_zone(char *pBuffer, size_t nSize, const char *pFormat, const int pFields[9], const char *pZoneName, long nUtcOffsetSeconds)
 {
     static const char *const s_days[7] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-    static const char *const s_months[12] = {"January", "February", "March", "April", "May", "June",
-                                             "July", "August", "September", "October", "November", "December"};
+    static const char *const s_months[12] = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
     xx_crt_strftime_out out;
     const char *p = pFormat;
     if (!pBuffer || nSize == 0) return 0;
@@ -256,9 +254,7 @@ size_t xx_crt_strftime_zone(char *pBuffer, size_t nSize, const char *pFormat, co
                 break;
             }
             case 'U': xx_crt_strftime_number(&out, (pFields[XX_CRT_TM_YDAY] + 7 - pFields[XX_CRT_TM_WDAY]) / 7, bAlternate ? 1 : 2, '0'); break;
-            case 'W':
-                xx_crt_strftime_number(&out, (pFields[XX_CRT_TM_YDAY] + 7 - (pFields[XX_CRT_TM_WDAY] + 6) % 7) / 7, bAlternate ? 1 : 2, '0');
-                break;
+            case 'W': xx_crt_strftime_number(&out, (pFields[XX_CRT_TM_YDAY] + 7 - (pFields[XX_CRT_TM_WDAY] + 6) % 7) / 7, bAlternate ? 1 : 2, '0'); break;
             case 'V':
             case 'G':
             case 'g': {
@@ -348,15 +344,46 @@ const char *xx_crt_strerror_text(int nError)
                                              "Directory not empty",
                                              "Illegal byte sequence"};
     /* The POSIX supplement, errno 100..140 (131 has no text). */
-    static const char *const s_posix[] = {"address in use", "address not available", "address family not supported",
-                                          "connection already in progress", "bad message", "operation canceled", "connection aborted",
-                                          "connection refused", "connection reset", "destination address required", "host unreachable",
-                                          "identifier removed", "operation in progress", "already connected", "too many symbolic link levels",
-                                          "message size", "network down", "network reset", "network unreachable", "no buffer space",
-                                          "no message available", "no link", "no message", "no protocol option", "no stream resources",
-                                          "not a stream", "not connected", "state not recoverable", "not a socket", "not supported",
-                                          "operation not supported", "Unknown error", "value too large", "owner dead", "protocol error",
-                                          "protocol not supported", "wrong protocol type", "stream timeout", "timed out", "text file busy",
+    static const char *const s_posix[] = {"address in use",
+                                          "address not available",
+                                          "address family not supported",
+                                          "connection already in progress",
+                                          "bad message",
+                                          "operation canceled",
+                                          "connection aborted",
+                                          "connection refused",
+                                          "connection reset",
+                                          "destination address required",
+                                          "host unreachable",
+                                          "identifier removed",
+                                          "operation in progress",
+                                          "already connected",
+                                          "too many symbolic link levels",
+                                          "message size",
+                                          "network down",
+                                          "network reset",
+                                          "network unreachable",
+                                          "no buffer space",
+                                          "no message available",
+                                          "no link",
+                                          "no message",
+                                          "no protocol option",
+                                          "no stream resources",
+                                          "not a stream",
+                                          "not connected",
+                                          "state not recoverable",
+                                          "not a socket",
+                                          "not supported",
+                                          "operation not supported",
+                                          "Unknown error",
+                                          "value too large",
+                                          "owner dead",
+                                          "protocol error",
+                                          "protocol not supported",
+                                          "wrong protocol type",
+                                          "stream timeout",
+                                          "timed out",
+                                          "text file busy",
                                           "operation would block"};
     if (nError >= 100 && nError < 100 + (int)(sizeof(s_posix) / sizeof(s_posix[0]))) return s_posix[nError - 100];
     if (nError < 0 || nError >= (int)(sizeof(s_messages) / sizeof(s_messages[0]))) return "Unknown error";
@@ -368,16 +395,15 @@ int xx_crt_errno_from_oserror(unsigned long nError)
     static const struct {
         unsigned long nOs;
         int nErrno;
-    } s_map[] = {{1, 22},   {2, 2},    {3, 2},   {4, 24},   {5, 13},   {6, 9},    {7, 12},   {8, 12},  {9, 12},  {10, 7},
-                 {11, 8},   {12, 22},  {13, 22}, {15, 2},   {16, 13},  {17, 18},  {18, 2},   {33, 13}, {53, 2},  {65, 13},
-                 {67, 2},   {80, 17},  {82, 13}, {83, 13},  {87, 22},  {89, 11},  {108, 13}, {109, 32}, {112, 28}, {114, 9},
-                 {128, 10}, {129, 10}, {130, 9}, {131, 22}, {132, 13}, {145, 41}, {158, 13}, {161, 2}, {164, 11}, {167, 13},
-                 {183, 17}, {206, 2},  {215, 11}, {1113, 42}, {1816, 12}};
+    } s_map[] = {{1, 22},   {2, 2},   {3, 2},    {4, 24},   {5, 13},   {6, 9},   {7, 12},   {8, 12},    {9, 12},   {10, 7},   {11, 8},   {12, 22},
+                 {13, 22},  {15, 2},  {16, 13},  {17, 18},  {18, 2},   {33, 13}, {53, 2},   {65, 13},   {67, 2},   {80, 17},  {82, 13},  {83, 13},
+                 {87, 22},  {89, 11}, {108, 13}, {109, 32}, {112, 28}, {114, 9}, {128, 10}, {129, 10},  {130, 9},  {131, 22}, {132, 13}, {145, 41},
+                 {158, 13}, {161, 2}, {164, 11}, {167, 13}, {183, 17}, {206, 2}, {215, 11}, {1113, 42}, {1816, 12}};
     size_t i;
     for (i = 0; i < sizeof(s_map) / sizeof(s_map[0]); ++i) {
         if (s_map[i].nOs == nError) return s_map[i].nErrno;
     }
-    if (nError >= 19 && nError <= 36) return 13;   /* write protect .. sharing buffer exceeded: EACCES */
-    if (nError >= 188 && nError <= 202) return 8;  /* invalid exe formats: ENOEXEC */
-    return 22;                                     /* EINVAL */
+    if (nError >= 19 && nError <= 36) return 13;  /* write protect .. sharing buffer exceeded: EACCES */
+    if (nError >= 188 && nError <= 202) return 8; /* invalid exe formats: ENOEXEC */
+    return 22;                                    /* EINVAL */
 }

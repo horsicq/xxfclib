@@ -518,8 +518,8 @@ static void xx_crt_fmt_float_convert(xx_crt_fmt_float *pResult, double nValue, c
 
 static size_t xx_crt_fmt_float_length(const xx_crt_fmt_float *pResult)
 {
-    return (size_t)pResult->nSign + (size_t)pResult->nPrefix + (size_t)pResult->nText + (size_t)pResult->nZeros + (size_t)pResult->nText2 +
-           (size_t)pResult->nZeros2 + (size_t)pResult->nSuffix;
+    return (size_t)pResult->nSign + (size_t)pResult->nPrefix + (size_t)pResult->nText + (size_t)pResult->nZeros + (size_t)pResult->nText2 + (size_t)pResult->nZeros2 +
+           (size_t)pResult->nSuffix;
 }
 
 static void xx_crt_fmt_float_emit(xx_crt_out *pOut, const xx_crt_fmt_float *pResult, int nWidth, int bLeft, int bZero)
@@ -566,8 +566,8 @@ int xx_crt_format_double(double nValue, char nConversion, int nPrecision, int bA
 
 /* ------------------------------------------------------------- integers -- */
 
-static void xx_crt_fmt_integer(xx_crt_out *pOut, uint64_t nMagnitude, int bNegative, unsigned nBase, int bUpper, int bAlt, int bPlus, int bSpace,
-                               int nWidth, int nPrecision, int bLeft, int bZero, int bPointer)
+static void xx_crt_fmt_integer(xx_crt_out *pOut, uint64_t nMagnitude, int bNegative, unsigned nBase, int bUpper, int bAlt, int bPlus, int bSpace, int nWidth,
+                               int nPrecision, int bLeft, int bZero, int bPointer)
 {
     const char *pDigitSet = bUpper ? "0123456789ABCDEF" : "0123456789abcdef";
     char sDigits[72];
@@ -754,8 +754,8 @@ static int xx_crt_vformat_out(xx_crt_out *pOut, const char *pFormat, va_list arg
                 } else {
                     nValue = va_arg(args, int);
                 }
-                xx_crt_fmt_integer(&out, nValue < 0 ? (uint64_t)0 - (uint64_t)nValue : (uint64_t)nValue, nValue < 0, 10, 0, bAlt, bPlus, bSpace, nWidth,
-                                   nPrecision, bLeft, bZero, 0);
+                xx_crt_fmt_integer(&out, nValue < 0 ? (uint64_t)0 - (uint64_t)nValue : (uint64_t)nValue, nValue < 0, 10, 0, bAlt, bPlus, bSpace, nWidth, nPrecision,
+                                   bLeft, bZero, 0);
                 break;
             }
             case 'u':

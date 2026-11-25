@@ -84,8 +84,7 @@ XXFC_API bool xx_byteset_backend_available(int backend);
 /** xx_byteset_find with an explicit backend, for differential tests.
  * Returns false and leaves *found untouched when the backend is not
  * available. */
-XXFC_API bool xx_byteset_find_backend(int backend, const xx_byteset *set, const void *data, size_t size,
-                                      size_t from, size_t *found);
+XXFC_API bool xx_byteset_find_backend(int backend, const xx_byteset *set, const void *data, size_t size, size_t from, size_t *found);
 
 #ifdef __cplusplus
 }

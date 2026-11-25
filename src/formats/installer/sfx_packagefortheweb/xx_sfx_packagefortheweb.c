@@ -89,8 +89,7 @@ static bool pw_declared(const uint8_t *raw, uint32_t size, uint32_t *length)
     } else if (!xx_rt_memcmp(raw, "2!$", 3)) {
         for (i = 0; i < size; ++i) d[i] = (uint8_t)(raw[i] ^ (uint8_t)(0x61 + i % 26));
         head = raw[3] == 'e' ? 8U : 7U;
-    } else
-        goto done;
+    } else goto done;
     *length = xx_data_get_u32(d + head - 4, 4, 0, false);
     for (i = head, left = size - head; left;) {
         uint8_t c = d[i];
@@ -129,8 +128,7 @@ static bool carrier_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
          * bounded CAB immediately after it; a generic PE/CAB is insufficient
          * to claim this producer. Do not present opaque settings as SCG. */
         new_header = !xx_rt_memcmp(settings, "\xdc\xed\xbd\xa9", 4);
-        if (pw_declared(settings, size, &declared) && declared <= (uint64_t)(limit - start - 4 - size) &&
-            !pw_cab(f, start + 4 + size, region_end, &end, pd)) {
+        if (pw_declared(settings, size, &declared) && declared <= (uint64_t)(limit - start - 4 - size) && !pw_cab(f, start + 4 + size, region_end, &end, pd)) {
             /* Not an intact plain cabinet: publish the declared package. */
             xx_mem_free(settings);
             settings = NULL;

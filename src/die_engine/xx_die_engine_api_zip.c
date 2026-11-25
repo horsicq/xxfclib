@@ -6,9 +6,7 @@
 
 #include "xx_die_engine_api_internal.h"
 
-static const ApiEntry g_zip_api_table[] = {
-    {NULL, A_NONE, 0}
-};
+static const ApiEntry g_zip_api_table[] = {{NULL, A_NONE, 0}};
 
 void die_engine_api_register_zip(JSCtx *pCtx, JSVal object)
 {

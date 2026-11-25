@@ -627,8 +627,8 @@ bool xx_io_platform_file_can_resize(void *handle, const char *mode)
     /* Pure append handles have FILE_APPEND_DATA, not the FILE_WRITE_DATA
      * access needed to set EOF. The existing a+ mode uses GENERIC_WRITE. */
     writable = xx_win_mode_has_char(mode, '+') || mode[0] == 'w';
-    return writable && GetFileType((HANDLE)handle) == FILE_TYPE_DISK &&
-           GetFileInformationByHandle((HANDLE)handle, &info) && !(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+    return writable && GetFileType((HANDLE)handle) == FILE_TYPE_DISK && GetFileInformationByHandle((HANDLE)handle, &info) &&
+           !(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
 }
 
 int xx_io_platform_file_resize(void *handle, int64_t new_size)
@@ -646,10 +646,9 @@ int xx_io_platform_file_resize(void *handle, int64_t new_size)
         typedef struct xx_win_end_of_file_info {
             LARGE_INTEGER EndOfFile;
         } xx_win_end_of_file_info;
-        typedef BOOL(WINAPI *xx_win_set_file_info_fn)(HANDLE, int, LPVOID, DWORD);
+        typedef BOOL(WINAPI * xx_win_set_file_info_fn)(HANDLE, int, LPVOID, DWORD);
         HMODULE module = GetModuleHandleW(L"kernel32.dll");
-        xx_win_set_file_info_fn set_info = module ?
-            (xx_win_set_file_info_fn)(void (*)(void))GetProcAddress(module, "SetFileInformationByHandle") : NULL;
+        xx_win_set_file_info_fn set_info = module ? (xx_win_set_file_info_fn)(void (*)(void))GetProcAddress(module, "SetFileInformationByHandle") : NULL;
         if (set_info) {
             xx_win_end_of_file_info info;
             info.EndOfFile.QuadPart = new_size;

@@ -704,8 +704,7 @@ static bool xx_pyz_decode_core(Abstractformat *self, const xx_pyz_member *member
      * itself publish keeps a future entry type from being inflated as if it
      * were a module - silently guessing is how garbage gets written out as
      * data. */
-    if ((member->method != (uint32_t)XX_PYZ_ENTRY_MODULE) && (member->method != (uint32_t)XX_PYZ_ENTRY_PACKAGE) &&
-        (member->method != (uint32_t)XX_PYZ_ENTRY_NAMESPACE)) {
+    if ((member->method != (uint32_t)XX_PYZ_ENTRY_MODULE) && (member->method != (uint32_t)XX_PYZ_ENTRY_PACKAGE) && (member->method != (uint32_t)XX_PYZ_ENTRY_NAMESPACE)) {
         return false;
     }
     if ((member->compressed_size < XX_PYZ_MIN_STREAM) || (member->compressed_size > (int64_t)XX_PYZ_MAX_DECODED)) {

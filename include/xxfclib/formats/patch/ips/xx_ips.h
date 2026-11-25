@@ -22,10 +22,10 @@ typedef enum xx_ips_type_e {
 
 typedef struct xx_ips_record_s {
     uint64_t offset;
-    uint32_t size;        /**< 0 when RLE. */
-    uint32_t rle_size;    /**< Number of bytes repeated when RLE. */
-    uint8_t rle_value;    /**< Byte value repeated when RLE. */
-    uint8_t *data;        /**< Payload bytes (size bytes) when not RLE. Owned. */
+    uint32_t size;     /**< 0 when RLE. */
+    uint32_t rle_size; /**< Number of bytes repeated when RLE. */
+    uint8_t rle_value; /**< Byte value repeated when RLE. */
+    uint8_t *data;     /**< Payload bytes (size bytes) when not RLE. Owned. */
     bool is_rle;
 } xx_ips_record;
 
@@ -77,13 +77,10 @@ XXFC_API bool xx_ips_write_device(const xx_ips_patch *patch, xx_io_device *dest,
  * The 0x454F46 "EOF" ambiguity is handled by starting such record at 0x454F45,
  * retaining standard IPS format.
  */
-XXFC_API xx_ips_patch *xx_ips_create_from_buffers(const uint8_t *orig, size_t orig_size,
-                                                  const uint8_t *mod, size_t mod_size,
-                                                  bool force_ips32, char *error, size_t error_cap);
+XXFC_API xx_ips_patch *xx_ips_create_from_buffers(const uint8_t *orig, size_t orig_size, const uint8_t *mod, size_t mod_size, bool force_ips32, char *error,
+                                                  size_t error_cap);
 
-XXFC_API xx_ips_patch *xx_ips_create_from_devices(xx_io_device *orig, xx_io_device *mod,
-                                                  bool force_ips32, xx_pd_struct *pd,
-                                                  char *error, size_t error_cap);
+XXFC_API xx_ips_patch *xx_ips_create_from_devices(xx_io_device *orig, xx_io_device *mod, bool force_ips32, xx_pd_struct *pd, char *error, size_t error_cap);
 
 #ifdef __cplusplus
 }

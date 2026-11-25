@@ -5,7 +5,10 @@
 #include "../../xx_payload_members.h"
 #include "xxfclib/data/xx_data.h"
 
-static bool sms_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
+static bool sms_stop(xx_pd_struct *pd)
+{
+    return pd && xx_pd_is_stopped(pd);
+}
 
 static bool pm_parse(Abstractformat *format, pm_stream *stream, xx_pd_struct *pd)
 {
@@ -54,8 +57,17 @@ xx_sega_sms_rom *xx_sega_sms_rom_create(xx_io_device *device, int64_t base_addre
     if (reader) xx_sega_sms_rom_init(reader, device, base_address);
     return reader;
 }
-void xx_sega_sms_rom_destroy(xx_sega_sms_rom *reader) { if (reader) xx_format_cleanup_extra_parameters(&reader->format); }
-void xx_sega_sms_rom_free(xx_sega_sms_rom *reader) { if (reader) { xx_sega_sms_rom_destroy(reader); xx_mem_free(reader); } }
+void xx_sega_sms_rom_destroy(xx_sega_sms_rom *reader)
+{
+    if (reader) xx_format_cleanup_extra_parameters(&reader->format);
+}
+void xx_sega_sms_rom_free(xx_sega_sms_rom *reader)
+{
+    if (reader) {
+        xx_sega_sms_rom_destroy(reader);
+        xx_mem_free(reader);
+    }
+}
 bool xx_sega_sms_rom_probe_device(xx_io_device *device, int64_t base_address)
 {
     static const uint32_t offsets[] = {UINT32_C(0x1ff0), UINT32_C(0x3ff0), UINT32_C(0x7ff0), UINT32_C(0x8ff0)};
@@ -70,14 +82,19 @@ bool xx_sega_sms_rom_probe_device(xx_io_device *device, int64_t base_address)
     if (available < 8192 || available > UINT32_C(0x400000)) return false;
     for (index = 0U; index < sizeof(offsets) / sizeof(offsets[0]); ++index) {
         if ((int64_t)offsets[index] + (int64_t)sizeof(signature) > available) continue;
-        if (xx_io_read_at(device, base_address + (int64_t)offsets[index], signature, sizeof(signature)) &&
-            xx_rt_memcmp(signature, "TMR SEGA", sizeof(signature)) == 0)
+        if (xx_io_read_at(device, base_address + (int64_t)offsets[index], signature, sizeof(signature)) && xx_rt_memcmp(signature, "TMR SEGA", sizeof(signature)) == 0)
             return true;
     }
     return false;
 }
-bool xx_sega_sms_rom_check_is_valid(Abstractformat *format, xx_pd_struct *pd) { return pm_valid(format, pd); }
-bool xx_sega_sms_rom_handle_base_info(Abstractformat *format, xx_pd_struct *pd) { return pm_handle(format, pd); }
+bool xx_sega_sms_rom_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
+    return pm_valid(format, pd);
+}
+bool xx_sega_sms_rom_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
+    return pm_handle(format, pd);
+}
 
 bool xx_sega_sms_rom_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_memory_map *map, xx_pd_struct *pd)
 {

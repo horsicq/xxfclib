@@ -83,8 +83,7 @@ typedef struct {
     bool present;
 } xx_cuckoo_yx_raw;
 
-static bool xx_cuckoo_yx_grow(void **items, size_t *capacity,
-                            size_t count, size_t item_size)
+static bool xx_cuckoo_yx_grow(void **items, size_t *capacity, size_t count, size_t item_size)
 {
     size_t next;
     void *grown;
@@ -98,40 +97,30 @@ static bool xx_cuckoo_yx_grow(void **items, size_t *capacity,
     return true;
 }
 
-static bool xx_cuckoo_yx_push_string(xx_cuckoo_yx_strings *vector,
-                                    xx_cuckoo_yx_text value)
+static bool xx_cuckoo_yx_push_string(xx_cuckoo_yx_strings *vector, xx_cuckoo_yx_text value)
 {
-    if (!xx_cuckoo_yx_grow((void **)&vector->items, &vector->capacity,
-                         vector->count, sizeof(*vector->items)))
-        return false;
+    if (!xx_cuckoo_yx_grow((void **)&vector->items, &vector->capacity, vector->count, sizeof(*vector->items))) return false;
     vector->items[vector->count++] = value;
     return true;
 }
 
-static bool xx_cuckoo_yx_push_http(xx_cuckoo_yx_http_vector *vector,
-                                  xx_cuckoo_yx_http value)
+static bool xx_cuckoo_yx_push_http(xx_cuckoo_yx_http_vector *vector, xx_cuckoo_yx_http value)
 {
-    if (!xx_cuckoo_yx_grow((void **)&vector->items, &vector->capacity,
-                         vector->count, sizeof(*vector->items)))
-        return false;
+    if (!xx_cuckoo_yx_grow((void **)&vector->items, &vector->capacity, vector->count, sizeof(*vector->items))) return false;
     vector->items[vector->count++] = value;
     return true;
 }
 
-static bool xx_cuckoo_yx_push_connection(
-    xx_cuckoo_yx_connection_vector *vector, xx_cuckoo_yx_connection value)
+static bool xx_cuckoo_yx_push_connection(xx_cuckoo_yx_connection_vector *vector, xx_cuckoo_yx_connection value)
 {
-    if (!xx_cuckoo_yx_grow((void **)&vector->items, &vector->capacity,
-                         vector->count, sizeof(*vector->items)))
-        return false;
+    if (!xx_cuckoo_yx_grow((void **)&vector->items, &vector->capacity, vector->count, sizeof(*vector->items))) return false;
     vector->items[vector->count++] = value;
     return true;
 }
 
 static void xx_cuckoo_yx_strings_free(xx_cuckoo_yx_strings *vector)
 {
-    for (size_t i = 0; i < vector->count; ++i)
-        xx_str_free(vector->items[i].data);
+    for (size_t i = 0; i < vector->count; ++i) xx_str_free(vector->items[i].data);
     free(vector->items);
     memset(vector, 0, sizeof(*vector));
 }
@@ -189,25 +178,20 @@ static size_t xx_cuckoo_yx_decoded_length(const uint8_t *raw, size_t size)
             ++length;
         } else {
             uint32_t code = 0;
-            for (unsigned j = 0; j < 4; ++j)
-                code = (code << 4) | xx_cuckoo_yx_hex_digit(raw[i++]);
+            for (unsigned j = 0; j < 4; ++j) code = (code << 4) | xx_cuckoo_yx_hex_digit(raw[i++]);
             if (code >= 0xd800u && code <= 0xdbffu) {
                 uint32_t low = 0;
                 i += 2; /* Escape prefix of the low surrogate. */
-                for (unsigned j = 0; j < 4; ++j)
-                    low = (low << 4) | xx_cuckoo_yx_hex_digit(raw[i++]);
-                code = UINT32_C(0x10000) + ((code - 0xd800u) << 10) +
-                       (low - 0xdc00u);
+                for (unsigned j = 0; j < 4; ++j) low = (low << 4) | xx_cuckoo_yx_hex_digit(raw[i++]);
+                code = UINT32_C(0x10000) + ((code - 0xd800u) << 10) + (low - 0xdc00u);
             }
-            length += code < 0x80u ? 1u : code < 0x800u ? 2u :
-                      code < 0x10000u ? 3u : 4u;
+            length += code < 0x80u ? 1u : code < 0x800u ? 2u : code < 0x10000u ? 3u : 4u;
         }
     }
     return length;
 }
 
-static bool xx_cuckoo_yx_object_key(xx_json *json, char **key,
-                                   size_t *length)
+static bool xx_cuckoo_yx_object_key(xx_json *json, char **key, size_t *length)
 {
     size_t start, end;
     xx_json_peek(json);
@@ -222,12 +206,10 @@ static bool xx_cuckoo_yx_object_key(xx_json *json, char **key,
     return true;
 }
 
-static bool xx_cuckoo_yx_key_equal(const char *key, size_t length,
-                                 const char *expected)
+static bool xx_cuckoo_yx_key_equal(const char *key, size_t length, const char *expected)
 {
     size_t expected_length = strlen(expected);
-    return length == expected_length &&
-           memcmp(key, expected, length) == 0;
+    return length == expected_length && memcmp(key, expected, length) == 0;
 }
 
 static bool xx_cuckoo_yx_mark_once(unsigned *seen, unsigned flag)
@@ -248,30 +230,18 @@ static bool xx_cuckoo_yx_valid_utf8(const uint8_t *bytes, size_t size)
         uint8_t first = bytes[i++];
         if (first < 0x80u) continue;
         if (first >= 0xc2u && first <= 0xdfu) {
-            if (size - i < 1u || !xx_cuckoo_yx_continuation(bytes[i]))
-                return false;
+            if (size - i < 1u || !xx_cuckoo_yx_continuation(bytes[i])) return false;
             ++i;
         } else if (first >= 0xe0u && first <= 0xefu) {
-            if (size - i < 2u || !xx_cuckoo_yx_continuation(bytes[i + 1u]))
-                return false;
-            if ((first == 0xe0u &&
-                 (bytes[i] < 0xa0u || bytes[i] > 0xbfu)) ||
-                (first == 0xedu &&
-                 (bytes[i] < 0x80u || bytes[i] > 0x9fu)) ||
-                (first != 0xe0u && first != 0xedu &&
-                 !xx_cuckoo_yx_continuation(bytes[i])))
+            if (size - i < 2u || !xx_cuckoo_yx_continuation(bytes[i + 1u])) return false;
+            if ((first == 0xe0u && (bytes[i] < 0xa0u || bytes[i] > 0xbfu)) || (first == 0xedu && (bytes[i] < 0x80u || bytes[i] > 0x9fu)) ||
+                (first != 0xe0u && first != 0xedu && !xx_cuckoo_yx_continuation(bytes[i])))
                 return false;
             i += 2u;
         } else if (first >= 0xf0u && first <= 0xf4u) {
-            if (size - i < 3u ||
-                !xx_cuckoo_yx_continuation(bytes[i + 1u]) ||
-                !xx_cuckoo_yx_continuation(bytes[i + 2u])) return false;
-            if ((first == 0xf0u &&
-                 (bytes[i] < 0x90u || bytes[i] > 0xbfu)) ||
-                (first == 0xf4u &&
-                 (bytes[i] < 0x80u || bytes[i] > 0x8fu)) ||
-                (first != 0xf0u && first != 0xf4u &&
-                 !xx_cuckoo_yx_continuation(bytes[i])))
+            if (size - i < 3u || !xx_cuckoo_yx_continuation(bytes[i + 1u]) || !xx_cuckoo_yx_continuation(bytes[i + 2u])) return false;
+            if ((first == 0xf0u && (bytes[i] < 0x90u || bytes[i] > 0xbfu)) || (first == 0xf4u && (bytes[i] < 0x80u || bytes[i] > 0x8fu)) ||
+                (first != 0xf0u && first != 0xf4u && !xx_cuckoo_yx_continuation(bytes[i])))
                 return false;
             i += 3u;
         } else return false;
@@ -286,16 +256,14 @@ static bool xx_cuckoo_yx_string(xx_json *json, xx_cuckoo_yx_text *out)
     if (xx_json_peek(json) != XX_JSON_TYPE_STRING) return false;
     start = json->position;
     if (!xx_json_string(json, &out->data)) return false;
-    out->length = xx_cuckoo_yx_decoded_length(json->data + start,
-                                            json->position - start);
+    out->length = xx_cuckoo_yx_decoded_length(json->data + start, json->position - start);
     return true;
 }
 
 static bool xx_cuckoo_yx_optional_string(xx_json *json, xx_cuckoo_yx_text *out)
 {
     memset(out, 0, sizeof(*out));
-    if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
-        return xx_json_null(json);
+    if (xx_json_peek(json) == XX_JSON_TYPE_NULL) return xx_json_null(json);
     return xx_cuckoo_yx_string(json, out);
 }
 
@@ -305,24 +273,19 @@ static bool xx_cuckoo_yx_unsigned(xx_json *json, uint64_t *value)
     size_t at;
     if (xx_json_peek(json) != XX_JSON_TYPE_NUMBER) return false;
     at = json->position;
-    if (at >= json->size || json->data[at] < '0' ||
-        json->data[at] > '9') return false;
+    if (at >= json->size || json->data[at] < '0' || json->data[at] > '9') return false;
     if (json->data[at] == '0') {
         ++at;
-        if (at < json->size && json->data[at] >= '0' &&
-            json->data[at] <= '9') return false;
+        if (at < json->size && json->data[at] >= '0' && json->data[at] <= '9') return false;
     } else {
         do {
             unsigned digit = (unsigned)(json->data[at] - '0');
             if (parsed > (UINT64_MAX - digit) / 10u) return false;
             parsed = parsed * 10u + digit;
             ++at;
-        } while (at < json->size && json->data[at] >= '0' &&
-                 json->data[at] <= '9');
+        } while (at < json->size && json->data[at] >= '0' && json->data[at] <= '9');
     }
-    if (at < json->size && json->data[at] != ',' &&
-        json->data[at] != '}' && json->data[at] != ']' &&
-        json->data[at] != ' ' && json->data[at] != '\t' &&
+    if (at < json->size && json->data[at] != ',' && json->data[at] != '}' && json->data[at] != ']' && json->data[at] != ' ' && json->data[at] != '\t' &&
         json->data[at] != '\r' && json->data[at] != '\n')
         return false;
     json->position = at;
@@ -356,42 +319,37 @@ static bool xx_cuckoo_yx_skip_number(xx_json *json, bool checked)
     if (at >= json->size) return false;
     if (json->data[at] == '0') {
         ++at;
-        if (at < json->size && json->data[at] >= '0' &&
-            json->data[at] <= '9') return false;
+        if (at < json->size && json->data[at] >= '0' && json->data[at] <= '9') return false;
     } else if (json->data[at] >= '1' && json->data[at] <= '9') {
-        do { ++at; } while (at < json->size && json->data[at] >= '0' &&
-                            json->data[at] <= '9');
+        do {
+            ++at;
+        } while (at < json->size && json->data[at] >= '0' && json->data[at] <= '9');
     } else return false;
     if (at < json->size && json->data[at] == '.') {
         ++at;
-        if (at >= json->size || json->data[at] < '0' ||
-            json->data[at] > '9') return false;
-        do { ++at; } while (at < json->size && json->data[at] >= '0' &&
-                            json->data[at] <= '9');
+        if (at >= json->size || json->data[at] < '0' || json->data[at] > '9') return false;
+        do {
+            ++at;
+        } while (at < json->size && json->data[at] >= '0' && json->data[at] <= '9');
     }
-    if (at < json->size &&
-        (json->data[at] == 'e' || json->data[at] == 'E')) {
+    if (at < json->size && (json->data[at] == 'e' || json->data[at] == 'E')) {
         ++at;
-        if (at < json->size &&
-            (json->data[at] == '+' || json->data[at] == '-')) ++at;
-        if (at >= json->size || json->data[at] < '0' ||
-            json->data[at] > '9') return false;
-        do { ++at; } while (at < json->size && json->data[at] >= '0' &&
-                            json->data[at] <= '9');
+        if (at < json->size && (json->data[at] == '+' || json->data[at] == '-')) ++at;
+        if (at >= json->size || json->data[at] < '0' || json->data[at] > '9') return false;
+        do {
+            ++at;
+        } while (at < json->size && json->data[at] >= '0' && json->data[at] <= '9');
     }
-    if (at < json->size && json->data[at] != ',' &&
-        json->data[at] != '}' && json->data[at] != ']' &&
-        json->data[at] != ' ' && json->data[at] != '\t' &&
-        json->data[at] != '\r' && json->data[at] != '\n') return false;
+    if (at < json->size && json->data[at] != ',' && json->data[at] != '}' && json->data[at] != ']' && json->data[at] != ' ' && json->data[at] != '\t' &&
+        json->data[at] != '\r' && json->data[at] != '\n')
+        return false;
     start = json->position;
     json->position = at;
     /* The range is validated only for numbers that serde_json would
      * actually read: everything inside the network map passes through a
      * serde_json::Value first, while unknown fields of the derive structs
      * are skipped unread. */
-    if (checked && !xx_cuckoo_yx_number_in_range(json->data + start,
-                                                 at - start))
-        return false;
+    if (checked && !xx_cuckoo_yx_number_in_range(json->data + start, at - start)) return false;
     return true;
 }
 
@@ -407,8 +365,7 @@ static bool xx_cuckoo_yx_skip(xx_json *json, unsigned depth, bool checked)
         if (!xx_json_object_begin(json)) return false;
         if (!xx_json_object_empty(json)) {
             do {
-                if (!xx_json_object_key(json, NULL) ||
-                    !xx_cuckoo_yx_skip(json, depth + 1, checked)) return false;
+                if (!xx_json_object_key(json, NULL) || !xx_cuckoo_yx_skip(json, depth + 1, checked)) return false;
             } while (xx_json_more(json));
         }
         return xx_json_object_end(json);
@@ -425,8 +382,7 @@ static bool xx_cuckoo_yx_skip(xx_json *json, unsigned depth, bool checked)
     return false;
 }
 
-static bool xx_cuckoo_yx_capture(xx_json *json, xx_cuckoo_yx_raw *raw,
-                                 bool checked)
+static bool xx_cuckoo_yx_capture(xx_json *json, xx_cuckoo_yx_raw *raw, bool checked)
 {
     size_t start;
     xx_json_peek(json);
@@ -438,11 +394,9 @@ static bool xx_cuckoo_yx_capture(xx_json *json, xx_cuckoo_yx_raw *raw,
     return true;
 }
 
-static bool xx_cuckoo_yx_string_array(xx_json *json,
-                                     xx_cuckoo_yx_strings *vector)
+static bool xx_cuckoo_yx_string_array(xx_json *json, xx_cuckoo_yx_strings *vector)
 {
-    if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
-        return xx_json_null(json);
+    if (xx_json_peek(json) == XX_JSON_TYPE_NULL) return xx_json_null(json);
     if (!xx_json_array_begin(json)) return false;
     if (!xx_json_array_empty(json)) {
         do {
@@ -476,12 +430,9 @@ static bool xx_cuckoo_yx_domain_seq(xx_json *json, xx_cuckoo_yx_text *domain)
     return true;
 }
 
-static bool xx_cuckoo_yx_domain_array(xx_json *json,
-                                     xx_cuckoo_yx_strings *vector,
-                                     const char *field)
+static bool xx_cuckoo_yx_domain_array(xx_json *json, xx_cuckoo_yx_strings *vector, const char *field)
 {
-    if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
-        return xx_json_null(json);
+    if (xx_json_peek(json) == XX_JSON_TYPE_NULL) return xx_json_null(json);
     if (!xx_json_array_begin(json)) return false;
     if (!xx_json_array_empty(json)) {
         do {
@@ -499,12 +450,9 @@ static bool xx_cuckoo_yx_domain_array(xx_json *json,
                         char *key = NULL;
                         size_t key_length = 0;
                         bool ok;
-                        if (!xx_cuckoo_yx_object_key(json, &key, &key_length))
-                            return false;
-                        if (xx_cuckoo_yx_key_equal(key, key_length, field))
-                            ok = xx_cuckoo_yx_capture(json, &selected, true);
-                        else
-                            ok = xx_cuckoo_yx_skip(json, 0, true);
+                        if (!xx_cuckoo_yx_object_key(json, &key, &key_length)) return false;
+                        if (xx_cuckoo_yx_key_equal(key, key_length, field)) ok = xx_cuckoo_yx_capture(json, &selected, true);
+                        else ok = xx_cuckoo_yx_skip(json, 0, true);
                         xx_str_free(key);
                         if (!ok) return false;
                     } while (xx_json_more(json));
@@ -562,8 +510,7 @@ static bool xx_cuckoo_yx_http_seq(xx_json *json, xx_cuckoo_yx_http *item)
             if (!xx_json_null(json)) return false;
         } else {
             xx_cuckoo_yx_text value = {0};
-            xx_cuckoo_yx_text *slot = i == 0 ? &item->user_agent :
-                                     i == 1 ? &item->method : &item->uri;
+            xx_cuckoo_yx_text *slot = i == 0 ? &item->user_agent : i == 1 ? &item->method : &item->uri;
             if (!xx_cuckoo_yx_string(json, &value)) return false;
             *slot = value;
         }
@@ -575,8 +522,7 @@ static bool xx_cuckoo_yx_http_seq(xx_json *json, xx_cuckoo_yx_http *item)
 }
 
 /* TcpJson/UdpJson in sequence form: exactly [dst, dst_domain, dport]. */
-static bool xx_cuckoo_yx_connection_seq(xx_json *json,
-                                        xx_cuckoo_yx_connection *item)
+static bool xx_cuckoo_yx_connection_seq(xx_json *json, xx_cuckoo_yx_connection *item)
 {
     unsigned i;
     if (!xx_json_array_begin(json)) return false;
@@ -600,11 +546,9 @@ static bool xx_cuckoo_yx_connection_seq(xx_json *json,
     return xx_json_array_end(json);
 }
 
-static bool xx_cuckoo_yx_http_array(xx_json *json,
-                                   xx_cuckoo_yx_http_vector *vector)
+static bool xx_cuckoo_yx_http_array(xx_json *json, xx_cuckoo_yx_http_vector *vector)
 {
-    if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
-        return xx_json_null(json);
+    if (xx_json_peek(json) == XX_JSON_TYPE_NULL) return xx_json_null(json);
     if (!xx_json_array_begin(json)) return false;
     if (!xx_json_array_empty(json)) {
         do {
@@ -623,14 +567,12 @@ static bool xx_cuckoo_yx_http_array(xx_json *json,
                     size_t key_length = 0;
                     xx_cuckoo_yx_raw *slot = NULL;
                     bool ok;
-                    if (!xx_cuckoo_yx_object_key(json, &key, &key_length))
-                        goto item_error;
+                    if (!xx_cuckoo_yx_object_key(json, &key, &key_length)) goto item_error;
                     if (xx_cuckoo_yx_key_equal(key, key_length, "method")) {
                         slot = &method;
                     } else if (xx_cuckoo_yx_key_equal(key, key_length, "uri")) {
                         slot = &uri;
-                    } else if (xx_cuckoo_yx_key_equal(key, key_length,
-                                                    "user-agent")) {
+                    } else if (xx_cuckoo_yx_key_equal(key, key_length, "user-agent")) {
                         slot = &user_agent;
                     }
                     if (slot) ok = xx_cuckoo_yx_capture(json, slot, true);
@@ -645,24 +587,21 @@ static bool xx_cuckoo_yx_http_array(xx_json *json,
             if (method.present) {
                 xx_json value;
                 xx_json_init(&value, method.data, method.size);
-                if (!xx_cuckoo_yx_optional_string(&value, &item.method))
-                    goto item_error;
+                if (!xx_cuckoo_yx_optional_string(&value, &item.method)) goto item_error;
             }
             if (uri.present) {
                 xx_json value;
                 xx_json_init(&value, uri.data, uri.size);
-                if (!xx_cuckoo_yx_optional_string(&value, &item.uri))
-                    goto item_error;
+                if (!xx_cuckoo_yx_optional_string(&value, &item.uri)) goto item_error;
             }
             if (user_agent.present) {
                 xx_json value;
                 xx_json_init(&value, user_agent.data, user_agent.size);
-                if (!xx_cuckoo_yx_optional_string(&value, &item.user_agent))
-                    goto item_error;
+                if (!xx_cuckoo_yx_optional_string(&value, &item.user_agent)) goto item_error;
             }
             if (!xx_cuckoo_yx_push_http(vector, item)) goto item_error;
             continue;
-item_error:
+        item_error:
             xx_str_free(item.method.data);
             xx_str_free(item.uri.data);
             xx_str_free(item.user_agent.data);
@@ -672,11 +611,9 @@ item_error:
     return xx_json_array_end(json);
 }
 
-static bool xx_cuckoo_yx_connection_array(
-    xx_json *json, xx_cuckoo_yx_connection_vector *vector)
+static bool xx_cuckoo_yx_connection_array(xx_json *json, xx_cuckoo_yx_connection_vector *vector)
 {
-    if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
-        return xx_json_null(json);
+    if (xx_json_peek(json) == XX_JSON_TYPE_NULL) return xx_json_null(json);
     if (!xx_json_array_begin(json)) return false;
     if (!xx_json_array_empty(json)) {
         do {
@@ -695,15 +632,12 @@ static bool xx_cuckoo_yx_connection_array(
                     size_t key_length = 0;
                     xx_cuckoo_yx_raw *slot = NULL;
                     bool ok;
-                    if (!xx_cuckoo_yx_object_key(json, &key, &key_length))
-                        goto item_error;
+                    if (!xx_cuckoo_yx_object_key(json, &key, &key_length)) goto item_error;
                     if (xx_cuckoo_yx_key_equal(key, key_length, "dst")) {
                         slot = &dst;
-                    } else if (xx_cuckoo_yx_key_equal(key, key_length,
-                                                    "dst_domain")) {
+                    } else if (xx_cuckoo_yx_key_equal(key, key_length, "dst_domain")) {
                         slot = &dst_domain;
-                    } else if (xx_cuckoo_yx_key_equal(key, key_length,
-                                                    "dport")) {
+                    } else if (xx_cuckoo_yx_key_equal(key, key_length, "dport")) {
                         slot = &dport;
                     }
                     if (slot) ok = xx_cuckoo_yx_capture(json, slot, true);
@@ -716,14 +650,12 @@ static bool xx_cuckoo_yx_connection_array(
             if (dst.present) {
                 xx_json value;
                 xx_json_init(&value, dst.data, dst.size);
-                if (!xx_cuckoo_yx_optional_string(&value, &item.dst))
-                    goto item_error;
+                if (!xx_cuckoo_yx_optional_string(&value, &item.dst)) goto item_error;
             }
             if (dst_domain.present) {
                 xx_json value;
                 xx_json_init(&value, dst_domain.data, dst_domain.size);
-                if (!xx_cuckoo_yx_optional_string(&value, &item.dst_domain))
-                    goto item_error;
+                if (!xx_cuckoo_yx_optional_string(&value, &item.dst_domain)) goto item_error;
             }
             if (dport.present) {
                 xx_json value;
@@ -731,14 +663,13 @@ static bool xx_cuckoo_yx_connection_array(
                 if (xx_json_peek(&value) == XX_JSON_TYPE_NULL) {
                     if (!xx_json_null(&value)) goto item_error;
                 } else {
-                    if (!xx_cuckoo_yx_unsigned(&value, &item.dport))
-                        goto item_error;
+                    if (!xx_cuckoo_yx_unsigned(&value, &item.dport)) goto item_error;
                     item.has_dport = true;
                 }
             }
             if (!xx_cuckoo_yx_push_connection(vector, item)) goto item_error;
             continue;
-item_error:
+        item_error:
             xx_str_free(item.dst.data);
             xx_str_free(item.dst_domain.data);
             return false;
@@ -751,8 +682,7 @@ static bool xx_cuckoo_yx_network(xx_json *json, xx_cuckoo_yx_report *report)
 {
     xx_cuckoo_yx_raw domains = {0}, old_dns = {0};
     /* Null repeats of these four fields leave an earlier array intact. */
-    if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
-        return xx_json_null(json);
+    if (xx_json_peek(json) == XX_JSON_TYPE_NULL) return xx_json_null(json);
     if (!xx_json_object_begin(json)) return false;
     if (!xx_json_object_empty(json)) {
         do {
@@ -760,34 +690,28 @@ static bool xx_cuckoo_yx_network(xx_json *json, xx_cuckoo_yx_report *report)
             size_t key_length = 0;
             bool ok;
             if (!xx_cuckoo_yx_object_key(json, &key, &key_length)) return false;
-            if (xx_cuckoo_yx_key_equal(key, key_length, "domains"))
-                ok = xx_cuckoo_yx_capture(json, &domains, true);
-            else if (xx_cuckoo_yx_key_equal(key, key_length, "dns"))
-                ok = xx_cuckoo_yx_capture(json, &old_dns, true);
+            if (xx_cuckoo_yx_key_equal(key, key_length, "domains")) ok = xx_cuckoo_yx_capture(json, &domains, true);
+            else if (xx_cuckoo_yx_key_equal(key, key_length, "dns")) ok = xx_cuckoo_yx_capture(json, &old_dns, true);
             else if (xx_cuckoo_yx_key_equal(key, key_length, "http")) {
-                if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
-                    ok = xx_json_null(json);
+                if (xx_json_peek(json) == XX_JSON_TYPE_NULL) ok = xx_json_null(json);
                 else {
                     xx_cuckoo_yx_http_free(&report->http);
                     ok = xx_cuckoo_yx_http_array(json, &report->http);
                 }
             } else if (xx_cuckoo_yx_key_equal(key, key_length, "tcp")) {
-                if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
-                    ok = xx_json_null(json);
+                if (xx_json_peek(json) == XX_JSON_TYPE_NULL) ok = xx_json_null(json);
                 else {
                     xx_cuckoo_yx_connections_free(&report->tcp);
                     ok = xx_cuckoo_yx_connection_array(json, &report->tcp);
                 }
             } else if (xx_cuckoo_yx_key_equal(key, key_length, "udp")) {
-                if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
-                    ok = xx_json_null(json);
+                if (xx_json_peek(json) == XX_JSON_TYPE_NULL) ok = xx_json_null(json);
                 else {
                     xx_cuckoo_yx_connections_free(&report->udp);
                     ok = xx_cuckoo_yx_connection_array(json, &report->udp);
                 }
             } else if (xx_cuckoo_yx_key_equal(key, key_length, "hosts")) {
-                if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
-                    ok = xx_json_null(json);
+                if (xx_json_peek(json) == XX_JSON_TYPE_NULL) ok = xx_json_null(json);
                 else {
                     xx_cuckoo_yx_strings_free(&report->hosts);
                     ok = xx_cuckoo_yx_string_array(json, &report->hosts);
@@ -802,15 +726,13 @@ static bool xx_cuckoo_yx_network(xx_json *json, xx_cuckoo_yx_report *report)
         xx_json selected;
         xx_json_init(&selected, domains.data, domains.size);
         xx_cuckoo_yx_strings_free(&report->domains);
-        return xx_cuckoo_yx_domain_array(&selected, &report->domains,
-                                       "domain");
+        return xx_cuckoo_yx_domain_array(&selected, &report->domains, "domain");
     }
     if (old_dns.present) {
         xx_json selected;
         xx_json_init(&selected, old_dns.data, old_dns.size);
         xx_cuckoo_yx_strings_free(&report->domains);
-        return xx_cuckoo_yx_domain_array(&selected, &report->domains,
-                                       "hostname");
+        return xx_cuckoo_yx_domain_array(&selected, &report->domains, "hostname");
     }
     return true;
 }
@@ -818,10 +740,8 @@ static bool xx_cuckoo_yx_network(xx_json *json, xx_cuckoo_yx_report *report)
 static bool xx_cuckoo_yx_summary(xx_json *json, xx_cuckoo_yx_report *report)
 {
     unsigned seen = 0;
-    if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
-        return xx_json_null(json);
-    if (xx_json_peek(json) == XX_JSON_TYPE_ARRAY)
-        return xx_cuckoo_yx_summary_seq(json, report);
+    if (xx_json_peek(json) == XX_JSON_TYPE_NULL) return xx_json_null(json);
+    if (xx_json_peek(json) == XX_JSON_TYPE_ARRAY) return xx_cuckoo_yx_summary_seq(json, report);
     if (!xx_json_object_begin(json)) return false;
     if (!xx_json_object_empty(json)) {
         do {
@@ -831,16 +751,13 @@ static bool xx_cuckoo_yx_summary(xx_json *json, xx_cuckoo_yx_report *report)
             if (!xx_cuckoo_yx_object_key(json, &key, &key_length)) return false;
             if (xx_cuckoo_yx_key_equal(key, key_length, "mutexes")) {
                 xx_cuckoo_yx_strings_free(&report->mutexes);
-                ok = xx_cuckoo_yx_mark_once(&seen, 1u) &&
-                     xx_cuckoo_yx_string_array(json, &report->mutexes);
+                ok = xx_cuckoo_yx_mark_once(&seen, 1u) && xx_cuckoo_yx_string_array(json, &report->mutexes);
             } else if (xx_cuckoo_yx_key_equal(key, key_length, "files")) {
                 xx_cuckoo_yx_strings_free(&report->files);
-                ok = xx_cuckoo_yx_mark_once(&seen, 2u) &&
-                     xx_cuckoo_yx_string_array(json, &report->files);
+                ok = xx_cuckoo_yx_mark_once(&seen, 2u) && xx_cuckoo_yx_string_array(json, &report->files);
             } else if (xx_cuckoo_yx_key_equal(key, key_length, "keys")) {
                 xx_cuckoo_yx_strings_free(&report->keys);
-                ok = xx_cuckoo_yx_mark_once(&seen, 4u) &&
-                     xx_cuckoo_yx_string_array(json, &report->keys);
+                ok = xx_cuckoo_yx_mark_once(&seen, 4u) && xx_cuckoo_yx_string_array(json, &report->keys);
             } else ok = xx_cuckoo_yx_skip(json, 0, false);
             xx_str_free(key);
             if (!ok) return false;
@@ -863,14 +780,11 @@ static bool xx_cuckoo_yx_behavior_seq(xx_json *json, xx_cuckoo_yx_report *report
     return xx_json_array_end(json);
 }
 
-static bool xx_cuckoo_yx_behavior(xx_json *json,
-                                 xx_cuckoo_yx_report *report)
+static bool xx_cuckoo_yx_behavior(xx_json *json, xx_cuckoo_yx_report *report)
 {
     unsigned seen = 0;
-    if (xx_json_peek(json) == XX_JSON_TYPE_NULL)
-        return xx_json_null(json);
-    if (xx_json_peek(json) == XX_JSON_TYPE_ARRAY)
-        return xx_cuckoo_yx_behavior_seq(json, report);
+    if (xx_json_peek(json) == XX_JSON_TYPE_NULL) return xx_json_null(json);
+    if (xx_json_peek(json) == XX_JSON_TYPE_ARRAY) return xx_cuckoo_yx_behavior_seq(json, report);
     if (!xx_json_object_begin(json)) return false;
     if (!xx_json_object_empty(json)) {
         do {
@@ -878,9 +792,7 @@ static bool xx_cuckoo_yx_behavior(xx_json *json,
             size_t key_length = 0;
             bool ok;
             if (!xx_cuckoo_yx_object_key(json, &key, &key_length)) return false;
-            if (xx_cuckoo_yx_key_equal(key, key_length, "summary"))
-                ok = xx_cuckoo_yx_mark_once(&seen, 1u) &&
-                     xx_cuckoo_yx_summary(json, report);
+            if (xx_cuckoo_yx_key_equal(key, key_length, "summary")) ok = xx_cuckoo_yx_mark_once(&seen, 1u) && xx_cuckoo_yx_summary(json, report);
             else ok = xx_cuckoo_yx_skip(json, 0, false);
             xx_str_free(key);
             if (!ok) return false;
@@ -891,8 +803,7 @@ static bool xx_cuckoo_yx_behavior(xx_json *json,
 
 #include "xx_cuckoo_yx_errors.inc"
 
-static bool xx_cuckoo_yx_report_parse_data(const uint8_t *json, size_t size,
-                             xx_cuckoo_yx_report **out)
+static bool xx_cuckoo_yx_report_parse_data(const uint8_t *json, size_t size, xx_cuckoo_yx_report **out)
 {
     xx_cuckoo_yx_report *report;
     xx_json cursor;
@@ -909,10 +820,9 @@ static bool xx_cuckoo_yx_report_parse_data(const uint8_t *json, size_t size,
     xx_json_init(&cursor, json, size);
     /* Derived serde structs also accept a sequence in declaration order. */
     if (xx_json_peek(&cursor) == XX_JSON_TYPE_ARRAY) {
-        if (!xx_json_array_begin(&cursor) || xx_json_array_empty(&cursor) ||
-            !xx_cuckoo_yx_network(&cursor, report) || !xx_json_more(&cursor) ||
-            !xx_cuckoo_yx_behavior(&cursor, report) || xx_json_more(&cursor) ||
-            !xx_json_array_end(&cursor)) goto error;
+        if (!xx_json_array_begin(&cursor) || xx_json_array_empty(&cursor) || !xx_cuckoo_yx_network(&cursor, report) || !xx_json_more(&cursor) ||
+            !xx_cuckoo_yx_behavior(&cursor, report) || xx_json_more(&cursor) || !xx_json_array_end(&cursor))
+            goto error;
         goto end_of_document;
     }
     if (!xx_json_object_begin(&cursor)) goto error;
@@ -921,14 +831,9 @@ static bool xx_cuckoo_yx_report_parse_data(const uint8_t *json, size_t size,
             char *key = NULL;
             size_t key_length = 0;
             bool ok;
-            if (!xx_cuckoo_yx_object_key(&cursor, &key, &key_length))
-                goto error;
-            if (xx_cuckoo_yx_key_equal(key, key_length, "network"))
-                ok = xx_cuckoo_yx_mark_once(&seen, 1u) &&
-                     xx_cuckoo_yx_network(&cursor, report);
-            else if (xx_cuckoo_yx_key_equal(key, key_length, "behavior"))
-                ok = xx_cuckoo_yx_mark_once(&seen, 2u) &&
-                     xx_cuckoo_yx_behavior(&cursor, report);
+            if (!xx_cuckoo_yx_object_key(&cursor, &key, &key_length)) goto error;
+            if (xx_cuckoo_yx_key_equal(key, key_length, "network")) ok = xx_cuckoo_yx_mark_once(&seen, 1u) && xx_cuckoo_yx_network(&cursor, report);
+            else if (xx_cuckoo_yx_key_equal(key, key_length, "behavior")) ok = xx_cuckoo_yx_mark_once(&seen, 2u) && xx_cuckoo_yx_behavior(&cursor, report);
             else ok = xx_cuckoo_yx_skip(&cursor, 0, false);
             xx_str_free(key);
             if (!ok) goto error;
@@ -937,10 +842,7 @@ static bool xx_cuckoo_yx_report_parse_data(const uint8_t *json, size_t size,
     if (!xx_json_object_end(&cursor)) goto error;
 end_of_document:
     while (cursor.position < cursor.size &&
-           (cursor.data[cursor.position] == ' ' ||
-            cursor.data[cursor.position] == '\t' ||
-            cursor.data[cursor.position] == '\r' ||
-            cursor.data[cursor.position] == '\n'))
+           (cursor.data[cursor.position] == ' ' || cursor.data[cursor.position] == '\t' || cursor.data[cursor.position] == '\r' || cursor.data[cursor.position] == '\n'))
         ++cursor.position;
     if (cursor.position != cursor.size) goto error;
     *out = report;
@@ -950,8 +852,7 @@ error:
     return false;
 }
 
-XXFC_API bool xx_cuckoo_yx_report_parse_ex(const uint8_t *json, size_t size,
-    xx_cuckoo_yx_report **out, char *error, size_t error_capacity)
+XXFC_API bool xx_cuckoo_yx_report_parse_ex(const uint8_t *json, size_t size, xx_cuckoo_yx_report **out, char *error, size_t error_capacity)
 {
     bool ok = xx_cuckoo_yx_report_parse_data(json, size, out);
     if (error && error_capacity) {
@@ -961,14 +862,12 @@ XXFC_API bool xx_cuckoo_yx_report_parse_ex(const uint8_t *json, size_t size,
     return ok;
 }
 
-XXFC_API bool xx_cuckoo_yx_report_parse(const uint8_t *json, size_t size,
-    xx_cuckoo_yx_report **out)
+XXFC_API bool xx_cuckoo_yx_report_parse(const uint8_t *json, size_t size, xx_cuckoo_yx_report **out)
 {
     return xx_cuckoo_yx_report_parse_ex(json, size, out, NULL, 0);
 }
 
-static bool xx_cuckoo_yx_ascii_equal(const xx_cuckoo_yx_text *left,
-                                   const char *right)
+static bool xx_cuckoo_yx_ascii_equal(const xx_cuckoo_yx_text *left, const char *right)
 {
     size_t length = strlen(right);
     if (!left->data || left->length != length) return false;
@@ -982,23 +881,18 @@ static bool xx_cuckoo_yx_ascii_equal(const xx_cuckoo_yx_text *left,
     return true;
 }
 
-static uint64_t xx_cuckoo_yx_count_strings(
-    const xx_cuckoo_yx_strings *vector, xx_cuckoo_yx_match_fn matches,
-    void *opaque)
+static uint64_t xx_cuckoo_yx_count_strings(const xx_cuckoo_yx_strings *vector, xx_cuckoo_yx_match_fn matches, void *opaque)
 {
     uint64_t count = 0;
     for (size_t i = 0; i < vector->count; ++i) {
         const xx_cuckoo_yx_text *text = &vector->items[i];
-        if (matches((const uint8_t *)text->data, text->length, opaque))
-            ++count;
+        if (matches((const uint8_t *)text->data, text->length, opaque)) ++count;
     }
     return count;
 }
 
-XXFC_API bool xx_cuckoo_yx_query(const xx_cuckoo_yx_report *report,
-                      const char *function, xx_cuckoo_yx_match_fn matches,
-                      void *opaque, bool has_port, int64_t port,
-                      uint64_t *count)
+XXFC_API bool xx_cuckoo_yx_query(const xx_cuckoo_yx_report *report, const char *function, xx_cuckoo_yx_match_fn matches, void *opaque, bool has_port, int64_t port,
+                                 uint64_t *count)
 {
     if (!report || !function || !matches || !count) return false;
     *count = 0;
@@ -1017,9 +911,7 @@ XXFC_API bool xx_cuckoo_yx_query(const xx_cuckoo_yx_report *report,
     } else if (strcmp(function, "registry.key_access") == 0) {
         if (has_port) return false;
         *count = xx_cuckoo_yx_count_strings(&report->keys, matches, opaque);
-    } else if (strcmp(function, "network.http_request") == 0 ||
-               strcmp(function, "network.http_get") == 0 ||
-               strcmp(function, "network.http_post") == 0 ||
+    } else if (strcmp(function, "network.http_request") == 0 || strcmp(function, "network.http_get") == 0 || strcmp(function, "network.http_post") == 0 ||
                strcmp(function, "network.http_user_agent") == 0) {
         bool agent = strcmp(function, "network.http_user_agent") == 0;
         bool get = strcmp(function, "network.http_get") == 0;
@@ -1027,31 +919,19 @@ XXFC_API bool xx_cuckoo_yx_query(const xx_cuckoo_yx_report *report,
         if (has_port) return false;
         for (size_t i = 0; i < report->http.count; ++i) {
             const xx_cuckoo_yx_http *item = &report->http.items[i];
-            const xx_cuckoo_yx_text *text = agent ? &item->user_agent :
-                                                 &item->uri;
-            if (!agent && (!item->method.data ||
-                (get && !xx_cuckoo_yx_ascii_equal(&item->method, "get")) ||
-                (post && !xx_cuckoo_yx_ascii_equal(&item->method, "post"))))
+            const xx_cuckoo_yx_text *text = agent ? &item->user_agent : &item->uri;
+            if (!agent && (!item->method.data || (get && !xx_cuckoo_yx_ascii_equal(&item->method, "get")) || (post && !xx_cuckoo_yx_ascii_equal(&item->method, "post"))))
                 continue;
-            if (text->data && matches((const uint8_t *)text->data,
-                                      text->length, opaque)) ++*count;
+            if (text->data && matches((const uint8_t *)text->data, text->length, opaque)) ++*count;
         }
-    } else if (strcmp(function, "network.tcp") == 0 ||
-               strcmp(function, "network.udp") == 0) {
-        const xx_cuckoo_yx_connection_vector *vector =
-            strcmp(function, "network.tcp") == 0 ?
-                &report->tcp : &report->udp;
+    } else if (strcmp(function, "network.tcp") == 0 || strcmp(function, "network.udp") == 0) {
+        const xx_cuckoo_yx_connection_vector *vector = strcmp(function, "network.tcp") == 0 ? &report->tcp : &report->udp;
         if (!has_port) return false;
         for (size_t i = 0; i < vector->count; ++i) {
             const xx_cuckoo_yx_connection *item = &vector->items[i];
-            if (!item->has_dport || item->dport != (uint64_t)port)
-                continue;
-            if ((item->dst.data &&
-                 matches((const uint8_t *)item->dst.data,
-                         item->dst.length, opaque)) ||
-                (item->dst_domain.data &&
-                 matches((const uint8_t *)item->dst_domain.data,
-                         item->dst_domain.length, opaque)))
+            if (!item->has_dport || item->dport != (uint64_t)port) continue;
+            if ((item->dst.data && matches((const uint8_t *)item->dst.data, item->dst.length, opaque)) ||
+                (item->dst_domain.data && matches((const uint8_t *)item->dst_domain.data, item->dst_domain.length, opaque)))
                 ++*count;
         }
     } else return false;

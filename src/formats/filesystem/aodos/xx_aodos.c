@@ -73,7 +73,6 @@ static const uint8_t aodos_magic[4] = {0xa0U, 0x00U, 0x16U, 0x01U};
 
 /* KOI8-R's upper half, kept as Unicode scalar values before UTF-8 emission. */
 
-
 static bool aodos_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
 {
     size_t transfer_capacity = xx_get_file_buffer_size();

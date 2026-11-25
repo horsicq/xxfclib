@@ -12,8 +12,6 @@ uint64_t xx_vxworks_get_number_of_metadata(Abstractformat *self, xx_pd_struct *p
 
 const StreamMetadata *xx_vxworks_get_stream_metadata(void)
 {
-    static const StreamMetadata stream = {
-        .get_number_of_metadata = xx_vxworks_get_number_of_metadata
-    };
+    static const StreamMetadata stream = {.get_number_of_metadata = xx_vxworks_get_number_of_metadata};
     return &stream;
 }

@@ -69,16 +69,13 @@ void xx_history_destroy(xx_history *history)
     xx_mem_free(history);
 }
 
-xx_history_status xx_history_prepare(xx_history *history,
-    const xx_history_command *command, xx_history_entry **entry)
+xx_history_status xx_history_prepare(xx_history *history, const xx_history_command *command, xx_history_entry **entry)
 {
     xx_history_entry *prepared;
     if (entry) *entry = NULL;
-    if (!history || !command || !entry || !command->undo || !command->redo)
-        return XX_HISTORY_INVALID_ARGUMENT;
+    if (!history || !command || !entry || !command->undo || !command->redo) return XX_HISTORY_INVALID_ARGUMENT;
     if (history->busy || history->pending) return XX_HISTORY_BUSY;
-    if (history->applied == (size_t)-1)
-        return XX_HISTORY_OUT_OF_MEMORY;
+    if (history->applied == (size_t)-1) return XX_HISTORY_OUT_OF_MEMORY;
     prepared = (xx_history_entry *)xx_mem_calloc(1, sizeof(*prepared));
     if (!prepared) return XX_HISTORY_OUT_OF_MEMORY;
     if (command->label) {
@@ -101,8 +98,7 @@ xx_history_status xx_history_prepare(xx_history *history,
     return XX_HISTORY_OK;
 }
 
-xx_history_status xx_history_commit(xx_history *history,
-    xx_history_entry *entry)
+xx_history_status xx_history_commit(xx_history *history, xx_history_entry *entry)
 {
     xx_history_entry *discarded;
     if (!history || !entry) return XX_HISTORY_INVALID_ARGUMENT;
@@ -131,8 +127,7 @@ xx_history_status xx_history_commit(xx_history *history,
     return XX_HISTORY_OK;
 }
 
-xx_history_status xx_history_abort(xx_history *history,
-    xx_history_entry *entry)
+xx_history_status xx_history_abort(xx_history *history, xx_history_entry *entry)
 {
     if (!history || !entry) return XX_HISTORY_INVALID_ARGUMENT;
     if (history->busy) return XX_HISTORY_BUSY;
@@ -144,8 +139,7 @@ xx_history_status xx_history_abort(xx_history *history,
     return XX_HISTORY_OK;
 }
 
-xx_history_status xx_history_push_applied(xx_history *history,
-    const xx_history_command *command)
+xx_history_status xx_history_push_applied(xx_history *history, const xx_history_command *command)
 {
     xx_history_entry *entry;
     xx_history_status status = xx_history_prepare(history, command, &entry);
@@ -213,8 +207,7 @@ int xx_history_can_undo(const xx_history *history)
 
 int xx_history_can_redo(const xx_history *history)
 {
-    return history && !history->busy && !history->pending &&
-        history->count > history->applied;
+    return history && !history->busy && !history->pending && history->count > history->applied;
 }
 
 size_t xx_history_undo_count(const xx_history *history)

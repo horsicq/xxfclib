@@ -36,9 +36,7 @@ extern "C" {
  * `out` must have at least that many bytes; the caller owns its storage.
  * Returns false for invalid arguments or an insufficient capacity.
  */
-XXFC_API bool xx_string_utf8_lossy(const uint8_t *bytes, size_t length,
-                                   char *out, size_t capacity,
-                                   size_t *written);
+XXFC_API bool xx_string_utf8_lossy(const uint8_t *bytes, size_t length, char *out, size_t capacity, size_t *written);
 
 /**
  * @brief Lowercase bytes as Rust's str::to_lowercase does.
@@ -49,8 +47,7 @@ XXFC_API bool xx_string_utf8_lossy(const uint8_t *bytes, size_t length,
  * U+03C3 otherwise; U+0130 expands to "i" + U+0307). The caller frees
  * *out. Returns false for invalid arguments or allocation failure.
  */
-XXFC_API bool xx_string_to_lower_alloc(const uint8_t *bytes, size_t length,
-                                       char **out, size_t *out_length);
+XXFC_API bool xx_string_to_lower_alloc(const uint8_t *bytes, size_t length, char **out, size_t *out_length);
 
 /**
  * @brief Copy bytes with leading/trailing Unicode whitespace removed.
@@ -60,17 +57,14 @@ XXFC_API bool xx_string_to_lower_alloc(const uint8_t *bytes, size_t length,
  * symbol and string values with). The caller frees *out. Returns false for
  * invalid arguments or allocation failure.
  */
-XXFC_API bool xx_string_trim_whitespace_alloc(const uint8_t *bytes,
-                                              size_t length, char **out,
-                                              size_t *out_length);
+XXFC_API bool xx_string_trim_whitespace_alloc(const uint8_t *bytes, size_t length, char **out, size_t *out_length);
 
 /**
  * @brief Receives consecutive output chunks of a streaming conversion.
  *
  * The chunk is only valid during the call. Chunks are never empty.
  */
-typedef void (*xx_string_sink_fn)(void *opaque, const char *bytes,
-                                  size_t length);
+typedef void (*xx_string_sink_fn)(void *opaque, const char *bytes, size_t length);
 
 /**
  * @brief Streaming form of xx_string_to_lower_alloc.
@@ -82,9 +76,7 @@ typedef void (*xx_string_sink_fn)(void *opaque, const char *bytes,
  * output arrives in chunks of at most 256 bytes. The sink is not called
  * for empty output. Returns false for invalid arguments.
  */
-XXFC_API bool xx_string_to_lower_stream(const uint8_t *bytes, size_t length,
-                                        xx_string_sink_fn sink,
-                                        void *opaque);
+XXFC_API bool xx_string_to_lower_stream(const uint8_t *bytes, size_t length, xx_string_sink_fn sink, void *opaque);
 
 /**
  * @brief Trim Unicode whitespace and lowercase, as Rust's
@@ -97,9 +89,7 @@ XXFC_API bool xx_string_to_lower_stream(const uint8_t *bytes, size_t length,
  * caller frees *out. Returns false for invalid arguments or allocation
  * failure.
  */
-XXFC_API bool xx_string_trim_lower_alloc(const uint8_t *bytes, size_t length,
-                                         bool final_sigma, char **out,
-                                         size_t *out_length);
+XXFC_API bool xx_string_trim_lower_alloc(const uint8_t *bytes, size_t length, bool final_sigma, char **out, size_t *out_length);
 
 /**
  * @brief Unicode 17 simple lowercase mapping of one scalar.
@@ -119,8 +109,7 @@ XXFC_API size_t xx_string_lower_mapping_count(void);
  * Entries are sorted by source scalar. Returns false when @p index is out
  * of range or an output pointer is NULL.
  */
-XXFC_API bool xx_string_lower_mapping_at(size_t index, uint32_t *source,
-                                         uint32_t *lower);
+XXFC_API bool xx_string_lower_mapping_at(size_t index, uint32_t *source, uint32_t *lower);
 
 /**
  * @brief Scalars that share the simple lowercase of @p scalar.
@@ -131,8 +120,7 @@ XXFC_API bool xx_string_lower_mapping_at(size_t index, uint32_t *source,
  * modifier matches. Returns the number of variants, or 0 when there would
  * be more than four or variants is NULL.
  */
-XXFC_API size_t xx_string_scalar_lower_variants(uint32_t scalar,
-                                                uint32_t variants[4]);
+XXFC_API size_t xx_string_scalar_lower_variants(uint32_t scalar, uint32_t variants[4]);
 
 #ifdef __cplusplus
 }

@@ -815,7 +815,8 @@ static bool pdf_object_stream(pdf_document *d, pdf_entry *container)
     if (capacity > d->limit - d->used) goto done;
     d->used += capacity;
     {
-        static const char *raw_triggers[] = {"/OpenAction", "/AA", "/JavaScript", "/JS", "/Launch", "/EmbeddedFile", "/URI", "/SubmitForm", "/GoToR", "/RichMedia", "/AcroForm", "/XFA"};
+        static const char *raw_triggers[] = {"/OpenAction", "/AA",         "/JavaScript", "/JS",        "/Launch",   "/EmbeddedFile",
+                                             "/URI",        "/SubmitForm", "/GoToR",      "/RichMedia", "/AcroForm", "/XFA"};
         size_t t, slen, j;
         for (t = 0; t < sizeof(raw_triggers) / sizeof(raw_triggers[0]); ++t) {
             slen = xx_rt_strlen(raw_triggers[t]);
@@ -1296,8 +1297,9 @@ bool xx_pdf_unpack_current_archive_record_to_device(Abstractformat *f, xx_archiv
     size_t limit = PDF_DEFAULT_LIMIT, memory_limit, size = 0, capacity = 0, done = 0;
     uint8_t *data = NULL;
     bool ok = false;
-    if (!f || !s || !destination || s->format != f || !s->has_record || !s->internal_state || xx_pd_is_stopped(pd) ||
-        !(d = (pdf_document *)((xx_pdf *)f)->document) || d->encrypted) return false;
+    if (!f || !s || !destination || s->format != f || !s->has_record || !s->internal_state || xx_pd_is_stopped(pd) || !(d = (pdf_document *)((xx_pdf *)f)->document) ||
+        d->encrypted)
+        return false;
     cursor = (pdf_record_cursor *)s->internal_state;
     if (cursor->index >= d->member_count) return false;
     e = &d->entries[d->members[cursor->index]];
@@ -1307,11 +1309,11 @@ bool xx_pdf_unpack_current_archive_record_to_device(Abstractformat *f, xx_archiv
     if (option && xx_var_get_u64(option) < limit) limit = (size_t)xx_var_get_u64(option);
     option = xx_format_resolve_extra_parameter(f, &s->options, XX_META_ID_OPT_MEMORY_LIMIT);
     if (option && xx_var_get_u64(option) < memory_limit) memory_limit = (size_t)xx_var_get_u64(option);
-    if ((e->size_known && e->decoded_size > limit) || !pdf_decode(d,e,limit,memory_limit,&data,&size,&capacity) ||
-        (e->size_known && size != e->decoded_size)) goto done;
+    if ((e->size_known && e->decoded_size > limit) || !pdf_decode(d, e, limit, memory_limit, &data, &size, &capacity) || (e->size_known && size != e->decoded_size))
+        goto done;
     while (done < size) {
         size_t n = size - done > 65536U ? 65536U : size - done;
-        if (xx_pd_is_stopped(pd) || xx_io_write(destination,data+done,n) != (ssize_t)n) goto done;
+        if (xx_pd_is_stopped(pd) || xx_io_write(destination, data + done, n) != (ssize_t)n) goto done;
         done += n;
     }
     ok = !xx_pd_is_stopped(pd);

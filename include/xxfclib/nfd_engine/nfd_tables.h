@@ -103,14 +103,10 @@ XXFC_API size_t xx_nfd_tables_row_count(void);
 XXFC_API const char *xx_nfd_tables_content_sha256(void);
 XXFC_API const char *xx_nfd_tables_data_version(void);
 
-XXFC_API bool xx_nfd_signature_match(const xx_nfd_signature_row *row, xx_io_device *device,
-                                     int64_t offset, const xx_data_sig_context *context,
-                                     int64_t *end_offset);
+XXFC_API bool xx_nfd_signature_match(const xx_nfd_signature_row *row, xx_io_device *device, int64_t offset, const xx_data_sig_context *context, int64_t *end_offset);
 XXFC_API bool xx_nfd_string_match(const xx_nfd_string_row *row, const void *data, size_t size);
 XXFC_API bool xx_nfd_const_match(const xx_nfd_const_row *row, uint64_t value1, uint64_t value2);
-XXFC_API bool xx_nfd_resource_match(const xx_nfd_resource_row *row,
-                                    const char *name1, uint32_t id1,
-                                    const char *name2, uint32_t id2);
+XXFC_API bool xx_nfd_resource_match(const xx_nfd_resource_row *row, const char *name1, uint32_t id1, const char *name2, uint32_t id2);
 XXFC_API bool xx_nfd_msrich_match(const xx_nfd_msrich_row *row, uint16_t id, uint32_t build);
 
 #ifdef __cplusplus

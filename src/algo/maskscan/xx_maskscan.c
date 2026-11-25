@@ -10,8 +10,7 @@
 #include "platforms/xx_maskscan_platform.h"
 #include "xxfclib/global/xx_global.h"
 
-size_t xx_maskscan_find_scalar(const uint8_t *data, size_t first, size_t last,
-                               const xx_maskscan_probe *probes, size_t count)
+size_t xx_maskscan_find_scalar(const uint8_t *data, size_t first, size_t last, const xx_maskscan_probe *probes, size_t count)
 {
     const uint8_t *lead = data + probes[0].offset;
     uint8_t lead_mask = probes[0].mask, lead_value = probes[0].value;
@@ -27,8 +26,7 @@ size_t xx_maskscan_find_scalar(const uint8_t *data, size_t first, size_t last,
     }
 }
 
-static bool xx_maskscan_valid(const void *data, size_t size, size_t first, size_t last,
-                              const xx_maskscan_probe *probes, size_t count)
+static bool xx_maskscan_valid(const void *data, size_t size, size_t first, size_t last, const xx_maskscan_probe *probes, size_t count)
 {
     size_t k;
     if (!data || !probes || count == 0 || count > XX_MASKSCAN_MAX_PROBES || first > last || last >= size) return false;
@@ -51,8 +49,7 @@ bool xx_maskscan_backend_available(int backend)
     return false;
 }
 
-static size_t xx_maskscan_run(int backend, const uint8_t *data, size_t first, size_t last,
-                              const xx_maskscan_probe *probes, size_t count)
+static size_t xx_maskscan_run(int backend, const uint8_t *data, size_t first, size_t last, const xx_maskscan_probe *probes, size_t count)
 {
 #ifdef XX_MASKSCAN_X86
     if (backend == XX_MASKSCAN_BACKEND_AVX2) return xx_maskscan_find_avx2(data, first, last, probes, count);
@@ -63,8 +60,7 @@ static size_t xx_maskscan_run(int backend, const uint8_t *data, size_t first, si
     return xx_maskscan_find_scalar(data, first, last, probes, count);
 }
 
-size_t xx_maskscan_find(const void *data, size_t size, size_t first, size_t last,
-                        const xx_maskscan_probe *probes, size_t count)
+size_t xx_maskscan_find(const void *data, size_t size, size_t first, size_t last, const xx_maskscan_probe *probes, size_t count)
 {
     int backend = XX_MASKSCAN_BACKEND_SCALAR;
     if (!xx_maskscan_valid(data, size, first, last, probes, count)) return SIZE_MAX;
@@ -75,12 +71,9 @@ size_t xx_maskscan_find(const void *data, size_t size, size_t first, size_t last
     return xx_maskscan_run(backend, (const uint8_t *)data, first, last, probes, count);
 }
 
-bool xx_maskscan_find_backend(int backend, const void *data, size_t size, size_t first,
-                              size_t last, const xx_maskscan_probe *probes, size_t count,
-                              size_t *found)
+bool xx_maskscan_find_backend(int backend, const void *data, size_t size, size_t first, size_t last, const xx_maskscan_probe *probes, size_t count, size_t *found)
 {
     if (!found || !xx_maskscan_backend_available(backend)) return false;
-    *found = xx_maskscan_valid(data, size, first, last, probes, count) ?
-             xx_maskscan_run(backend, (const uint8_t *)data, first, last, probes, count) : SIZE_MAX;
+    *found = xx_maskscan_valid(data, size, first, last, probes, count) ? xx_maskscan_run(backend, (const uint8_t *)data, first, last, probes, count) : SIZE_MAX;
     return true;
 }

@@ -19,7 +19,7 @@
 #define PDB_OMAP_MAX (64u * 1024u * 1024u)
 
 struct xx_ms_pdb_names {
-    char *buffer;     /* buffer_size bytes + a NUL */
+    char *buffer; /* buffer_size bytes + a NUL */
     uint32_t buffer_size;
 };
 
@@ -29,9 +29,9 @@ typedef struct pdb_omap_entry {
 } pdb_omap_entry;
 
 struct xx_ms_pdb_addr_map {
-    uint32_t *section_va;      /* the sections rvas are computed with */
+    uint32_t *section_va; /* the sections rvas are computed with */
     uint32_t section_count;
-    pdb_omap_entry *omap;      /* from source, sorted by rva */
+    pdb_omap_entry *omap; /* from source, sorted by rva */
     size_t omap_count;
     bool has_omap;
 };
@@ -179,8 +179,7 @@ xx_ms_pdb_addr_map *xx_ms_pdb_addr_map_open(xx_ms_pdb *pdb)
     if (dbi.dbg_stream_count > PDB_DBG_SECTION_HDR && dbi.dbg_streams[PDB_DBG_SECTION_HDR] != 0xFFFF) {
         sect_stream = dbi.dbg_streams[PDB_DBG_SECTION_HDR];
     }
-    if (dbi.dbg_stream_count > PDB_DBG_SECTION_HDR_ORIG && dbi.dbg_streams[PDB_DBG_OMAP_FROM_SRC] != 0xFFFF &&
-        dbi.dbg_streams[PDB_DBG_SECTION_HDR_ORIG] != 0xFFFF) {
+    if (dbi.dbg_stream_count > PDB_DBG_SECTION_HDR_ORIG && dbi.dbg_streams[PDB_DBG_OMAP_FROM_SRC] != 0xFFFF && dbi.dbg_streams[PDB_DBG_SECTION_HDR_ORIG] != 0xFFFF) {
         omap_stream = dbi.dbg_streams[PDB_DBG_OMAP_FROM_SRC];
         orig_stream = dbi.dbg_streams[PDB_DBG_SECTION_HDR_ORIG];
     }

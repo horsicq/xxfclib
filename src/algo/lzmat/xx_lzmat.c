@@ -37,27 +37,26 @@ static bool xx_lzmat_field(xx_lzmat_reader *r, unsigned nibbles, uint32_t *value
 
 static bool xx_lzmat_octet_available(const xx_lzmat_reader *r)
 {
-    return r->position < r->size &&
-        (!r->half || r->size - r->position >= 2U);
+    return r->position < r->size && (!r->half || r->size - r->position >= 2U);
 }
 
-static bool xx_lzmat_overlaps(const uint8_t *input, size_t input_size,
-                              const uint8_t *output, size_t output_size)
+static bool xx_lzmat_overlaps(const uint8_t *input, size_t input_size, const uint8_t *output, size_t output_size)
 {
     uintptr_t a = (uintptr_t)input, b = (uintptr_t)output;
     return a <= b ? b - a < input_size : a - b < output_size;
 }
 
-bool xx_lzmat_decompress(const uint8_t *input, size_t input_size,
-                        uint8_t *output, size_t output_capacity, size_t *written)
+bool xx_lzmat_decompress(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_capacity, size_t *written)
 {
     xx_lzmat_reader r;
     size_t used = 1U;
     if (!written) return false;
     *written = 0U;
-    if (!input || !input_size || !output || !output_capacity ||
-        xx_lzmat_overlaps(input, input_size, output, output_capacity)) return false;
-    r.bytes = input; r.size = input_size; r.position = 1U; r.half = 0U;
+    if (!input || !input_size || !output || !output_capacity || xx_lzmat_overlaps(input, input_size, output, output_capacity)) return false;
+    r.bytes = input;
+    r.size = input_size;
+    r.position = 1U;
+    r.half = 0U;
     output[0] = input[0];
     while (xx_lzmat_octet_available(&r)) {
         uint32_t tag;
@@ -95,17 +94,18 @@ bool xx_lzmat_decompress(const uint8_t *input, size_t input_size,
                             if (r.half) {
                                 if (r.position < 4U || r.position >= r.size) return false;
                                 high = (r.bytes[r.position - 4U] & 0xfcU) << 5U;
-                                ++r.position; r.half = 0U;
+                                ++r.position;
+                                r.half = 0U;
                             } else {
                                 if (r.position < 5U) return false;
-                                high = ((uint32_t)r.bytes[r.position - 5U] |
-                                    ((uint32_t)r.bytes[r.position - 4U] << 8U)) & 0xfc0U;
+                                high = ((uint32_t)r.bytes[r.position - 5U] | ((uint32_t)r.bytes[r.position - 4U] << 8U)) & 0xfc0U;
                                 high <<= 1U;
                             }
                             count = (size_t)(high + (tag & 0x7fU) + 4U) * 8U;
                             if (count > r.size - r.position || count > output_capacity - used) return false;
                             for (k = 0U; k < count; ++k) output[used + k] = r.bytes[r.position + k];
-                            r.position += count; used += count;
+                            r.position += count;
+                            used += count;
                             break;
                         }
                         length += 0x111U;

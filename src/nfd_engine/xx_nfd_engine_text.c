@@ -14,8 +14,7 @@ static bool regex_abort(void *user)
     return xx_pd_is_stopped((xx_pd_struct *)user);
 }
 
-static int regex_find(const char *pattern, const char *flags, const char *text,
-                      int32_t **captures, int *groups, xx_pd_struct *pd)
+static int regex_find(const char *pattern, const char *flags, const char *text, int32_t **captures, int *groups, xx_pd_struct *pd)
 {
     xx_regex *regex;
     char *error = NULL;
@@ -37,8 +36,7 @@ static int regex_find(const char *pattern, const char *flags, const char *text,
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate NFD text captures");
         return -1;
     }
-    status = xx_regex_exec_ex(regex, text, xx_rt_strlen(text), 0, local,
-                              pd ? regex_abort : NULL, pd);
+    status = xx_regex_exec_ex(regex, text, xx_rt_strlen(text), 0, local, pd ? regex_abort : NULL, pd);
     xx_regex_free(regex);
     if (status == XX_REGEX_EXEC_CANCELLED) {
         xx_rt_free(local);
@@ -53,8 +51,7 @@ static int regex_find(const char *pattern, const char *flags, const char *text,
     return 1;
 }
 
-static int regex_test(const char *pattern, const char *flags, const char *text,
-                      xx_pd_struct *pd)
+static int regex_test(const char *pattern, const char *flags, const char *text, xx_pd_struct *pd)
 {
     int32_t *captures;
     int groups;
@@ -90,12 +87,9 @@ static bool contains(const char *text, const char *part)
     return false;
 }
 
-static bool add_text(xx_nfd_binary_state *state, const char *token,
-                     const char *type, const char *name, const char *version,
-                     const char *info, xx_pd_struct *pd)
+static bool add_text(xx_nfd_binary_state *state, const char *token, const char *type, const char *name, const char *version, const char *info, xx_pd_struct *pd)
 {
-    return xx_nfd_pending_put(state, XX_NFD_GROUP_TEXT, token, type, name,
-                              version, info, false, false, false, pd);
+    return xx_nfd_pending_put(state, XX_NFD_GROUP_TEXT, token, type, name, version, info, false, false, false, pd);
 }
 
 static bool add_text_format(xx_nfd_binary_state *state, xx_pd_struct *pd)
@@ -115,19 +109,18 @@ static bool add_text_format(xx_nfd_binary_state *state, xx_pd_struct *pd)
             xx_pd_set_error(pd, XXFC_ERR_IO, "Cannot read NFD text prefix");
             return false;
         }
-        for (i = 0; i < size && bytes[i] != '\n'; ++i) {}
+        for (i = 0; i < size && bytes[i] != '\n'; ++i) {
+        }
         if (i < size) {
-            info = ((i && bytes[i - 1] == '\r') ||
-                    (i + 1 < size && bytes[i + 1] == '\r')) ? "CRLF" : "LF";
+            info = ((i && bytes[i - 1] == '\r') || (i + 1 < size && bytes[i + 1] == '\r')) ? "CRLF" : "LF";
         } else {
-            for (i = 0; i < size && bytes[i] != '\r'; ++i) {}
+            for (i = 0; i < size && bytes[i] != '\r'; ++i) {
+            }
             if (i < size) info = "CR";
         }
         xx_rt_free(bytes);
     }
-    return xx_nfd_pending_put(state, XX_NFD_GROUP_FORMAT, "PLAIN", "format",
-                              state->is_utf8 ? "UTF-8 text" : "Plain text",
-                              "", info, false, false, false, pd);
+    return xx_nfd_pending_put(state, XX_NFD_GROUP_FORMAT, "PLAIN", "format", state->is_utf8 ? "UTF-8 text" : "Plain text", "", info, false, false, false, pd);
 }
 
 static bool scan_c_source(xx_nfd_binary_state *state, xx_pd_struct *pd)
@@ -154,9 +147,7 @@ static bool scan_c_source(xx_nfd_binary_state *state, xx_pd_struct *pd)
             const char *end = cursor;
             const char *dot;
             while (*end && *end != '\n' && *end != '\r') ++end;
-            if ((size_t)(end - cursor) >= 9 &&
-                xx_rt_memcmp(cursor, "#include", 8) == 0 &&
-                (cursor[8] == ' ' || cursor[8] == '\t')) {
+            if ((size_t)(end - cursor) >= 9 && xx_rt_memcmp(cursor, "#include", 8) == 0 && (cursor[8] == ' ' || cursor[8] == '\t')) {
                 dot = (const char *)xx_rt_memchr(cursor, '.', (size_t)(end - cursor));
                 if (!dot) is_cpp = true;
             }
@@ -170,8 +161,7 @@ static bool scan_c_source(xx_nfd_binary_state *state, xx_pd_struct *pd)
         if (define < 0) return false;
         is_c = define != 0;
     }
-    return !is_c || add_text(state, "CCPP", "source", is_cpp ? "C++" : "C/C++",
-                             "", is_header ? "header" : "", pd);
+    return !is_c || add_text(state, "CCPP", "source", is_cpp ? "C++" : "C/C++", "", is_header ? "header" : "", pd);
 }
 
 static bool scan_sources(xx_nfd_binary_state *state, xx_pd_struct *pd)
@@ -192,8 +182,7 @@ static bool scan_sources(xx_nfd_binary_state *state, xx_pd_struct *pd)
     class_record = regex_test("class\\s", "", text, pd);
     def_record = regex_test("\\sdef\\s", "", text, pd);
     if (import_record < 0 || class_record < 0 || def_record < 0) return false;
-    if (import_record && class_record && def_record && contains(text, "self") &&
-        !add_text(state, "PYTHON", "source", "Python", "", "", pd)) return false;
+    if (import_record && class_record && def_record && contains(text, "self") && !add_text(state, "PYTHON", "source", "Python", "", "", pd)) return false;
     if (xx_rt_strncmp(text, "<?xml", 5) == 0) {
         match = regex_find("version=\"(.*?)\"", "", text, &captures, &groups, pd);
         if (match < 0) return false;
@@ -206,13 +195,14 @@ static bool scan_sources(xx_nfd_binary_state *state, xx_pd_struct *pd)
             }
         }
         if (!add_text(state, "XML", "source", "XML", version ? version : "", "", pd)) {
-            xx_rt_free(version); xx_rt_free(captures); return false;
+            xx_rt_free(version);
+            xx_rt_free(captures);
+            return false;
         }
         xx_rt_free(version);
         xx_rt_free(captures);
     }
-    return xx_rt_strncmp(text, "<?php", 5) != 0 ||
-           add_text(state, "PHP", "source", "PHP", "", "", pd);
+    return xx_rt_strncmp(text, "<?php", 5) != 0 || add_text(state, "PHP", "source", "PHP", "", "", pd);
 }
 
 static bool ascii_equal_i(const char *left, const char *right)
@@ -252,10 +242,16 @@ static bool scan_shebang(xx_nfd_binary_state *state, xx_pd_struct *pd)
     while (*trimmed == ' ' || *trimmed == '\t' || *trimmed == '\r') ++trimmed;
     size = xx_rt_strlen(trimmed);
     while (size && (trimmed[size - 1] == ' ' || trimmed[size - 1] == '\t' || trimmed[size - 1] == '\r')) trimmed[--size] = 0;
-    match = regex_find("^#!\\s*(?:.*/)?(?:env\\s+)?([^\\s]+)", "", trimmed,
-                       &captures, &groups, pd);
-    if (match < 0) { xx_rt_free(line); return false; }
-    if (!match || groups < 1) { xx_rt_free(captures); xx_rt_free(line); return true; }
+    match = regex_find("^#!\\s*(?:.*/)?(?:env\\s+)?([^\\s]+)", "", trimmed, &captures, &groups, pd);
+    if (match < 0) {
+        xx_rt_free(line);
+        return false;
+    }
+    if (!match || groups < 1) {
+        xx_rt_free(captures);
+        xx_rt_free(line);
+        return true;
+    }
     interpreter = capture_copy(trimmed, captures, 1);
     xx_rt_free(captures);
     if (!interpreter) {
@@ -264,10 +260,9 @@ static bool scan_shebang(xx_nfd_binary_state *state, xx_pd_struct *pd)
         return false;
     }
     size = xx_rt_strlen(interpreter);
-    if (size >= 4 && interpreter[size - 4] == '.' &&
-        (interpreter[size - 3] == 'e' || interpreter[size - 3] == 'E') &&
-        (interpreter[size - 2] == 'x' || interpreter[size - 2] == 'X') &&
-        (interpreter[size - 1] == 'e' || interpreter[size - 1] == 'E')) interpreter[size -= 4] = 0;
+    if (size >= 4 && interpreter[size - 4] == '.' && (interpreter[size - 3] == 'e' || interpreter[size - 3] == 'E') &&
+        (interpreter[size - 2] == 'x' || interpreter[size - 2] == 'X') && (interpreter[size - 1] == 'e' || interpreter[size - 1] == 'E'))
+        interpreter[size -= 4] = 0;
     if (ascii_equal_i(interpreter, "sh")) {
         name = (char *)xx_rt_malloc(6);
         if (name) xx_rt_memcpy(name, "Shell", 6);
@@ -283,12 +278,16 @@ static bool scan_shebang(xx_nfd_binary_state *state, xx_pd_struct *pd)
         }
     }
     if (!name) {
-        xx_rt_free(interpreter); xx_rt_free(line);
+        xx_rt_free(interpreter);
+        xx_rt_free(line);
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate NFD interpreter name");
         return false;
     }
     if (!add_text(state, "SHELL", "script", name, "", "", pd)) {
-        xx_rt_free(name); xx_rt_free(interpreter); xx_rt_free(line); return false;
+        xx_rt_free(name);
+        xx_rt_free(interpreter);
+        xx_rt_free(line);
+        return false;
     }
     xx_rt_free(name);
     xx_rt_free(interpreter);

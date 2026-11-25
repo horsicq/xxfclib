@@ -8,16 +8,14 @@
 #include "xxfclib/list/xx_list.h"
 #include "xxfclib/strings/xx_string.h"
 
-static const ApiEntry g_pdf_api_table[] = {
-    {"getHeaderCommentAsHex", A_getHeaderCommentAsHex, 0},
-    {"getStringValuesByKey", A_getStringValuesByKey, 1},
-    {"getValuesByKey", A_getValuesByKey, 1},
-    {"isValuesHexByKey", A_isValuesHexByKey, 1},
-    {"isEncrypted", A_isEncrypted, 0},
-    {"getEncryption", A_getEncryption, 0},
-    {"getPermissions", A_getPermissions, 0},
-    {NULL, A_NONE, 0}
-};
+static const ApiEntry g_pdf_api_table[] = {{"getHeaderCommentAsHex", A_getHeaderCommentAsHex, 0},
+                                           {"getStringValuesByKey", A_getStringValuesByKey, 1},
+                                           {"getValuesByKey", A_getValuesByKey, 1},
+                                           {"isValuesHexByKey", A_isValuesHexByKey, 1},
+                                           {"isEncrypted", A_isEncrypted, 0},
+                                           {"getEncryption", A_getEncryption, 0},
+                                           {"getPermissions", A_getPermissions, 0},
+                                           {NULL, A_NONE, 0}};
 
 void die_engine_api_register_pdf(JSCtx *pCtx, JSVal object)
 {
@@ -75,9 +73,7 @@ bool die_engine_api_dispatch_pdf(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int 
             return true;
         }
 
-        case A_isEncrypted:
-            *pResult = js_bool(pEngine->bHasPdf ? xx_pdf_is_encrypted(&pEngine->pdf) : 0);
-            return true;
+        case A_isEncrypted: *pResult = js_bool(pEngine->bHasPdf ? xx_pdf_is_encrypted(&pEngine->pdf) : 0); return true;
 
         case A_getEncryption:
         case A_getPermissions: {
@@ -96,8 +92,7 @@ bool die_engine_api_dispatch_pdf(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int 
         }
 
         /* ------------------------------------------------------- DEX  */
-        default:
-            break;
+        default: break;
     }
 
     return false;

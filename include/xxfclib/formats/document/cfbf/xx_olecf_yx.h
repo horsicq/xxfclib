@@ -30,7 +30,6 @@
 extern "C" {
 #endif
 
-
 /* Public YARA-X olecf module fields. The module is experimental and must be
  * enabled explicitly in YARA-X v1.21.0; these helpers implement its exposed
  * is_olecf flag and streams collection. */
@@ -51,13 +50,11 @@ bool xx_olecf_yx_is_olecf(const uint8_t *data, size_t size);
 
 /* Always defined for valid arguments, including count zero on non-OLECF.
  * Returns false only for invalid arguments or allocation failure. */
-bool xx_olecf_yx_stream_count(const uint8_t *data, size_t size,
-                            uint64_t *count);
+bool xx_olecf_yx_stream_count(const uint8_t *data, size_t size, uint64_t *count);
 
 /* The zero-based stream index follows the order in YARA-X's IndexMap.
  * Returns false when index is out of range or the file is invalid. */
-bool xx_olecf_yx_stream_get(const uint8_t *data, size_t size,
-                          uint64_t index, xx_olecf_yx_stream *stream);
+bool xx_olecf_yx_stream_get(const uint8_t *data, size_t size, uint64_t index, xx_olecf_yx_stream *stream);
 
 /* A compound file parsed once, for readers of stream contents (the msi
  * module). It mirrors YARA-X's Olecf (lib/src/modules/olecf/parser.rs). */
@@ -69,8 +66,7 @@ void xx_olecf_yx_close(xx_olecf_yx_document *document);
 size_t xx_olecf_yx_sector_size(const xx_olecf_yx_document *document);
 size_t xx_olecf_yx_entry_count(const xx_olecf_yx_document *document);
 /* Directory entries in IndexMap order (Olecf::streams). */
-const xx_olecf_yx_stream *xx_olecf_yx_entry(const xx_olecf_yx_document *document,
-                                      size_t index);
+const xx_olecf_yx_stream *xx_olecf_yx_entry(const xx_olecf_yx_document *document, size_t index);
 
 /* Contents of entry `index`, like Olecf::get_stream_data: entries smaller
  * than 4096 bytes other than the root storage are read through the MiniFAT
@@ -78,8 +74,6 @@ const xx_olecf_yx_stream *xx_olecf_yx_entry(const xx_olecf_yx_document *document
  * borrows from the scanned data (*owner is NULL); any other chain is
  * gathered into *owner, which the caller frees, and *bytes points into it.
  * Fails for a broken, cyclic or truncated chain or a stream above 256 MiB. */
-bool xx_olecf_yx_entry_data(const xx_olecf_yx_document *document, size_t index,
-                         const uint8_t **bytes, size_t *size,
-                         uint8_t **owner);
+bool xx_olecf_yx_entry_data(const xx_olecf_yx_document *document, size_t index, const uint8_t **bytes, size_t *size, uint8_t **owner);
 
 #endif

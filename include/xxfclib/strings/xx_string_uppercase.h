@@ -34,8 +34,7 @@ extern "C" {
  * result is NUL-terminated and the caller frees *out. Returns false for
  * invalid arguments or allocation failure.
  */
-XXFC_API bool xx_string_to_upper_alloc(const uint8_t *bytes, size_t length,
-                                       char **out, size_t *out_length);
+XXFC_API bool xx_string_to_upper_alloc(const uint8_t *bytes, size_t length, char **out, size_t *out_length);
 
 /**
  * @brief Whether a well-formed scalar of the bytes has a case property.
@@ -43,8 +42,7 @@ XXFC_API bool xx_string_to_upper_alloc(const uint8_t *bytes, size_t length,
  * Tests Rust's char::is_uppercase (Uppercase) when @p uppercase is true and
  * char::is_lowercase (Lowercase) otherwise. Malformed bytes are skipped.
  */
-XXFC_API bool xx_string_has_case_property(const uint8_t *bytes, size_t length,
-                                          bool uppercase);
+XXFC_API bool xx_string_has_case_property(const uint8_t *bytes, size_t length, bool uppercase);
 
 #ifdef __cplusplus
 }

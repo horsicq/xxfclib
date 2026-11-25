@@ -44,9 +44,9 @@ static bool sfx7_resource_at_parse(Abstractformat *f, pm_stream *s, int64_t at, 
     bytes = xx_data_get_u64(h + 20, 8, 0, false);
     if (offset > UINT32_MAX - 32U || bytes > UINT32_MAX - 32U - offset) return false;
     extent = 32U + offset + bytes;
-    if (!xx_sfx_pe_resource_contains(f, at, (uint32_t)extent) || carrier_stop(pd) ||
-        !carrier_pe(f, &image_end, &cabinet, &cabinet_end, pd) ||
-        !executable_carrier_at_parse(f, s, at, pd)) return false;
+    if (!xx_sfx_pe_resource_contains(f, at, (uint32_t)extent) || carrier_stop(pd) || !carrier_pe(f, &image_end, &cabinet, &cabinet_end, pd) ||
+        !executable_carrier_at_parse(f, s, at, pd))
+        return false;
     if (s->size < image_end) s->size = image_end;
     return true;
 }
@@ -181,15 +181,23 @@ bool xx_sfx_7zip_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
     if (outer->nested_7zip) return true;
     s = pm_open(f, pd);
     if (!s) return false;
-    if (!s->count || s->count > 128U) { pm_free_stream(s); return false; }
+    if (!s->count || s->count > 128U) {
+        pm_free_stream(s);
+        return false;
+    }
     bundle = (sfx7_bundle *)xx_mem_calloc(1, sizeof(*bundle));
-    if (!bundle) { pm_free_stream(s); return false; }
+    if (!bundle) {
+        pm_free_stream(s);
+        return false;
+    }
     for (size_t i = 0; i < s->count; ++i) {
         xx_7zip *nested = s->items[i].offset >= f->base_address ? xx_7zip_create(f->device, s->items[i].offset) : NULL;
-        if (!nested || carrier_stop(pd) || !xx_7zip_handle_base_info(&nested->format, pd) ||
-            nested->format.format_size != s->items[i].size || nested->format.number_of_archive_records > 65536U - records) {
+        if (!nested || carrier_stop(pd) || !xx_7zip_handle_base_info(&nested->format, pd) || nested->format.format_size != s->items[i].size ||
+            nested->format.number_of_archive_records > 65536U - records) {
             if (nested) xx_7zip_free(nested);
-            sfx7_bundle_free(bundle); pm_free_stream(s); return false;
+            sfx7_bundle_free(bundle);
+            pm_free_stream(s);
+            return false;
         }
         bundle->readers[bundle->count++] = nested;
         records += nested->format.number_of_archive_records;

@@ -1124,7 +1124,6 @@ static bool sit_read_at(xx_io_device *device, int64_t offset, void *buffer, size
 /* Mac OS Roman 0x80..0xFF as Unicode (Apple's ROMAN.TXT, euro at 0xDB), the
  * same table the MacBinary reader uses. */
 
-
 static char sit_upper(char c)
 {
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
@@ -1573,7 +1572,8 @@ static bool sit_set_record(xx_archive_record *record, const sit_member *member)
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->packed_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->unpacked_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc16) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->modified >= 2082844800U ? (uint64_t)(member->modified - 2082844800U) : 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, member->crc16) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->modified >= 2082844800U ? (uint64_t)(member->modified - 2082844800U) : 0U) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->finder_flags) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->mac_type) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, member->encrypted) &&

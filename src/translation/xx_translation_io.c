@@ -5,8 +5,7 @@
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
 
-xx_translation_status xx_translation_load_po_file(const char *path,
-    xx_translation **out, size_t *error_line)
+xx_translation_status xx_translation_load_po_file(const char *path, xx_translation **out, size_t *error_line)
 {
     xx_io_device *file;
     int64_t length;
@@ -24,7 +23,10 @@ xx_translation_status xx_translation_load_po_file(const char *path,
         return XX_TRANSLATION_IO_ERROR;
     }
     data = xx_mem_alloc(length ? (size_t)length : 1);
-    if (!data) { xx_io_close(file); return XX_TRANSLATION_OUT_OF_MEMORY; }
+    if (!data) {
+        xx_io_close(file);
+        return XX_TRANSLATION_OUT_OF_MEMORY;
+    }
     if (length && !xx_io_read_at(file, 0, data, (size_t)length)) {
         xx_mem_free(data);
         xx_io_close(file);

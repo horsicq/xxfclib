@@ -16,10 +16,9 @@ typedef struct xx_regex_allocator {
 
 /* NULL selects the public core's allocator. A non-NULL table must supply all
  * three callbacks. This bridge is private and introduces no JS dependency. */
-xx_regex *xx_regex_compile_with_allocator(const char *pattern, const char *flags, char **error,
-                                         const xx_regex_allocator *allocator);
+xx_regex *xx_regex_compile_with_allocator(const char *pattern, const char *flags, char **error, const xx_regex_allocator *allocator);
 
-xx_regex *xx_regex_compile_n_with_allocator(const char *pattern, size_t pattern_size, const char *flags,
-                                           size_t flags_size, char **error, const xx_regex_allocator *allocator);
+xx_regex *xx_regex_compile_n_with_allocator(const char *pattern, size_t pattern_size, const char *flags, size_t flags_size, char **error,
+                                            const xx_regex_allocator *allocator);
 
 #endif /* XX_REGEX_INTERNAL_H */

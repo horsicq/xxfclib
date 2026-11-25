@@ -41,8 +41,7 @@ static int xx_io_process_access_valid(xx_io_process_access_t access)
 
 bool xx_io_is_process(const xx_io_device *device)
 {
-    return device && device->priv && device->read == xx_io_process_read_cb &&
-           device->write == xx_io_process_write_cb && device->seek64 == xx_io_process_seek64_cb &&
+    return device && device->priv && device->read == xx_io_process_read_cb && device->write == xx_io_process_write_cb && device->seek64 == xx_io_process_seek64_cb &&
            device->close == xx_io_process_close_cb;
 }
 
@@ -66,8 +65,7 @@ static int xx_io_process_range_valid(uint64_t address, size_t n)
     return 1;
 }
 
-static xx_io_process_state_t *xx_io_process_transfer_state(xx_io_device *device, uint64_t address,
-    const void *buffer, size_t n, unsigned int access)
+static xx_io_process_state_t *xx_io_process_transfer_state(xx_io_device *device, uint64_t address, const void *buffer, size_t n, unsigned int access)
 {
     xx_io_process_state_t *state = xx_io_process_state_of(device);
     if (!state) return NULL;
@@ -123,7 +121,10 @@ bool xx_io_process_read_exact_at(xx_io_device *device, uint64_t address, void *b
     while (offset < n) {
         ssize_t got = xx_io_process_read_at(device, address + (uint64_t)offset, (unsigned char *)buffer + offset, n - offset);
         if (got < 0) return false;
-        if (!got) { xx_io_platform_process_set_error(EIO); return false; }
+        if (!got) {
+            xx_io_platform_process_set_error(EIO);
+            return false;
+        }
         offset += (size_t)got;
     }
     return true;
@@ -136,7 +137,10 @@ bool xx_io_process_write_exact_at(xx_io_device *device, uint64_t address, const 
     while (offset < n) {
         ssize_t put = xx_io_process_write_at(device, address + (uint64_t)offset, (const unsigned char *)buffer + offset, n - offset);
         if (put < 0) return false;
-        if (!put) { xx_io_platform_process_set_error(EIO); return false; }
+        if (!put) {
+            xx_io_platform_process_set_error(EIO);
+            return false;
+        }
         offset += (size_t)put;
     }
     return true;
@@ -177,12 +181,24 @@ static int xx_io_process_seek64_cb(xx_io_device *self, int64_t offset, int origi
     xx_io_process_state_t *state = xx_io_process_state_of(self);
     int64_t base;
     if (!state) return -1;
-    if (state->pos > INT64_MAX) { xx_io_platform_process_set_error(EOVERFLOW); return -1; }
+    if (state->pos > INT64_MAX) {
+        xx_io_platform_process_set_error(EOVERFLOW);
+        return -1;
+    }
     if (origin == SEEK_SET) base = 0;
     else if (origin == SEEK_CUR) base = (int64_t)state->pos;
-    else { xx_io_platform_process_set_error(origin == SEEK_END ? ESPIPE : EINVAL); return -1; }
-    if (offset < -base) { xx_io_platform_process_set_error(EINVAL); return -1; }
-    if (offset > INT64_MAX - base) { xx_io_platform_process_set_error(EOVERFLOW); return -1; }
+    else {
+        xx_io_platform_process_set_error(origin == SEEK_END ? ESPIPE : EINVAL);
+        return -1;
+    }
+    if (offset < -base) {
+        xx_io_platform_process_set_error(EINVAL);
+        return -1;
+    }
+    if (offset > INT64_MAX - base) {
+        xx_io_platform_process_set_error(EOVERFLOW);
+        return -1;
+    }
     state->pos = (uint64_t)(base + offset);
     return 0;
 }
@@ -196,7 +212,10 @@ static int64_t xx_io_process_tell_cb(xx_io_device *self)
 {
     xx_io_process_state_t *state = xx_io_process_state_of(self);
     if (!state) return -1;
-    if (state->pos > INT64_MAX) { xx_io_platform_process_set_error(EOVERFLOW); return -1; }
+    if (state->pos > INT64_MAX) {
+        xx_io_platform_process_set_error(EOVERFLOW);
+        return -1;
+    }
     return (int64_t)state->pos;
 }
 
@@ -220,7 +239,10 @@ static int xx_io_process_close_cb(xx_io_device *self)
 
 int xx_io_process_close(xx_io_device *device)
 {
-    if (!xx_io_is_process(device)) { xx_io_platform_process_set_error(EINVAL); return -1; }
+    if (!xx_io_is_process(device)) {
+        xx_io_platform_process_set_error(EINVAL);
+        return -1;
+    }
     return xx_io_process_close_cb(device);
 }
 
@@ -262,7 +284,10 @@ static xx_io_device *xx_io_process_wrap(void *handle, int owns, xx_io_process_ac
 
 xx_io_device *xx_io_process_open_ex(uint64_t pid, xx_io_process_access_t access)
 {
-    if (!xx_io_process_access_valid(access)) { xx_io_platform_process_set_error(EINVAL); return NULL; }
+    if (!xx_io_process_access_valid(access)) {
+        xx_io_platform_process_set_error(EINVAL);
+        return NULL;
+    }
     return xx_io_process_wrap(xx_io_platform_process_open_ex(pid, (unsigned int)access), 1, access);
 }
 
@@ -278,7 +303,10 @@ xx_io_device *xx_io_process_open(uint64_t pid)
 
 xx_io_device *xx_io_process_open_handle_ex(void *native_handle, xx_io_process_access_t access)
 {
-    if (!xx_io_process_access_valid(access)) { xx_io_platform_process_set_error(EINVAL); return NULL; }
+    if (!xx_io_process_access_valid(access)) {
+        xx_io_platform_process_set_error(EINVAL);
+        return NULL;
+    }
     return xx_io_process_wrap(xx_io_platform_process_adopt(native_handle), 0, access);
 }
 

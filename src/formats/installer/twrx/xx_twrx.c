@@ -99,7 +99,6 @@ typedef struct twrx_sink_s {
 /* CP437, 0x80..0xFF.  The names are DOS names; the only high byte in the
  * reference corpus is 0xF6, the producer's part marker, which is U+00F7. */
 
-
 static bool twrx_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
 {
     size_t done = 0U;

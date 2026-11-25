@@ -115,7 +115,7 @@ struct JSObj {
     uint8_t bArraySparse;
     uint8_t bBorrowedFnName;
     uint8_t bArrayMapOrder; /* named/sparse metadata established map ordering */
-    uint8_t bGCState; /* temporary cycle-collector candidate/mark bits */
+    uint8_t bGCState;       /* temporary cycle-collector candidate/mark bits */
     int32_t nGCRef;
 
     /* array */
@@ -188,7 +188,7 @@ struct JSCtx {
     JSObj *pAllObjects;
     JSScope *pAllScopes;
     xx_list_t vecPrograms; /* owned references to private parsed JSPrograms */
-    void **ppProgramPins; /* pointer hash set; vecPrograms owns the references */
+    void **ppProgramPins;  /* pointer hash set; vecPrograms owns the references */
     size_t nProgramPinsCapacity;
     JSProgramCache *pProgramCache;
 

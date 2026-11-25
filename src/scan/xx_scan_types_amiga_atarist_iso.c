@@ -7,8 +7,7 @@
 
 xx_file_type_t xx_scan_type_detect_amiga_atarist(xx_io_device *device, const uint8_t *head, size_t head_size)
 {
-    if (head_size >= 4U && (!memcmp(head, "\x00\x00\x03\xF3", 4) || !memcmp(head, "\x00\x00\x03\xE7", 4)))
-        return XX_FILE_TYPE_AMIGAHUNK;
+    if (head_size >= 4U && (!memcmp(head, "\x00\x00\x03\xF3", 4) || !memcmp(head, "\x00\x00\x03\xE7", 4))) return XX_FILE_TYPE_AMIGAHUNK;
     if (head_size >= 2U && head[0] == 0x60U && head[1] == 0x1aU) {
         xx_atarist atari;
         bool valid;

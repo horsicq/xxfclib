@@ -79,7 +79,8 @@ static bool pkg_read_all(Abstractformat *f, pm_member *m, xx_io_device *device, 
     } else if (ctx->compress == PKG_BROTLI) {
         uint8_t *packed = (uint8_t *)xx_mem_alloc((size_t)m->packed_size), *plain = NULL;
         size_t plain_size = 0;
-        ok = packed && pm_read(f, m->offset - f->base_address, packed, (size_t)m->packed_size) && xx_brotli_decompress_alloc(packed, (size_t)m->packed_size, &plain, &plain_size);
+        ok = packed && pm_read(f, m->offset - f->base_address, packed, (size_t)m->packed_size) &&
+             xx_brotli_decompress_alloc(packed, (size_t)m->packed_size, &plain, &plain_size);
         if (ok) ok = pkg_write_all(sink, plain, plain_size);
         if (plain) xx_mem_free(plain);
         if (packed) xx_mem_free(packed);
@@ -150,7 +151,9 @@ static const uint8_t *pkg_find(const uint8_t *hay, size_t hay_size, const char *
 static unsigned pkg_docompress(const uint8_t *prelude, size_t size)
 {
     size_t i = size;
-    while (i > 0 && (prelude[i - 1] == ')' || prelude[i - 1] == ';' || prelude[i - 1] == '}' || prelude[i - 1] == '\n' || prelude[i - 1] == '\r' || prelude[i - 1] == ' ')) --i;
+    while (i > 0 &&
+           (prelude[i - 1] == ')' || prelude[i - 1] == ';' || prelude[i - 1] == '}' || prelude[i - 1] == '\n' || prelude[i - 1] == '\r' || prelude[i - 1] == ' '))
+        --i;
     if (i == 0 || prelude[i - 1] < '0' || prelude[i - 1] > '2') return PKG_STORED;
     return (unsigned)(prelude[i - 1] - '0');
 }
@@ -164,7 +167,8 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     unsigned compress;
     bool ok = false, first = true;
     if (!carrier_pe(f, &overlay, &cabinet, &cabinet_end, pd) || overlay <= 0 || available - overlay < 1024) return false;
-    found = xx_io_find_bytes_buffer_optimize_ex(f->device, f->base_address + overlay, available - overlay, pkg_prelude_head, sizeof(pkg_prelude_head) - 1U, xx_get_file_buffer_size(), pd);
+    found = xx_io_find_bytes_buffer_optimize_ex(f->device, f->base_address + overlay, available - overlay, pkg_prelude_head, sizeof(pkg_prelude_head) - 1U,
+                                                xx_get_file_buffer_size(), pd);
     if (found < f->base_address + overlay || (pd && xx_pd_is_stopped(pd))) return false;
     prelude_at = found - f->base_address;
     prelude_size = available - prelude_at;

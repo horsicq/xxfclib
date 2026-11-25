@@ -76,17 +76,8 @@ static void format_guid(char *out, const uint8_t *data)
     uint16_t d2 = xx_data_get_le16(data + 4);
     uint16_t d3 = xx_data_get_le16(data + 6);
 
-    snprintf(out, 40, "{%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-             (unsigned int)d1,
-             (unsigned int)d2,
-             (unsigned int)d3,
-             (unsigned int)data[8],
-             (unsigned int)data[9],
-             (unsigned int)data[10],
-             (unsigned int)data[11],
-             (unsigned int)data[12],
-             (unsigned int)data[13],
-             (unsigned int)data[14],
+    snprintf(out, 40, "{%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}", (unsigned int)d1, (unsigned int)d2, (unsigned int)d3, (unsigned int)data[8],
+             (unsigned int)data[9], (unsigned int)data[10], (unsigned int)data[11], (unsigned int)data[12], (unsigned int)data[13], (unsigned int)data[14],
              (unsigned int)data[15]);
 }
 
@@ -205,10 +196,7 @@ int32_t xx_ms_pdb_portable_read_compressed_uint(const void *data, int32_t data_s
         if (offset + 3 >= data_size) {
             return 0;
         }
-        *out_value = ((uint32_t)(byte0 & 0x1F) << 24) |
-                     ((uint32_t)p[offset + 1] << 16) |
-                     ((uint32_t)p[offset + 2] << 8) |
-                     (uint32_t)p[offset + 3];
+        *out_value = ((uint32_t)(byte0 & 0x1F) << 24) | ((uint32_t)p[offset + 1] << 16) | ((uint32_t)p[offset + 2] << 8) | (uint32_t)p[offset + 3];
         return 4;
     }
 
@@ -217,72 +205,70 @@ int32_t xx_ms_pdb_portable_read_compressed_uint(const void *data, int32_t data_s
 
 const char *xx_ms_pdb_portable_table_name(uint32_t table)
 {
-    static const char * const s_names[64] = {
-        /* 0x00 */ "Module",
-        /* 0x01 */ "TypeRef",
-        /* 0x02 */ "TypeDef",
-        /* 0x03 */ "0x03",
-        /* 0x04 */ "Field",
-        /* 0x05 */ "0x05",
-        /* 0x06 */ "MethodDef",
-        /* 0x07 */ "0x07",
-        /* 0x08 */ "Param",
-        /* 0x09 */ "0x09",
-        /* 0x0a */ "0x0a",
-        /* 0x0b */ "0x0b",
-        /* 0x0c */ "0x0c",
-        /* 0x0d */ "0x0d",
-        /* 0x0e */ "0x0e",
-        /* 0x0f */ "0x0f",
-        /* 0x10 */ "0x10",
-        /* 0x11 */ "0x11",
-        /* 0x12 */ "0x12",
-        /* 0x13 */ "0x13",
-        /* 0x14 */ "0x14",
-        /* 0x15 */ "0x15",
-        /* 0x16 */ "0x16",
-        /* 0x17 */ "0x17",
-        /* 0x18 */ "0x18",
-        /* 0x19 */ "0x19",
-        /* 0x1a */ "0x1a",
-        /* 0x1b */ "0x1b",
-        /* 0x1c */ "0x1c",
-        /* 0x1d */ "0x1d",
-        /* 0x1e */ "0x1e",
-        /* 0x1f */ "0x1f",
-        /* 0x20 */ "0x20",
-        /* 0x21 */ "0x21",
-        /* 0x22 */ "0x22",
-        /* 0x23 */ "0x23",
-        /* 0x24 */ "0x24",
-        /* 0x25 */ "0x25",
-        /* 0x26 */ "0x26",
-        /* 0x27 */ "0x27",
-        /* 0x28 */ "0x28",
-        /* 0x29 */ "0x29",
-        /* 0x2a */ "0x2a",
-        /* 0x2b */ "0x2b",
-        /* 0x2c */ "0x2c",
-        /* 0x2d */ "0x2d",
-        /* 0x2e */ "0x2e",
-        /* 0x2f */ "0x2f",
-        /* 0x30 */ "Document",
-        /* 0x31 */ "MethodDebugInformation",
-        /* 0x32 */ "LocalScope",
-        /* 0x33 */ "LocalVariable",
-        /* 0x34 */ "LocalConstant",
-        /* 0x35 */ "ImportScope",
-        /* 0x36 */ "StateMachineMethod",
-        /* 0x37 */ "CustomDebugInformation",
-        /* 0x38 */ "0x38",
-        /* 0x39 */ "0x39",
-        /* 0x3a */ "0x3a",
-        /* 0x3b */ "0x3b",
-        /* 0x3c */ "0x3c",
-        /* 0x3d */ "0x3d",
-        /* 0x3e */ "0x3e",
-        /* 0x3f */ "0x3f"
-    };
+    static const char *const s_names[64] = {/* 0x00 */ "Module",
+                                            /* 0x01 */ "TypeRef",
+                                            /* 0x02 */ "TypeDef",
+                                            /* 0x03 */ "0x03",
+                                            /* 0x04 */ "Field",
+                                            /* 0x05 */ "0x05",
+                                            /* 0x06 */ "MethodDef",
+                                            /* 0x07 */ "0x07",
+                                            /* 0x08 */ "Param",
+                                            /* 0x09 */ "0x09",
+                                            /* 0x0a */ "0x0a",
+                                            /* 0x0b */ "0x0b",
+                                            /* 0x0c */ "0x0c",
+                                            /* 0x0d */ "0x0d",
+                                            /* 0x0e */ "0x0e",
+                                            /* 0x0f */ "0x0f",
+                                            /* 0x10 */ "0x10",
+                                            /* 0x11 */ "0x11",
+                                            /* 0x12 */ "0x12",
+                                            /* 0x13 */ "0x13",
+                                            /* 0x14 */ "0x14",
+                                            /* 0x15 */ "0x15",
+                                            /* 0x16 */ "0x16",
+                                            /* 0x17 */ "0x17",
+                                            /* 0x18 */ "0x18",
+                                            /* 0x19 */ "0x19",
+                                            /* 0x1a */ "0x1a",
+                                            /* 0x1b */ "0x1b",
+                                            /* 0x1c */ "0x1c",
+                                            /* 0x1d */ "0x1d",
+                                            /* 0x1e */ "0x1e",
+                                            /* 0x1f */ "0x1f",
+                                            /* 0x20 */ "0x20",
+                                            /* 0x21 */ "0x21",
+                                            /* 0x22 */ "0x22",
+                                            /* 0x23 */ "0x23",
+                                            /* 0x24 */ "0x24",
+                                            /* 0x25 */ "0x25",
+                                            /* 0x26 */ "0x26",
+                                            /* 0x27 */ "0x27",
+                                            /* 0x28 */ "0x28",
+                                            /* 0x29 */ "0x29",
+                                            /* 0x2a */ "0x2a",
+                                            /* 0x2b */ "0x2b",
+                                            /* 0x2c */ "0x2c",
+                                            /* 0x2d */ "0x2d",
+                                            /* 0x2e */ "0x2e",
+                                            /* 0x2f */ "0x2f",
+                                            /* 0x30 */ "Document",
+                                            /* 0x31 */ "MethodDebugInformation",
+                                            /* 0x32 */ "LocalScope",
+                                            /* 0x33 */ "LocalVariable",
+                                            /* 0x34 */ "LocalConstant",
+                                            /* 0x35 */ "ImportScope",
+                                            /* 0x36 */ "StateMachineMethod",
+                                            /* 0x37 */ "CustomDebugInformation",
+                                            /* 0x38 */ "0x38",
+                                            /* 0x39 */ "0x39",
+                                            /* 0x3a */ "0x3a",
+                                            /* 0x3b */ "0x3b",
+                                            /* 0x3c */ "0x3c",
+                                            /* 0x3d */ "0x3d",
+                                            /* 0x3e */ "0x3e",
+                                            /* 0x3f */ "0x3f"};
 
     if (table < 64) {
         return s_names[table];
@@ -311,10 +297,7 @@ const xx_ms_pdb_portable_stream *xx_ms_pdb_portable_get_stream(const xx_ms_pdb_p
 /* ---- Internal Blob Readers ---------------------------------------------- */
 
 /* Read a blob from the #Blob heap, matching XPDB::_getMDBlob */
-static bool get_md_blob(xx_io_device *device, int64_t file_size,
-                        uint32_t blob_offset, uint32_t blob_size,
-                        uint32_t index,
-                        uint8_t **out_data, uint32_t *out_size)
+static bool get_md_blob(xx_io_device *device, int64_t file_size, uint32_t blob_offset, uint32_t blob_size, uint32_t index, uint8_t **out_data, uint32_t *out_size)
 {
     if (!out_data || !out_size) {
         return false;
@@ -377,9 +360,7 @@ static bool get_md_blob(xx_io_device *device, int64_t file_size,
 }
 
 /* Decode Document table Name blob, matching XPDB::_getMDDocumentName */
-static char *get_md_document_name(xx_io_device *device, int64_t file_size,
-                                  uint32_t blob_offset, uint32_t blob_size,
-                                  uint32_t name_index)
+static char *get_md_document_name(xx_io_device *device, int64_t file_size, uint32_t blob_offset, uint32_t blob_size, uint32_t name_index)
 {
     uint8_t *name_blob = NULL;
     uint32_t name_blob_size = 0;

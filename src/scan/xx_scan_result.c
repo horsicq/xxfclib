@@ -76,8 +76,7 @@ bool xx_scan_result_add_error(xx_scan_result *result, const char *text, xx_pd_st
     char **errors;
     size_t count;
 
-    if (!result || !text || result->nErrorCount < 0 || result->nErrorCount == INT_MAX ||
-        (result->nErrorCount && !result->ppErrors)) {
+    if (!result || !text || result->nErrorCount < 0 || result->nErrorCount == INT_MAX || (result->nErrorCount && !result->ppErrors)) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Invalid scan result error arguments");
         return false;
     }
@@ -98,8 +97,7 @@ out_of_memory:
     return false;
 }
 
-bool xx_scan_append_result(xx_scan_engine *engine, xx_scan_result *destination, const xx_scan_result *source,
-                           int64_t source_offset, xx_pd_struct *pd)
+bool xx_scan_append_result(xx_scan_engine *engine, xx_scan_result *destination, const xx_scan_result *source, int64_t source_offset, xx_pd_struct *pd)
 {
     xx_scan_result copy = {0};
     xx_scan_record *records;
@@ -108,11 +106,10 @@ bool xx_scan_append_result(xx_scan_engine *engine, xx_scan_result *destination, 
     int error_count;
     int i;
     (void)engine;
-    if (!destination || !source || destination == source || source_offset < 0 ||
-        source->nCount < 0 || source->nErrorCount < 0 || destination->nCount < 0 || destination->nErrorCount < 0 ||
-        (source->nCount && !source->pRecords) || (source->nErrorCount && !source->ppErrors) ||
-        (destination->nCount && !destination->pRecords) || (destination->nErrorCount && !destination->ppErrors) ||
-        source->nCount > INT_MAX - destination->nCount || source->nErrorCount > INT_MAX - destination->nErrorCount) {
+    if (!destination || !source || destination == source || source_offset < 0 || source->nCount < 0 || source->nErrorCount < 0 || destination->nCount < 0 ||
+        destination->nErrorCount < 0 || (source->nCount && !source->pRecords) || (source->nErrorCount && !source->ppErrors) ||
+        (destination->nCount && !destination->pRecords) || (destination->nErrorCount && !destination->ppErrors) || source->nCount > INT_MAX - destination->nCount ||
+        source->nErrorCount > INT_MAX - destination->nErrorCount) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Invalid scan result append arguments");
         return false;
     }
@@ -138,9 +135,9 @@ bool xx_scan_append_result(xx_scan_engine *engine, xx_scan_result *destination, 
         copy.nCount++;
         if (!xx_scan_copy_string(input->type, &output->type) || !xx_scan_copy_string(input->name, &output->name) ||
             !xx_scan_copy_string(input->version, &output->version) || !xx_scan_copy_string(input->info, &output->info) ||
-            !xx_scan_copy_string(input->format_id, &output->format_id) ||
-            !xx_scan_copy_string(input->archive_member, &output->archive_member) ||
-            !xx_scan_copy_string(input->source_ref, &output->source_ref)) goto out_of_memory;
+            !xx_scan_copy_string(input->format_id, &output->format_id) || !xx_scan_copy_string(input->archive_member, &output->archive_member) ||
+            !xx_scan_copy_string(input->source_ref, &output->source_ref))
+            goto out_of_memory;
     }
     if (source->nErrorCount) {
         copy.ppErrors = (char **)xx_rt_calloc((size_t)source->nErrorCount, sizeof(char *));
@@ -182,4 +179,3 @@ failed:
     xx_scan_result_free(&copy);
     return false;
 }
-

@@ -49,18 +49,18 @@
 #endif
 
 typedef enum {
-    RE_CHAR = 0, /* single literal byte             */
-    RE_ANY,      /* '.'                             */
-    RE_CLASS,    /* character class                 */
-    RE_GROUP,    /* group with alternatives         */
-    RE_BACKREF,  /* \1 .. \9                        */
-    RE_BOL,      /* ^                               */
-    RE_EOL,      /* $                               */
-    RE_WORDB,    /* \b                              */
-    RE_NWORDB,   /* \B                              */
-    RE_LOOKAHEAD, /* (?=...) and (?!...)             */
+    RE_CHAR = 0,   /* single literal byte             */
+    RE_ANY,        /* '.'                             */
+    RE_CLASS,      /* character class                 */
+    RE_GROUP,      /* group with alternatives         */
+    RE_BACKREF,    /* \1 .. \9                        */
+    RE_BOL,        /* ^                               */
+    RE_EOL,        /* $                               */
+    RE_WORDB,      /* \b                              */
+    RE_NWORDB,     /* \B                              */
+    RE_LOOKAHEAD,  /* (?=...) and (?!...)             */
     RE_LOOKBEHIND, /* scanner-only (?<=...) / (?<!...) */
-    RE_EMPTY      /* scanner inline option directive */
+    RE_EMPTY       /* scanner inline option directive */
 } RENodeType;
 
 typedef struct RENode RENode;
@@ -71,7 +71,7 @@ struct RENode {
     unsigned char nChar;
     unsigned char pClass[32]; /* 256 bit bitmap */
     int bNegateClass;
-    int nGroupIndex; /* -1 when non-capturing */
+    int nGroupIndex;                 /* -1 when non-capturing */
     int nCaptureFirst, nCaptureLast; /* Captures inside this quantified body. */
     int bNegateLook;
     int bIgnoreCase, bMultiline, bDotall;
@@ -138,9 +138,7 @@ typedef struct {
 
 /* The public core reports allocation failures without interpreter policy.
  * Adapters may preserve their own compatible-heap allocation policy. */
-static const xx_regex_allocator regex_default_allocator = {
-    xx_rt_malloc, xx_rt_calloc, xx_rt_realloc
-};
+static const xx_regex_allocator regex_default_allocator = {xx_rt_malloc, xx_rt_calloc, xx_rt_realloc};
 
 static char *regex_strndup(const char *text, size_t size, const xx_regex_allocator *pAllocator)
 {
@@ -269,8 +267,7 @@ static void skip_extended(REParser *parser)
     if (!parser->bExtended) return;
     while (parser->p < parser->pEnd) {
         unsigned char ch = (unsigned char)*parser->p;
-        if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' ||
-            ch == '\f' || ch == '\v') ++parser->p;
+        if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' || ch == '\f' || ch == '\v') ++parser->p;
         else if (ch == '#') {
             while (parser->p < parser->pEnd && *parser->p != '\n') ++parser->p;
         } else break;
@@ -351,7 +348,10 @@ static RENode *node_alloc(REParser *pParser, RENodeType type)
 {
     RENode *pNode = (RENode *)pParser->pAllocator->calloc_fn(1, sizeof(RENode));
 
-    if (!pNode) { parse_error(pParser, "out of memory"); return NULL; }
+    if (!pNode) {
+        parse_error(pParser, "out of memory");
+        return NULL;
+    }
     pNode->type = type;
     pNode->nGroupIndex = -1;
     pNode->nMin = 1;
@@ -507,11 +507,9 @@ static void class_set_ci(REParser *pParser, RENode *pNode, unsigned char nChar)
             class_set(pNode->pClass, (unsigned char)(nChar - 'a' + 'A'));
         } else if ((nChar >= 'A') && (nChar <= 'Z')) {
             class_set(pNode->pClass, (unsigned char)(nChar - 'A' + 'a'));
-        } else if (!(pParser->pRegExp->options & XX_REGEX_RAW_BYTES) &&
-                   (nChar >= 0xC0) && (nChar <= 0xDE) && (nChar != 0xD7)) {
+        } else if (!(pParser->pRegExp->options & XX_REGEX_RAW_BYTES) && (nChar >= 0xC0) && (nChar <= 0xDE) && (nChar != 0xD7)) {
             class_set(pNode->pClass, (unsigned char)(nChar + 0x20));
-        } else if (!(pParser->pRegExp->options & XX_REGEX_RAW_BYTES) &&
-                   (nChar >= 0xE0) && (nChar <= 0xFE) && (nChar != 0xF7)) {
+        } else if (!(pParser->pRegExp->options & XX_REGEX_RAW_BYTES) && (nChar >= 0xE0) && (nChar <= 0xFE) && (nChar != 0xF7)) {
             class_set(pNode->pClass, (unsigned char)(nChar - 0x20));
         }
     }
@@ -559,14 +557,16 @@ static RENode *parse_class(REParser *pParser)
 
             if ((unsigned char)*pParser->p == 0xC2 || (unsigned char)*pParser->p == 0xC3) {
                 int nWidth;
-                nFrom = ((pParser->pRegExp->options & XX_REGEX_RAW_BYTES) ? (nWidth = 1, (unsigned char)*pParser->p) : latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth));
+                nFrom = ((pParser->pRegExp->options & XX_REGEX_RAW_BYTES) ? (nWidth = 1, (unsigned char)*pParser->p)
+                                                                          : latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth));
                 pParser->p += nWidth;
             } else {
                 nFrom = parse_escape_char(pParser);
             }
         } else {
             int nWidth;
-            nFrom = ((pParser->pRegExp->options & XX_REGEX_RAW_BYTES) ? (nWidth = 1, (unsigned char)*pParser->p) : latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth));
+            nFrom = ((pParser->pRegExp->options & XX_REGEX_RAW_BYTES) ? (nWidth = 1, (unsigned char)*pParser->p)
+                                                                      : latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth));
             pParser->p += nWidth;
         }
 
@@ -580,14 +580,16 @@ static RENode *parse_class(REParser *pParser)
                 pParser->p++;
                 if (pParser->p < pParser->pEnd && ((unsigned char)*pParser->p == 0xC2 || (unsigned char)*pParser->p == 0xC3)) {
                     int nWidth;
-                    nTo = ((pParser->pRegExp->options & XX_REGEX_RAW_BYTES) ? (nWidth = 1, (unsigned char)*pParser->p) : latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth));
+                    nTo = ((pParser->pRegExp->options & XX_REGEX_RAW_BYTES) ? (nWidth = 1, (unsigned char)*pParser->p)
+                                                                            : latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth));
                     pParser->p += nWidth;
                 } else {
                     nTo = parse_escape_char(pParser);
                 }
             } else {
                 int nWidth;
-                nTo = ((pParser->pRegExp->options & XX_REGEX_RAW_BYTES) ? (nWidth = 1, (unsigned char)*pParser->p) : latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth));
+                nTo = ((pParser->pRegExp->options & XX_REGEX_RAW_BYTES) ? (nWidth = 1, (unsigned char)*pParser->p)
+                                                                        : latin1_at(pParser->p, (size_t)(pParser->pEnd - pParser->p), 0, &nWidth));
                 pParser->p += nWidth;
             }
 
@@ -626,9 +628,7 @@ static int parse_scanner_flags(REParser *parser, int *scoped)
     int ignorecase = parser->bIgnoreCase, multiline = parser->bMultiline;
     int dotall = parser->bDotall, extended = parser->bExtended;
     int enabled = 1, seen = 0, minus = 0;
-    if (!(parser->pRegExp->options & XX_REGEX_SCANNER_DIALECT) ||
-        at >= parser->pEnd || (*at != 'i' && *at != 'm' &&
-                               *at != 's' && *at != 'x' && *at != '-')) return 0;
+    if (!(parser->pRegExp->options & XX_REGEX_SCANNER_DIALECT) || at >= parser->pEnd || (*at != 'i' && *at != 'm' && *at != 's' && *at != 'x' && *at != '-')) return 0;
     while (at < parser->pEnd) {
         if (*at == 'i') ignorecase = enabled;
         else if (*at == 'm') multiline = enabled;
@@ -665,7 +665,9 @@ static int fixed_width_alts(const REAlt *alts, int count, size_t *width)
             size_t atom = 0;
             if (node->nMax < 0 || node->nMin != node->nMax) return 0;
             switch (node->type) {
-                case RE_CHAR: case RE_CLASS: case RE_ANY: atom = 1; break;
+                case RE_CHAR:
+                case RE_CLASS:
+                case RE_ANY: atom = 1; break;
                 case RE_GROUP:
                     if (!fixed_width_alts(node->pAlts, node->nAltCount, &atom)) return 0;
                     break;
@@ -717,7 +719,7 @@ static RENode *parse_atom(REParser *pParser)
                 bCapture = 0;
             } else
 
-            if (nKind == ':') {
+                if (nKind == ':') {
                 bCapture = 0;
                 pParser->p += 2;
             } else if (nKind == '=') {
@@ -729,9 +731,7 @@ static RENode *parse_atom(REParser *pParser)
                 bLookahead = 1;
                 bNegate = 1;
                 pParser->p += 2;
-            } else if (nKind == '<' &&
-                       (pParser->pRegExp->options & XX_REGEX_SCANNER_DIALECT) &&
-                       pParser->pEnd - pParser->p >= 3 &&
+            } else if (nKind == '<' && (pParser->pRegExp->options & XX_REGEX_SCANNER_DIALECT) && pParser->pEnd - pParser->p >= 3 &&
                        (pParser->p[2] == '=' || pParser->p[2] == '!')) {
                 bCapture = 0;
                 bLookbehind = 1;
@@ -746,8 +746,7 @@ static RENode *parse_atom(REParser *pParser)
             }
         }
 
-        pNode = node_alloc(pParser, bLookahead ? RE_LOOKAHEAD :
-                                    bLookbehind ? RE_LOOKBEHIND : RE_GROUP);
+        pNode = node_alloc(pParser, bLookahead ? RE_LOOKAHEAD : bLookbehind ? RE_LOOKBEHIND : RE_GROUP);
         if (!pNode) return NULL;
         pNode->bNegateLook = bNegate;
         pNode->nCaptureFirst = pParser->pRegExp->nGroups + 1;
@@ -777,10 +776,7 @@ static RENode *parse_atom(REParser *pParser)
         } else {
             parse_error(pParser, "missing )");
         }
-        if (bLookbehind &&
-            (!(pParser->pRegExp->options & XX_REGEX_RAW_BYTES) ||
-             !fixed_width_alts(pNode->pAlts, pNode->nAltCount,
-                                 &pNode->nLookbehindWidth)))
+        if (bLookbehind && (!(pParser->pRegExp->options & XX_REGEX_RAW_BYTES) || !fixed_width_alts(pNode->pAlts, pNode->nAltCount, &pNode->nLookbehindWidth)))
             parse_error(pParser, "lookbehind requires a fixed byte width");
 
         return pNode;
@@ -1057,8 +1053,8 @@ static RENode *parse_sequence(REParser *pParser)
         skip_extended(pParser);
 
         if (is_quantifier(pParser)) {
-            if ((pNode->type == RE_BOL) || (pNode->type == RE_EOL) || (pNode->type == RE_WORDB) || (pNode->type == RE_NWORDB) ||
-                pNode->type == RE_EMPTY || pNode->type == RE_LOOKBEHIND) {
+            if ((pNode->type == RE_BOL) || (pNode->type == RE_EOL) || (pNode->type == RE_WORDB) || (pNode->type == RE_NWORDB) || pNode->type == RE_EMPTY ||
+                pNode->type == RE_LOOKBEHIND) {
                 parse_error(pParser, "nothing to repeat");
 
                 break;
@@ -1219,8 +1215,7 @@ static void analyze_alts(REAlt *pAlts, int nCount)
                         pAlt->bCheckChar = 1;
                         pAlt->bCheckIgnoreCase = pNode->bIgnoreCase;
                     }
-                } else if (pNode->type == RE_CHAR || pNode->type == RE_ANY || pNode->type == RE_CLASS ||
-                           pNode->type == RE_GROUP || pNode->type == RE_BACKREF) {
+                } else if (pNode->type == RE_CHAR || pNode->type == RE_ANY || pNode->type == RE_CLASS || pNode->type == RE_GROUP || pNode->type == RE_BACKREF) {
                     bFixed = 0;
                 }
             }
@@ -1282,8 +1277,7 @@ static void start_atom_set(const xx_regex *pRegExp, const RENode *pNode, unsigne
 /* Fills pSets[nAt .. nLimit) and returns how many leading positions the
  * chain determines. *pbComplete is set when the whole chain was consumed
  * with exactly that fixed width, so that a caller may continue after it. */
-static size_t start_walk(const xx_regex *pRegExp, const RENode *pNode, unsigned char (*pSets)[32],
-                         size_t nAt, size_t nLimit, int *pbComplete, unsigned nDepth)
+static size_t start_walk(const xx_regex *pRegExp, const RENode *pNode, unsigned char (*pSets)[32], size_t nAt, size_t nLimit, int *pbComplete, unsigned nDepth)
 {
     size_t nIndex = nAt;
     int bRaw = (pRegExp->options & XX_REGEX_RAW_BYTES) != 0;
@@ -1291,10 +1285,16 @@ static size_t start_walk(const xx_regex *pRegExp, const RENode *pNode, unsigned 
     if (nDepth >= RE_START_DEPTH) return 0;
     for (; pNode; pNode = pNode->pNext) {
         switch (pNode->type) {
-            case RE_BOL: case RE_EOL: case RE_WORDB: case RE_NWORDB:
-            case RE_LOOKAHEAD: case RE_LOOKBEHIND: case RE_EMPTY:
-                continue;
-            case RE_CHAR: case RE_ANY: case RE_CLASS: {
+            case RE_BOL:
+            case RE_EOL:
+            case RE_WORDB:
+            case RE_NWORDB:
+            case RE_LOOKAHEAD:
+            case RE_LOOKBEHIND:
+            case RE_EMPTY: continue;
+            case RE_CHAR:
+            case RE_ANY:
+            case RE_CLASS: {
                 unsigned char one[32];
                 size_t nCount = (size_t)pNode->nMin;
                 start_atom_set(pRegExp, pNode, one);
@@ -1331,8 +1331,7 @@ static size_t start_walk(const xx_regex *pRegExp, const RENode *pNode, unsigned 
                 if (!bSame || pNode->nMin != 1 || pNode->nMax != 1) return nIndex - nAt;
                 continue;
             }
-            default: /* RE_BACKREF */
-                return nIndex - nAt;
+            default: /* RE_BACKREF */ return nIndex - nAt;
         }
     }
     *pbComplete = 1;
@@ -1405,8 +1404,7 @@ static void build_start_filter(xx_regex *pRegExp)
         size_t nBest = nSpan;
         for (j = 0; j < nSpan; j++) {
             if (chosen[j] || members[j] >= 256) continue;
-            if (nBest == nSpan || members[j] < members[nBest] ||
-                (members[j] == members[nBest] && distance[j] > distance[nBest])) nBest = j;
+            if (nBest == nSpan || members[j] < members[nBest] || (members[j] == members[nBest] && distance[j] > distance[nBest])) nBest = j;
         }
         if (nBest == nSpan || (nChosen && members[nBest] > 128)) break;
         chosen[nBest] = 1;
@@ -1420,8 +1418,7 @@ static void build_start_filter(xx_regex *pRegExp)
     /* A filter that admits most positions costs more than it saves. */
     if (!nChosen || fDensity > 0.5) return;
     /* In choice order: the set search tests the most selective set first. */
-    for (j = 0; j < nChosen; j++)
-        xx_regex_byteset_init(&pRegExp->pStartSets[pRegExp->nStartSets++], sets[order[j]], order[j]);
+    for (j = 0; j < nChosen; j++) xx_regex_byteset_init(&pRegExp->pStartSets[pRegExp->nStartSets++], sets[order[j]], order[j]);
     pRegExp->nStartSpan = nSpan;
 }
 
@@ -1438,42 +1435,36 @@ static int start_filter_admits(const xx_regex *pRegExp, const char *pText, size_
 
 xx_regex *xx_regex_compile(const char *pPattern, const char *pFlags, char **ppError)
 {
-    return xx_regex_compile_n(pPattern, pPattern ? xx_rt_strlen(pPattern) : 0,
-                              pFlags, pFlags ? xx_rt_strlen(pFlags) : 0, ppError);
+    return xx_regex_compile_n(pPattern, pPattern ? xx_rt_strlen(pPattern) : 0, pFlags, pFlags ? xx_rt_strlen(pFlags) : 0, ppError);
 }
 
-xx_regex *xx_regex_compile_n(const char *pPattern, size_t nPatternSize, const char *pFlags,
-                            size_t nFlagsSize, char **ppError)
+xx_regex *xx_regex_compile_n(const char *pPattern, size_t nPatternSize, const char *pFlags, size_t nFlagsSize, char **ppError)
 {
     return xx_regex_compile_n_with_allocator(pPattern, nPatternSize, pFlags, nFlagsSize, ppError, NULL);
 }
 
-xx_regex *xx_regex_compile_with_allocator(const char *pPattern, const char *pFlags, char **ppError,
-                                         const xx_regex_allocator *pAllocator)
+xx_regex *xx_regex_compile_with_allocator(const char *pPattern, const char *pFlags, char **ppError, const xx_regex_allocator *pAllocator)
 {
-    return xx_regex_compile_n_with_allocator(pPattern, pPattern ? xx_rt_strlen(pPattern) : 0,
-                                             pFlags, pFlags ? xx_rt_strlen(pFlags) : 0, ppError, pAllocator);
+    return xx_regex_compile_n_with_allocator(pPattern, pPattern ? xx_rt_strlen(pPattern) : 0, pFlags, pFlags ? xx_rt_strlen(pFlags) : 0, ppError, pAllocator);
 }
 
-static xx_regex *regex_compile_options(const char *pPattern, size_t nPatternSize, const char *pFlags,
-    size_t nFlagsSize, char **ppError, const xx_regex_allocator *pAllocator, unsigned options);
+static xx_regex *regex_compile_options(const char *pPattern, size_t nPatternSize, const char *pFlags, size_t nFlagsSize, char **ppError,
+                                       const xx_regex_allocator *pAllocator, unsigned options);
 
-xx_regex *xx_regex_compile_n_options(const char *pattern, size_t pattern_size,
-    const char *flags, size_t flags_size, unsigned options, char **error)
+xx_regex *xx_regex_compile_n_options(const char *pattern, size_t pattern_size, const char *flags, size_t flags_size, unsigned options, char **error)
 {
-    if (options & ~(XX_REGEX_RAW_BYTES | XX_REGEX_DOTALL |
-                    XX_REGEX_SCANNER_DIALECT)) return NULL;
+    if (options & ~(XX_REGEX_RAW_BYTES | XX_REGEX_DOTALL | XX_REGEX_SCANNER_DIALECT)) return NULL;
     return regex_compile_options(pattern, pattern_size, flags, flags_size, error, NULL, options);
 }
 
-xx_regex *xx_regex_compile_n_with_allocator(const char *pPattern, size_t nPatternSize, const char *pFlags,
-                                           size_t nFlagsSize, char **ppError, const xx_regex_allocator *pAllocator)
+xx_regex *xx_regex_compile_n_with_allocator(const char *pPattern, size_t nPatternSize, const char *pFlags, size_t nFlagsSize, char **ppError,
+                                            const xx_regex_allocator *pAllocator)
 {
     return regex_compile_options(pPattern, nPatternSize, pFlags, nFlagsSize, ppError, pAllocator, 0);
 }
 
-static xx_regex *regex_compile_options(const char *pPattern, size_t nPatternSize, const char *pFlags,
-    size_t nFlagsSize, char **ppError, const xx_regex_allocator *pAllocator, unsigned options)
+static xx_regex *regex_compile_options(const char *pPattern, size_t nPatternSize, const char *pFlags, size_t nFlagsSize, char **ppError,
+                                       const xx_regex_allocator *pAllocator, unsigned options)
 {
     xx_regex *pRegExp;
     REParser parser;
@@ -1650,8 +1641,14 @@ const char *xx_regex_flags(const xx_regex *pRegExp)
     return pRegExp ? pRegExp->pFlags : "";
 }
 
-size_t xx_regex_source_size(const xx_regex *regex) { return regex ? regex->nSourceSize : 0; }
-size_t xx_regex_flags_size(const xx_regex *regex) { return regex ? regex->nFlagsSize : 0; }
+size_t xx_regex_source_size(const xx_regex *regex)
+{
+    return regex ? regex->nSourceSize : 0;
+}
+size_t xx_regex_flags_size(const xx_regex *regex)
+{
+    return regex ? regex->nFlagsSize : 0;
+}
 
 /* --------------------------------------------------------------- matcher  */
 
@@ -1723,15 +1720,17 @@ static int matcher_abort(REMatcher *matcher, xx_regex_exec_status status)
 {
     matcher_sync(matcher);
     matcher->fuel = matcher->fuel_granted = 0;
-    if (!matcher->bAborted) { matcher->bAborted = 1; matcher->failure = status; }
+    if (!matcher->bAborted) {
+        matcher->bAborted = 1;
+        matcher->failure = status;
+    }
     return 0;
 }
 
 static int matcher_poll(REMatcher *matcher)
 {
     if (matcher->bAborted) return 0;
-    if (matcher->should_abort && matcher->should_abort(matcher->abort_user))
-        return matcher_abort(matcher, XX_REGEX_EXEC_CANCELLED);
+    if (matcher->should_abort && matcher->should_abort(matcher->abort_user)) return matcher_abort(matcher, XX_REGEX_EXEC_CANCELLED);
     matcher->poll_work = 0;
     return 1;
 }
@@ -1741,8 +1740,7 @@ static int matcher_poll(REMatcher *matcher)
 static int matcher_charge(REMatcher *matcher, size_t work)
 {
     if (matcher->bAborted) return 0;
-    if (matcher->nSteps > matcher->nStepLimit || work > (size_t)(matcher->nStepLimit - matcher->nSteps) + 1)
-        return matcher_abort(matcher, XX_REGEX_EXEC_BUDGET);
+    if (matcher->nSteps > matcher->nStepLimit || work > (size_t)(matcher->nStepLimit - matcher->nSteps) + 1) return matcher_abort(matcher, XX_REGEX_EXEC_BUDGET);
     matcher->nSteps += (long)work;
     if (matcher->should_abort) {
         matcher->poll_work += work;
@@ -1812,7 +1810,8 @@ static const char *matcher_find_byte(REMatcher *matcher, size_t start, unsigned 
         found = (const char *)xx_rt_memchr(matcher->pText + start, byte, chunk);
         if (!matcher_scan_work(matcher, start, found, chunk)) return NULL;
         if (found) return found;
-        start += chunk; size -= chunk;
+        start += chunk;
+        size -= chunk;
     }
     return NULL;
 }
@@ -1820,8 +1819,7 @@ static const char *matcher_find_byte(REMatcher *matcher, size_t start, unsigned 
 static const char *matcher_find_pair(REMatcher *matcher, size_t start, unsigned char first, size_t offset, unsigned char second)
 {
     size_t size = matcher->nSize - start;
-    if (!matcher->should_abort)
-        return (const char *)xx_regex_find_pair((const unsigned char *)matcher->pText + start, size, first, offset, second);
+    if (!matcher->should_abort) return (const char *)xx_regex_find_pair((const unsigned char *)matcher->pText + start, size, first, offset, second);
     if (offset >= size) return NULL;
     size -= offset;
     while (size) {
@@ -1832,7 +1830,8 @@ static const char *matcher_find_pair(REMatcher *matcher, size_t start, unsigned 
         found = (const char *)xx_regex_find_pair((const unsigned char *)matcher->pText + start, chunk + offset, first, offset, second);
         if (!matcher_scan_work(matcher, start, found, chunk)) return NULL;
         if (found) return found;
-        start += chunk; size -= chunk;
+        start += chunk;
+        size -= chunk;
     }
     return NULL;
 }
@@ -1853,7 +1852,8 @@ static const char *matcher_find_newline(REMatcher *matcher, size_t start)
         if (!newline || (carriage && carriage < newline)) newline = carriage;
         if (!matcher_scan_work(matcher, start, newline, chunk)) return NULL;
         if (newline) return newline;
-        start += chunk; size -= chunk;
+        start += chunk;
+        size -= chunk;
     }
     return NULL;
 }
@@ -1872,15 +1872,16 @@ static const char *matcher_find_start(REMatcher *matcher, size_t origin)
         if (matcher->nSize < span || start > matcher->nSize - span) return NULL;
         candidates = matcher->nSize - span - start + 1;
         chunk = matcher->should_abort && candidates > RE_SCAN_CHUNK ? RE_SCAN_CHUNK : candidates;
-        found = (const char *)xx_regex_find_sets((const unsigned char *)matcher->pText + start, chunk,
-                                                 regex->pStartSets, regex->nStartSets);
+        found = (const char *)xx_regex_find_sets((const unsigned char *)matcher->pText + start, chunk, regex->pStartSets, regex->nStartSets);
         if (!matcher_scan_work(matcher, start, found, chunk)) return NULL;
-        if (!found) { start += chunk; continue; }
+        if (!found) {
+            start += chunk;
+            continue;
+        }
         at = (size_t)(found - matcher->pText);
         /* Legacy Latin-1 stepping never starts on the continuation byte of
          * a pair whose lead (at - 1 >= origin) it has stepped over. */
-        if (!(regex->options & XX_REGEX_RAW_BYTES) && at > origin &&
-            (unsigned char)matcher->pText[at] >= 0x80 && (unsigned char)matcher->pText[at] <= 0xBF &&
+        if (!(regex->options & XX_REGEX_RAW_BYTES) && at > origin && (unsigned char)matcher->pText[at] >= 0x80 && (unsigned char)matcher->pText[at] <= 0xBF &&
             ((unsigned char)matcher->pText[at - 1] == 0xC2 || (unsigned char)matcher->pText[at - 1] == 0xC3)) {
             start = at + 1;
             continue;
@@ -1917,8 +1918,7 @@ static int single_match(REMatcher *pMatcher, RENode *pNode, size_t nPos)
      * path bounds while extending it, allowing greedy matching to backtrack
      * from the first rejected position to a shorter permitted match. */
     if (pMatcher->path) {
-        int control = pMatcher->path(pMatcher->path_user,
-                                     pMatcher->nSearchStart, nPos);
+        int control = pMatcher->path(pMatcher->path_user, pMatcher->nSearchStart, nPos);
         if (control < 0) return matcher_abort(pMatcher, XX_REGEX_EXEC_CANCELLED);
         if (control > 0) return 0;
     }
@@ -1937,7 +1937,9 @@ static int single_match(REMatcher *pMatcher, RENode *pNode, size_t nPos)
 
             return (nChar == pNode->nChar) ? 1 : 0;
 
-        case RE_ANY: nChar = (pMatcher->pRegExp->options & XX_REGEX_RAW_BYTES) ? (unsigned char)pMatcher->pText[nPos] : latin1_at(pMatcher->pText, pMatcher->nSize, nPos, &nWidth); return (pNode->bDotall || (nChar != '\n' && nChar != '\r')) ? nWidth : 0;
+        case RE_ANY:
+            nChar = (pMatcher->pRegExp->options & XX_REGEX_RAW_BYTES) ? (unsigned char)pMatcher->pText[nPos] : latin1_at(pMatcher->pText, pMatcher->nSize, nPos, &nWidth);
+            return (pNode->bDotall || (nChar != '\n' && nChar != '\r')) ? nWidth : 0;
 
         case RE_CLASS:
             nChar = (pMatcher->pRegExp->options & XX_REGEX_RAW_BYTES) ? (unsigned char)pMatcher->pText[nPos] : latin1_at(pMatcher->pText, pMatcher->nSize, nPos, &nWidth);
@@ -2020,15 +2022,13 @@ static int alt_possible(REMatcher *pMatcher, REAlt *pAlt, size_t nPos)
     unsigned char nChar;
     if (!matcher_work(pMatcher, 1)) return 0;
     if (nPos > pMatcher->nSize || pAlt->nMinBytes > pMatcher->nSize - nPos) return 0;
-    if (pAlt->bAnchored && pAlt->pFirst->nMin > 0 && nPos != 0 &&
-        (!pAlt->pFirst->bMultiline || (pMatcher->pText[nPos - 1] != '\n' && pMatcher->pText[nPos - 1] != '\r'))) return 0;
-    if (!pAlt->bCanEmpty && (nPos == pMatcher->nSize ||
-        !class_get(pAlt->pFirstBytes, (unsigned char)pMatcher->pText[nPos]))) return 0;
+    if (pAlt->bAnchored && pAlt->pFirst->nMin > 0 && nPos != 0 && (!pAlt->pFirst->bMultiline || (pMatcher->pText[nPos - 1] != '\n' && pMatcher->pText[nPos - 1] != '\r')))
+        return 0;
+    if (!pAlt->bCanEmpty && (nPos == pMatcher->nSize || !class_get(pAlt->pFirstBytes, (unsigned char)pMatcher->pText[nPos]))) return 0;
     if (!pAlt->bCheckChar) return 1;
     if (pAlt->nCheckOffset >= pMatcher->nSize - nPos) return 0;
     nChar = (unsigned char)pMatcher->pText[nPos + pAlt->nCheckOffset];
-    return pAlt->bCheckIgnoreCase ?
-        re_lower((char)nChar) == re_lower((char)pAlt->nCheckChar) : nChar == pAlt->nCheckChar;
+    return pAlt->bCheckIgnoreCase ? re_lower((char)nChar) == re_lower((char)pAlt->nCheckChar) : nChar == pAlt->nCheckChar;
 }
 
 static int m_simple(REMatcher *pMatcher, RENode *pNode, RECont *pCont, size_t nPos, size_t *pnEnd)
@@ -2108,8 +2108,7 @@ static int m_simple(REMatcher *pMatcher, RENode *pNode, RECont *pCont, size_t nP
  * no inner captures or assertions to distinguish it. Legacy dot/class atoms
  * retain their exact variable UTF-8 boundaries when there is just one branch.
  * Bound only this optimization's nesting; other bodies keep the general VM. */
-static int simple_group_shape(REMatcher *matcher, const RENode *group,
-                                size_t *width, int *fixed, unsigned depth)
+static int simple_group_shape(REMatcher *matcher, const RENode *group, size_t *width, int *fixed, unsigned depth)
 {
     if (depth >= 64 || !group->nAltCount) return 0;
     *width = 0;
@@ -2124,8 +2123,7 @@ static int simple_group_shape(REMatcher *matcher, const RENode *group,
             if (!matcher_work(matcher, 1)) return 0;
             if (node->nMin != 1 || node->nMax != 1) return 0;
             if (node->type == RE_GROUP) {
-                if (node->nGroupIndex > 0 ||
-                    !simple_group_shape(matcher, node, &atom_width, &atom_fixed, depth + 1)) return 0;
+                if (node->nGroupIndex > 0 || !simple_group_shape(matcher, node, &atom_width, &atom_fixed, depth + 1)) return 0;
             } else if (node->type == RE_ANY || node->type == RE_CLASS) {
                 atom_fixed = (matcher->pRegExp->options & XX_REGEX_RAW_BYTES) != 0;
             } else if (node->type == RE_EMPTY) {
@@ -2135,8 +2133,7 @@ static int simple_group_shape(REMatcher *matcher, const RENode *group,
             branch_width += atom_width;
             branch_fixed &= atom_fixed;
         }
-        if (!branch_width || (group->nAltCount > 1 && !branch_fixed) ||
-            (alternative && branch_width != *width)) return 0;
+        if (!branch_width || (group->nAltCount > 1 && !branch_fixed) || (alternative && branch_width != *width)) return 0;
         *width = branch_width;
         *fixed &= branch_fixed;
     }
@@ -2164,14 +2161,16 @@ static int simple_group_iteration(REMatcher *matcher, RENode *group, size_t posi
                 current += (size_t)width;
             }
         }
-        if (!node) { *end = current; return 1; }
+        if (!node) {
+            *end = current;
+            return 1;
+        }
         if (matcher->bAborted) return 0;
     }
     return 0;
 }
 
-static int m_simple_group(REMatcher *matcher, RENode *group, RECont *exit,
-                           size_t position, size_t *end, size_t width, int fixed)
+static int m_simple_group(REMatcher *matcher, RENode *group, RECont *exit, size_t position, size_t *end, size_t width, int fixed)
 {
     size_t local_positions[64], *positions = local_positions, capacity = 64;
     size_t count = 0, current = position, maximum = group->nMax < 0 ? SIZE_MAX : (size_t)group->nMax;
@@ -2189,7 +2188,10 @@ static int m_simple_group(REMatcher *matcher, RENode *group, RECont *exit,
                 matcher->pCaps[group->nGroupIndex * 2] = count ? (int32_t)(fixed ? current - width : positions[count - 1]) : -1;
                 matcher->pCaps[group->nGroupIndex * 2 + 1] = count ? (int32_t)current : -1;
             }
-            if (m_cont(matcher, exit, current, end)) { result = 1; goto done; }
+            if (m_cont(matcher, exit, current, end)) {
+                result = 1;
+                goto done;
+            }
             if (matcher->bAborted) goto done;
         }
         if (count == maximum || !simple_group_iteration(matcher, group, current, &next)) break;
@@ -2201,10 +2203,12 @@ static int m_simple_group(REMatcher *matcher, RENode *group, RECont *exit,
                 goto done;
             }
             next_capacity = capacity * 2;
-            grown = positions == local_positions ?
-                (size_t *)xx_rt_malloc(next_capacity * sizeof(size_t)) :
-                (size_t *)xx_rt_realloc(positions, next_capacity * sizeof(size_t));
-            if (!grown) { matcher_abort(matcher, XX_REGEX_EXEC_NO_MEMORY); goto done; }
+            grown = positions == local_positions ? (size_t *)xx_rt_malloc(next_capacity * sizeof(size_t))
+                                                 : (size_t *)xx_rt_realloc(positions, next_capacity * sizeof(size_t));
+            if (!grown) {
+                matcher_abort(matcher, XX_REGEX_EXEC_NO_MEMORY);
+                goto done;
+            }
             if (positions == local_positions) xx_rt_memcpy(grown, positions, capacity * sizeof(size_t));
             positions = grown;
             capacity = next_capacity;
@@ -2219,7 +2223,10 @@ static int m_simple_group(REMatcher *matcher, RENode *group, RECont *exit,
             matcher->pCaps[group->nGroupIndex * 2] = count ? (int32_t)(fixed ? current - width : positions[count - 1]) : -1;
             matcher->pCaps[group->nGroupIndex * 2 + 1] = count ? (int32_t)current : -1;
         }
-        if (m_cont(matcher, exit, current, end)) { result = 1; break; }
+        if (m_cont(matcher, exit, current, end)) {
+            result = 1;
+            break;
+        }
         if (matcher->bAborted || count == (size_t)group->nMin) break;
         --count;
         current = fixed ? current - width : positions[count];
@@ -2241,11 +2248,13 @@ done:
 static RE_INLINE int32_t *save_captures(REMatcher *matcher, const RENode *node, int32_t *local, size_t local_count, size_t *count)
 {
     int32_t *saved;
-    *count = node->nCaptureLast >= node->nCaptureFirst ?
-        (size_t)(node->nCaptureLast - node->nCaptureFirst + 1) * 2 : 0;
+    *count = node->nCaptureLast >= node->nCaptureFirst ? (size_t)(node->nCaptureLast - node->nCaptureFirst + 1) * 2 : 0;
     if (!*count) return local;
     saved = *count <= local_count ? local : (int32_t *)xx_rt_malloc(*count * sizeof(int32_t));
-    if (!saved) { matcher_abort(matcher, XX_REGEX_EXEC_NO_MEMORY); return NULL; }
+    if (!saved) {
+        matcher_abort(matcher, XX_REGEX_EXEC_NO_MEMORY);
+        return NULL;
+    }
     xx_rt_memcpy(saved, matcher->pCaps + node->nCaptureFirst * 2, *count * sizeof(int32_t));
     return saved;
 }
@@ -2271,8 +2280,7 @@ static int m_group(REMatcher *pMatcher, RENode *pGroup, int nDone, RECont *pExit
     int32_t local_captures[32], *saved;
     int fixed, result = 0, i;
     if (!matcher_work(pMatcher, 1)) return 0;
-    if (!nDone && simple_group_body(pMatcher, pGroup, &width, &fixed))
-        return m_simple_group(pMatcher, pGroup, pExit, nPos, pnEnd, width, fixed);
+    if (!nDone && simple_group_body(pMatcher, pGroup, &width, &fixed)) return m_simple_group(pMatcher, pGroup, pExit, nPos, pnEnd, width, fixed);
     if (pGroup->bLazy && nDone >= pGroup->nMin && m_cont(pMatcher, pExit, nPos, pnEnd)) return 1;
     saved = save_captures(pMatcher, pGroup, local_captures, 32, &capture_count);
     if (!saved) return 0;
@@ -2372,17 +2380,18 @@ static int m_node(REMatcher *pMatcher, RENode *pNode, RECont *pCont, size_t nPos
     if (!matcher_work_call(pMatcher, 1)) return 0;
 
     switch (pNode->type) {
-        case RE_EMPTY:
-            return m_after(pMatcher, pNode, pCont, nPos, pnEnd);
+        case RE_EMPTY: return m_after(pMatcher, pNode, pCont, nPos, pnEnd);
         case RE_BOL:
-            if ((nPos == 0 && !(pMatcher->options & XX_REGEX_NOTBOL)) || (nPos > 0 && pNode->bMultiline && (pMatcher->pText[nPos - 1] == '\n' || pMatcher->pText[nPos - 1] == '\r'))) {
+            if ((nPos == 0 && !(pMatcher->options & XX_REGEX_NOTBOL)) ||
+                (nPos > 0 && pNode->bMultiline && (pMatcher->pText[nPos - 1] == '\n' || pMatcher->pText[nPos - 1] == '\r'))) {
                 return m_after(pMatcher, pNode, pCont, nPos, pnEnd);
             }
 
             return 0;
 
         case RE_EOL:
-            if ((nPos == pMatcher->nSize && !(pMatcher->options & XX_REGEX_NOTEOL)) || (nPos < pMatcher->nSize && pNode->bMultiline && (pMatcher->pText[nPos] == '\n' || pMatcher->pText[nPos] == '\r'))) {
+            if ((nPos == pMatcher->nSize && !(pMatcher->options & XX_REGEX_NOTEOL)) ||
+                (nPos < pMatcher->nSize && pNode->bMultiline && (pMatcher->pText[nPos] == '\n' || pMatcher->pText[nPos] == '\r'))) {
                 return m_after(pMatcher, pNode, pCont, nPos, pnEnd);
             }
 
@@ -2497,8 +2506,7 @@ static int m_node(REMatcher *pMatcher, RENode *pNode, RECont *pCont, size_t nPos
             terminal.nKind = 2;
             terminal.nDone = pNode->type == RE_LOOKBEHIND;
             terminal.nLastPos = nPos;
-            if (terminal.nDone && nPos >= pNode->nLookbehindWidth)
-                assertion_start -= pNode->nLookbehindWidth;
+            if (terminal.nDone && nPos >= pNode->nLookbehindWidth) assertion_start -= pNode->nLookbehindWidth;
             if (pNode->nMin == 0) return m_after(pMatcher, pNode, pCont, nPos, pnEnd);
             saved = save_captures(pMatcher, pNode, local_captures, 32, &capture_count);
             if (!saved) return 0;
@@ -2506,14 +2514,20 @@ static int m_node(REMatcher *pMatcher, RENode *pNode, RECont *pCont, size_t nPos
                 RECont body;
                 if (terminal.nDone && nPos < pNode->nLookbehindWidth) break;
                 clear_captures(pMatcher, pNode, capture_count);
-                if (!pNode->pAlts[i].pFirst) { bMatched = 1; break; }
+                if (!pNode->pAlts[i].pFirst) {
+                    bMatched = 1;
+                    break;
+                }
                 body.nKind = 0;
                 body.pNode = pNode->pAlts[i].pFirst;
                 body.pRepeat = NULL;
                 body.nDone = 0;
                 body.nLastPos = 0;
                 body.pNext = &terminal;
-                if (m_cont(pMatcher, &body, assertion_start, &nDummy)) { bMatched = 1; break; }
+                if (m_cont(pMatcher, &body, assertion_start, &nDummy)) {
+                    bMatched = 1;
+                    break;
+                }
                 restore_captures(pMatcher, pNode, saved, capture_count);
                 if (pMatcher->bAborted) break;
             }
@@ -2544,15 +2558,13 @@ static int m_node(REMatcher *pMatcher, RENode *pNode, RECont *pCont, size_t nPos
     }
 }
 
-xx_regex_exec_status xx_regex_exec_ex(const xx_regex *regex, const char *text, size_t size, size_t start,
-    int32_t *caps, xx_regex_abort_fn should_abort, void *abort_user)
+xx_regex_exec_status xx_regex_exec_ex(const xx_regex *regex, const char *text, size_t size, size_t start, int32_t *caps, xx_regex_abort_fn should_abort, void *abort_user)
 {
     return xx_regex_exec_controlled(regex, text, size, start, caps, 0, should_abort, abort_user, NULL, NULL);
 }
 
-xx_regex_exec_status xx_regex_exec_controlled(const xx_regex *pRegExp, const char *pText, size_t nTextSize, size_t nStart,
-    int32_t *pnCaps, unsigned options, xx_regex_abort_fn should_abort, void *abort_user,
-    xx_regex_path_fn path, void *path_user)
+xx_regex_exec_status xx_regex_exec_controlled(const xx_regex *pRegExp, const char *pText, size_t nTextSize, size_t nStart, int32_t *pnCaps, unsigned options,
+                                              xx_regex_abort_fn should_abort, void *abort_user, xx_regex_path_fn path, void *path_user)
 {
     REMatcher matcher;
     size_t nPos = 0;
@@ -2623,14 +2635,11 @@ xx_regex_exec_status xx_regex_exec_controlled(const xx_regex *pRegExp, const cha
                 nPos = (size_t)(pNewline - pText) + 1;
             }
         }
-        if (!(options & XX_REGEX_ANCHORED) && !pRegExp->bAllAnchored && pRegExp->nSingleFirstByte >= 0 &&
-            pRegExp->nStartSets <= 1) {
+        if (!(options & XX_REGEX_ANCHORED) && !pRegExp->bAllAnchored && pRegExp->nSingleFirstByte >= 0 && pRegExp->nStartSets <= 1) {
             const char *pFirst;
-            if (pRegExp->nAltCount == 1 && !pRegExp->pAlts[0].bCheckIgnoreCase &&
-                pRegExp->pAlts[0].bCheckChar && pRegExp->pAlts[0].nCheckOffset > 0 &&
+            if (pRegExp->nAltCount == 1 && !pRegExp->pAlts[0].bCheckIgnoreCase && pRegExp->pAlts[0].bCheckChar && pRegExp->pAlts[0].nCheckOffset > 0 &&
                 pRegExp->pAlts[0].nCheckChar < 128 && pRegExp->nSingleFirstByte < 128) {
-                pFirst = matcher_find_pair(&matcher, nPos, (unsigned char)pRegExp->nSingleFirstByte,
-                    pRegExp->pAlts[0].nCheckOffset, pRegExp->pAlts[0].nCheckChar);
+                pFirst = matcher_find_pair(&matcher, nPos, (unsigned char)pRegExp->nSingleFirstByte, pRegExp->pAlts[0].nCheckOffset, pRegExp->pAlts[0].nCheckChar);
             } else {
                 pFirst = matcher_find_byte(&matcher, nPos, (unsigned char)pRegExp->nSingleFirstByte);
             }
@@ -2718,4 +2727,3 @@ int xx_regex_exec(const xx_regex *regex, const char *text, size_t text_size, siz
 {
     return xx_regex_exec_ex(regex, text, text_size, start, caps, NULL, NULL) == XX_REGEX_EXEC_MATCH;
 }
-

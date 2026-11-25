@@ -11,8 +11,6 @@
 bool xfu_native_tar_can_create(const char *format);
 /* members: one for each of request->files, as xfu_native_create walked them;
  * their metadata goes to the headers. */
-bool xfu_native_tar_write(const xfu_request *request, const char *format,
-                          const xfu_native_member *members, xx_io_device *output,
-                          xx_pd_struct *pd);
+bool xfu_native_tar_write(const xfu_request *request, const char *format, const xfu_native_member *members, xx_io_device *output, xx_pd_struct *pd);
 
 #endif

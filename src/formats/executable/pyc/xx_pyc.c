@@ -472,8 +472,7 @@ static bool pyc_code(pyc_cursor *c, unsigned depth, uint32_t *code_index)
     }
     if (!pyc_field_value(c, depth, PK_TUPLE, depth == 0, NULL, &code->constants)) goto fail;
     if (depth == 0) c->in_root_constants = false;
-    if (!pyc_field_value(c, depth, PK_TUPLE, false, NULL, &code->names) ||
-        !pyc_field_value(c, depth, PK_TUPLE, false, NULL, &code->varnames)) goto fail;
+    if (!pyc_field_value(c, depth, PK_TUPLE, false, NULL, &code->names) || !pyc_field_value(c, depth, PK_TUPLE, false, NULL, &code->varnames)) goto fail;
     if (modern) {
         if (c->reader->magic >= 3457) {
             if (!pyc_field(c, depth, PK_BYTES, false)) goto fail;
@@ -482,8 +481,7 @@ static bool pyc_code(pyc_cursor *c, unsigned depth, uint32_t *code_index)
             if (!pyc_object(c, depth + 1U, false, &v, NULL) || (v.kind != PK_TUPLE && v.kind != PK_BYTES)) goto fail;
         }
     } else if (c->major > 2 || (c->major == 2 && c->minor >= 1)) {
-        if (!pyc_field_value(c, depth, PK_TUPLE, false, NULL, &code->freevars) ||
-            !pyc_field_value(c, depth, PK_TUPLE, false, NULL, &code->cellvars)) goto fail;
+        if (!pyc_field_value(c, depth, PK_TUPLE, false, NULL, &code->freevars) || !pyc_field_value(c, depth, PK_TUPLE, false, NULL, &code->cellvars)) goto fail;
     }
     if (!pyc_field_value(c, depth, PK_TEXT, false, &value, NULL) || !(code->filename = pyc_value_text(c, value))) goto fail;
     if (!pyc_field_value(c, depth, PK_TEXT, false, &value, NULL) || !(code->name = pyc_value_text(c, value))) goto fail;
@@ -687,10 +685,8 @@ static bool pyc_finalize_code_names(pyc_cursor *c)
             c->budget_failed = true;
             return false;
         }
-        if (prefix)
-            (void)xx_rt_snprintf(code->qualified_name, bytes, "%s.%s", prefix, name);
-        else
-            (void)xx_rt_snprintf(code->qualified_name, bytes, "%s", name);
+        if (prefix) (void)xx_rt_snprintf(code->qualified_name, bytes, "%s.%s", prefix, name);
+        else (void)xx_rt_snprintf(code->qualified_name, bytes, "%s", name);
         code->public_value.qualified_name = code->qualified_name;
         c->used += bytes;
     }
@@ -814,10 +810,8 @@ bool xx_pyc_analyze(xx_pyc *r, xx_pd_struct *pd)
         pyc_analysis_free(c.analysis);
         return false;
     }
-    if (valid)
-        r->analysis = c.analysis;
-    else
-        pyc_analysis_free(c.analysis);
+    if (valid) r->analysis = c.analysis;
+    else pyc_analysis_free(c.analysis);
     r->analyzed = true;
     r->format.is_valid = valid;
     xx_format_set_version(&r->format, r->version);
@@ -840,14 +834,9 @@ bool xx_pyc_const_present(const xx_pyc *r, const char *value)
 }
 
 static const xx_pyc_register pyc_registers[] = {
-    {"a0", 32, 0, false, false, false, true, false},
-    {"a1", 32, 4, false, false, false, true, false},
-    {"a2", 32, 8, false, false, false, true, false},
-    {"a3", 32, 12, false, false, false, true, false},
-    {"r0", 32, 16, false, false, false, false, true},
-    {"sp", 32, 20, false, true, false, false, false},
-    {"pc", 32, 24, true, false, false, false, false},
-    {"bp", 32, 28, false, false, true, false, false},
+    {"a0", 32, 0, false, false, false, true, false},  {"a1", 32, 4, false, false, false, true, false},  {"a2", 32, 8, false, false, false, true, false},
+    {"a3", 32, 12, false, false, false, true, false}, {"r0", 32, 16, false, false, false, false, true}, {"sp", 32, 20, false, true, false, false, false},
+    {"pc", 32, 24, true, false, false, false, false}, {"bp", 32, 28, false, false, true, false, false},
 };
 
 static const char pyc_register_profile[] =
@@ -930,11 +919,26 @@ static pyc_opcode_info pyc_opcode(uint8_t opcode, unsigned major, unsigned minor
         case 1: info.name = "pop_top"; break;
         case 71: info.name = "print_item"; break;
         case 72: info.name = "print_newline"; break;
-        case 83: info.name = "return_value"; info.flags = PYC_OP_RETURN; break;
-        case 90: info.name = "store_name"; info.flags = PYC_OP_NAME | PYC_OP_STORE; break;
-        case 100: info.name = "load_const"; info.flags = PYC_OP_CONST | PYC_OP_LOAD; break;
-        case 101: info.name = "load_name"; info.flags = PYC_OP_NAME | PYC_OP_LOAD; break;
-        case 110: info.name = "jump_forward"; info.flags = PYC_OP_JREL; break;
+        case 83:
+            info.name = "return_value";
+            info.flags = PYC_OP_RETURN;
+            break;
+        case 90:
+            info.name = "store_name";
+            info.flags = PYC_OP_NAME | PYC_OP_STORE;
+            break;
+        case 100:
+            info.name = "load_const";
+            info.flags = PYC_OP_CONST | PYC_OP_LOAD;
+            break;
+        case 101:
+            info.name = "load_name";
+            info.flags = PYC_OP_NAME | PYC_OP_LOAD;
+            break;
+        case 110:
+            info.name = "jump_forward";
+            info.flags = PYC_OP_JREL;
+            break;
         case 111:
             info.name = major >= 2 ? "jump_if_false_or_pop" : "jump_if_false";
             info.flags = (major >= 2 ? PYC_OP_JABS : PYC_OP_JREL) | PYC_OP_CONDITIONAL;
@@ -943,10 +947,22 @@ static pyc_opcode_info pyc_opcode(uint8_t opcode, unsigned major, unsigned minor
             info.name = major >= 2 ? "jump_if_true_or_pop" : "jump_if_true";
             info.flags = (major >= 2 ? PYC_OP_JABS : PYC_OP_JREL) | PYC_OP_CONDITIONAL;
             break;
-        case 113: info.name = "jump_absolute"; info.flags = PYC_OP_JABS; break;
-        case 114: info.name = "pop_jump_if_false"; info.flags = PYC_OP_JABS | PYC_OP_CONDITIONAL; break;
-        case 115: info.name = "pop_jump_if_true"; info.flags = PYC_OP_JABS | PYC_OP_CONDITIONAL; break;
-        case 131: info.name = "call_function"; info.flags = PYC_OP_CALL; break;
+        case 113:
+            info.name = "jump_absolute";
+            info.flags = PYC_OP_JABS;
+            break;
+        case 114:
+            info.name = "pop_jump_if_false";
+            info.flags = PYC_OP_JABS | PYC_OP_CONDITIONAL;
+            break;
+        case 115:
+            info.name = "pop_jump_if_true";
+            info.flags = PYC_OP_JABS | PYC_OP_CONDITIONAL;
+            break;
+        case 131:
+            info.name = "call_function";
+            info.flags = PYC_OP_CALL;
+            break;
         case 132: info.name = "make_function"; break;
         case 144: info.name = "extended_arg"; break;
         case 145: info.name = "extended_arg"; break;
@@ -981,10 +997,8 @@ static void pyc_format_value(xx_pyc *r, const pyc_analysis *analysis, pyc_value 
         (void)xx_rt_snprintf(output, capacity, "CodeObject(%s) from %s", code->name ? code->name : "", code->filename ? code->filename : "");
     } else if (value.kind == PK_TEXT || value.kind == PK_BYTES) {
         pyc_copy_raw_value(r, value, text, sizeof(text));
-        if (value.type == 's' || value.type == 't')
-            (void)xx_rt_snprintf(output, capacity, "'%s'", text);
-        else
-            (void)xx_rt_snprintf(output, capacity, "%s", text);
+        if (value.type == 's' || value.type == 't') (void)xx_rt_snprintf(output, capacity, "'%s'", text);
+        else (void)xx_rt_snprintf(output, capacity, "%s", text);
     } else if (value.type == 'N') {
         (void)xx_rt_snprintf(output, capacity, "None");
     } else if (value.type == 'T' || value.type == 'F') {
@@ -1013,8 +1027,7 @@ static bool pyc_parse_simple(const uint8_t *data, size_t size, size_t *location,
     return true;
 }
 
-bool xx_pyc_decode_bytes(xx_pyc *r, uint64_t code_index, uint64_t address, const uint8_t *data, size_t size,
-                         xx_pyc_instruction *output, xx_pd_struct *pd)
+bool xx_pyc_decode_bytes(xx_pyc *r, uint64_t code_index, uint64_t address, const uint8_t *data, size_t size, xx_pyc_instruction *output, xx_pd_struct *pd)
 {
     pyc_analysis *analysis;
     pyc_code_analysis *code;
@@ -1025,8 +1038,9 @@ bool xx_pyc_decode_bytes(xx_pyc *r, uint64_t code_index, uint64_t address, const
     unsigned i, extended_count = 0;
     pyc_opcode_info info;
     if (output) xx_mem_zero(output, sizeof(*output));
-    if (!r || !data || !size || !output || xx_pd_is_stopped(pd) ||
-        !xx_pyc_analyze(r, pd) || !r->format.is_valid || !(analysis = (pyc_analysis *)r->analysis) || code_index >= analysis->count) return false;
+    if (!r || !data || !size || !output || xx_pd_is_stopped(pd) || !xx_pyc_analyze(r, pd) || !r->format.is_valid || !(analysis = (pyc_analysis *)r->analysis) ||
+        code_index >= analysis->count)
+        return false;
     code = analysis->items[code_index];
     if (address < code->public_value.address || address - code->public_value.address >= code->public_value.size) return false;
     pyc_version_numbers(r->version, &major, &minor);
@@ -1082,20 +1096,13 @@ bool xx_pyc_decode_bytes(xx_pyc *r, uint64_t code_index, uint64_t address, const
         output->jump_address = address + location + argument;
     }
     if (info.flags & PYC_OP_CONDITIONAL) output->fail_address = address + location;
-    if (info.flags & PYC_OP_CONDITIONAL)
-        output->kind = XX_PYC_INSTRUCTION_CONDITIONAL_JUMP;
-    else if (info.flags & (PYC_OP_JABS | PYC_OP_JREL))
-        output->kind = XX_PYC_INSTRUCTION_JUMP;
-    else if (info.flags & PYC_OP_RETURN)
-        output->kind = XX_PYC_INSTRUCTION_RETURN;
-    else if (info.flags & PYC_OP_CALL)
-        output->kind = XX_PYC_INSTRUCTION_CALL;
-    else if (info.flags & PYC_OP_STORE)
-        output->kind = XX_PYC_INSTRUCTION_STORE;
-    else if (info.flags & PYC_OP_LOAD)
-        output->kind = XX_PYC_INSTRUCTION_LOAD;
-    else
-        output->kind = XX_PYC_INSTRUCTION_OTHER;
+    if (info.flags & PYC_OP_CONDITIONAL) output->kind = XX_PYC_INSTRUCTION_CONDITIONAL_JUMP;
+    else if (info.flags & (PYC_OP_JABS | PYC_OP_JREL)) output->kind = XX_PYC_INSTRUCTION_JUMP;
+    else if (info.flags & PYC_OP_RETURN) output->kind = XX_PYC_INSTRUCTION_RETURN;
+    else if (info.flags & PYC_OP_CALL) output->kind = XX_PYC_INSTRUCTION_CALL;
+    else if (info.flags & PYC_OP_STORE) output->kind = XX_PYC_INSTRUCTION_STORE;
+    else if (info.flags & PYC_OP_LOAD) output->kind = XX_PYC_INSTRUCTION_LOAD;
+    else output->kind = XX_PYC_INSTRUCTION_OTHER;
     return true;
 }
 

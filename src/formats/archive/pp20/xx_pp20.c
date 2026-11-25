@@ -492,7 +492,11 @@ bool xx_pp20_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
     pp20_image *image;
     int64_t saved = self && self->device ? xx_io_tell(self->device) : -1;
     bool valid = xx_pp20_decode_stream(self, NULL, &context, pd);
-    if (!valid) { image = pp20_image_open(self, pd); valid = image != NULL; pp20_image_free(image); }
+    if (!valid) {
+        image = pp20_image_open(self, pd);
+        valid = image != NULL;
+        pp20_image_free(image);
+    }
     if (saved >= 0) (void)xx_io_seek64(self->device, saved, SEEK_SET);
     return valid;
 }

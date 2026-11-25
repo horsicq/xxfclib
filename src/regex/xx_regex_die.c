@@ -128,4 +128,3 @@ int xx_regex_die_archive_present(DieEngine *pEngine, const char *pPattern)
 
     return bFound;
 }
-

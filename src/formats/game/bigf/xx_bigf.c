@@ -243,8 +243,7 @@ static xx_bigf_stream *xx_bigf_parse(Abstractformat *self, xx_pd_struct *pd)
         /* Nameless mask libraries use the same directory grammar. Keep all
          * payloads beyond the full directory. The archive length field is
          * informational: some writers leave the final member's size there. */
-        if ((uint64_t)span > UINT32_MAX ||
-            first_data < (uint64_t)offset || first_data > (uint64_t)span) goto fail;
+        if ((uint64_t)span > UINT32_MAX || first_data < (uint64_t)offset || first_data > (uint64_t)span) goto fail;
         for (index = 0; index < (int64_t)stream->count; ++index) {
             xx_bigf_member *member = &stream->items[index];
             char prefix[24];
@@ -381,8 +380,7 @@ static bool xx_bigf_set_record(xx_archive_record *record, const xx_bigf_member *
     record->data_offset = member->data_offset;
     record->compressed_size = member->compressed_size;
     return xx_archive_record_set_original_name(record, member->name) &&
-           (!member->stored_name || xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT,
-                member->stored_name[0] ? member->stored_name : "Unnamed BIGF member")) &&
+           (!member->stored_name || xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, member->stored_name[0] ? member->stored_name : "Unnamed BIGF member")) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->compressed_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&

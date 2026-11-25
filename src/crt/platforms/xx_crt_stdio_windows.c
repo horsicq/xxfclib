@@ -359,11 +359,11 @@ typedef struct xx_crt_file_s {
     int nState;
     char *pBuffer;
     size_t nBufferSize;
-    size_t nPos; /* read: next byte; write: bytes buffered */
-    size_t nLen; /* read: bytes valid */
+    size_t nPos;     /* read: next byte; write: bytes buffered */
+    size_t nLen;     /* read: bytes valid */
     size_t nFillRaw; /* read: bytes of the file behind the buffered text */
     char sSmall[2];  /* the read buffer of an unbuffered stream (UCRT reads those two bytes at a time) */
-    int nUnget;  /* pushed-back character or -1 */
+    int nUnget;      /* pushed-back character or -1 */
     CRITICAL_SECTION lock;
     volatile LONG nLockReady;
     struct xx_crt_file_s *pNext;
@@ -449,8 +449,7 @@ static void xx_crt_file_buffer(xx_crt_file *pFile)
     if (pFile->pBuffer || (pFile->nFlags & XX_CRT_FILE_UNBUF)) return;
     pFd = xx_crt_fd_get(pFile->nFd);
     /* UCRT: stderr is never buffered, and neither is output to a console. */
-    if (!(pFile->nFlags & XX_CRT_FILE_SETBUF) &&
-        (((pFile->nFlags & XX_CRT_FILE_STD) && pFile->nFd == 2) || (pFd && GetFileType(pFd->hHandle) == FILE_TYPE_CHAR))) {
+    if (!(pFile->nFlags & XX_CRT_FILE_SETBUF) && (((pFile->nFlags & XX_CRT_FILE_STD) && pFile->nFd == 2) || (pFd && GetFileType(pFd->hHandle) == FILE_TYPE_CHAR))) {
         pFile->nFlags |= XX_CRT_FILE_UNBUF;
         return;
     }
@@ -680,9 +679,22 @@ static FILE *xx_crt_open(const wchar_t *pName, const wchar_t *pMode)
     }
     while (*p == L' ') ++p;
     switch (*p) {
-        case L'r': nAccess = GENERIC_READ; nDisposition = OPEN_EXISTING; nFileFlags = XX_CRT_FILE_READ; break;
-        case L'w': nAccess = GENERIC_WRITE; nDisposition = CREATE_ALWAYS; nFileFlags = XX_CRT_FILE_WRITE; break;
-        case L'a': nAccess = GENERIC_WRITE; nDisposition = OPEN_ALWAYS; nFileFlags = XX_CRT_FILE_WRITE; nFdFlags |= XX_CRT_FD_APPEND; break;
+        case L'r':
+            nAccess = GENERIC_READ;
+            nDisposition = OPEN_EXISTING;
+            nFileFlags = XX_CRT_FILE_READ;
+            break;
+        case L'w':
+            nAccess = GENERIC_WRITE;
+            nDisposition = CREATE_ALWAYS;
+            nFileFlags = XX_CRT_FILE_WRITE;
+            break;
+        case L'a':
+            nAccess = GENERIC_WRITE;
+            nDisposition = OPEN_ALWAYS;
+            nFileFlags = XX_CRT_FILE_WRITE;
+            nFdFlags |= XX_CRT_FD_APPEND;
+            break;
         default: errno = EINVAL; return NULL;
     }
     for (++p; *p; ++p) {
@@ -697,8 +709,8 @@ static FILE *xx_crt_open(const wchar_t *pName, const wchar_t *pMode)
         nAccess = GENERIC_READ | GENERIC_WRITE;
         nFileFlags = XX_CRT_FILE_READ | XX_CRT_FILE_WRITE;
     }
-    hHandle = CreateFileW(pName, nAccess, FILE_SHARE_READ | FILE_SHARE_WRITE | ((nAttributes & FILE_FLAG_DELETE_ON_CLOSE) ? FILE_SHARE_DELETE : 0), NULL,
-                          nDisposition, nAttributes, NULL);
+    hHandle = CreateFileW(pName, nAccess, FILE_SHARE_READ | FILE_SHARE_WRITE | ((nAttributes & FILE_FLAG_DELETE_ON_CLOSE) ? FILE_SHARE_DELETE : 0), NULL, nDisposition,
+                          nAttributes, NULL);
     if (hHandle == INVALID_HANDLE_VALUE) {
         errno = xx_crt_errno_from_oserror(GetLastError());
         return NULL;
@@ -1334,8 +1346,7 @@ int __cdecl __stdio_common_vsprintf(unsigned __int64 nOptions, char *pBuffer, si
     return -1;
 }
 
-int __cdecl __stdio_common_vsnprintf_s(unsigned __int64 nOptions, char *pBuffer, size_t nSize, size_t nMaxCount, const char *pFormat, _locale_t pLocale,
-                                       va_list args)
+int __cdecl __stdio_common_vsnprintf_s(unsigned __int64 nOptions, char *pBuffer, size_t nSize, size_t nMaxCount, const char *pFormat, _locale_t pLocale, va_list args)
 {
     int nResult;
     size_t nLimit;

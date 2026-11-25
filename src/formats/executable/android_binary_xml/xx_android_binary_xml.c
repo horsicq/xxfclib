@@ -16,8 +16,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     unsigned depth = 0, namespaces = 0, roots = 0;
     bool pool = false, map = false, started = false, ok = false;
     if (!blob_load(f, &b, pd)) return false;
-    BLOB_NEED(android_wire_read(&b, 0, b.n, &root) && root.type == 3 && root.header >= 8 && root.end == b.n &&
-              blob_add(f, s, &b, "xml-header", 0, root.header));
+    BLOB_NEED(android_wire_read(&b, 0, b.n, &root) && root.type == 3 && root.header >= 8 && root.end == b.n && blob_add(f, s, &b, "xml-header", 0, root.header));
     at = root.header;
     while (at < b.n) {
         BLOB_NEED(android_wire_read(&b, at, b.n, &c));

@@ -16,8 +16,18 @@
 #define INI_HEADER "; xxfclib settings v1"
 #define INI_NONE ((size_t)-1)
 
-enum { INI_OTHER, INI_HEADER_LINE, INI_SECTION, INI_ENTRY };
-enum { INI_KEEP, INI_DELETE, INI_REPLACE, INI_REENCODE };
+enum {
+    INI_OTHER,
+    INI_HEADER_LINE,
+    INI_SECTION,
+    INI_ENTRY
+};
+enum {
+    INI_KEEP,
+    INI_DELETE,
+    INI_REPLACE,
+    INI_REENCODE
+};
 
 typedef struct ini_record_s {
     size_t start, end; /* Bytes of the record, including its line terminator. */

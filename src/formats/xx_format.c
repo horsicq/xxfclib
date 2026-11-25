@@ -300,4 +300,3 @@ xx_file_type_t xx_format_get_file_type(Abstractformat *fmt)
     }
     return XX_FILE_TYPE_UNKNOWN;
 }
-

@@ -50,20 +50,10 @@ static XDisasmResult invalid_byte(unsigned char byte)
 
 static int script_decode_flags(cdisasm_mode mode, cdisasm_x86_decode_flags *flags)
 {
-    static const uint32_t reduced_bits[] = {
-        CDISASM_X86_DECODE_BIT_BITMANIP,
-        CDISASM_X86_DECODE_BIT_SMX,
-        CDISASM_X86_DECODE_BIT_SYSTEM,
-        CDISASM_X86_DECODE_BIT_CET,
-        CDISASM_X86_DECODE_BIT_STATE,
-        CDISASM_X86_DECODE_BIT_SECURITY,
-        CDISASM_X86_DECODE_BIT_UNDOCUMENTED,
-        CDISASM_X86_DECODE_BIT_VMX,
-        CDISASM_X86_DECODE_BIT_SVM,
-        CDISASM_X86_DECODE_BIT_BMI1,
-        CDISASM_X86_DECODE_BIT_BMI2,
-        CDISASM_X86_DECODE_BIT_VTX
-    };
+    static const uint32_t reduced_bits[] = {CDISASM_X86_DECODE_BIT_BITMANIP,     CDISASM_X86_DECODE_BIT_SMX,   CDISASM_X86_DECODE_BIT_SYSTEM,
+                                            CDISASM_X86_DECODE_BIT_CET,          CDISASM_X86_DECODE_BIT_STATE, CDISASM_X86_DECODE_BIT_SECURITY,
+                                            CDISASM_X86_DECODE_BIT_UNDOCUMENTED, CDISASM_X86_DECODE_BIT_VMX,   CDISASM_X86_DECODE_BIT_SVM,
+                                            CDISASM_X86_DECODE_BIT_BMI1,         CDISASM_X86_DECODE_BIT_BMI2,  CDISASM_X86_DECODE_BIT_VTX};
     size_t i;
 
     if (cdisasm_x86_cpu_decode_flag_mask(CDISASM_CPU_X86, mode, flags) != CDISASM_STATUS_OK) return 0;

@@ -1311,8 +1311,7 @@ static bool lx_unpack_member(lx_stream *s, uint32_t index, xx_io_device *destina
                 lx_sink probe;
                 uint8_t value;
                 xx_mem_zero(&probe, sizeof(probe));
-                if (!xx_md5_init(&probe.md5) || !lx_media_copy(&s->media, first, 1U, &probe, pd) || !lx_load_chunk(&s->media, first / info->chunk_size, pd))
-                    return false;
+                if (!xx_md5_init(&probe.md5) || !lx_media_copy(&s->media, first, 1U, &probe, pd) || !lx_load_chunk(&s->media, first / info->chunk_size, pd)) return false;
                 value = s->media.chunk[first % info->chunk_size];
                 if (!lx_fill(&sink, value, size, pd)) return false;
             }

@@ -17,8 +17,8 @@ enum {
     XX_STRINGS_ALL = 14
 };
 enum {
-    XX_STRINGS_NO_TEXT = 1, /**< Deliver metadata without allocating decoded text. */
-    XX_STRINGS_SCALAR = 2,  /**< Force the portable byte classifier (also useful for verification). */
+    XX_STRINGS_NO_TEXT = 1,     /**< Deliver metadata without allocating decoded text. */
+    XX_STRINGS_SCALAR = 2,      /**< Force the portable byte classifier (also useful for verification). */
     XX_STRINGS_DIE_ALPHABET = 4 /**< DIE-compatible ANSI (0x20..0x7F) and wide Latin-1/Cyrillic alphabet. */
 };
 enum {

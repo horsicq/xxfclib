@@ -447,12 +447,9 @@ static const xx_data_struct_field_desc xx_pswp_drive32[] = {
 };
 
 static const xx_data_struct_field_desc xx_pswp_curdir64[] = {
-    XX_PSW_FIELD("DosPath", "UNICODE_STRING64[1]", 0x0, 16, 0),
-    XX_PSW_FIELD("DosPath.Length", "USHORT", 0x0, 2, XX_PSW_SIZE),
-    XX_PSW_FIELD("DosPath.MaximumLength", "USHORT", 0x2, 2, XX_PSW_SIZE),
-    XX_PSW_FIELD("DosPath.AlignmentPadding", "UCHAR[4]", 0x4, 4, XX_PSW_RESERVED),
-    XX_PSW_FIELD("DosPath.Buffer", "PWSTR64", 0x8, 8, XX_PSW_PTR),
-    XX_PSW_FIELD("Handle", "HANDLE64", 0x10, 8, XX_PSW_ID),
+    XX_PSW_FIELD("DosPath", "UNICODE_STRING64[1]", 0x0, 16, 0),           XX_PSW_FIELD("DosPath.Length", "USHORT", 0x0, 2, XX_PSW_SIZE),
+    XX_PSW_FIELD("DosPath.MaximumLength", "USHORT", 0x2, 2, XX_PSW_SIZE), XX_PSW_FIELD("DosPath.AlignmentPadding", "UCHAR[4]", 0x4, 4, XX_PSW_RESERVED),
+    XX_PSW_FIELD("DosPath.Buffer", "PWSTR64", 0x8, 8, XX_PSW_PTR),        XX_PSW_FIELD("Handle", "HANDLE64", 0x10, 8, XX_PSW_ID),
 };
 
 static const xx_data_struct_field_desc xx_pswp_drive64[] = {
@@ -486,44 +483,17 @@ static const xx_pswp_string_member xx_pswp_strings[] = {
 
 /* No drive letter is inferred from a slot: the ABI supplies 32 entries. */
 static const char *const xx_pswp_drive_labels[32] = {
-    "CurrentDirectories[0]",
-    "CurrentDirectories[1]",
-    "CurrentDirectories[2]",
-    "CurrentDirectories[3]",
-    "CurrentDirectories[4]",
-    "CurrentDirectories[5]",
-    "CurrentDirectories[6]",
-    "CurrentDirectories[7]",
-    "CurrentDirectories[8]",
-    "CurrentDirectories[9]",
-    "CurrentDirectories[10]",
-    "CurrentDirectories[11]",
-    "CurrentDirectories[12]",
-    "CurrentDirectories[13]",
-    "CurrentDirectories[14]",
-    "CurrentDirectories[15]",
-    "CurrentDirectories[16]",
-    "CurrentDirectories[17]",
-    "CurrentDirectories[18]",
-    "CurrentDirectories[19]",
-    "CurrentDirectories[20]",
-    "CurrentDirectories[21]",
-    "CurrentDirectories[22]",
-    "CurrentDirectories[23]",
-    "CurrentDirectories[24]",
-    "CurrentDirectories[25]",
-    "CurrentDirectories[26]",
-    "CurrentDirectories[27]",
-    "CurrentDirectories[28]",
-    "CurrentDirectories[29]",
-    "CurrentDirectories[30]",
-    "CurrentDirectories[31]",
+    "CurrentDirectories[0]",  "CurrentDirectories[1]",  "CurrentDirectories[2]",  "CurrentDirectories[3]",  "CurrentDirectories[4]",  "CurrentDirectories[5]",
+    "CurrentDirectories[6]",  "CurrentDirectories[7]",  "CurrentDirectories[8]",  "CurrentDirectories[9]",  "CurrentDirectories[10]", "CurrentDirectories[11]",
+    "CurrentDirectories[12]", "CurrentDirectories[13]", "CurrentDirectories[14]", "CurrentDirectories[15]", "CurrentDirectories[16]", "CurrentDirectories[17]",
+    "CurrentDirectories[18]", "CurrentDirectories[19]", "CurrentDirectories[20]", "CurrentDirectories[21]", "CurrentDirectories[22]", "CurrentDirectories[23]",
+    "CurrentDirectories[24]", "CurrentDirectories[25]", "CurrentDirectories[26]", "CurrentDirectories[27]", "CurrentDirectories[28]", "CurrentDirectories[29]",
+    "CurrentDirectories[30]", "CurrentDirectories[31]",
 };
 
 /* Check both integer overflow and the target pointer width, including the last
  * addressed byte. The target address is never dereferenced by this process. */
-static bool xx_pswp_span(uint64_t address, uint64_t offset, size_t size,
-    unsigned width, uint64_t *result)
+static bool xx_pswp_span(uint64_t address, uint64_t offset, size_t size, unsigned width, uint64_t *result)
 {
     uint64_t last;
     if (width != 4 && width != 8) return false;
@@ -548,15 +518,15 @@ static bool xx_pswp_room(xx_ps_context *context)
 /* Keep the complete verified schema but do not read outside the validated
  * Length/MaximumLength block. Short tails have unavailable values, not zeroes.
  * The largest supported object is the 0x448-byte AMD64 parameter structure. */
-static xx_process_structure *xx_pswp_memory(xx_ps_context *context, xx_io_device *device,
-    const char *name, const char *layout, uint64_t address, size_t extent, size_t readable,
-    const xx_data_struct_field_desc *fields, size_t count)
+static xx_process_structure *xx_pswp_memory(xx_ps_context *context, xx_io_device *device, const char *name, const char *layout, uint64_t address, size_t extent,
+                                            size_t readable, const xx_data_struct_field_desc *fields, size_t count)
 {
     unsigned char bytes[XX_PSWP_PARAMS64_26100_SIZE] = {0};
     xx_process_structure *structure;
     bool complete, unreadable = false;
     if (!extent || extent > sizeof(bytes)) {
-        context->status = XX_PROCESS_STRUCTS_INVALID_ARGUMENT; return NULL;
+        context->status = XX_PROCESS_STRUCTS_INVALID_ARGUMENT;
+        return NULL;
     }
     if (readable > extent) readable = extent;
     structure = xx_ps_add(context, name, layout, address, true, extent, 0);
@@ -566,29 +536,26 @@ static xx_process_structure *xx_pswp_memory(xx_ps_context *context, xx_io_device
         const xx_data_struct_field_desc *field = fields + i;
         size_t offset, size;
         bool in_bounds, available;
-        if (field->rel_offset < 0 || field->size < 0 ||
-            (uint64_t)field->rel_offset > extent ||
-            (uint64_t)field->size > extent - (size_t)field->rel_offset) {
-            context->status = XX_PROCESS_STRUCTS_INVALID_ARGUMENT; return NULL;
+        if (field->rel_offset < 0 || field->size < 0 || (uint64_t)field->rel_offset > extent || (uint64_t)field->size > extent - (size_t)field->rel_offset) {
+            context->status = XX_PROCESS_STRUCTS_INVALID_ARGUMENT;
+            return NULL;
         }
-        offset = (size_t)field->rel_offset; size = (size_t)field->size;
+        offset = (size_t)field->rel_offset;
+        size = (size_t)field->size;
         in_bounds = offset <= readable && size <= readable - offset;
         available = in_bounds && (complete || xx_psw_read_at(device, address, offset, bytes + offset, size));
         if (in_bounds && !available) unreadable = true;
-        if (!xx_ps_decode(context, structure, field, 1,
-                available ? bytes : NULL, available ? offset + size : 0, false)) return NULL;
+        if (!xx_ps_decode(context, structure, field, 1, available ? bytes : NULL, available ? offset + size : 0, false)) return NULL;
         if (!in_bounds && structure->field_count)
-            (void)snprintf(structure->fields[structure->field_count - 1].comment,
-                sizeof(structure->fields[structure->field_count - 1].comment),
-                "Outside the validated RTL_USER_PROCESS_PARAMETERS.Length block.");
+            (void)snprintf(structure->fields[structure->field_count - 1].comment, sizeof(structure->fields[structure->field_count - 1].comment),
+                           "Outside the validated RTL_USER_PROCESS_PARAMETERS.Length block.");
     }
     xx_psw_bitfields(structure);
     if (unreadable) xx_psw_warn_once(context, "Some process-parameter fields were unreadable.");
     return structure;
 }
 
-static void xx_pswp_ansi_preview(xx_ps_context *context, xx_io_device *device,
-    xx_process_structure *structure, uint64_t address, unsigned width, bool normalized)
+static void xx_pswp_ansi_preview(xx_ps_context *context, xx_io_device *device, xx_process_structure *structure, uint64_t address, unsigned width, bool normalized)
 {
     unsigned char header[24], bytes[40];
     uint64_t buffer;
@@ -601,21 +568,19 @@ static void xx_pswp_ansi_preview(xx_ps_context *context, xx_io_device *device,
      * stale length/pointer values, although its inline fields remain visible. */
     if (!xx_psw_read_at(device, address, 0, header, width == 8 ? 24 : 16)) return;
     if (!(xx_psw_le(header, 2) & 1)) {
-        (void)snprintf(field->comment, sizeof(field->comment),
-            "Drive slot is not marked valid; its stale STRING buffer was not followed.");
+        (void)snprintf(field->comment, sizeof(field->comment), "Drive slot is not marked valid; its stale STRING buffer was not followed.");
         return;
     }
     if (!normalized) {
-        (void)snprintf(field->comment, sizeof(field->comment),
-            "Unnormalized relative buffer value; it was not followed as an absolute address.");
+        (void)snprintf(field->comment, sizeof(field->comment), "Unnormalized relative buffer value; it was not followed as an absolute address.");
         return;
     }
-    length = (size_t)xx_psw_le(header + 8, 2); maximum = (size_t)xx_psw_le(header + 10, 2);
+    length = (size_t)xx_psw_le(header + 8, 2);
+    maximum = (size_t)xx_psw_le(header + 10, 2);
     buffer = xx_psw_le(header + (width == 8 ? 16 : 12), width);
     preview = length < sizeof(bytes) ? length : sizeof(bytes);
     if (length > maximum || (length && !buffer) || !xx_pswp_span(buffer, 0, preview, width, NULL)) {
-        (void)snprintf(field->comment, sizeof(field->comment),
-            "Inconsistent ANSI STRING length/buffer; text was not read.");
+        (void)snprintf(field->comment, sizeof(field->comment), "Inconsistent ANSI STRING length/buffer; text was not read.");
         xx_psw_warn_once(context, "An inconsistent drive STRING was not followed.");
         return;
     }
@@ -631,8 +596,10 @@ static void xx_pswp_ansi_preview(xx_ps_context *context, xx_io_device *device,
         if (c >= 0x20 && c <= 0x7e && c != '\\') text[used++] = (char)c;
         else {
             static const char hex[] = "0123456789ABCDEF";
-            text[used++] = '\\'; text[used++] = 'x';
-            text[used++] = hex[c >> 4]; text[used++] = hex[c & 15];
+            text[used++] = '\\';
+            text[used++] = 'x';
+            text[used++] = hex[c >> 4];
+            text[used++] = hex[c & 15];
         }
     }
     text[used] = 0;
@@ -647,14 +614,12 @@ static void xx_pswp_relative_buffers(xx_process_structure *structure)
         for (const wchar_t *p = field->desc.name; p && *p; ++p)
             if (*p == L'.') tail = p;
         if (field->available && tail && wcscmp(tail, L".Buffer") == 0)
-            (void)snprintf(field->comment, sizeof(field->comment),
-                "Unnormalized relative buffer value; it was not followed as an absolute address.");
+            (void)snprintf(field->comment, sizeof(field->comment), "Unnormalized relative buffer value; it was not followed as an absolute address.");
     }
 }
 
-static void xx_pswp_unicode_child(xx_ps_context *context, xx_io_device *device,
-    const char *label, uint64_t address, size_t offset, size_t declared, unsigned width,
-    bool normalized)
+static void xx_pswp_unicode_child(xx_ps_context *context, xx_io_device *device, const char *label, uint64_t address, size_t offset, size_t declared, unsigned width,
+                                  bool normalized)
 {
     size_t size = width == 8 ? 16 : 8;
     uint64_t child, buffer;
@@ -674,11 +639,10 @@ static void xx_pswp_unicode_child(xx_ps_context *context, xx_io_device *device,
             xx_process_structure *structure;
             char name[96];
             (void)snprintf(name, sizeof(name), "UNICODE_STRING%u (%s)", width * 8, label);
-            structure = xx_psw_memory(context, device, name, "Microsoft documented UNICODE_STRING",
-                child, size, 0, fields, 3);
+            structure = xx_psw_memory(context, device, name, "Microsoft documented UNICODE_STRING", child, size, 0, fields, 3);
             if (structure && structure->field_count >= 3)
                 (void)snprintf(structure->fields[2].comment, sizeof(structure->fields[2].comment),
-                    "String preview exceeds the target address width; buffer was not followed.");
+                               "String preview exceeds the target address width; buffer was not followed.");
             xx_psw_warn_once(context, "An overflowing process-parameter string buffer was not followed.");
             return;
         }
@@ -688,8 +652,7 @@ static void xx_pswp_unicode_child(xx_ps_context *context, xx_io_device *device,
 
 /* Full profiles are selected only through the existing exact version/machine
  * gate. The 26100 WOW64 case is intentionally labeled as a phnt32 prefix. */
-static void xx_pswp_parameters(xx_ps_context *context, xx_io_device *device,
-    uint64_t address, unsigned width, const xx_psw_target *target)
+static void xx_pswp_parameters(xx_ps_context *context, xx_io_device *device, uint64_t address, unsigned width, const xx_psw_target *target)
 {
     const xx_psw_nt_layout *profile;
     const xx_data_struct_field_desc *fields, *curdir, *drive;
@@ -702,7 +665,8 @@ static void xx_pswp_parameters(xx_ps_context *context, xx_io_device *device,
     uint64_t child;
     if (!context || context->status != XX_PROCESS_STRUCTS_OK || !address) return;
     if (width != 4 && width != 8) {
-        xx_psw_warn_once(context, "An unsupported process-parameter pointer width was skipped."); return;
+        xx_psw_warn_once(context, "An unsupported process-parameter pointer width was skipped.");
+        return;
     }
     if (!xx_pswp_room(context)) return;
     profile = target ? xx_psw_profile(target, width, false) : NULL;
@@ -714,65 +678,53 @@ static void xx_pswp_parameters(xx_ps_context *context, xx_io_device *device,
         fields = width == 8 ? xx_pswp_params64_19045 : xx_pswp_params32_19045;
         count = width == 8 ? XX_PSW_COUNT(xx_pswp_params64_19045) : XX_PSW_COUNT(xx_pswp_params32_19045);
         extent = width == 8 ? XX_PSWP_PARAMS64_19045_SIZE : XX_PSWP_PARAMS32_19045_SIZE;
-        layout = width == 8 ? "NT 10.0.19045 AMD64 process parameters symbol profile" :
-            "NT 10.0.19045 I386/WOW64 process parameters symbol profile";
+        layout = width == 8 ? "NT 10.0.19045 AMD64 process parameters symbol profile" : "NT 10.0.19045 I386/WOW64 process parameters symbol profile";
         full = true;
-    } else if (profile && profile->build == 26100 &&
-            (width == 8 || (target && target->native_machine == 0x8664))) {
+    } else if (profile && profile->build == 26100 && (width == 8 || (target && target->native_machine == 0x8664))) {
         fields = width == 8 ? xx_pswp_params64_26100 : xx_pswp_params32_26100;
         count = width == 8 ? XX_PSW_COUNT(xx_pswp_params64_26100) : XX_PSW_COUNT(xx_pswp_params32_26100);
         extent = width == 8 ? XX_PSWP_PARAMS64_26100_SIZE : XX_PSWP_PARAMS32_26100_PREFIX_SIZE;
-        layout = width == 8 ? "NT 10.0.26100 AMD64 process parameters symbol profile" :
-            "NT 10.0.26100 WOW64 phnt32 parameters prefix (0x2c4)";
+        layout = width == 8 ? "NT 10.0.26100 AMD64 process parameters symbol profile" : "NT 10.0.26100 WOW64 phnt32 parameters prefix (0x2c4)";
         full = true;
     }
     if (!xx_pswp_span(address, 0, extent, width, NULL)) {
-        xx_psw_warn_once(context, "An overflowing process-parameter block address was skipped."); return;
+        xx_psw_warn_once(context, "An overflowing process-parameter block address was skipped.");
+        return;
     }
     if (xx_psw_read_at(device, address, 0, header, sizeof(header))) {
         maximum = (size_t)xx_psw_le(header, 4);
         declared = (size_t)xx_psw_le(header + 4, 4);
-        valid_header = declared >= sizeof(header) && declared <= maximum &&
-            xx_pswp_span(address, 0, declared, width, NULL) &&
-            xx_pswp_span(address, 0, maximum, width, NULL);
+        valid_header =
+            declared >= sizeof(header) && declared <= maximum && xx_pswp_span(address, 0, declared, width, NULL) && xx_pswp_span(address, 0, maximum, width, NULL);
         normalized = valid_header && (xx_psw_le(header + 8, 4) & 1) != 0;
     }
     readable = valid_header ? declared : sizeof(header);
-    if (!valid_header) xx_psw_warn_once(context,
-        "Process-parameter length header is unavailable or inconsistent; pointer children were not followed.");
-    else if (!normalized) xx_psw_warn_once(context,
-        "Process parameters are not normalized; relative string buffers were not followed.");
-    if (valid_header && declared < extent) xx_psw_warn_once(context,
-        "Process parameters are shorter than the selected schema; absent tail fields are unavailable.");
-    structure = xx_pswp_memory(context, device,
-            width == 8 ? "RTL_USER_PROCESS_PARAMETERS64" : "RTL_USER_PROCESS_PARAMETERS32",
-            layout, address, extent, readable, fields, count);
+    if (!valid_header) xx_psw_warn_once(context, "Process-parameter length header is unavailable or inconsistent; pointer children were not followed.");
+    else if (!normalized) xx_psw_warn_once(context, "Process parameters are not normalized; relative string buffers were not followed.");
+    if (valid_header && declared < extent) xx_psw_warn_once(context, "Process parameters are shorter than the selected schema; absent tail fields are unavailable.");
+    structure =
+        xx_pswp_memory(context, device, width == 8 ? "RTL_USER_PROCESS_PARAMETERS64" : "RTL_USER_PROCESS_PARAMETERS32", layout, address, extent, readable, fields, count);
     if (!structure) return;
     if (valid_header && !normalized) xx_pswp_relative_buffers(structure);
     if (!full) {
-        xx_pswp_unicode_child(context, device, "ImagePathName", address,
-            width == 8 ? 96 : 56, declared, width, normalized);
-        xx_pswp_unicode_child(context, device, "CommandLine", address,
-            width == 8 ? 112 : 64, declared, width, normalized);
+        xx_pswp_unicode_child(context, device, "ImagePathName", address, width == 8 ? 96 : 56, declared, width, normalized);
+        xx_pswp_unicode_child(context, device, "CommandLine", address, width == 8 ? 112 : 64, declared, width, normalized);
         return;
     }
     if (!valid_header) return;
     curdir_offset = width == 8 ? 0x38 : 0x24;
     curdir_size = width == 8 ? 24 : 12;
     curdir = width == 8 ? xx_pswp_curdir64 : xx_pswp_curdir32;
-    if (curdir_offset <= declared && curdir_size <= declared - curdir_offset &&
-            xx_pswp_span(address, curdir_offset, curdir_size, width, &child)) {
+    if (curdir_offset <= declared && curdir_size <= declared - curdir_offset && xx_pswp_span(address, curdir_offset, curdir_size, width, &child)) {
         if (!xx_pswp_room(context)) return;
-        structure = xx_psw_memory(context, device, width == 8 ? "CURDIR64" : "CURDIR32",
-                "Inline process CurrentDirectory", child, curdir_size, 0, curdir,
-                width == 8 ? XX_PSW_COUNT(xx_pswp_curdir64) : XX_PSW_COUNT(xx_pswp_curdir32));
+        structure = xx_psw_memory(context, device, width == 8 ? "CURDIR64" : "CURDIR32", "Inline process CurrentDirectory", child, curdir_size, 0, curdir,
+                                  width == 8 ? XX_PSW_COUNT(xx_pswp_curdir64) : XX_PSW_COUNT(xx_pswp_curdir32));
         if (!structure) return;
         if (!normalized) xx_pswp_relative_buffers(structure);
     }
     for (size_t i = 0; i < XX_PSW_COUNT(xx_pswp_strings); ++i) {
         const xx_pswp_string_member *member = xx_pswp_strings + i;
-        xx_pswp_unicode_child(context, device, member->name, address,
-            width == 8 ? member->offset64 : member->offset32, declared, width, normalized);
+        xx_pswp_unicode_child(context, device, member->name, address, width == 8 ? member->offset64 : member->offset32, declared, width, normalized);
         if (context->status != XX_PROCESS_STRUCTS_OK) return;
     }
     drive_offset = width == 8 ? 0xf0 : 0x90;
@@ -783,13 +735,13 @@ static void xx_pswp_parameters(xx_ps_context *context, xx_io_device *device,
         char name[96];
         if (offset > declared || drive_size > declared - offset) break;
         if (!xx_pswp_span(address, offset, drive_size, width, &child)) {
-            xx_psw_warn_once(context, "An overflowing drive-directory record address was skipped."); break;
+            xx_psw_warn_once(context, "An overflowing drive-directory record address was skipped.");
+            break;
         }
         if (!xx_pswp_room(context)) return;
         (void)snprintf(name, sizeof(name), "RTL_DRIVE_LETTER_CURDIR%u (%s)", width * 8, xx_pswp_drive_labels[i]);
-        structure = xx_psw_memory(context, device, name,
-            "Inline process drive directory; DosPath is an ANSI STRING", child, drive_size, 0,
-            drive, width == 8 ? XX_PSW_COUNT(xx_pswp_drive64) : XX_PSW_COUNT(xx_pswp_drive32));
+        structure = xx_psw_memory(context, device, name, "Inline process drive directory; DosPath is an ANSI STRING", child, drive_size, 0, drive,
+                                  width == 8 ? XX_PSW_COUNT(xx_pswp_drive64) : XX_PSW_COUNT(xx_pswp_drive32));
         if (!structure) return;
         xx_pswp_ansi_preview(context, device, structure, child, width, normalized);
     }

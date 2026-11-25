@@ -122,8 +122,7 @@ static bool builder_reserve(analysis_builder *builder, size_t extra)
     size_t needed;
     size_t next;
     char *grown;
-    if (!builder || extra >= DWARF_ANALYSIS_STRING_LIMIT ||
-        builder->length > DWARF_ANALYSIS_STRING_LIMIT - extra - 1U) return false;
+    if (!builder || extra >= DWARF_ANALYSIS_STRING_LIMIT || builder->length > DWARF_ANALYSIS_STRING_LIMIT - extra - 1U) return false;
     needed = builder->length + extra + 1U;
     if (needed <= builder->capacity) return true;
     next = builder->capacity ? builder->capacity : 64U;
@@ -199,10 +198,7 @@ static const xx_elf_dwarf_die *analysis_find_die(const xx_elf_dwarf *dwarf, uint
     return NULL;
 }
 
-static const xx_elf_dwarf_attribute *analysis_effective_attribute(const xx_elf_dwarf *dwarf,
-                                                                   const xx_elf_dwarf_die *die,
-                                                                   uint64_t name,
-                                                                   unsigned depth)
+static const xx_elf_dwarf_attribute *analysis_effective_attribute(const xx_elf_dwarf *dwarf, const xx_elf_dwarf_die *die, uint64_t name, unsigned depth)
 {
     const xx_elf_dwarf_attribute *attribute;
     const xx_elf_dwarf_attribute *link;
@@ -225,9 +221,7 @@ static const xx_elf_dwarf_attribute *analysis_effective_attribute(const xx_elf_d
     return NULL;
 }
 
-static const xx_elf_dwarf_die *analysis_effective_source(const xx_elf_dwarf *dwarf,
-                                                          const xx_elf_dwarf_die *die,
-                                                          unsigned depth)
+static const xx_elf_dwarf_die *analysis_effective_source(const xx_elf_dwarf *dwarf, const xx_elf_dwarf_die *die, unsigned depth)
 {
     const xx_elf_dwarf_attribute *link;
     const xx_elf_dwarf_die *linked;
@@ -242,11 +236,8 @@ static const xx_elf_dwarf_die *analysis_effective_source(const xx_elf_dwarf *dwa
 static bool analysis_attribute_u64(const xx_elf_dwarf_attribute *attribute, uint64_t *value)
 {
     if (!attribute || !value) return false;
-    if (attribute->kind == XX_ELF_DWARF_VALUE_UNSIGNED ||
-        attribute->kind == XX_ELF_DWARF_VALUE_REFERENCE ||
-        attribute->kind == XX_ELF_DWARF_VALUE_ADDRESS_INDEX ||
-        attribute->kind == XX_ELF_DWARF_VALUE_LOCLIST_INDEX ||
-        attribute->kind == XX_ELF_DWARF_VALUE_RNGLIST_INDEX) {
+    if (attribute->kind == XX_ELF_DWARF_VALUE_UNSIGNED || attribute->kind == XX_ELF_DWARF_VALUE_REFERENCE || attribute->kind == XX_ELF_DWARF_VALUE_ADDRESS_INDEX ||
+        attribute->kind == XX_ELF_DWARF_VALUE_LOCLIST_INDEX || attribute->kind == XX_ELF_DWARF_VALUE_RNGLIST_INDEX) {
         *value = attribute->unsigned_value;
         return true;
     }
@@ -287,12 +278,12 @@ static char *analysis_render_type(const xx_elf_dwarf *dwarf, uint64_t offset, un
     base = analysis_render_type(dwarf, type->unsigned_value, depth + 1U);
     if (!base) return NULL;
     switch (die->tag) {
-    case XX_DW_TAG_POINTER_TYPE: suffix = " *"; break;
-    case DW_TAG_REFERENCE_TYPE: suffix = " &"; break;
-    case DW_TAG_RVALUE_REFERENCE_TYPE: suffix = " &&"; break;
-    case XX_DW_TAG_CONST_TYPE: suffix = " const"; break;
-    case XX_DW_TAG_ARRAY_TYPE: suffix = "[]"; break;
-    default: return base;
+        case XX_DW_TAG_POINTER_TYPE: suffix = " *"; break;
+        case DW_TAG_REFERENCE_TYPE: suffix = " &"; break;
+        case DW_TAG_RVALUE_REFERENCE_TYPE: suffix = " &&"; break;
+        case XX_DW_TAG_CONST_TYPE: suffix = " const"; break;
+        case XX_DW_TAG_ARRAY_TYPE: suffix = "[]"; break;
+        default: return base;
     }
     {
         char *result = analysis_join(base, suffix);
@@ -340,8 +331,7 @@ static void analysis_free_discovered(xx_elf_dwarf_analysis *analysis)
 
 static bool analysis_type_tag(uint64_t tag)
 {
-    return tag == XX_DW_TAG_BASE_TYPE || tag == XX_DW_TAG_STRUCTURE_TYPE || tag == DW_TAG_CLASS_TYPE ||
-           tag == XX_DW_TAG_UNION_TYPE || tag == XX_DW_TAG_TYPEDEF;
+    return tag == XX_DW_TAG_BASE_TYPE || tag == XX_DW_TAG_STRUCTURE_TYPE || tag == DW_TAG_CLASS_TYPE || tag == XX_DW_TAG_UNION_TYPE || tag == XX_DW_TAG_TYPEDEF;
 }
 
 static bool analysis_collision_type_tag(uint64_t tag)
@@ -362,8 +352,7 @@ static bool analysis_collect_types(xx_elf_dwarf_analysis *analysis, const xx_elf
         if (!die || !analysis_type_tag(die->tag)) continue;
         name = analysis_effective_attribute(dwarf, die, XX_DW_AT_NAME, 0U);
         if (!name || !name->string_value || !name->string_value[0]) continue;
-        if (!analysis_grow((void **)&analysis->types, &analysis->type_capacity,
-                           analysis->type_count + 1U, sizeof(*analysis->types))) return false;
+        if (!analysis_grow((void **)&analysis->types, &analysis->type_capacity, analysis->type_count + 1U, sizeof(*analysis->types))) return false;
         record = &analysis->types[analysis->type_count];
         memset(record, 0, sizeof(*record));
         ++analysis->type_count;
@@ -419,18 +408,13 @@ static bool analysis_read_sleb(const uint8_t *data, size_t size, size_t *positio
 
 static const char *analysis_register_name(uint16_t machine, uint32_t number)
 {
-    static const char *const aarch64[32] = {
-        "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7",
-        "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15",
-        "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23",
-        "x24", "x25", "x26", "x27", "x28", "x29", "x30", "sp"};
+    static const char *const aarch64[32] = {"x0",  "x1",  "x2",  "x3",  "x4",  "x5",  "x6",  "x7",  "x8",  "x9",  "x10", "x11", "x12", "x13", "x14", "x15",
+                                            "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "x29", "x30", "sp"};
     if (machine == UINT16_C(183) && number < 32U) return aarch64[number];
     return NULL;
 }
 
-static bool analysis_decode_location(const uint8_t *expression, size_t size,
-                                     uint8_t address_size, bool big_endian,
-                                     const xx_elf_dwarf_analysis_variable *frame,
+static bool analysis_decode_location(const uint8_t *expression, size_t size, uint8_t address_size, bool big_endian, const xx_elf_dwarf_analysis_variable *frame,
                                      xx_elf_dwarf_analysis_variable *output)
 {
     size_t position = 0U;
@@ -453,17 +437,15 @@ static bool analysis_decode_location(const uint8_t *expression, size_t size,
         output->location_kind = XX_ELF_DWARF_LOCATION_REGISTER;
         output->register_number = (uint32_t)number;
     } else if (operation == DW_OP_BREGX) {
-        if (!analysis_read_uleb(expression, size, &position, &number) || number > UINT32_MAX ||
-            !analysis_read_sleb(expression, size, &position, &displacement)) return false;
+        if (!analysis_read_uleb(expression, size, &position, &number) || number > UINT32_MAX || !analysis_read_sleb(expression, size, &position, &displacement))
+            return false;
         output->location_kind = XX_ELF_DWARF_LOCATION_REGISTER_OFFSET;
         output->register_number = (uint32_t)number;
         output->offset = displacement;
     } else if (operation == DW_OP_FBREG) {
         if (!analysis_read_sleb(expression, size, &position, &displacement)) return false;
-        if (frame && (frame->location_kind == XX_ELF_DWARF_LOCATION_REGISTER ||
-                      frame->location_kind == XX_ELF_DWARF_LOCATION_REGISTER_OFFSET)) {
-            if ((displacement > 0 && frame->offset > INT64_MAX - displacement) ||
-                (displacement < 0 && frame->offset < INT64_MIN - displacement)) return false;
+        if (frame && (frame->location_kind == XX_ELF_DWARF_LOCATION_REGISTER || frame->location_kind == XX_ELF_DWARF_LOCATION_REGISTER_OFFSET)) {
+            if ((displacement > 0 && frame->offset > INT64_MAX - displacement) || (displacement < 0 && frame->offset < INT64_MIN - displacement)) return false;
             output->location_kind = XX_ELF_DWARF_LOCATION_REGISTER_OFFSET;
             output->register_number = frame->register_number;
             output->offset = frame->offset + displacement;
@@ -487,16 +469,14 @@ static bool analysis_decode_location(const uint8_t *expression, size_t size,
     return position == size;
 }
 
-static bool analysis_add_parameter(xx_elf_dwarf_analysis *analysis, const xx_elf_dwarf *dwarf,
-                                   const xx_elf_dwarf_die *die, uint32_t function_index)
+static bool analysis_add_parameter(xx_elf_dwarf_analysis *analysis, const xx_elf_dwarf *dwarf, const xx_elf_dwarf_die *die, uint32_t function_index)
 {
     const xx_elf_dwarf_attribute *name = analysis_effective_attribute(dwarf, die, XX_DW_AT_NAME, 0U);
     const xx_elf_dwarf_attribute *type = analysis_effective_attribute(dwarf, die, XX_DW_AT_TYPE, 0U);
     const xx_elf_dwarf_attribute *artificial = analysis_effective_attribute(dwarf, die, DW_AT_ARTIFICIAL, 0U);
     xx_elf_dwarf_analysis_parameter *parameter;
     uint64_t flag = 0U;
-    if (!analysis_grow((void **)&analysis->parameters, &analysis->parameter_capacity,
-                       analysis->parameter_count + 1U, sizeof(*analysis->parameters))) return false;
+    if (!analysis_grow((void **)&analysis->parameters, &analysis->parameter_capacity, analysis->parameter_count + 1U, sizeof(*analysis->parameters))) return false;
     parameter = &analysis->parameters[analysis->parameter_count];
     memset(parameter, 0, sizeof(*parameter));
     ++analysis->parameter_count;
@@ -504,18 +484,14 @@ static bool analysis_add_parameter(xx_elf_dwarf_analysis *analysis, const xx_elf
     parameter->function_index = function_index;
     parameter->name = analysis_strdup(name && name->string_value ? name->string_value : "");
     if (!parameter->name) return false;
-    parameter->type_name = type && type->kind == XX_ELF_DWARF_VALUE_REFERENCE
-                               ? analysis_render_type(dwarf, type->unsigned_value, 0U)
-                               : analysis_strdup("unknown");
+    parameter->type_name = type && type->kind == XX_ELF_DWARF_VALUE_REFERENCE ? analysis_render_type(dwarf, type->unsigned_value, 0U) : analysis_strdup("unknown");
     if (!parameter->type_name) return false;
     parameter->artificial = analysis_attribute_u64(artificial, &flag) && flag != 0U;
     return true;
 }
 
-static bool analysis_add_variable(xx_elf_dwarf_analysis *analysis, const xx_elf_dwarf *dwarf,
-                                  const xx_elf_dwarf_die *die, const xx_elf_dwarf_unit *unit,
-                                  uint16_t machine, bool big_endian, uint32_t function_index,
-                                  const xx_elf_dwarf_analysis_variable *frame)
+static bool analysis_add_variable(xx_elf_dwarf_analysis *analysis, const xx_elf_dwarf *dwarf, const xx_elf_dwarf_die *die, const xx_elf_dwarf_unit *unit,
+                                  uint16_t machine, bool big_endian, uint32_t function_index, const xx_elf_dwarf_analysis_variable *frame)
 {
     const xx_elf_dwarf_attribute *name = analysis_effective_attribute(dwarf, die, XX_DW_AT_NAME, 0U);
     const xx_elf_dwarf_attribute *type = analysis_effective_attribute(dwarf, die, XX_DW_AT_TYPE, 0U);
@@ -526,17 +502,13 @@ static bool analysis_add_variable(xx_elf_dwarf_analysis *analysis, const xx_elf_
     expression = xx_elf_dwarf_get_attribute_block(dwarf, location);
     if (!expression) return true;
     memset(&parsed, 0, sizeof(parsed));
-    if (!analysis_decode_location(expression, (size_t)location->data_size, unit->address_size,
-                                  big_endian, frame, &parsed)) return true;
-    if (!analysis_grow((void **)&analysis->variables, &analysis->variable_capacity,
-                       analysis->variable_count + 1U, sizeof(*analysis->variables))) return false;
+    if (!analysis_decode_location(expression, (size_t)location->data_size, unit->address_size, big_endian, frame, &parsed)) return true;
+    if (!analysis_grow((void **)&analysis->variables, &analysis->variable_capacity, analysis->variable_count + 1U, sizeof(*analysis->variables))) return false;
     parsed.die_offset = die->offset;
     parsed.function_index = function_index;
     parsed.name = analysis_strdup(name->string_value);
     if (!parsed.name) return false;
-    parsed.type_name = type && type->kind == XX_ELF_DWARF_VALUE_REFERENCE
-                           ? analysis_render_type(dwarf, type->unsigned_value, 0U)
-                           : analysis_strdup("unknown");
+    parsed.type_name = type && type->kind == XX_ELF_DWARF_VALUE_REFERENCE ? analysis_render_type(dwarf, type->unsigned_value, 0U) : analysis_strdup("unknown");
     if (!parsed.type_name) {
         xx_mem_free((void *)parsed.name);
         return false;
@@ -546,9 +518,7 @@ static bool analysis_add_variable(xx_elf_dwarf_analysis *analysis, const xx_elf_
     return true;
 }
 
-static bool analysis_add_function(xx_elf_dwarf_analysis *analysis, const xx_elf *elf,
-                                  const xx_elf_dwarf *dwarf, const xx_elf_dwarf_die *die,
-                                  uint64_t die_index)
+static bool analysis_add_function(xx_elf_dwarf_analysis *analysis, const xx_elf *elf, const xx_elf_dwarf *dwarf, const xx_elf_dwarf_die *die, uint64_t die_index)
 {
     const xx_elf_dwarf_attribute *low = xx_elf_dwarf_find_die_attribute(dwarf, die, XX_DW_AT_LOW_PC);
     const xx_elf_dwarf_attribute *high = xx_elf_dwarf_find_die_attribute(dwarf, die, XX_DW_AT_HIGH_PC);
@@ -568,8 +538,7 @@ static bool analysis_add_function(xx_elf_dwarf_analysis *analysis, const xx_elf 
     if (!analysis_attribute_u64(low, &address)) return true;
     name = analysis_effective_attribute(dwarf, die, XX_DW_AT_NAME, 0U);
     if (!name || !name->string_value || !name->string_value[0]) return true;
-    if (!analysis_grow((void **)&analysis->functions, &analysis->function_capacity,
-                       analysis->function_count + 1U, sizeof(*analysis->functions))) return false;
+    if (!analysis_grow((void **)&analysis->functions, &analysis->function_capacity, analysis->function_count + 1U, sizeof(*analysis->functions))) return false;
     function_index = analysis->function_count;
     function = &analysis->functions[analysis->function_count];
     memset(function, 0, sizeof(*function));
@@ -584,9 +553,7 @@ static bool analysis_add_function(xx_elf_dwarf_analysis *analysis, const xx_elf 
     function->linkage_name = analysis_strdup(linkage && linkage->string_value ? linkage->string_value : "");
     if (!function->linkage_name) return false;
     type = analysis_effective_attribute(dwarf, die, XX_DW_AT_TYPE, 0U);
-    function->return_type = type && type->kind == XX_ELF_DWARF_VALUE_REFERENCE
-                                ? analysis_render_type(dwarf, type->unsigned_value, 0U)
-                                : analysis_strdup("void");
+    function->return_type = type && type->kind == XX_ELF_DWARF_VALUE_REFERENCE ? analysis_render_type(dwarf, type->unsigned_value, 0U) : analysis_strdup("void");
     if (!function->return_type) return false;
     if (analysis_attribute_u64(high, &high_value)) {
         if (high->form == DW_FORM_ADDR || high->kind == XX_ELF_DWARF_VALUE_ADDRESS_INDEX) {
@@ -598,13 +565,9 @@ static bool analysis_add_function(xx_elf_dwarf_analysis *analysis, const xx_elf 
     memset(&frame, 0, sizeof(frame));
     unit = xx_elf_dwarf_get_unit(dwarf, die->unit_index);
     frame_attribute = analysis_effective_attribute(dwarf, die, DW_AT_FRAME_BASE, 0U);
-    frame_expression = frame_attribute && frame_attribute->kind == XX_ELF_DWARF_VALUE_BLOCK
-                           ? xx_elf_dwarf_get_attribute_block(dwarf, frame_attribute)
-                           : NULL;
+    frame_expression = frame_attribute && frame_attribute->kind == XX_ELF_DWARF_VALUE_BLOCK ? xx_elf_dwarf_get_attribute_block(dwarf, frame_attribute) : NULL;
     if (frame_expression && unit) {
-        (void)analysis_decode_location(frame_expression, (size_t)frame_attribute->data_size,
-                                       unit->address_size, elf->data_encoding == XX_ELF_DATA_MSB,
-                                       NULL, &frame);
+        (void)analysis_decode_location(frame_expression, (size_t)frame_attribute->data_size, unit->address_size, elf->data_encoding == XX_ELF_DATA_MSB, NULL, &frame);
     }
 
     count = xx_elf_dwarf_get_number_of_dies(dwarf);
@@ -615,9 +578,7 @@ static bool analysis_add_function(xx_elf_dwarf_analysis *analysis, const xx_elf 
         if (child->tag == XX_DW_TAG_FORMAL_PARAMETER) {
             if (!analysis_add_parameter(analysis, dwarf, child, function_index)) return false;
         } else if (child->tag == XX_DW_TAG_VARIABLE) {
-            if (!analysis_add_variable(analysis, dwarf, child, unit, elf->machine,
-                                       elf->data_encoding == XX_ELF_DATA_MSB,
-                                       function_index, &frame)) return false;
+            if (!analysis_add_variable(analysis, dwarf, child, unit, elf->machine, elf->data_encoding == XX_ELF_DATA_MSB, function_index, &frame)) return false;
         }
     }
     function = &analysis->functions[function_index];
@@ -629,8 +590,8 @@ static bool analysis_add_function(xx_elf_dwarf_analysis *analysis, const xx_elf 
             for (index = source_index + 1U; index < count; ++index) {
                 const xx_elf_dwarf_die *child = xx_elf_dwarf_get_die(dwarf, index);
                 if (!child || child->depth <= source->depth) break;
-                if (child->depth == source->depth + 1U && child->tag == XX_DW_TAG_FORMAL_PARAMETER &&
-                    !analysis_add_parameter(analysis, dwarf, child, function_index)) return false;
+                if (child->depth == source->depth + 1U && child->tag == XX_DW_TAG_FORMAL_PARAMETER && !analysis_add_parameter(analysis, dwarf, child, function_index))
+                    return false;
             }
             function = &analysis->functions[function_index];
             function->parameter_count = analysis->parameter_count - function->parameter_index;
@@ -647,14 +608,12 @@ static bool analysis_name_collides(const xx_elf_dwarf_analysis *analysis, const 
         if (analysis_collision_type_tag(analysis->types[index].tag) && strcmp(analysis->types[index].name, name) == 0) return true;
     }
     for (index = 0U; index < analysis->registered_type_count; ++index) {
-        if (analysis->registered_types[index].kind == XX_ELF_DWARF_REGISTERED_DATA_TYPE &&
-            strcmp(analysis->registered_types[index].name, name) == 0) return true;
+        if (analysis->registered_types[index].kind == XX_ELF_DWARF_REGISTERED_DATA_TYPE && strcmp(analysis->registered_types[index].name, name) == 0) return true;
     }
     return false;
 }
 
-static char *analysis_typed_name(const xx_elf_dwarf_analysis *analysis,
-                                 const xx_elf_dwarf_analysis_function *function)
+static char *analysis_typed_name(const xx_elf_dwarf_analysis *analysis, const xx_elf_dwarf_analysis_function *function)
 {
     analysis_builder builder = {0};
     const unsigned char *source;
@@ -666,8 +625,7 @@ static char *analysis_typed_name(const xx_elf_dwarf_analysis *analysis,
     while (*source) {
         char output;
         bool separator;
-        if ((*source >= 'a' && *source <= 'z') || (*source >= 'A' && *source <= 'Z') ||
-            (*source >= '0' && *source <= '9') || *source == '_') {
+        if ((*source >= 'a' && *source <= 'z') || (*source >= 'A' && *source <= 'Z') || (*source >= '0' && *source <= '9') || *source == '_') {
             output = (char)*source;
             separator = false;
         } else {
@@ -692,22 +650,18 @@ static char *analysis_typed_name(const xx_elf_dwarf_analysis *analysis,
     return builder_take(&builder);
 }
 
-static char *analysis_prototype(const xx_elf_dwarf_analysis *analysis,
-                                const xx_elf_dwarf_analysis_function *function)
+static char *analysis_prototype(const xx_elf_dwarf_analysis *analysis, const xx_elf_dwarf_analysis_function *function)
 {
     analysis_builder builder = {0};
     uint32_t index;
-    if (!analysis || !function || !function->return_type || !function->typed_name ||
-        !builder_append(&builder, function->return_type) || !builder_append(&builder, " ") ||
+    if (!analysis || !function || !function->return_type || !function->typed_name || !builder_append(&builder, function->return_type) || !builder_append(&builder, " ") ||
         !builder_append(&builder, function->typed_name) || !builder_append(&builder, " (")) {
         builder_discard(&builder);
         return NULL;
     }
     for (index = 0U; index < function->parameter_count; ++index) {
-        const xx_elf_dwarf_analysis_parameter *parameter =
-            &analysis->parameters[function->parameter_index + index];
-        if ((index && !builder_append(&builder, ", ")) ||
-            !builder_append(&builder, parameter->type_name) ||
+        const xx_elf_dwarf_analysis_parameter *parameter = &analysis->parameters[function->parameter_index + index];
+        if ((index && !builder_append(&builder, ", ")) || !builder_append(&builder, parameter->type_name) ||
             (parameter->name[0] && (!builder_append(&builder, " ") || !builder_append(&builder, parameter->name)))) {
             builder_discard(&builder);
             return NULL;
@@ -742,8 +696,7 @@ static bool analysis_rebuild_names(xx_elf_dwarf_analysis *analysis)
     return true;
 }
 
-static bool analysis_add_access(xx_elf_dwarf_analysis *analysis, uint64_t address,
-                                uint32_t variable_index, xx_elf_dwarf_access_kind_t kind)
+static bool analysis_add_access(xx_elf_dwarf_analysis *analysis, uint64_t address, uint32_t variable_index, xx_elf_dwarf_access_kind_t kind)
 {
     xx_elf_dwarf_analysis_access *record;
     uint32_t index;
@@ -751,8 +704,7 @@ static bool analysis_add_access(xx_elf_dwarf_analysis *analysis, uint64_t addres
         record = &analysis->accesses[index];
         if (record->address == address && record->variable_index == variable_index && record->kind == kind) return true;
     }
-    if (!analysis_grow((void **)&analysis->accesses, &analysis->access_capacity,
-                       analysis->access_count + 1U, sizeof(*analysis->accesses))) return false;
+    if (!analysis_grow((void **)&analysis->accesses, &analysis->access_capacity, analysis->access_count + 1U, sizeof(*analysis->accesses))) return false;
     record = &analysis->accesses[analysis->access_count++];
     record->address = address;
     record->variable_index = variable_index;
@@ -760,17 +712,15 @@ static bool analysis_add_access(xx_elf_dwarf_analysis *analysis, uint64_t addres
     return true;
 }
 
-static bool analysis_match_memory_access(xx_elf_dwarf_analysis *analysis, uint32_t function_index,
-                                         uint32_t base_register, int64_t offset, uint64_t address,
+static bool analysis_match_memory_access(xx_elf_dwarf_analysis *analysis, uint32_t function_index, uint32_t base_register, int64_t offset, uint64_t address,
                                          xx_elf_dwarf_access_kind_t kind)
 {
     uint32_t index;
     for (index = 0U; index < analysis->variable_count; ++index) {
         const xx_elf_dwarf_analysis_variable *variable = &analysis->variables[index];
-        if (variable->function_index == function_index &&
-            variable->location_kind == XX_ELF_DWARF_LOCATION_REGISTER_OFFSET &&
-            variable->register_number == base_register && variable->offset == offset &&
-            !analysis_add_access(analysis, address, index, kind)) return false;
+        if (variable->function_index == function_index && variable->location_kind == XX_ELF_DWARF_LOCATION_REGISTER_OFFSET &&
+            variable->register_number == base_register && variable->offset == offset && !analysis_add_access(analysis, address, index, kind))
+            return false;
     }
     return true;
 }
@@ -778,11 +728,9 @@ static bool analysis_match_memory_access(xx_elf_dwarf_analysis *analysis, uint32
 static uint32_t analysis_u32(const uint8_t *bytes, bool big_endian)
 {
     if (big_endian) {
-        return ((uint32_t)bytes[0] << 24) | ((uint32_t)bytes[1] << 16) |
-               ((uint32_t)bytes[2] << 8) | bytes[3];
+        return ((uint32_t)bytes[0] << 24) | ((uint32_t)bytes[1] << 16) | ((uint32_t)bytes[2] << 8) | bytes[3];
     }
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) |
-           ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
+    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) | ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
 }
 
 static int64_t analysis_sign_extend(uint64_t value, unsigned width)
@@ -791,8 +739,7 @@ static int64_t analysis_sign_extend(uint64_t value, unsigned width)
     return (int64_t)((value ^ sign) - sign);
 }
 
-static bool analysis_scan_aarch64_function(xx_elf_dwarf_analysis *analysis, const xx_elf *elf,
-                                            uint32_t function_index)
+static bool analysis_scan_aarch64_function(xx_elf_dwarf_analysis *analysis, const xx_elf *elf, uint32_t function_index)
 {
     const xx_elf_dwarf_analysis_function *function = &analysis->functions[function_index];
     const xx_elf_section_header *section = NULL;
@@ -808,8 +755,7 @@ static bool analysis_scan_aarch64_function(xx_elf_dwarf_analysis *analysis, cons
     for (section_index = 0U; section_index < elf->section_header_count; ++section_index) {
         const xx_elf_section_header *candidate = &elf->section_headers[section_index];
         uint64_t end;
-        if (candidate->type == XX_ELF_SECTION_NOBITS || candidate->size == 0U ||
-            candidate->address > UINT64_MAX - candidate->size) continue;
+        if (candidate->type == XX_ELF_SECTION_NOBITS || candidate->size == 0U || candidate->address > UINT64_MAX - candidate->size) continue;
         end = candidate->address + candidate->size;
         if (function->address >= candidate->address && function->address < end) {
             section = candidate;
@@ -857,8 +803,7 @@ static bool analysis_scan_aarch64_function(xx_elf_dwarf_analysis *analysis, cons
             offset = 0;
             kind = XX_ELF_DWARF_ACCESS_READ;
         }
-        if (matched && !analysis_match_memory_access(analysis, function_index, base_register, offset,
-                                                      function->address + at, kind)) {
+        if (matched && !analysis_match_memory_access(analysis, function_index, base_register, offset, function->address + at, kind)) {
             xx_mem_free(bytes);
             return false;
         }
@@ -867,8 +812,7 @@ static bool analysis_scan_aarch64_function(xx_elf_dwarf_analysis *analysis, cons
     return true;
 }
 
-static bool analysis_build(xx_elf_dwarf_analysis *analysis, const xx_elf *elf,
-                           const xx_elf_dwarf *dwarf, xx_pd_struct *pd)
+static bool analysis_build(xx_elf_dwarf_analysis *analysis, const xx_elf *elf, const xx_elf_dwarf *dwarf, xx_pd_struct *pd)
 {
     uint64_t count;
     uint64_t index;
@@ -889,9 +833,7 @@ static bool analysis_build(xx_elf_dwarf_analysis *analysis, const xx_elf *elf,
     return true;
 }
 
-xx_elf_dwarf_analysis *xx_elf_dwarf_analysis_create(const xx_elf *elf,
-                                                     const xx_elf_dwarf *dwarf,
-                                                     xx_pd_struct *pd)
+xx_elf_dwarf_analysis *xx_elf_dwarf_analysis_create(const xx_elf *elf, const xx_elf_dwarf *dwarf, xx_pd_struct *pd)
 {
     xx_elf_dwarf_analysis *analysis = (xx_elf_dwarf_analysis *)xx_mem_calloc(1U, sizeof(*analysis));
     if (!analysis) return NULL;
@@ -917,10 +859,7 @@ void xx_elf_dwarf_analysis_free(xx_elf_dwarf_analysis *analysis)
     xx_mem_free(analysis);
 }
 
-bool xx_elf_dwarf_analysis_reimport(xx_elf_dwarf_analysis *analysis,
-                                    const xx_elf *elf,
-                                    const xx_elf_dwarf *dwarf,
-                                    xx_pd_struct *pd)
+bool xx_elf_dwarf_analysis_reimport(xx_elf_dwarf_analysis *analysis, const xx_elf *elf, const xx_elf_dwarf *dwarf, xx_pd_struct *pd)
 {
     if (!analysis || !elf || !dwarf) return false;
     analysis_free_discovered(analysis);
@@ -936,8 +875,7 @@ uint64_t xx_elf_dwarf_analysis_get_number_of_types(const xx_elf_dwarf_analysis *
     return analysis ? analysis->type_count : 0U;
 }
 
-const xx_elf_dwarf_analysis_type *xx_elf_dwarf_analysis_get_type(const xx_elf_dwarf_analysis *analysis,
-                                                                 uint64_t index)
+const xx_elf_dwarf_analysis_type *xx_elf_dwarf_analysis_get_type(const xx_elf_dwarf_analysis *analysis, uint64_t index)
 {
     return analysis && index < analysis->type_count ? &analysis->types[index] : NULL;
 }
@@ -947,14 +885,12 @@ uint64_t xx_elf_dwarf_analysis_get_number_of_functions(const xx_elf_dwarf_analys
     return analysis ? analysis->function_count : 0U;
 }
 
-const xx_elf_dwarf_analysis_function *xx_elf_dwarf_analysis_get_function(const xx_elf_dwarf_analysis *analysis,
-                                                                         uint64_t index)
+const xx_elf_dwarf_analysis_function *xx_elf_dwarf_analysis_get_function(const xx_elf_dwarf_analysis *analysis, uint64_t index)
 {
     return analysis && index < analysis->function_count ? &analysis->functions[index] : NULL;
 }
 
-const xx_elf_dwarf_analysis_function *xx_elf_dwarf_analysis_find_function_at(const xx_elf_dwarf_analysis *analysis,
-                                                                             uint64_t address)
+const xx_elf_dwarf_analysis_function *xx_elf_dwarf_analysis_find_function_at(const xx_elf_dwarf_analysis *analysis, uint64_t address)
 {
     uint32_t index;
     if (!analysis) return NULL;
@@ -964,14 +900,12 @@ const xx_elf_dwarf_analysis_function *xx_elf_dwarf_analysis_find_function_at(con
     return NULL;
 }
 
-const xx_elf_dwarf_analysis_function *xx_elf_dwarf_analysis_find_function_named(const xx_elf_dwarf_analysis *analysis,
-                                                                                const char *name)
+const xx_elf_dwarf_analysis_function *xx_elf_dwarf_analysis_find_function_named(const xx_elf_dwarf_analysis *analysis, const char *name)
 {
     uint32_t index;
     if (!analysis || !name) return NULL;
     for (index = 0U; index < analysis->function_count; ++index) {
-        if (strcmp(analysis->functions[index].name, name) == 0 ||
-            strcmp(analysis->functions[index].typed_name, name) == 0) return &analysis->functions[index];
+        if (strcmp(analysis->functions[index].name, name) == 0 || strcmp(analysis->functions[index].typed_name, name) == 0) return &analysis->functions[index];
     }
     return NULL;
 }
@@ -981,8 +915,7 @@ uint64_t xx_elf_dwarf_analysis_get_number_of_parameters(const xx_elf_dwarf_analy
     return analysis ? analysis->parameter_count : 0U;
 }
 
-const xx_elf_dwarf_analysis_parameter *xx_elf_dwarf_analysis_get_parameter(const xx_elf_dwarf_analysis *analysis,
-                                                                           uint64_t index)
+const xx_elf_dwarf_analysis_parameter *xx_elf_dwarf_analysis_get_parameter(const xx_elf_dwarf_analysis *analysis, uint64_t index)
 {
     return analysis && index < analysis->parameter_count ? &analysis->parameters[index] : NULL;
 }
@@ -992,15 +925,12 @@ uint64_t xx_elf_dwarf_analysis_get_number_of_variables(const xx_elf_dwarf_analys
     return analysis ? analysis->variable_count : 0U;
 }
 
-const xx_elf_dwarf_analysis_variable *xx_elf_dwarf_analysis_get_variable(const xx_elf_dwarf_analysis *analysis,
-                                                                         uint64_t index)
+const xx_elf_dwarf_analysis_variable *xx_elf_dwarf_analysis_get_variable(const xx_elf_dwarf_analysis *analysis, uint64_t index)
 {
     return analysis && index < analysis->variable_count ? &analysis->variables[index] : NULL;
 }
 
-const xx_elf_dwarf_analysis_variable *xx_elf_dwarf_analysis_find_variable(const xx_elf_dwarf_analysis *analysis,
-                                                                          uint32_t function_index,
-                                                                          const char *name,
+const xx_elf_dwarf_analysis_variable *xx_elf_dwarf_analysis_find_variable(const xx_elf_dwarf_analysis *analysis, uint32_t function_index, const char *name,
                                                                           uint32_t occurrence)
 {
     uint32_t index;
@@ -1020,28 +950,25 @@ uint64_t xx_elf_dwarf_analysis_get_number_of_accesses(const xx_elf_dwarf_analysi
     return analysis ? analysis->access_count : 0U;
 }
 
-const xx_elf_dwarf_analysis_access *xx_elf_dwarf_analysis_get_access(const xx_elf_dwarf_analysis *analysis,
-                                                                     uint64_t index)
+const xx_elf_dwarf_analysis_access *xx_elf_dwarf_analysis_get_access(const xx_elf_dwarf_analysis *analysis, uint64_t index)
 {
     return analysis && index < analysis->access_count ? &analysis->accesses[index] : NULL;
 }
 
-bool xx_elf_dwarf_analysis_register_type(xx_elf_dwarf_analysis *analysis,
-                                         const char *name,
-                                         xx_elf_dwarf_registered_type_kind_t kind)
+bool xx_elf_dwarf_analysis_register_type(xx_elf_dwarf_analysis *analysis, const char *name, xx_elf_dwarf_registered_type_kind_t kind)
 {
     analysis_registered_type *record;
     uint32_t index;
-    if (!analysis || !name || !name[0] ||
-        (kind != XX_ELF_DWARF_REGISTERED_DATA_TYPE && kind != XX_ELF_DWARF_REGISTERED_FUNCTION_TYPE)) return false;
+    if (!analysis || !name || !name[0] || (kind != XX_ELF_DWARF_REGISTERED_DATA_TYPE && kind != XX_ELF_DWARF_REGISTERED_FUNCTION_TYPE)) return false;
     for (index = 0U; index < analysis->registered_type_count; ++index) {
         if (strcmp(analysis->registered_types[index].name, name) == 0) {
             analysis->registered_types[index].kind = kind;
             return analysis_rebuild_names(analysis);
         }
     }
-    if (!analysis_grow((void **)&analysis->registered_types, &analysis->registered_type_capacity,
-                       analysis->registered_type_count + 1U, sizeof(*analysis->registered_types))) return false;
+    if (!analysis_grow((void **)&analysis->registered_types, &analysis->registered_type_capacity, analysis->registered_type_count + 1U,
+                       sizeof(*analysis->registered_types)))
+        return false;
     record = &analysis->registered_types[analysis->registered_type_count];
     record->name = analysis_strdup(name);
     if (!record->name) return false;
@@ -1050,10 +977,7 @@ bool xx_elf_dwarf_analysis_register_type(xx_elf_dwarf_analysis *analysis,
     return analysis_rebuild_names(analysis);
 }
 
-bool xx_elf_dwarf_analysis_set_function_override(xx_elf_dwarf_analysis *analysis,
-                                                  uint64_t address,
-                                                  const char *name,
-                                                  const char *prototype)
+bool xx_elf_dwarf_analysis_set_function_override(xx_elf_dwarf_analysis *analysis, uint64_t address, const char *name, const char *prototype)
 {
     analysis_override *record = NULL;
     char *name_copy;
@@ -1074,8 +998,7 @@ bool xx_elf_dwarf_analysis_set_function_override(xx_elf_dwarf_analysis *analysis
         }
     }
     if (!record) {
-        if (!analysis_grow((void **)&analysis->overrides, &analysis->override_capacity,
-                           analysis->override_count + 1U, sizeof(*analysis->overrides))) {
+        if (!analysis_grow((void **)&analysis->overrides, &analysis->override_capacity, analysis->override_count + 1U, sizeof(*analysis->overrides))) {
             xx_mem_free(name_copy);
             xx_mem_free(prototype_copy);
             return false;
@@ -1091,8 +1014,7 @@ bool xx_elf_dwarf_analysis_set_function_override(xx_elf_dwarf_analysis *analysis
     return true;
 }
 
-bool xx_elf_dwarf_analysis_clear_function_override(xx_elf_dwarf_analysis *analysis,
-                                                    uint64_t address)
+bool xx_elf_dwarf_analysis_clear_function_override(xx_elf_dwarf_analysis *analysis, uint64_t address)
 {
     uint32_t index;
     if (!analysis) return false;
@@ -1101,8 +1023,7 @@ bool xx_elf_dwarf_analysis_clear_function_override(xx_elf_dwarf_analysis *analys
             xx_mem_free(analysis->overrides[index].name);
             xx_mem_free(analysis->overrides[index].prototype);
             if (index + 1U < analysis->override_count) {
-                memmove(&analysis->overrides[index], &analysis->overrides[index + 1U],
-                        (size_t)(analysis->override_count - index - 1U) * sizeof(*analysis->overrides));
+                memmove(&analysis->overrides[index], &analysis->overrides[index + 1U], (size_t)(analysis->override_count - index - 1U) * sizeof(*analysis->overrides));
             }
             --analysis->override_count;
             return true;
@@ -1121,8 +1042,7 @@ static const analysis_override *analysis_find_override(const xx_elf_dwarf_analys
     return NULL;
 }
 
-const char *xx_elf_dwarf_analysis_get_effective_function_name(const xx_elf_dwarf_analysis *analysis,
-                                                               const xx_elf_dwarf_analysis_function *function)
+const char *xx_elf_dwarf_analysis_get_effective_function_name(const xx_elf_dwarf_analysis *analysis, const xx_elf_dwarf_analysis_function *function)
 {
     const analysis_override *override;
     if (!analysis || !function) return NULL;
@@ -1130,8 +1050,7 @@ const char *xx_elf_dwarf_analysis_get_effective_function_name(const xx_elf_dwarf
     return override ? override->name : function->typed_name;
 }
 
-const char *xx_elf_dwarf_analysis_get_effective_function_prototype(const xx_elf_dwarf_analysis *analysis,
-                                                                    const xx_elf_dwarf_analysis_function *function)
+const char *xx_elf_dwarf_analysis_get_effective_function_prototype(const xx_elf_dwarf_analysis *analysis, const xx_elf_dwarf_analysis_function *function)
 {
     const analysis_override *override;
     if (!analysis || !function) return NULL;

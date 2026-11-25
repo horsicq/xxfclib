@@ -90,8 +90,7 @@ void xx_sort_context(void *pBase, size_t nCount, size_t nSize, xx_sort_compare_c
 
 void xx_sort_quick(void *pBase, size_t nCount, size_t nSize, xx_sort_compare_fn fnCompare)
 {
-    if ((pBase == NULL) || (fnCompare == NULL) || (nCount < 2) || (nSize == 0) || (nCount > ((size_t)-1) / nSize) ||
-        (nCount * nSize > (size_t)PTRDIFF_MAX)) {
+    if ((pBase == NULL) || (fnCompare == NULL) || (nCount < 2) || (nSize == 0) || (nCount > ((size_t)-1) / nSize) || (nCount * nSize > (size_t)PTRDIFF_MAX)) {
         return;
     }
     xx_sort_select_backend(nSize)->fnQuick(pBase, nCount, nSize, fnCompare);

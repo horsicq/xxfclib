@@ -39,11 +39,11 @@ extern "C" {
  */
 typedef struct xx_freearc {
     Abstractformat format;
-    uint16_t flags;       /**< Header flags, bytes 4..5. */
-    uint16_t version;     /**< Header version, bytes 6..7. */
-    int64_t archive_size; /**< End of the footer descriptor, or -1. */
-    void *index;          /**< Parsed directory (private), NULL until read. */
-    bool index_tried;     /**< The directory has been parsed (or failed). */
+    uint16_t flags;                   /**< Header flags, bytes 4..5. */
+    uint16_t version;                 /**< Header version, bytes 6..7. */
+    int64_t archive_size;             /**< End of the footer descriptor, or -1. */
+    void *index;                      /**< Parsed directory (private), NULL until read. */
+    bool index_tried;                 /**< The directory has been parsed (or failed). */
     uint8_t password_fingerprint[32]; /**< Private cache identity; never password bytes. */
     bool password_fingerprint_set;
     bool password_present;
@@ -80,8 +80,8 @@ XXFC_API bool xx_freearc_decode_chain(const char *method, uint8_t *in, size_t in
 /** Decode a chain using UTF-8 password bytes. NULL means no password; an
  * empty string is an explicitly supplied empty password. Ownership and size
  * bounds are the same as xx_freearc_decode_chain. */
-XXFC_API bool xx_freearc_decode_chain_password(const char *method, uint8_t *in, size_t in_size, int64_t expected, const char *password_utf8,
-                                               uint8_t **out, size_t *out_size, xx_pd_struct *pd);
+XXFC_API bool xx_freearc_decode_chain_password(const char *method, uint8_t *in, size_t in_size, int64_t expected, const char *password_utf8, uint8_t **out,
+                                               size_t *out_size, xx_pd_struct *pd);
 /** @brief True when every stage of @p method is one this reader decodes. */
 XXFC_API bool xx_freearc_method_supported(const char *method);
 

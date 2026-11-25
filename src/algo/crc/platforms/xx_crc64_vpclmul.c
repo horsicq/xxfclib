@@ -31,8 +31,7 @@ static uint64_t xx_crc64_vpclmul(uint64_t crc, const void *data, size_t size, bo
 {
     const uint8_t *p = (const uint8_t *)data;
     const __m128i step16 = _mm_set_epi64x((long long)XX_CRC64_K192, (long long)XX_CRC64_K128);
-    const __m256i step64 = _mm256_setr_epi64x((long long)XX_CRC64_K512, (long long)XX_CRC64_K576,
-                                              (long long)XX_CRC64_K512, (long long)XX_CRC64_K576);
+    const __m256i step64 = _mm256_setr_epi64x((long long)XX_CRC64_K512, (long long)XX_CRC64_K576, (long long)XX_CRC64_K512, (long long)XX_CRC64_K576);
     __m256i ab, cd;
     __m128i state;
     uint64_t normal;

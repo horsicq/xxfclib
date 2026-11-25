@@ -74,7 +74,7 @@ struct DieEngine {
     xx_scan_result *pResult;
     xx_pd_struct *pd; /* Borrowed progress/cancellation for this synchronous pass. */
 
-    xx_io_device *device; /* Owned buffered input for this signature pass. */
+    xx_io_device *device;  /* Owned buffered input for this signature pass. */
     const char *file_name; /* Borrowed scan-option/source name. */
     xx_pe_inspection pe;
     int bHasPE;
@@ -120,8 +120,8 @@ struct DieEngine {
     int bStop;
     char *pCurrentScript;
     const char *pCurrentScriptPath; /* borrowed database path of pCurrentScript */
-    char *pCurrentFormatId;   /* bundled audio.1.sg //fmt[...] tag, if any */
-    char *pCurrentFormatName; /* name assigned by that exact marked branch */
+    char *pCurrentFormatId;         /* bundled audio.1.sg //fmt[...] tag, if any */
+    char *pCurrentFormatName;       /* name assigned by that exact marked branch */
     /* Latest progress error. The reference overwrites this during a pass,
      * then adds one "Last error" record after the detection scripts. */
     char *pLastError;

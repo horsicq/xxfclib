@@ -19,7 +19,6 @@
  * SOFTWARE.
  */
 
-
 #include <xxfclib/formats/executable/dex/xx_dex_yx.h>
 
 #include "xxfclib/algo/sha/xx_sha.h"
@@ -30,8 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if (defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || \
-     defined(__x86_64__)) && !defined(_M_ARM64EC)
+#if (defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)) && !defined(_M_ARM64EC)
 #define XX_DEX_YX_X86 1
 #include <immintrin.h>
 #endif
@@ -51,14 +49,25 @@
 
 /* A string is a view into the scanned data when its bytes are valid UTF-8
    (the common case, no copy), otherwise into the decoded MUTF-8 buffer. */
-typedef struct { size_t offset; uint32_t length; bool decoded; } xx_dex_yx_text;
-typedef struct { const uint8_t *bytes; size_t length; } xx_dex_yx_view;
+typedef struct {
+    size_t offset;
+    uint32_t length;
+    bool decoded;
+} xx_dex_yx_text;
+typedef struct {
+    const uint8_t *bytes;
+    size_t length;
+} xx_dex_yx_view;
 typedef struct {
     uint32_t shorty, return_type;
     uint32_t parameters_start, parameters_count;
 } xx_dex_yx_proto;
-typedef struct { uint32_t class_type, type, name; } xx_dex_yx_field;
-typedef struct { uint32_t class_type, proto, name; } xx_dex_yx_method;
+typedef struct {
+    uint32_t class_type, type, name;
+} xx_dex_yx_field;
+typedef struct {
+    uint32_t class_type, proto, name;
+} xx_dex_yx_method;
 typedef struct {
     uint32_t class_type, access_flags, superclass, source_file;
     bool has_superclass, has_source_file;
@@ -82,10 +91,8 @@ struct xx_dex_yx_result {
     bool is_dex;
     uint32_t version;
     uint32_t checksum, file_size, header_size, endian_tag, link_size, link_off;
-    uint32_t map_off, string_ids_size, string_ids_off, type_ids_size,
-             type_ids_off, proto_ids_size, proto_ids_off, field_ids_size,
-             field_ids_off, method_ids_size, method_ids_off, class_defs_size,
-             class_defs_off, data_size, data_off, container_size, header_offset;
+    uint32_t map_off, string_ids_size, string_ids_off, type_ids_size, type_ids_off, proto_ids_size, proto_ids_off, field_ids_size, field_ids_off, method_ids_size,
+        method_ids_off, class_defs_size, class_defs_off, data_size, data_off, container_size, header_offset;
     bool has_container_fields, has_map_list;
     uint32_t map_declared_size;
     char header_signature[41];
@@ -127,8 +134,7 @@ static uint16_t xx_dex_yx_u16(const uint8_t *data, size_t at)
 
 static uint32_t xx_dex_yx_u32(const uint8_t *data, size_t at)
 {
-    return (uint32_t)data[at] | ((uint32_t)data[at + 1] << 8) |
-           ((uint32_t)data[at + 2] << 16) | ((uint32_t)data[at + 3] << 24);
+    return (uint32_t)data[at] | ((uint32_t)data[at + 1] << 8) | ((uint32_t)data[at + 2] << 16) | ((uint32_t)data[at + 3] << 24);
 }
 
 static void xx_dex_yx_hex_lower(const uint8_t *data, size_t length, char *out)
@@ -143,9 +149,7 @@ static void xx_dex_yx_hex_lower(const uint8_t *data, size_t length, char *out)
 
 static bool xx_dex_yx_magic(const uint8_t *d, size_t size)
 {
-    return size >= 112 && memcmp(d, "dex\n0", 5) == 0 && d[7] == 0 &&
-           ((d[5] == '3' && d[6] >= '5' && d[6] <= '9') ||
-            (d[5] == '4' && d[6] >= '0' && d[6] <= '1'));
+    return size >= 112 && memcmp(d, "dex\n0", 5) == 0 && d[7] == 0 && ((d[5] == '3' && d[6] >= '5' && d[6] <= '9') || (d[5] == '4' && d[6] >= '0' && d[6] <= '1'));
 }
 
 static bool xx_dex_yx_parse_header(xx_dex_yx_result *r)
@@ -183,33 +187,34 @@ static bool xx_dex_yx_parse_header(xx_dex_yx_result *r)
     }
     /* YARA-X compares offsets against data.len() truncated to u32. */
     uint32_t file_length = (uint32_t)r->size;
-    if (r->file_size > file_length || r->header_size != 112 ||
-        (r->endian_tag != 0x12345678 && r->endian_tag != 0x78563412) ||
-        r->link_off > file_length || r->map_off > file_length ||
-        r->string_ids_off > file_length || r->type_ids_off > file_length ||
-        r->proto_ids_off > file_length || r->field_ids_off > file_length ||
-        r->method_ids_off > file_length || r->class_defs_off > file_length ||
-        r->data_off > file_length || r->type_ids_size > UINT16_MAX ||
-        r->proto_ids_size > UINT16_MAX)
+    if (r->file_size > file_length || r->header_size != 112 || (r->endian_tag != 0x12345678 && r->endian_tag != 0x78563412) || r->link_off > file_length ||
+        r->map_off > file_length || r->string_ids_off > file_length || r->type_ids_off > file_length || r->proto_ids_off > file_length ||
+        r->field_ids_off > file_length || r->method_ids_off > file_length || r->class_defs_off > file_length || r->data_off > file_length ||
+        r->type_ids_size > UINT16_MAX || r->proto_ids_size > UINT16_MAX)
         return false;
     r->is_dex = true;
     return true;
 }
 
-static bool xx_dex_yx_uleb128(const uint8_t *data, size_t size, size_t *at,
-                        uint64_t *value)
+static bool xx_dex_yx_uleb128(const uint8_t *data, size_t size, size_t *at, uint64_t *value)
 {
     uint64_t result = 0;
     for (unsigned i = 0; i < 10; ++i) {
         if (*at >= size) return false;
         uint8_t byte = data[(*at)++];
         result |= (uint64_t)(byte & 0x7f) << (i * 7);
-        if (!(byte & 0x80)) { *value = result; return true; }
+        if (!(byte & 0x80)) {
+            *value = result;
+            return true;
+        }
     }
     return false;
 }
 
-static bool xx_dex_yx_is_cont(uint8_t ch) { return (ch & 0xc0) == 0x80; }
+static bool xx_dex_yx_is_cont(uint8_t ch)
+{
+    return (ch & 0xc0) == 0x80;
+}
 
 /* ---------------------------------------------------- ASCII run search */
 
@@ -240,8 +245,7 @@ static unsigned xx_dex_yx_ctz32(uint32_t value)
 
 /* Length of the leading run of s[0..length) whose bytes are below 0x80,
    and with no_zero also not 0. */
-static size_t xx_dex_yx_ascii_run_scalar(const uint8_t *s, size_t length,
-                                      bool no_zero)
+static size_t xx_dex_yx_ascii_run_scalar(const uint8_t *s, size_t length, bool no_zero)
 {
     const uint64_t high = UINT64_C(0x8080808080808080);
     const uint64_t ones = UINT64_C(0x0101010101010101);
@@ -262,16 +266,14 @@ static size_t xx_dex_yx_ascii_run_scalar(const uint8_t *s, size_t length,
 /* readable >= length bytes at s may be loaded; vectors never cross
    s + readable, the bytes past length are masked off. */
 XX_DEX_YX_TARGET_SSE2
-static size_t xx_dex_yx_ascii_run_sse2(const uint8_t *s, size_t length,
-                                    size_t readable, bool no_zero)
+static size_t xx_dex_yx_ascii_run_sse2(const uint8_t *s, size_t length, size_t readable, bool no_zero)
 {
     const __m128i zero = _mm_setzero_si128();
     size_t i = 0;
     while (i < length && readable - i >= 16) {
         __m128i v = _mm_loadu_si128((const __m128i *)(const void *)(s + i));
         uint32_t mask = (uint32_t)_mm_movemask_epi8(v);
-        if (no_zero)
-            mask |= (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi8(v, zero));
+        if (no_zero) mask |= (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi8(v, zero));
         size_t left = length - i;
         if (left < 16) mask &= (1u << left) - 1u;
         if (mask) return i + xx_dex_yx_ctz32(mask);
@@ -282,32 +284,33 @@ static size_t xx_dex_yx_ascii_run_sse2(const uint8_t *s, size_t length,
 }
 
 XX_DEX_YX_TARGET_AVX2
-static size_t xx_dex_yx_ascii_run_avx2(const uint8_t *s, size_t length,
-                                    size_t readable, bool no_zero)
+static size_t xx_dex_yx_ascii_run_avx2(const uint8_t *s, size_t length, size_t readable, bool no_zero)
 {
     const __m256i zero = _mm256_setzero_si256();
     size_t i = 0;
     while (i < length && readable - i >= 32) {
         __m256i v = _mm256_loadu_si256((const __m256i *)(const void *)(s + i));
         uint32_t mask = (uint32_t)_mm256_movemask_epi8(v);
-        if (no_zero)
-            mask |= (uint32_t)_mm256_movemask_epi8(
-                _mm256_cmpeq_epi8(v, zero));
+        if (no_zero) mask |= (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v, zero));
         size_t left = length - i;
         if (left < 32) mask &= (1u << left) - 1u;
-        if (mask) { _mm256_zeroupper(); return i + xx_dex_yx_ctz32(mask); }
-        if (left <= 32) { _mm256_zeroupper(); return length; }
+        if (mask) {
+            _mm256_zeroupper();
+            return i + xx_dex_yx_ctz32(mask);
+        }
+        if (left <= 32) {
+            _mm256_zeroupper();
+            return length;
+        }
         i += 32;
     }
     _mm256_zeroupper();
     if (i >= length) return length;
-    return i + xx_dex_yx_ascii_run_sse2(s + i, length - i, readable - i,
-                                     no_zero);
+    return i + xx_dex_yx_ascii_run_sse2(s + i, length - i, readable - i, no_zero);
 }
 #endif
 
-static size_t xx_dex_yx_ascii_run(const uint8_t *s, size_t length,
-                               size_t readable, int simd, bool no_zero)
+static size_t xx_dex_yx_ascii_run(const uint8_t *s, size_t length, size_t readable, int simd, bool no_zero)
 {
 #ifdef XX_DEX_YX_X86
     if (simd == 2) return xx_dex_yx_ascii_run_avx2(s, length, readable, no_zero);
@@ -326,21 +329,17 @@ static size_t xx_dex_yx_ascii_run(const uint8_t *s, size_t length,
 static size_t xx_dex_yx_utf8_sequence(const uint8_t *s, size_t left)
 {
     uint8_t a = s[0];
-    if (a >= 0xc2 && a <= 0xdf)
-        return left >= 2 && xx_dex_yx_is_cont(s[1]) ? 2 : 0;
+    if (a >= 0xc2 && a <= 0xdf) return left >= 2 && xx_dex_yx_is_cont(s[1]) ? 2 : 0;
     if (a >= 0xe0 && a <= 0xef)
-        return left >= 3 && xx_dex_yx_is_cont(s[1]) && xx_dex_yx_is_cont(s[2]) &&
-               !(a == 0xe0 && s[1] < 0xa0) &&
-               !(a == 0xed && s[1] >= 0xa0) ? 3 : 0;
+        return left >= 3 && xx_dex_yx_is_cont(s[1]) && xx_dex_yx_is_cont(s[2]) && !(a == 0xe0 && s[1] < 0xa0) && !(a == 0xed && s[1] >= 0xa0) ? 3 : 0;
     if (a >= 0xf0 && a <= 0xf4)
-        return left >= 4 && xx_dex_yx_is_cont(s[1]) && xx_dex_yx_is_cont(s[2]) &&
-               xx_dex_yx_is_cont(s[3]) && !(a == 0xf0 && s[1] < 0x90) &&
-               !(a == 0xf4 && s[1] >= 0x90) ? 4 : 0;
+        return left >= 4 && xx_dex_yx_is_cont(s[1]) && xx_dex_yx_is_cont(s[2]) && xx_dex_yx_is_cont(s[3]) && !(a == 0xf0 && s[1] < 0x90) && !(a == 0xf4 && s[1] >= 0x90)
+                   ? 4
+                   : 0;
     return 0;
 }
 
-static bool xx_dex_yx_utf8_valid(const uint8_t *s, size_t length,
-                              size_t readable, int simd)
+static bool xx_dex_yx_utf8_valid(const uint8_t *s, size_t length, size_t readable, int simd)
 {
     size_t i = 0;
     while (i < length) {
@@ -363,14 +362,11 @@ static bool xx_dex_yx_valid_utf8(const uint8_t *data, size_t length)
 
 /* simd_cesu8::mutf8::decode semantics for input that is not valid UTF-8.
    text has room for length bytes: no sequence grows when decoded. */
-static bool xx_dex_yx_decode_mutf8(const uint8_t *data, size_t length,
-                            size_t readable, int simd, uint8_t *text,
-                            size_t *out_length)
+static bool xx_dex_yx_decode_mutf8(const uint8_t *data, size_t length, size_t readable, int simd, uint8_t *text, size_t *out_length)
 {
     size_t used = 0;
     for (size_t i = 0; i < length;) {
-        size_t run = xx_dex_yx_ascii_run(data + i, length - i, readable - i,
-                                      simd, true);
+        size_t run = xx_dex_yx_ascii_run(data + i, length - i, readable - i, simd, true);
         if (run) {
             memcpy(text + used, data + i, run);
             used += run;
@@ -381,24 +377,16 @@ static bool xx_dex_yx_decode_mutf8(const uint8_t *data, size_t length,
         if (a == 0xc0 && i + 1 < length && data[i + 1] == 0x80) {
             text[used++] = 0;
             i += 2;
-        } else if (a >= 0xc2 && a <= 0xdf && i + 1 < length &&
-                   xx_dex_yx_is_cont(data[i + 1])) {
+        } else if (a >= 0xc2 && a <= 0xdf && i + 1 < length && xx_dex_yx_is_cont(data[i + 1])) {
             text[used++] = a;
             text[used++] = data[i + 1];
             i += 2;
-        } else if (a >= 0xe0 && a <= 0xef && i + 2 < length &&
-                   xx_dex_yx_is_cont(data[i + 1]) && xx_dex_yx_is_cont(data[i + 2]) &&
-                   !(a == 0xe0 && data[i + 1] < 0xa0)) {
-            uint32_t code = ((uint32_t)(a & 15) << 12) |
-                            ((uint32_t)(data[i + 1] & 63) << 6) |
-                            (uint32_t)(data[i + 2] & 63);
+        } else if (a >= 0xe0 && a <= 0xef && i + 2 < length && xx_dex_yx_is_cont(data[i + 1]) && xx_dex_yx_is_cont(data[i + 2]) && !(a == 0xe0 && data[i + 1] < 0xa0)) {
+            uint32_t code = ((uint32_t)(a & 15) << 12) | ((uint32_t)(data[i + 1] & 63) << 6) | (uint32_t)(data[i + 2] & 63);
             if (code >= 0xd800 && code <= 0xdbff) {
-                if (i + 5 >= length || data[i + 3] != 0xed ||
-                    data[i + 4] < 0xb0 || data[i + 4] > 0xbf ||
-                    !xx_dex_yx_is_cont(data[i + 5])) return false;
+                if (i + 5 >= length || data[i + 3] != 0xed || data[i + 4] < 0xb0 || data[i + 4] > 0xbf || !xx_dex_yx_is_cont(data[i + 5])) return false;
                 /* Low ten bits of the low surrogate (ED B0..BF xx). */
-                uint32_t low = ((uint32_t)(data[i + 4] & 15) << 6) |
-                               (uint32_t)(data[i + 5] & 63);
+                uint32_t low = ((uint32_t)(data[i + 4] & 15) << 6) | (uint32_t)(data[i + 5] & 63);
                 code = 0x10000 + ((code - 0xd800) << 10) + low;
                 text[used++] = (uint8_t)(0xf0 | (code >> 18));
                 text[used++] = (uint8_t)(0x80 | ((code >> 12) & 63));
@@ -423,8 +411,7 @@ static bool xx_dex_yx_decode_mutf8(const uint8_t *data, size_t length,
 
 /* ------------------------------------------------------- collections */
 
-static size_t xx_dex_yx_record_count(const xx_dex_yx_result *r, uint32_t offset,
-                              uint32_t declared, size_t width)
+static size_t xx_dex_yx_record_count(const xx_dex_yx_result *r, uint32_t offset, uint32_t declared, size_t width)
 {
     if (!offset || offset > r->size) return 0;
     size_t available = (r->size - offset) / width;
@@ -444,8 +431,7 @@ static bool xx_dex_yx_alloc_array(void **out, size_t count, size_t item_size)
 }
 
 /* Grows a buffer of item_size items to hold at least needed items. */
-static bool xx_dex_yx_reserve(void **buffer, size_t *capacity, size_t needed,
-                       size_t item_size, size_t minimum)
+static bool xx_dex_yx_reserve(void **buffer, size_t *capacity, size_t needed, size_t item_size, size_t minimum)
 {
     if (needed <= *capacity) return true;
     size_t grown = *capacity > SIZE_MAX / 2 ? SIZE_MAX : *capacity * 2;
@@ -471,17 +457,14 @@ static xx_dex_yx_view xx_dex_yx_string_view(const xx_dex_yx_result *r, size_t in
 
 static bool xx_dex_yx_parse_strings(xx_dex_yx_result *r)
 {
-    size_t n = xx_dex_yx_record_count(r, r->string_ids_off,
-                                r->string_ids_size, 4);
+    size_t n = xx_dex_yx_record_count(r, r->string_ids_off, r->string_ids_size, 4);
     int simd = xx_dex_yx_simd_level();
-    if (!xx_dex_yx_alloc_array((void **)&r->strings, n, sizeof(*r->strings)))
-        return false;
+    if (!xx_dex_yx_alloc_array((void **)&r->strings, n, sizeof(*r->strings))) return false;
     for (size_t i = 0; i < n; ++i) {
         size_t at = xx_dex_yx_u32(r->data, r->string_ids_off + i * 4);
         uint64_t length;
-        if (at < 112 || !xx_dex_yx_uleb128(r->data, r->size, &at, &length) ||
-            length > 65536 || length > r->size ||
-            !xx_dex_yx_span(r->size, at, (size_t)length)) continue;
+        if (at < 112 || !xx_dex_yx_uleb128(r->data, r->size, &at, &length) || length > 65536 || length > r->size || !xx_dex_yx_span(r->size, at, (size_t)length))
+            continue;
         const uint8_t *bytes = r->data + at;
         size_t readable = r->size - at;
         xx_dex_yx_text *item = &r->strings[r->strings_count];
@@ -495,13 +478,9 @@ static bool xx_dex_yx_parse_strings(xx_dex_yx_result *r)
             ++r->strings_count;
             continue;
         }
-        if (!xx_dex_yx_reserve((void **)&r->decoded, &r->decoded_capacity,
-                        r->decoded_used + (size_t)length, 1, 4096))
-            return false;
+        if (!xx_dex_yx_reserve((void **)&r->decoded, &r->decoded_capacity, r->decoded_used + (size_t)length, 1, 4096)) return false;
         size_t decoded_length;
-        if (!xx_dex_yx_decode_mutf8(bytes, (size_t)length, readable, simd,
-                             r->decoded + r->decoded_used, &decoded_length))
-            continue;
+        if (!xx_dex_yx_decode_mutf8(bytes, (size_t)length, readable, simd, r->decoded + r->decoded_used, &decoded_length)) continue;
         item->offset = r->decoded_used;
         item->length = (uint32_t)decoded_length;
         item->decoded = true;
@@ -514,8 +493,7 @@ static bool xx_dex_yx_parse_strings(xx_dex_yx_result *r)
 static bool xx_dex_yx_parse_types(xx_dex_yx_result *r)
 {
     size_t n = xx_dex_yx_record_count(r, r->type_ids_off, r->type_ids_size, 4);
-    if (!xx_dex_yx_alloc_array((void **)&r->types, n, sizeof(*r->types)))
-        return false;
+    if (!xx_dex_yx_alloc_array((void **)&r->types, n, sizeof(*r->types))) return false;
     for (size_t i = 0; i < n; ++i) {
         uint32_t index = xx_dex_yx_u32(r->data, r->type_ids_off + i * 4);
         if (index < r->strings_count) r->types[r->types_count++] = index;
@@ -525,8 +503,7 @@ static bool xx_dex_yx_parse_types(xx_dex_yx_result *r)
 
 /* Appends the valid entries of the type_list at offset to the shared
    parameter pool. */
-static bool xx_dex_yx_parse_parameters(xx_dex_yx_result *r, uint32_t offset,
-                                 xx_dex_yx_proto *proto)
+static bool xx_dex_yx_parse_parameters(xx_dex_yx_result *r, uint32_t offset, xx_dex_yx_proto *proto)
 {
     proto->parameters_start = (uint32_t)r->parameters_used;
     proto->parameters_count = 0;
@@ -536,32 +513,25 @@ static bool xx_dex_yx_parse_parameters(xx_dex_yx_result *r, uint32_t offset,
     size_t n = (r->size - offset - 4) / 2;
     if (n > declared) n = declared;
     if (!n) return true;
-    if (!xx_dex_yx_reserve((void **)&r->parameters, &r->parameters_capacity,
-                    r->parameters_used + n, sizeof(*r->parameters), 1024))
-        return false;
+    if (!xx_dex_yx_reserve((void **)&r->parameters, &r->parameters_capacity, r->parameters_used + n, sizeof(*r->parameters), 1024)) return false;
     for (size_t i = 0; i < n; ++i) {
         uint16_t index = xx_dex_yx_u16(r->data, offset + 4 + i * 2);
-        if (index < r->types_count)
-            r->parameters[r->parameters_used++] = index;
+        if (index < r->types_count) r->parameters[r->parameters_used++] = index;
     }
-    proto->parameters_count =
-        (uint32_t)(r->parameters_used - proto->parameters_start);
+    proto->parameters_count = (uint32_t)(r->parameters_used - proto->parameters_start);
     return true;
 }
 
 static bool xx_dex_yx_parse_protos(xx_dex_yx_result *r)
 {
-    size_t n = xx_dex_yx_record_count(r, r->proto_ids_off,
-                                r->proto_ids_size, 12);
-    if (!xx_dex_yx_alloc_array((void **)&r->protos, n, sizeof(*r->protos)))
-        return false;
+    size_t n = xx_dex_yx_record_count(r, r->proto_ids_off, r->proto_ids_size, 12);
+    if (!xx_dex_yx_alloc_array((void **)&r->protos, n, sizeof(*r->protos))) return false;
     for (size_t i = 0; i < n; ++i) {
         size_t at = r->proto_ids_off + i * 12;
         uint32_t shorty = xx_dex_yx_u32(r->data, at);
         uint32_t return_type = xx_dex_yx_u32(r->data, at + 4);
         uint32_t parameters_off = xx_dex_yx_u32(r->data, at + 8);
-        if (shorty >= r->strings_count || return_type >= r->types_count)
-            continue;
+        if (shorty >= r->strings_count || return_type >= r->types_count) continue;
         xx_dex_yx_proto *item = &r->protos[r->protos_count];
         item->shorty = shorty;
         item->return_type = return_type;
@@ -573,48 +543,38 @@ static bool xx_dex_yx_parse_protos(xx_dex_yx_result *r)
 
 static bool xx_dex_yx_parse_fields(xx_dex_yx_result *r)
 {
-    size_t n = xx_dex_yx_record_count(r, r->field_ids_off,
-                                r->field_ids_size, 8);
-    if (!xx_dex_yx_alloc_array((void **)&r->fields, n, sizeof(*r->fields)))
-        return false;
+    size_t n = xx_dex_yx_record_count(r, r->field_ids_off, r->field_ids_size, 8);
+    if (!xx_dex_yx_alloc_array((void **)&r->fields, n, sizeof(*r->fields))) return false;
     for (size_t i = 0; i < n; ++i) {
         size_t at = r->field_ids_off + i * 8;
         uint16_t class_type = xx_dex_yx_u16(r->data, at);
         uint16_t type = xx_dex_yx_u16(r->data, at + 2);
         uint32_t name = xx_dex_yx_u32(r->data, at + 4);
-        if (class_type >= r->types_count || type >= r->types_count ||
-            name >= r->strings_count) continue;
-        r->fields[r->fields_count++] =
-            (xx_dex_yx_field){class_type, type, name};
+        if (class_type >= r->types_count || type >= r->types_count || name >= r->strings_count) continue;
+        r->fields[r->fields_count++] = (xx_dex_yx_field){class_type, type, name};
     }
     return true;
 }
 
 static bool xx_dex_yx_parse_methods(xx_dex_yx_result *r)
 {
-    size_t n = xx_dex_yx_record_count(r, r->method_ids_off,
-                                r->method_ids_size, 8);
-    if (!xx_dex_yx_alloc_array((void **)&r->methods, n, sizeof(*r->methods)))
-        return false;
+    size_t n = xx_dex_yx_record_count(r, r->method_ids_off, r->method_ids_size, 8);
+    if (!xx_dex_yx_alloc_array((void **)&r->methods, n, sizeof(*r->methods))) return false;
     for (size_t i = 0; i < n; ++i) {
         size_t at = r->method_ids_off + i * 8;
         uint16_t class_type = xx_dex_yx_u16(r->data, at);
         uint16_t proto = xx_dex_yx_u16(r->data, at + 2);
         uint32_t name = xx_dex_yx_u32(r->data, at + 4);
-        if (class_type >= r->types_count || proto >= r->protos_count ||
-            name >= r->strings_count) continue;
-        r->methods[r->methods_count++] =
-            (xx_dex_yx_method){class_type, proto, name};
+        if (class_type >= r->types_count || proto >= r->protos_count || name >= r->strings_count) continue;
+        r->methods[r->methods_count++] = (xx_dex_yx_method){class_type, proto, name};
     }
     return true;
 }
 
 static bool xx_dex_yx_parse_classes(xx_dex_yx_result *r)
 {
-    size_t n = xx_dex_yx_record_count(r, r->class_defs_off,
-                                r->class_defs_size, 32);
-    if (!xx_dex_yx_alloc_array((void **)&r->classes, n, sizeof(*r->classes)))
-        return false;
+    size_t n = xx_dex_yx_record_count(r, r->class_defs_off, r->class_defs_size, 32);
+    if (!xx_dex_yx_alloc_array((void **)&r->classes, n, sizeof(*r->classes))) return false;
     for (size_t i = 0; i < n; ++i) {
         size_t at = r->class_defs_off + i * 32;
         uint32_t class_type = xx_dex_yx_u32(r->data, at);
@@ -661,27 +621,13 @@ static bool xx_dex_yx_need(const xx_dex_yx_result *result, unsigned stage)
     xx_dex_yx_result *r = (xx_dex_yx_result *)result;
     bool ok;
     switch (stage) {
-    case XX_DEX_YX_STRINGS:
-        ok = xx_dex_yx_parse_strings(r);
-        break;
-    case XX_DEX_YX_TYPES:
-        ok = xx_dex_yx_need(r, XX_DEX_YX_STRINGS) && xx_dex_yx_parse_types(r);
-        break;
-    case XX_DEX_YX_PROTOS:
-        ok = xx_dex_yx_need(r, XX_DEX_YX_TYPES) && xx_dex_yx_parse_protos(r);
-        break;
-    case XX_DEX_YX_FIELDS:
-        ok = xx_dex_yx_need(r, XX_DEX_YX_TYPES) && xx_dex_yx_parse_fields(r);
-        break;
-    case XX_DEX_YX_METHODS:
-        ok = xx_dex_yx_need(r, XX_DEX_YX_PROTOS) && xx_dex_yx_parse_methods(r);
-        break;
-    case XX_DEX_YX_CLASSES:
-        ok = xx_dex_yx_need(r, XX_DEX_YX_TYPES) && xx_dex_yx_parse_classes(r);
-        break;
-    default:
-        ok = false;
-        break;
+        case XX_DEX_YX_STRINGS: ok = xx_dex_yx_parse_strings(r); break;
+        case XX_DEX_YX_TYPES: ok = xx_dex_yx_need(r, XX_DEX_YX_STRINGS) && xx_dex_yx_parse_types(r); break;
+        case XX_DEX_YX_PROTOS: ok = xx_dex_yx_need(r, XX_DEX_YX_TYPES) && xx_dex_yx_parse_protos(r); break;
+        case XX_DEX_YX_FIELDS: ok = xx_dex_yx_need(r, XX_DEX_YX_TYPES) && xx_dex_yx_parse_fields(r); break;
+        case XX_DEX_YX_METHODS: ok = xx_dex_yx_need(r, XX_DEX_YX_PROTOS) && xx_dex_yx_parse_methods(r); break;
+        case XX_DEX_YX_CLASSES: ok = xx_dex_yx_need(r, XX_DEX_YX_TYPES) && xx_dex_yx_parse_classes(r); break;
+        default: ok = false; break;
     }
     if (ok) r->ready |= stage;
     else r->failed |= stage;
@@ -692,8 +638,7 @@ xx_dex_yx_result *xx_dex_yx_parse(const uint8_t *data, size_t size)
 {
     if (!data && size) return NULL;
     /* Non-DEX input is rejected on the magic bytes without allocating. */
-    if (!data || !xx_dex_yx_magic(data, size))
-        return (xx_dex_yx_result *)&xx_dex_yx_not_dex;
+    if (!data || !xx_dex_yx_magic(data, size)) return (xx_dex_yx_result *)&xx_dex_yx_not_dex;
     xx_dex_yx_result *r = calloc(1, sizeof(*r));
     if (!r) return NULL;
     r->data = data;
@@ -720,40 +665,56 @@ void xx_dex_yx_destroy(xx_dex_yx_result *r)
     free(r);
 }
 
-typedef struct { const char *name; uint32_t value; } xx_dex_yx_named_value;
+typedef struct {
+    const char *name;
+    uint32_t value;
+} xx_dex_yx_named_value;
 
-static const xx_dex_yx_named_value xx_dex_yx_constants[] = {
-    {"ACC_PUBLIC", 0x1}, {"ACC_PRIVATE", 0x2},
-    {"ACC_PROTECTED", 0x4}, {"ACC_STATIC", 0x8},
-    {"ACC_FINAL", 0x10}, {"ACC_SYNCHRONIZED", 0x20},
-    {"ACC_BRIDGE", 0x40}, {"ACC_VARARGS", 0x80},
-    {"ACC_NATIVE", 0x100}, {"ACC_INTERFACE", 0x200},
-    {"ACC_ABSTRACT", 0x400}, {"ACC_STRICT", 0x800},
-    {"ACC_SYNTHETIC", 0x1000}, {"ACC_ANNOTATION", 0x2000},
-    {"ACC_ENUM", 0x4000}, {"ACC_CONSTRUCTOR", 0x10000},
-    {"ACC_DECLARED_SYNCHRONIZED", 0x20000},
-    {"ACC_VOLATILE", 0x40}, {"ACC_TRANSIENT", 0x80},
-    {"TYPE_HEADER_ITEM", 0x0000}, {"TYPE_STRING_ID_ITEM", 0x0001},
-    {"TYPE_TYPE_ID_ITEM", 0x0002}, {"TYPE_PROTO_ID_ITEM", 0x0003},
-    {"TYPE_FIELD_ID_ITEM", 0x0004}, {"TYPE_METHOD_ID_ITEM", 0x0005},
-    {"TYPE_CLASS_DEF_ITEM", 0x0006}, {"TYPE_CALL_SITE_ID_ITEM", 0x0007},
-    {"TYPE_METHOD_HANDLE_ITEM", 0x0008}, {"TYPE_MAP_LIST", 0x1000},
-    {"TYPE_TYPE_LIST", 0x1001},
-    {"TYPE_ANNOTATION_SET_REF_LIST", 0x1002},
-    {"TYPE_ANNOTATION_SET_ITEM", 0x1003},
-    {"TYPE_CLASS_DATA_ITEM", 0x2000}, {"TYPE_CODE_ITEM", 0x2001},
-    {"TYPE_STRING_DATA_ITEM", 0x2002}, {"TYPE_DEBUG_INFO_ITEM", 0x2003},
-    {"TYPE_ANNOTATION_ITEM", 0x2004},
-    {"TYPE_ENCODED_ARRAY_ITEM", 0x2005},
-    {"TYPE_ANNOTATIONS_DIRECTORY_ITEM", 0x2006},
-    {"TYPE_HIDDENAPI_CLASS_DATA_ITEM", 0xf000}
-};
+static const xx_dex_yx_named_value xx_dex_yx_constants[] = {{"ACC_PUBLIC", 0x1},
+                                                            {"ACC_PRIVATE", 0x2},
+                                                            {"ACC_PROTECTED", 0x4},
+                                                            {"ACC_STATIC", 0x8},
+                                                            {"ACC_FINAL", 0x10},
+                                                            {"ACC_SYNCHRONIZED", 0x20},
+                                                            {"ACC_BRIDGE", 0x40},
+                                                            {"ACC_VARARGS", 0x80},
+                                                            {"ACC_NATIVE", 0x100},
+                                                            {"ACC_INTERFACE", 0x200},
+                                                            {"ACC_ABSTRACT", 0x400},
+                                                            {"ACC_STRICT", 0x800},
+                                                            {"ACC_SYNTHETIC", 0x1000},
+                                                            {"ACC_ANNOTATION", 0x2000},
+                                                            {"ACC_ENUM", 0x4000},
+                                                            {"ACC_CONSTRUCTOR", 0x10000},
+                                                            {"ACC_DECLARED_SYNCHRONIZED", 0x20000},
+                                                            {"ACC_VOLATILE", 0x40},
+                                                            {"ACC_TRANSIENT", 0x80},
+                                                            {"TYPE_HEADER_ITEM", 0x0000},
+                                                            {"TYPE_STRING_ID_ITEM", 0x0001},
+                                                            {"TYPE_TYPE_ID_ITEM", 0x0002},
+                                                            {"TYPE_PROTO_ID_ITEM", 0x0003},
+                                                            {"TYPE_FIELD_ID_ITEM", 0x0004},
+                                                            {"TYPE_METHOD_ID_ITEM", 0x0005},
+                                                            {"TYPE_CLASS_DEF_ITEM", 0x0006},
+                                                            {"TYPE_CALL_SITE_ID_ITEM", 0x0007},
+                                                            {"TYPE_METHOD_HANDLE_ITEM", 0x0008},
+                                                            {"TYPE_MAP_LIST", 0x1000},
+                                                            {"TYPE_TYPE_LIST", 0x1001},
+                                                            {"TYPE_ANNOTATION_SET_REF_LIST", 0x1002},
+                                                            {"TYPE_ANNOTATION_SET_ITEM", 0x1003},
+                                                            {"TYPE_CLASS_DATA_ITEM", 0x2000},
+                                                            {"TYPE_CODE_ITEM", 0x2001},
+                                                            {"TYPE_STRING_DATA_ITEM", 0x2002},
+                                                            {"TYPE_DEBUG_INFO_ITEM", 0x2003},
+                                                            {"TYPE_ANNOTATION_ITEM", 0x2004},
+                                                            {"TYPE_ENCODED_ARRAY_ITEM", 0x2005},
+                                                            {"TYPE_ANNOTATIONS_DIRECTORY_ITEM", 0x2006},
+                                                            {"TYPE_HIDDENAPI_CLASS_DATA_ITEM", 0xf000}};
 
 bool xx_dex_yx_constant(const char *name, uint64_t *value)
 {
     if (!name || !value) return false;
-    for (size_t i = 0; i < sizeof(xx_dex_yx_constants) /
-                           sizeof(xx_dex_yx_constants[0]); ++i)
+    for (size_t i = 0; i < sizeof(xx_dex_yx_constants) / sizeof(xx_dex_yx_constants[0]); ++i)
         if (strcmp(name, xx_dex_yx_constants[i].name) == 0) {
             *value = xx_dex_yx_constants[i].value;
             return true;
@@ -762,30 +723,30 @@ bool xx_dex_yx_constant(const char *name, uint64_t *value)
 }
 
 static const char *const xx_dex_yx_numeric_paths[] = {
-    "is_dex", "header.magic", "header.version", "header.checksum",
-    "header.file_size", "header.header_size", "header.endian_tag",
-    "header.link_size", "header.link_off", "header.data_size",
-    "header.data_off", "header.container_size", "header.header_offset",
-    "map_list.size"
-};
+    "is_dex",           "header.magic",    "header.version",   "header.checksum", "header.file_size",      "header.header_size",   "header.endian_tag",
+    "header.link_size", "header.link_off", "header.data_size", "header.data_off", "header.container_size", "header.header_offset", "map_list.size"};
 
 bool xx_dex_yx_numeric_field_supported(const char *path)
 {
     if (!path) return false;
-    for (size_t i = 0; i < sizeof(xx_dex_yx_numeric_paths) /
-                           sizeof(xx_dex_yx_numeric_paths[0]); ++i)
+    for (size_t i = 0; i < sizeof(xx_dex_yx_numeric_paths) / sizeof(xx_dex_yx_numeric_paths[0]); ++i)
         if (strcmp(path, xx_dex_yx_numeric_paths[i]) == 0) return true;
     return false;
 }
 
-bool xx_dex_yx_numeric_field(const xx_dex_yx_result *r, const char *path,
-                          uint64_t *value)
+bool xx_dex_yx_numeric_field(const xx_dex_yx_result *r, const char *path, uint64_t *value)
 {
     if (!r || !path || !value) return false;
-    if (strcmp(path, "is_dex") == 0) { *value = r->is_dex; return true; }
+    if (strcmp(path, "is_dex") == 0) {
+        *value = r->is_dex;
+        return true;
+    }
     if (!r->is_dex) return false;
 #define XX_DEX_YX_FIELD(name, member) \
-    if (strcmp(path, name) == 0) { *value = r->member; return true; }
+    if (strcmp(path, name) == 0) {    \
+        *value = r->member;           \
+        return true;                  \
+    }
     if (strcmp(path, "header.magic") == 0) {
         *value = 0x6465780a;
         return true;
@@ -797,13 +758,11 @@ bool xx_dex_yx_numeric_field(const xx_dex_yx_result *r, const char *path,
     XX_DEX_YX_FIELD("header.endian_tag", endian_tag)
     XX_DEX_YX_FIELD("header.link_size", link_size)
     XX_DEX_YX_FIELD("header.link_off", link_off)
-    if (strcmp(path, "header.container_size") == 0 &&
-        r->has_container_fields) {
+    if (strcmp(path, "header.container_size") == 0 && r->has_container_fields) {
         *value = r->container_size;
         return true;
     }
-    if (strcmp(path, "header.header_offset") == 0 &&
-        r->has_container_fields) {
+    if (strcmp(path, "header.header_offset") == 0 && r->has_container_fields) {
         *value = r->header_offset;
         return true;
     }
@@ -822,32 +781,25 @@ bool xx_dex_yx_string_field_supported(const char *path)
     return path && strcmp(path, "header.signature") == 0;
 }
 
-bool xx_dex_yx_string_field(const xx_dex_yx_result *r, const char *path,
-                         const uint8_t **bytes, size_t *length)
+bool xx_dex_yx_string_field(const xx_dex_yx_result *r, const char *path, const uint8_t **bytes, size_t *length)
 {
-    if (!r || !r->is_dex || !xx_dex_yx_string_field_supported(path) ||
-        !bytes || !length) return false;
+    if (!r || !r->is_dex || !xx_dex_yx_string_field_supported(path) || !bytes || !length) return false;
     *bytes = (const uint8_t *)r->header_signature;
     *length = 40;
     return true;
 }
 
-static const char *const xx_dex_yx_collections[] = {
-    "strings", "types", "protos", "fields", "methods", "class_defs",
-    "map_list.items"
-};
+static const char *const xx_dex_yx_collections[] = {"strings", "types", "protos", "fields", "methods", "class_defs", "map_list.items"};
 
 bool xx_dex_yx_collection_supported(const char *collection)
 {
     if (!collection) return false;
-    for (size_t i = 0; i < sizeof(xx_dex_yx_collections) /
-                           sizeof(xx_dex_yx_collections[0]); ++i)
+    for (size_t i = 0; i < sizeof(xx_dex_yx_collections) / sizeof(xx_dex_yx_collections[0]); ++i)
         if (strcmp(collection, xx_dex_yx_collections[i]) == 0) return true;
     return false;
 }
 
-bool xx_dex_yx_collection_count(const xx_dex_yx_result *r,
-                              const char *collection, uint64_t *count)
+bool xx_dex_yx_collection_count(const xx_dex_yx_result *r, const char *collection, uint64_t *count)
 {
     if (!r || !collection || !count) return false;
     if (strcmp(collection, "strings") == 0) {
@@ -876,8 +828,7 @@ bool xx_dex_yx_collection_count(const xx_dex_yx_result *r,
     return true;
 }
 
-static bool xx_dex_yx_text_out(xx_dex_yx_view item,
-                            const uint8_t **bytes, size_t *length)
+static bool xx_dex_yx_text_out(xx_dex_yx_view item, const uint8_t **bytes, size_t *length)
 {
     if (!item.bytes || !bytes || !length) return false;
     *bytes = item.bytes;
@@ -892,137 +843,87 @@ static xx_dex_yx_view xx_dex_yx_type_text(const xx_dex_yx_result *r, uint32_t in
     return xx_dex_yx_string_view(r, r->types[index]);
 }
 
-bool xx_dex_yx_indexed_numeric_field_supported(const char *collection,
-                                              const char *member)
+bool xx_dex_yx_indexed_numeric_field_supported(const char *collection, const char *member)
 {
     if (!collection || !member) return false;
-    if (strcmp(collection, "protos") == 0)
-        return strcmp(member, "parameters_count") == 0;
-    if (strcmp(collection, "methods") == 0)
-        return strcmp(member, "proto.parameters_count") == 0;
-    if (strcmp(collection, "class_defs") == 0)
-        return strcmp(member, "access_flags") == 0;
+    if (strcmp(collection, "protos") == 0) return strcmp(member, "parameters_count") == 0;
+    if (strcmp(collection, "methods") == 0) return strcmp(member, "proto.parameters_count") == 0;
+    if (strcmp(collection, "class_defs") == 0) return strcmp(member, "access_flags") == 0;
     if (strcmp(collection, "map_list.items") == 0)
-        return strcmp(member, "type") == 0 ||
-               strcmp(member, "unused") == 0 ||
-               strcmp(member, "size") == 0 ||
-               strcmp(member, "offset") == 0;
+        return strcmp(member, "type") == 0 || strcmp(member, "unused") == 0 || strcmp(member, "size") == 0 || strcmp(member, "offset") == 0;
     return false;
 }
 
-bool xx_dex_yx_indexed_numeric_field(const xx_dex_yx_result *r,
-                                   const char *collection, uint64_t index,
-                                   const char *member, uint64_t *value)
+bool xx_dex_yx_indexed_numeric_field(const xx_dex_yx_result *r, const char *collection, uint64_t index, const char *member, uint64_t *value)
 {
-    if (!r || !value ||
-        !xx_dex_yx_indexed_numeric_field_supported(collection, member))
-        return false;
+    if (!r || !value || !xx_dex_yx_indexed_numeric_field_supported(collection, member)) return false;
     if (strcmp(collection, "protos") == 0) {
-        if (!xx_dex_yx_need(r, XX_DEX_YX_PROTOS) || index >= r->protos_count)
-            return false;
+        if (!xx_dex_yx_need(r, XX_DEX_YX_PROTOS) || index >= r->protos_count) return false;
         *value = r->protos[index].parameters_count;
     } else if (strcmp(collection, "methods") == 0) {
-        if (!xx_dex_yx_need(r, XX_DEX_YX_METHODS) || index >= r->methods_count)
-            return false;
+        if (!xx_dex_yx_need(r, XX_DEX_YX_METHODS) || index >= r->methods_count) return false;
         uint32_t proto = r->methods[index].proto;
         if (proto >= r->protos_count) return false;
         *value = r->protos[proto].parameters_count;
     } else if (strcmp(collection, "class_defs") == 0) {
-        if (!xx_dex_yx_need(r, XX_DEX_YX_CLASSES) || index >= r->classes_count)
-            return false;
+        if (!xx_dex_yx_need(r, XX_DEX_YX_CLASSES) || index >= r->classes_count) return false;
         *value = r->classes[index].access_flags;
     } else if (strcmp(collection, "map_list.items") == 0) {
         if (index >= r->map_items_count) return false;
         size_t at = r->map_off + 4 + (size_t)index * 12;
         if (strcmp(member, "type") == 0) *value = xx_dex_yx_u16(r->data, at);
-        else if (strcmp(member, "unused") == 0)
-            *value = xx_dex_yx_u16(r->data, at + 2);
-        else if (strcmp(member, "size") == 0)
-            *value = xx_dex_yx_u32(r->data, at + 4);
+        else if (strcmp(member, "unused") == 0) *value = xx_dex_yx_u16(r->data, at + 2);
+        else if (strcmp(member, "size") == 0) *value = xx_dex_yx_u32(r->data, at + 4);
         else *value = xx_dex_yx_u32(r->data, at + 8);
     } else return false;
     return true;
 }
 
-bool xx_dex_yx_indexed_string_field_supported(const char *collection,
-                                             const char *member)
+bool xx_dex_yx_indexed_string_field_supported(const char *collection, const char *member)
 {
     if (!collection || !member) return false;
-    if (strcmp(collection, "strings") == 0 ||
-        strcmp(collection, "types") == 0)
-        return strcmp(member, "value") == 0;
-    if (strcmp(collection, "protos") == 0)
-        return strcmp(member, "shorty") == 0 ||
-               strcmp(member, "return_type") == 0;
-    if (strcmp(collection, "fields") == 0)
-        return strcmp(member, "class") == 0 ||
-               strcmp(member, "type") == 0 ||
-               strcmp(member, "name") == 0;
+    if (strcmp(collection, "strings") == 0 || strcmp(collection, "types") == 0) return strcmp(member, "value") == 0;
+    if (strcmp(collection, "protos") == 0) return strcmp(member, "shorty") == 0 || strcmp(member, "return_type") == 0;
+    if (strcmp(collection, "fields") == 0) return strcmp(member, "class") == 0 || strcmp(member, "type") == 0 || strcmp(member, "name") == 0;
     if (strcmp(collection, "methods") == 0)
-        return strcmp(member, "class") == 0 ||
-               strcmp(member, "name") == 0 ||
-               strcmp(member, "proto.shorty") == 0 ||
-               strcmp(member, "proto.return_type") == 0;
-    if (strcmp(collection, "class_defs") == 0)
-        return strcmp(member, "class") == 0 ||
-               strcmp(member, "superclass") == 0 ||
-               strcmp(member, "source_file") == 0;
+        return strcmp(member, "class") == 0 || strcmp(member, "name") == 0 || strcmp(member, "proto.shorty") == 0 || strcmp(member, "proto.return_type") == 0;
+    if (strcmp(collection, "class_defs") == 0) return strcmp(member, "class") == 0 || strcmp(member, "superclass") == 0 || strcmp(member, "source_file") == 0;
     return false;
 }
 
-bool xx_dex_yx_indexed_string_field(const xx_dex_yx_result *r,
-                                  const char *collection, uint64_t index,
-                                  const char *member,
-                                  const uint8_t **bytes, size_t *length)
+bool xx_dex_yx_indexed_string_field(const xx_dex_yx_result *r, const char *collection, uint64_t index, const char *member, const uint8_t **bytes, size_t *length)
 {
-    if (!r || !bytes || !length ||
-        !xx_dex_yx_indexed_string_field_supported(collection, member))
-        return false;
+    if (!r || !bytes || !length || !xx_dex_yx_indexed_string_field_supported(collection, member)) return false;
     xx_dex_yx_view item = {NULL, 0};
     if (strcmp(collection, "strings") == 0) {
-        if (!xx_dex_yx_need(r, XX_DEX_YX_STRINGS) || index >= r->strings_count)
-            return false;
+        if (!xx_dex_yx_need(r, XX_DEX_YX_STRINGS) || index >= r->strings_count) return false;
         item = xx_dex_yx_string_view(r, (size_t)index);
     } else if (strcmp(collection, "types") == 0) {
-        if (!xx_dex_yx_need(r, XX_DEX_YX_TYPES) || index >= r->types_count)
-            return false;
+        if (!xx_dex_yx_need(r, XX_DEX_YX_TYPES) || index >= r->types_count) return false;
         item = xx_dex_yx_type_text(r, (uint32_t)index);
     } else if (strcmp(collection, "protos") == 0) {
-        if (!xx_dex_yx_need(r, XX_DEX_YX_PROTOS) || index >= r->protos_count)
-            return false;
+        if (!xx_dex_yx_need(r, XX_DEX_YX_PROTOS) || index >= r->protos_count) return false;
         const xx_dex_yx_proto *p = &r->protos[index];
-        item = strcmp(member, "shorty") == 0 ?
-               xx_dex_yx_string_view(r, p->shorty) :
-               xx_dex_yx_type_text(r, p->return_type);
+        item = strcmp(member, "shorty") == 0 ? xx_dex_yx_string_view(r, p->shorty) : xx_dex_yx_type_text(r, p->return_type);
     } else if (strcmp(collection, "fields") == 0) {
-        if (!xx_dex_yx_need(r, XX_DEX_YX_FIELDS) || index >= r->fields_count)
-            return false;
+        if (!xx_dex_yx_need(r, XX_DEX_YX_FIELDS) || index >= r->fields_count) return false;
         const xx_dex_yx_field *f = &r->fields[index];
-        if (strcmp(member, "class") == 0)
-            item = xx_dex_yx_type_text(r, f->class_type);
-        else if (strcmp(member, "type") == 0)
-            item = xx_dex_yx_type_text(r, f->type);
+        if (strcmp(member, "class") == 0) item = xx_dex_yx_type_text(r, f->class_type);
+        else if (strcmp(member, "type") == 0) item = xx_dex_yx_type_text(r, f->type);
         else item = xx_dex_yx_string_view(r, f->name);
     } else if (strcmp(collection, "methods") == 0) {
-        if (!xx_dex_yx_need(r, XX_DEX_YX_METHODS) || index >= r->methods_count)
-            return false;
+        if (!xx_dex_yx_need(r, XX_DEX_YX_METHODS) || index >= r->methods_count) return false;
         const xx_dex_yx_method *m = &r->methods[index];
-        if (strcmp(member, "class") == 0)
-            item = xx_dex_yx_type_text(r, m->class_type);
-        else if (strcmp(member, "name") == 0)
-            item = xx_dex_yx_string_view(r, m->name);
+        if (strcmp(member, "class") == 0) item = xx_dex_yx_type_text(r, m->class_type);
+        else if (strcmp(member, "name") == 0) item = xx_dex_yx_string_view(r, m->name);
         else {
             const xx_dex_yx_proto *p = &r->protos[m->proto];
-            item = strcmp(member, "proto.shorty") == 0 ?
-                   xx_dex_yx_string_view(r, p->shorty) :
-                   xx_dex_yx_type_text(r, p->return_type);
+            item = strcmp(member, "proto.shorty") == 0 ? xx_dex_yx_string_view(r, p->shorty) : xx_dex_yx_type_text(r, p->return_type);
         }
     } else if (strcmp(collection, "class_defs") == 0) {
-        if (!xx_dex_yx_need(r, XX_DEX_YX_CLASSES) || index >= r->classes_count)
-            return false;
+        if (!xx_dex_yx_need(r, XX_DEX_YX_CLASSES) || index >= r->classes_count) return false;
         const xx_dex_yx_class *c = &r->classes[index];
-        if (strcmp(member, "class") == 0)
-            item = xx_dex_yx_type_text(r, c->class_type);
+        if (strcmp(member, "class") == 0) item = xx_dex_yx_type_text(r, c->class_type);
         else if (strcmp(member, "superclass") == 0) {
             if (!c->has_superclass) return false;
             item = xx_dex_yx_type_text(r, c->superclass);
@@ -1034,55 +935,39 @@ bool xx_dex_yx_indexed_string_field(const xx_dex_yx_result *r,
     return xx_dex_yx_text_out(item, bytes, length);
 }
 
-static const xx_dex_yx_proto *xx_dex_yx_nested_proto(const xx_dex_yx_result *r,
-                                                 const char *collection,
-                                                 uint64_t index,
-                                                 const char *nested)
+static const xx_dex_yx_proto *xx_dex_yx_nested_proto(const xx_dex_yx_result *r, const char *collection, uint64_t index, const char *nested)
 {
     if (!r || !collection || !nested) return NULL;
-    if (strcmp(collection, "protos") == 0 &&
-        strcmp(nested, "parameters") == 0) {
-        if (!xx_dex_yx_need(r, XX_DEX_YX_PROTOS) || index >= r->protos_count)
-            return NULL;
+    if (strcmp(collection, "protos") == 0 && strcmp(nested, "parameters") == 0) {
+        if (!xx_dex_yx_need(r, XX_DEX_YX_PROTOS) || index >= r->protos_count) return NULL;
         return &r->protos[index];
     }
-    if (strcmp(collection, "methods") == 0 &&
-        strcmp(nested, "proto.parameters") == 0) {
-        if (!xx_dex_yx_need(r, XX_DEX_YX_METHODS) || index >= r->methods_count)
-            return NULL;
+    if (strcmp(collection, "methods") == 0 && strcmp(nested, "proto.parameters") == 0) {
+        if (!xx_dex_yx_need(r, XX_DEX_YX_METHODS) || index >= r->methods_count) return NULL;
         uint32_t proto = r->methods[index].proto;
         return proto < r->protos_count ? &r->protos[proto] : NULL;
     }
     return NULL;
 }
 
-bool xx_dex_yx_nested_collection_count(const xx_dex_yx_result *r,
-                                      const char *collection, uint64_t index,
-                                      const char *nested, uint64_t *count)
+bool xx_dex_yx_nested_collection_count(const xx_dex_yx_result *r, const char *collection, uint64_t index, const char *nested, uint64_t *count)
 {
-    const xx_dex_yx_proto *p = xx_dex_yx_nested_proto(r, collection, index,
-                                                 nested);
+    const xx_dex_yx_proto *p = xx_dex_yx_nested_proto(r, collection, index, nested);
     if (!p || !count) return false;
     *count = p->parameters_count;
     return true;
 }
 
-bool xx_dex_yx_nested_indexed_string(const xx_dex_yx_result *r,
-                                    const char *collection, uint64_t index,
-                                    const char *nested, uint64_t nested_index,
-                                    const uint8_t **bytes, size_t *length)
+bool xx_dex_yx_nested_indexed_string(const xx_dex_yx_result *r, const char *collection, uint64_t index, const char *nested, uint64_t nested_index, const uint8_t **bytes,
+                                     size_t *length)
 {
-    const xx_dex_yx_proto *p = xx_dex_yx_nested_proto(r, collection, index,
-                                                 nested);
-    if (!p || !bytes || !length || nested_index >= p->parameters_count)
-        return false;
-    xx_dex_yx_view item = xx_dex_yx_type_text(
-        r, r->parameters[p->parameters_start + (size_t)nested_index]);
+    const xx_dex_yx_proto *p = xx_dex_yx_nested_proto(r, collection, index, nested);
+    if (!p || !bytes || !length || nested_index >= p->parameters_count) return false;
+    xx_dex_yx_view item = xx_dex_yx_type_text(r, r->parameters[p->parameters_start + (size_t)nested_index]);
     return xx_dex_yx_text_out(item, bytes, length);
 }
 
-static int xx_dex_yx_text_compare(xx_dex_yx_view item,
-                                const uint8_t *bytes, size_t length)
+static int xx_dex_yx_text_compare(xx_dex_yx_view item, const uint8_t *bytes, size_t length)
 {
     size_t common = item.length < length ? item.length : length;
     int comparison = common ? memcmp(item.bytes, bytes, common) : 0;
@@ -1090,31 +975,27 @@ static int xx_dex_yx_text_compare(xx_dex_yx_view item,
     return item.length < length ? -1 : item.length > length ? 1 : 0;
 }
 
-bool xx_dex_yx_contains_string(const xx_dex_yx_result *r,
-                             const uint8_t *bytes, size_t length,
-                             bool *found)
+bool xx_dex_yx_contains_string(const xx_dex_yx_result *r, const uint8_t *bytes, size_t length, bool *found)
 {
-    if (!r || !found || !xx_dex_yx_valid_utf8(bytes, length) ||
-        !xx_dex_yx_need(r, XX_DEX_YX_STRINGS)) return false;
+    if (!r || !found || !xx_dex_yx_valid_utf8(bytes, length) || !xx_dex_yx_need(r, XX_DEX_YX_STRINGS)) return false;
     *found = false;
     size_t low = 0, high = r->strings_count;
     while (low < high) {
         size_t mid = low + (high - low) / 2;
-        int comparison = xx_dex_yx_text_compare(xx_dex_yx_string_view(r, mid),
-                                             bytes, length);
+        int comparison = xx_dex_yx_text_compare(xx_dex_yx_string_view(r, mid), bytes, length);
         if (comparison < 0) low = mid + 1;
         else if (comparison > 0) high = mid;
-        else { *found = true; return true; }
+        else {
+            *found = true;
+            return true;
+        }
     }
     return true;
 }
 
-bool xx_dex_yx_contains_method(const xx_dex_yx_result *r,
-                             const uint8_t *bytes, size_t length,
-                             bool *found)
+bool xx_dex_yx_contains_method(const xx_dex_yx_result *r, const uint8_t *bytes, size_t length, bool *found)
 {
-    if (!r || !found || !xx_dex_yx_valid_utf8(bytes, length) ||
-        !xx_dex_yx_need(r, XX_DEX_YX_METHODS)) return false;
+    if (!r || !found || !xx_dex_yx_valid_utf8(bytes, length) || !xx_dex_yx_need(r, XX_DEX_YX_METHODS)) return false;
     *found = false;
     for (size_t i = 0; i < r->methods_count; ++i) {
         xx_dex_yx_view item = xx_dex_yx_string_view(r, r->methods[i].name);
@@ -1126,12 +1007,9 @@ bool xx_dex_yx_contains_method(const xx_dex_yx_result *r,
     return true;
 }
 
-bool xx_dex_yx_contains_class(const xx_dex_yx_result *r,
-                            const uint8_t *bytes, size_t length,
-                            bool *found)
+bool xx_dex_yx_contains_class(const xx_dex_yx_result *r, const uint8_t *bytes, size_t length, bool *found)
 {
-    if (!r || !found || !xx_dex_yx_valid_utf8(bytes, length) ||
-        !xx_dex_yx_need(r, XX_DEX_YX_CLASSES)) return false;
+    if (!r || !found || !xx_dex_yx_valid_utf8(bytes, length) || !xx_dex_yx_need(r, XX_DEX_YX_CLASSES)) return false;
     *found = false;
     size_t low = 0, high = r->classes_count;
     while (low < high) {
@@ -1141,7 +1019,10 @@ bool xx_dex_yx_contains_class(const xx_dex_yx_result *r,
         int comparison = xx_dex_yx_text_compare(item, bytes, length);
         if (comparison < 0) low = mid + 1;
         else if (comparison > 0) high = mid;
-        else { *found = true; return true; }
+        else {
+            *found = true;
+            return true;
+        }
     }
     return true;
 }

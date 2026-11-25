@@ -6,18 +6,16 @@
 #ifdef XX_LITERAL_X86
 /* Nibble screen of 32 starts over filter_bytes leading bytes (a constant
  * after inlining): bucket bits per start, zero for rejected starts. */
-#define XX_LITERAL_AVX2_STEP(j)                                                                         \
-    do {                                                                                                \
-        __m256i bytes = _mm256_loadu_si256((const __m256i *)(const void *)(data + position + (j)));    \
-        __m256i lo = _mm256_and_si256(bytes, nibbles);                                                  \
-        __m256i hi = _mm256_and_si256(_mm256_srli_epi16(bytes, 4), nibbles);                            \
-        candidates = _mm256_and_si256(candidates, _mm256_and_si256(_mm256_shuffle_epi8(low[j], lo),    \
-                                                                   _mm256_shuffle_epi8(high[j], hi))); \
+#define XX_LITERAL_AVX2_STEP(j)                                                                                                         \
+    do {                                                                                                                                \
+        __m256i bytes = _mm256_loadu_si256((const __m256i *)(const void *)(data + position + (j)));                                     \
+        __m256i lo = _mm256_and_si256(bytes, nibbles);                                                                                  \
+        __m256i hi = _mm256_and_si256(_mm256_srli_epi16(bytes, 4), nibbles);                                                            \
+        candidates = _mm256_and_si256(candidates, _mm256_and_si256(_mm256_shuffle_epi8(low[j], lo), _mm256_shuffle_epi8(high[j], hi))); \
     } while (0)
 
 XX_LITERAL_AVX2
-static XX_LITERAL_INLINE bool xx_literal_avx2_loop(const xx_literal_set *set, const uint8_t *data, size_t size,
-                                                   size_t *cursor, size_t end, unsigned filter_bytes,
+static XX_LITERAL_INLINE bool xx_literal_avx2_loop(const xx_literal_set *set, const uint8_t *data, size_t size, size_t *cursor, size_t end, unsigned filter_bytes,
                                                    xx_literal_match_fn match, void *context)
 {
     __m256i low[4], high[4];
@@ -68,17 +66,16 @@ static XX_LITERAL_INLINE bool xx_literal_avx2_loop(const xx_literal_set *set, co
 #endif
 
 XX_LITERAL_AVX2
-bool xx_literal_scan_avx2(const xx_literal_set *set, const uint8_t *data, size_t size,
-                          size_t begin, size_t end, xx_literal_match_fn match, void *context)
+bool xx_literal_scan_avx2(const xx_literal_set *set, const uint8_t *data, size_t size, size_t begin, size_t end, xx_literal_match_fn match, void *context)
 {
 #ifdef XX_LITERAL_X86
     size_t position = begin;
     bool ok;
     switch (set->filter_bytes) {
-    case 1: ok = xx_literal_avx2_loop(set, data, size, &position, end, 1, match, context); break;
-    case 2: ok = xx_literal_avx2_loop(set, data, size, &position, end, 2, match, context); break;
-    case 3: ok = xx_literal_avx2_loop(set, data, size, &position, end, 3, match, context); break;
-    default: ok = xx_literal_avx2_loop(set, data, size, &position, end, 4, match, context); break;
+        case 1: ok = xx_literal_avx2_loop(set, data, size, &position, end, 1, match, context); break;
+        case 2: ok = xx_literal_avx2_loop(set, data, size, &position, end, 2, match, context); break;
+        case 3: ok = xx_literal_avx2_loop(set, data, size, &position, end, 3, match, context); break;
+        default: ok = xx_literal_avx2_loop(set, data, size, &position, end, 4, match, context); break;
     }
     if (!ok) return false;
     return xx_literal_scan_prepared(set, data, size, position, end, match, context);

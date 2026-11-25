@@ -4,7 +4,6 @@
 
 #include "xx_scan_types_internal.h"
 
-
 static bool xx_scan_is_macho_magic(const uint8_t magic[4])
 {
     return (!memcmp(magic, "\xFE\xED\xFA\xCE", 4) || !memcmp(magic, "\xCE\xFA\xED\xFE", 4) || !memcmp(magic, "\xFE\xED\xFA\xCF", 4) ||
@@ -62,11 +61,9 @@ bool xx_scan_type_is_macho_fat(xx_io_device *device, const uint8_t head[64], siz
     return true;
 }
 
-
 xx_file_type_t xx_scan_type_detect_macho(const uint8_t *head, size_t head_size)
 {
     if (head_size < 28U || !xx_scan_is_macho_magic(head)) return XX_FILE_TYPE_UNKNOWN;
     if (head[3] == 0xCEU || head[0] == 0xCEU) return XX_FILE_TYPE_MACHO32;
     return head_size >= 32U ? XX_FILE_TYPE_MACHO64 : XX_FILE_TYPE_UNKNOWN;
 }
-

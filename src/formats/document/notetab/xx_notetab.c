@@ -577,8 +577,8 @@ bool xx_notetab_unpack_current_archive_record(Abstractformat *format, xx_archive
         char *relative = xx_archive_output_name(clip->name, 1252, 0);
         XX_ARCHIVE_OUTPUT_RESOLVE(relative, stream->items, stream->count, stream->index, name, 1252, 0);
         if (!relative) goto done;
-    path =
-        (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", relative) : xx_str_concat(base, relative);
+        path =
+            (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", relative) : xx_str_concat(base, relative);
         xx_mem_free(relative);
     }
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;

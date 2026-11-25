@@ -32,8 +32,8 @@ static const xx_unpack_handle_row handle_rows[] = {
 static bool xx_handle_can_unpack(const Abstractformat *format)
 {
     return format && !xx_format_handle_is_inspection_only(format->file_type) && format->file_type != XX_FILE_TYPE_DER &&
-           (!format->base_info_handled || format->is_archive) && format->create_archive_records_reading && format->get_current_archive_record && format->unpack_current_archive_record &&
-           format->archive_record_move_to_next && format->free_archive_records_reading;
+           (!format->base_info_handled || format->is_archive) && format->create_archive_records_reading && format->get_current_archive_record &&
+           format->unpack_current_archive_record && format->archive_record_move_to_next && format->free_archive_records_reading;
 }
 
 xx_file_type_t xx_format_handle_type_from_file_type(xx_file_type_t type)
@@ -118,8 +118,9 @@ static bool xx_handle_is_executable(xx_io_device *dev)
 {
     uint8_t h[4];
     if (!xx_io_read_at(dev, 0, h, 2U)) return false;
-    if ((h[0] == 'M' && h[1] == 'Z') || (h[0] == 'Z' && h[1] == 'M') || (h[0] == 0x60U && h[1] == 0x1aU) ||
-        (h[0] == '#' && h[1] == '!') || h[0] == 0xe9U || h[0] == 0xebU || h[0] == 0x18U || h[0] == 0xc3U) return true;
+    if ((h[0] == 'M' && h[1] == 'Z') || (h[0] == 'Z' && h[1] == 'M') || (h[0] == 0x60U && h[1] == 0x1aU) || (h[0] == '#' && h[1] == '!') || h[0] == 0xe9U ||
+        h[0] == 0xebU || h[0] == 0x18U || h[0] == 0xc3U)
+        return true;
     return xx_io_read_at(dev, 0, h, sizeof(h)) && h[0] == 0x7fU && h[1] == 'E' && h[2] == 'L' && h[3] == 'F';
 }
 
@@ -182,7 +183,10 @@ static bool xx_handle_extension_matches(const char *path, const char *extensions
         if (*cursor == '*') ++cursor;
         if (*cursor == '.') ++cursor;
         start = cursor;
-        while (*cursor && *cursor != ' ' && *cursor != '\t' && *cursor != ';' && *cursor != ',' && *cursor != '|' && *cursor != '/') { ++cursor; ++n; }
+        while (*cursor && *cursor != ' ' && *cursor != '\t' && *cursor != ';' && *cursor != ',' && *cursor != '|' && *cursor != '/') {
+            ++cursor;
+            ++n;
+        }
         if (!n || length <= n || name[length - n - 1U] != '.') continue;
         for (i = 0; i < n; ++i)
             if (xx_handle_ascii_lower((unsigned char)name[length - n + i]) != xx_handle_ascii_lower((unsigned char)start[i])) break;
@@ -202,69 +206,78 @@ static int xx_handle_signature(xx_file_type_t type, xx_io_device *dev)
     if (type == XX_FILE_TYPE_IBMPACK) {
         /* A signature is only a scheduling hint. Native chain validation
          * still precedes publication of this handle, including for .001. */
-        return xx_io_read_at(dev,0,magic,sizeof(magic)) && magic[0]==0xa5 && magic[1]==0x96 &&
-            ((magic[2]==0xfe && magic[3]==0xff) || (magic[2]==0xff && magic[3]==0xff) ||
-             (magic[2]==0x14 && magic[3]==0x0a) || (magic[2]==0 && magic[3]==0x14)) ? 1 : 0;
+        return xx_io_read_at(dev, 0, magic, sizeof(magic)) && magic[0] == 0xa5 && magic[1] == 0x96 &&
+                       ((magic[2] == 0xfe && magic[3] == 0xff) || (magic[2] == 0xff && magic[3] == 0xff) || (magic[2] == 0x14 && magic[3] == 0x0a) ||
+                        (magic[2] == 0 && magic[3] == 0x14))
+                   ? 1
+                   : 0;
     }
     if (type == XX_FILE_TYPE_RTPATCH_SETUP_DATA) {
-        uint8_t h[16]; unsigned n;
-        return xx_io_read_at(dev,0,h,sizeof(h)) && (n=(unsigned)h[14]|((unsigned)h[15]<<8U))>=2U && n<=13U &&
-            xx_io_read_at(dev,16,h,n+2U) && !h[n-1U] && h[n]==0xb5U && h[n+1U]==0x9cU ? 1 : 0;
+        uint8_t h[16];
+        unsigned n;
+        return xx_io_read_at(dev, 0, h, sizeof(h)) && (n = (unsigned)h[14] | ((unsigned)h[15] << 8U)) >= 2U && n <= 13U && xx_io_read_at(dev, 16, h, n + 2U) &&
+                       !h[n - 1U] && h[n] == 0xb5U && h[n + 1U] == 0x9cU
+                   ? 1
+                   : 0;
     }
     if (type == XX_FILE_TYPE_RNC) {
         uint8_t h[12];
-        return xx_io_read_at(dev,0,h,sizeof(h)) &&
-            ((h[0]=='R' && h[1]=='N' && h[2]=='C' && (h[3]==1U || h[3]==2U)) ||
-             (!xx_rt_memcmp(h,"BULLFROGRNC",11U) && (h[11]==1U || h[11]==2U))) ? 1 : 0;
+        return xx_io_read_at(dev, 0, h, sizeof(h)) && ((h[0] == 'R' && h[1] == 'N' && h[2] == 'C' && (h[3] == 1U || h[3] == 2U)) ||
+                                                       (!xx_rt_memcmp(h, "BULLFROGRNC", 11U) && (h[11] == 1U || h[11] == 2U)))
+                   ? 1
+                   : 0;
     }
     if (type == XX_FILE_TYPE_RED) {
-        return xx_io_read_at(dev,0,magic,sizeof(magic)) && magic[0]=='R' && magic[1]=='R' &&
-            magic[2]==1U && magic[3]>=39U ? 1 : 0;
+        return xx_io_read_at(dev, 0, magic, sizeof(magic)) && magic[0] == 'R' && magic[1] == 'R' && magic[2] == 1U && magic[3] >= 39U ? 1 : 0;
     }
     if (type == XX_FILE_TYPE_QUANTUM) {
         uint8_t h[8];
-        return xx_io_read_at(dev,0,h,sizeof(h)) && h[0]=='D' && h[1]=='S' && !h[2] && h[3] &&
-            (h[4]||h[5]) && h[6]>=10U && h[6]<=21U ? 1 : 0;
+        return xx_io_read_at(dev, 0, h, sizeof(h)) && h[0] == 'D' && h[1] == 'S' && !h[2] && h[3] && (h[4] || h[5]) && h[6] >= 10U && h[6] <= 21U ? 1 : 0;
     }
     if (type == XX_FILE_TYPE_NETWARE2) {
         uint8_t h[20];
-        return xx_io_read_at(dev,0,h,sizeof(h)) &&
-            !xx_rt_memcmp(h,"\x23\0\0\0\x10" "NetWareFileInfo",sizeof(h)) ? 1 : 0;
+        return xx_io_read_at(dev, 0, h, sizeof(h)) && !xx_rt_memcmp(h,
+                                                                    "\x23\0\0\0\x10"
+                                                                    "NetWareFileInfo",
+                                                                    sizeof(h))
+                   ? 1
+                   : 0;
     }
     if (type == XX_FILE_TYPE_NETWAREPACKED) {
         uint8_t h[31];
-        return xx_io_read_at(dev,0,h,sizeof(h)) && !xx_rt_memcmp(h,"Packed File ",12U) &&
-            h[24]==0x1aU && h[25]==1U && h[26]==10U ? 1 : 0;
+        return xx_io_read_at(dev, 0, h, sizeof(h)) && !xx_rt_memcmp(h, "Packed File ", 12U) && h[24] == 0x1aU && h[25] == 1U && h[26] == 10U ? 1 : 0;
     }
     if (type == XX_FILE_TYPE_LIFKD) {
         uint8_t h[54];
         /* Schedule the complete native chain check before a .001 suffix can
          * hide this headerless installer format. */
-        return xx_io_read_at(dev,0,h,sizeof(h)) && xx_lifkd_is_member_header(h,sizeof(h)) ? 1 : 0;
+        return xx_io_read_at(dev, 0, h, sizeof(h)) && xx_lifkd_is_member_header(h, sizeof(h)) ? 1 : 0;
     }
     if (type == XX_FILE_TYPE_GTU) {
         uint8_t h[16];
         int64_t size = xx_io_total_size(dev);
         /* Headerless GTU kits also use .001. Schedule full native validation
          * before the suffix-only split interpretation can hide this handle. */
-        return size >= 16 && (uint64_t)size <= UINT32_MAX && xx_io_read_at(dev,0,h,sizeof(h)) &&
-            xx_data_get_u32(h,4,0,false) == (uint64_t)size && h[8] == 1U && !h[9] &&
-            h[10] <= 1U && !h[11] && !h[12] && !h[13] && (h[14] || h[15]) ? 1 : 0;
+        return size >= 16 && (uint64_t)size <= UINT32_MAX && xx_io_read_at(dev, 0, h, sizeof(h)) && xx_data_get_u32(h, 4, 0, false) == (uint64_t)size && h[8] == 1U &&
+                       !h[9] && h[10] <= 1U && !h[11] && !h[12] && !h[13] && (h[14] || h[15])
+                   ? 1
+                   : 0;
     }
     if (type == XX_FILE_TYPE_PE_RAWFILE || type == XX_FILE_TYPE_PKLITE) {
         uint8_t mz[2];
-        return xx_io_read_at(dev,0,mz,sizeof(mz)) && mz[0]=='M' && mz[1]=='Z' ? 1 : 0;
+        return xx_io_read_at(dev, 0, mz, sizeof(mz)) && mz[0] == 'M' && mz[1] == 'Z' ? 1 : 0;
     }
     if (type == XX_FILE_TYPE_FURY_DAT) {
         uint8_t h[24];
-        return xx_io_read_at(dev,0,h,sizeof(h)) && (h[0] || h[1]) && h[2]>=0x21U && h[2]<=0x7eU && h[23]<=1U ? 1 : 0;
+        return xx_io_read_at(dev, 0, h, sizeof(h)) && (h[0] || h[1]) && h[2] >= 0x21U && h[2] <= 0x7eU && h[23] <= 1U ? 1 : 0;
     }
     if (type == XX_FILE_TYPE_SOD_INSTALLER) {
-        uint8_t h[12];unsigned year;
-        if(!xx_io_read_at(dev,0,h,sizeof(h)))return 0;
-        year=h[0]|((unsigned)h[1]<<8);
+        uint8_t h[12];
+        unsigned year;
+        if (!xx_io_read_at(dev, 0, h, sizeof(h))) return 0;
+        year = h[0] | ((unsigned)h[1] << 8);
         /* Date prefilter only; the reader must validate every named record. */
-        return year>=1980U && year<=2100U && h[2]>=1 && h[2]<=12 && !h[3] ? 1 : 0;
+        return year >= 1980U && year <= 2100U && h[2] >= 1 && h[2] <= 12 && !h[3] ? 1 : 0;
     }
     if (type == XX_FILE_TYPE_UPX) return xx_upx_has_marker_device(dev, NULL) ? 1 : 0;
     if (type == XX_FILE_TYPE_SFX_HCI_INSTALIT) {
@@ -277,21 +290,21 @@ static int xx_handle_signature(xx_file_type_t type, xx_io_device *dev)
         start = xx_data_get_u32(tail + 8, 4, 0, false);
         /* Standalone volumes have no prefix signature. This bounded footer
          * hint asks the native reader to validate the complete catalog. */
-        return start > 0U && (int64_t)start + 6 < end && end <= size - 12 &&
-               xx_data_get_u32(tail + 4, 4, 0, false) == 0U &&
-               xx_io_read_at(dev, start, tag, sizeof(tag)) && !xx_rt_memcmp(tag, "\x05[PVM]", sizeof(tag)) ? 1 : 0;
+        return start > 0U && (int64_t)start + 6 < end && end <= size - 12 && xx_data_get_u32(tail + 4, 4, 0, false) == 0U &&
+                       xx_io_read_at(dev, start, tag, sizeof(tag)) && !xx_rt_memcmp(tag, "\x05[PVM]", sizeof(tag))
+                   ? 1
+                   : 0;
     }
     if (type == XX_FILE_TYPE_STARFORCE_OVL) {
         int64_t size = xx_io_total_size(dev);
         /* Prefilters only: the reader subsequently authenticates the full
          * directory, payload extents and directory zlib checksum. */
-        if (xx_io_read_at(dev, 0, magic, sizeof(magic)) &&
-            ((!xx_rt_memcmp(magic, "OVL ", 4U)) || (magic[0] == 'M' && magic[1] == 'Z'))) return 1;
+        if (xx_io_read_at(dev, 0, magic, sizeof(magic)) && ((!xx_rt_memcmp(magic, "OVL ", 4U)) || (magic[0] == 'M' && magic[1] == 'Z'))) return 1;
         return size >= 20 && xx_io_read_at(dev, size - 4, magic, sizeof(magic)) && !xx_rt_memcmp(magic, "SOVL", 4U) ? 1 : 0;
     }
     if (type == XX_FILE_TYPE_MOLEBOX) return xx_molebox_has_candidate_device(dev, 0) ? 1 : 0;
-    if (type == XX_FILE_TYPE_ENIGMA_VIRTUAL_BOX && xx_io_read_at(dev, 0, magic, sizeof(magic)) &&
-        magic[0] == 'E' && magic[1] == 'V' && magic[2] == 'B' && !magic[3]) return 1;
+    if (type == XX_FILE_TYPE_ENIGMA_VIRTUAL_BOX && xx_io_read_at(dev, 0, magic, sizeof(magic)) && magic[0] == 'E' && magic[1] == 'V' && magic[2] == 'B' && !magic[3])
+        return 1;
     return extractor->signature ? extractor->signature(dev, 0, false) : xx_format_fast_detect_rules(&type, 1U, dev, 0, false);
 #endif
 }
@@ -302,18 +315,33 @@ static unsigned xx_handle_priority(xx_unpack_handle_t handle)
 {
     xx_file_type_t type = handle.type;
     switch (type) {
-        case XX_FILE_TYPE_PE_RAWFILE: case XX_FILE_TYPE_PKLITE: return 0U;
-        case XX_FILE_TYPE_GZ: case XX_FILE_TYPE_BZ2: case XX_FILE_TYPE_XZ:
-        case XX_FILE_TYPE_LZIP: case XX_FILE_TYPE_LZMA: case XX_FILE_TYPE_LZ4:
-        case XX_FILE_TYPE_ZSTD: case XX_FILE_TYPE_ZIP: return 0U;
-        case XX_FILE_TYPE_TAR_GZ: case XX_FILE_TYPE_TAR_BZ2: case XX_FILE_TYPE_TAR_XZ:
-        case XX_FILE_TYPE_TAR_LZ4: case XX_FILE_TYPE_TAR_ZSTD: case XX_FILE_TYPE_TAR_COMPRESS:
-        case XX_FILE_TYPE_TAR_LZIP: case XX_FILE_TYPE_TAR_LZMA: case XX_FILE_TYPE_TAR_LZOP: return 2U;
-        case XX_FILE_TYPE_STARFORCE_OVL: case XX_FILE_TYPE_STUFFIT5: case XX_FILE_TYPE_TARMA_INSTALLER: case XX_FILE_TYPE_SOD_INSTALLER: return 2U;
-          /* A validated PFX chain exposes decoded members inside the Atari
-           * executable, while GEMDOS_LHA exposes its compressed LHA payload. */
-          case XX_FILE_TYPE_LARC_PFX: return 2U;
-          case XX_FILE_TYPE_NPM: return 3U;
+        case XX_FILE_TYPE_PE_RAWFILE:
+        case XX_FILE_TYPE_PKLITE: return 0U;
+        case XX_FILE_TYPE_GZ:
+        case XX_FILE_TYPE_BZ2:
+        case XX_FILE_TYPE_XZ:
+        case XX_FILE_TYPE_LZIP:
+        case XX_FILE_TYPE_LZMA:
+        case XX_FILE_TYPE_LZ4:
+        case XX_FILE_TYPE_ZSTD:
+        case XX_FILE_TYPE_ZIP: return 0U;
+        case XX_FILE_TYPE_TAR_GZ:
+        case XX_FILE_TYPE_TAR_BZ2:
+        case XX_FILE_TYPE_TAR_XZ:
+        case XX_FILE_TYPE_TAR_LZ4:
+        case XX_FILE_TYPE_TAR_ZSTD:
+        case XX_FILE_TYPE_TAR_COMPRESS:
+        case XX_FILE_TYPE_TAR_LZIP:
+        case XX_FILE_TYPE_TAR_LZMA:
+        case XX_FILE_TYPE_TAR_LZOP: return 2U;
+        case XX_FILE_TYPE_STARFORCE_OVL:
+        case XX_FILE_TYPE_STUFFIT5:
+        case XX_FILE_TYPE_TARMA_INSTALLER:
+        case XX_FILE_TYPE_SOD_INSTALLER: return 2U;
+        /* A validated PFX chain exposes decoded members inside the Atari
+         * executable, while GEMDOS_LHA exposes its compressed LHA payload. */
+        case XX_FILE_TYPE_LARC_PFX: return 2U;
+        case XX_FILE_TYPE_NPM: return 3U;
         default: return 1U;
     }
 }
@@ -379,36 +407,39 @@ xx_list_t *xx_format_get_unpack_handle_types_device(xx_io_device *dev, bool deep
             if (!xx_handle_append(types, split_handle)) goto failed;
         } else
 #endif
-        if (hint != XX_FILE_TYPE_UNKNOWN && !xx_handle_probe(dev, hint, types)) goto failed;
+            if (hint != XX_FILE_TYPE_UNKNOWN && !xx_handle_probe(dev, hint, types))
+            goto failed;
         /* The canonical hint map deliberately omits ambiguous extensions.
          * Try every compiled reader declaring that suffix and keep every
          * validated interpretation, including compound suffixes. */
-        if (path) for (i = 0; i < sizeof(handle_rows) / sizeof(handle_rows[0]); ++i) {
-            const xx_unpack_handle_row *row = &handle_rows[i];
-            Abstractformat *format;
-            bool ok = true;
-            if (row->carrier || row->file_type == hint || row->file_type == XX_FILE_TYPE_EXECUTABLE_OVERLAY) continue;
-            format = xx_format_create_reader(row->file_type, dev, 0);
-            if (xx_handle_can_unpack(format) && xx_handle_extension_matches(path, xx_format_get_extension(format)))
-                ok = xx_handle_probe_format(format, row->file_type, types);
-            xx_format_free_reader(format);
-            if (!ok) goto failed;
-        }
+        if (path)
+            for (i = 0; i < sizeof(handle_rows) / sizeof(handle_rows[0]); ++i) {
+                const xx_unpack_handle_row *row = &handle_rows[i];
+                Abstractformat *format;
+                bool ok = true;
+                if (row->carrier || row->file_type == hint || row->file_type == XX_FILE_TYPE_EXECUTABLE_OVERLAY) continue;
+                format = xx_format_create_reader(row->file_type, dev, 0);
+                if (xx_handle_can_unpack(format) && xx_handle_extension_matches(path, xx_format_get_extension(format)))
+                    ok = xx_handle_probe_format(format, row->file_type, types);
+                xx_format_free_reader(format);
+                if (!ok) goto failed;
+            }
     }
 
     if (deep && !xx_list_count(types)) {
         /* Specific SFX readers have already had their chance. Authenticate
          * adjacent executable boundaries before weaker structural readers. */
         if (executable && !xx_handle_probe(dev, XX_FILE_TYPE_EXECUTABLE_OVERLAY, types)) goto failed;
-        if (!xx_list_count(types)) for (i = 0; i < sizeof(handle_rows) / sizeof(handle_rows[0]); ++i) {
-            const xx_unpack_handle_row *row = &handle_rows[i];
-            /* Signature rules and carving anchors are not exhaustive reader
-             * grammars: V7 TAR has no ustar marker, and ZIP can authenticate
-             * its directory after leading bytes. Once shallow recognition
-             * fails, let every eligible native reader validate structure. */
-            if (row->carrier || !xx_handle_auto_candidate(row->file_type)) continue;
-            if (xx_io_seek64(dev, saved, SEEK_SET) != 0 || !xx_handle_probe(dev, row->file_type, types)) goto failed;
-        }
+        if (!xx_list_count(types))
+            for (i = 0; i < sizeof(handle_rows) / sizeof(handle_rows[0]); ++i) {
+                const xx_unpack_handle_row *row = &handle_rows[i];
+                /* Signature rules and carving anchors are not exhaustive reader
+                 * grammars: V7 TAR has no ustar marker, and ZIP can authenticate
+                 * its directory after leading bytes. Once shallow recognition
+                 * fails, let every eligible native reader validate structure. */
+                if (row->carrier || !xx_handle_auto_candidate(row->file_type)) continue;
+                if (xx_io_seek64(dev, saved, SEEK_SET) != 0 || !xx_handle_probe(dev, row->file_type, types)) goto failed;
+            }
     }
     xx_handle_order(types);
     if (xx_io_seek64(dev, saved, SEEK_SET) != 0) goto failed;
@@ -427,7 +458,10 @@ xx_list_t *xx_format_get_supported_unpack_handle_types(void)
     size_t i;
     if (!types) return NULL;
     empty = xx_io_mem_open_ro(&dummy, 0U);
-    if (!empty) { xx_list_destroy(types); return NULL; }
+    if (!empty) {
+        xx_list_destroy(types);
+        return NULL;
+    }
 #if XFU_FORMAT_SUPPORT_FULL
     {
         xx_unpack_handle_t split_handle = {XX_FILE_TYPE_NUMBERED_SPLIT, XX_UNPACK_CARRIER_NONE};
@@ -476,7 +510,10 @@ Abstractformat *xx_format_create_handle_reader(xx_unpack_handle_t handle, xx_io_
     }
     if (!found) return NULL;
     format = xx_format_create_reader(handle.type, dev, base_address);
-    if (!xx_handle_can_unpack(format)) { xx_format_free_reader(format); return NULL; }
+    if (!xx_handle_can_unpack(format)) {
+        xx_format_free_reader(format);
+        return NULL;
+    }
     xx_handle_prepare_reader(format, handle.type);
     format->handle_type = handle.type;
     format->handle_carrier = handle.carrier;

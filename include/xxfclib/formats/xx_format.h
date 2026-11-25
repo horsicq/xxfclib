@@ -158,8 +158,7 @@ struct Abstractextractor {
      * measured (-1 when unknown). Preserves the device cursor. NULL member:
      * not published; use create_format_search.
      */
-    bool (*probe)(xx_io_device *device, int64_t base_address, bool is_mapped, xx_pd_struct *pd, xx_file_type_t *type,
-                  int64_t *size);
+    bool (*probe)(xx_io_device *device, int64_t base_address, bool is_mapped, xx_pd_struct *pd, xx_file_type_t *type, int64_t *size);
 };
 
 /** Return the detection, size, version, and streaming callbacks for a file type.
@@ -278,14 +277,14 @@ typedef enum xx_meta_id_e {
     /* Appended rather than filed with the record fields above: these values
      * cross the shared-library boundary, so inserting in the middle would
      * renumber every option for a consumer built against an older header. */
-    XX_META_ID_LINK_TARGET, /**< Symlink target path, relative to the archive root (string) */
-    XX_META_ID_OWNER_ID,    /**< POSIX owner's user id (uint64_t); the TAR and CPIO writers store it */
-    XX_META_ID_GROUP_ID,    /**< POSIX group id (uint64_t); the TAR and CPIO writers store it */
-    XX_META_ID_COMPRESSION_CANDIDATES, /**< DEFLATE search budget; positive overrides level, zero/absent uses level (uint64_t) */
-    XX_META_ID_COMPRESSION_LAZY_MATCH, /**< DEFLATE lazy match-length threshold; zero/absent is greedy (uint64_t) */
+    XX_META_ID_LINK_TARGET,                    /**< Symlink target path, relative to the archive root (string) */
+    XX_META_ID_OWNER_ID,                       /**< POSIX owner's user id (uint64_t); the TAR and CPIO writers store it */
+    XX_META_ID_GROUP_ID,                       /**< POSIX group id (uint64_t); the TAR and CPIO writers store it */
+    XX_META_ID_COMPRESSION_CANDIDATES,         /**< DEFLATE search budget; positive overrides level, zero/absent uses level (uint64_t) */
+    XX_META_ID_COMPRESSION_LAZY_MATCH,         /**< DEFLATE lazy match-length threshold; zero/absent is greedy (uint64_t) */
     XX_META_ID_COMPRESSION_SHORT_MATCH_FILTER, /**< Skip length-3 matches beyond distance 4096 (bool, default false) */
-    XX_META_ID_COMPRESSION_NICE_MATCH, /**< Stop search at this match length; zero disables (uint64_t) */
-    XX_META_ID_COMPRESSION_GOOD_MATCH, /**< Reduce candidate budget at this match length; zero disables (uint64_t) */
+    XX_META_ID_COMPRESSION_NICE_MATCH,         /**< Stop search at this match length; zero disables (uint64_t) */
+    XX_META_ID_COMPRESSION_GOOD_MATCH,         /**< Reduce candidate budget at this match length; zero disables (uint64_t) */
     /* Salvage: a member whose stream is damaged keeps the bytes that decoded
      * before the damage (never padded, nothing past a decoder error). The
      * member still fails; the reader reports what it kept through
@@ -447,7 +446,7 @@ typedef uint32_t xx_data_struct_record_property_t;
 #define XX_DATA_STRUCT_RECORD_PROPERTY_STRING 0x00000100u          /**< Value is a text string */
 #define XX_DATA_STRUCT_RECORD_PROPERTY_RESERVED 0x00000200u        /**< Value is reserved/padding */
 #define XX_DATA_STRUCT_RECORD_PROPERTY_SIGNATURE 0x00000400u       /**< Value is a format signature or magic */
-#define XX_DATA_STRUCT_RECORD_PROPERTY_CHECKSUM 0x00000800u  /**< Stored checksum, computed hash or message digest; does not imply verification */
+#define XX_DATA_STRUCT_RECORD_PROPERTY_CHECKSUM 0x00000800u        /**< Stored checksum, computed hash or message digest; does not imply verification */
 
 /**
  * @brief Describes one named field within a fixed-layout data struct
@@ -497,22 +496,22 @@ struct xx_data_struct_record_state {
  * @brief Abstractformat structure with function pointer vtable.
  */
 struct Abstractformat {
-    xx_io_device *device;         /**< Associated I/O device */
-    int64_t base_address;         /**< Absolute device offset at which this format starts. */
-    bool is_mapped;               /**< True if memory-mapped dump (e.g. raw dump from memory) */
-    bool base_info_handled;       /**< True if base format information has been
-                                     parsed/handled */
-    bool is_valid;                /**< Cached validity flag */
-    int64_t format_size;          /**< Format size without overlays */
-    int64_t overlay_offset;       /**< Offset where overlay data begins in device (-1 if
-                                     none) */
-    int64_t overlay_size;         /**< Size of overlay data in bytes (0 if none) */
-    xx_endian_t endian;           /**< Format endianness (XX_ENDIAN_LITTLE/BIG/UNKNOWN) */
-    xx_file_type_t file_type;     /**< Detected or assigned file type (0: unknown, 1:
-                                     binary, 2: ZIP, 3: ZIP64) */
-    xx_file_type_t handle_type;   /**< Unpacking interpretation, independent of file_type.
-                                      Refreshed by successful base-info handling/getter;
-                                      before validation a factory may store the requested handle. */
+    xx_io_device *device;       /**< Associated I/O device */
+    int64_t base_address;       /**< Absolute device offset at which this format starts. */
+    bool is_mapped;             /**< True if memory-mapped dump (e.g. raw dump from memory) */
+    bool base_info_handled;     /**< True if base format information has been
+                                   parsed/handled */
+    bool is_valid;              /**< Cached validity flag */
+    int64_t format_size;        /**< Format size without overlays */
+    int64_t overlay_offset;     /**< Offset where overlay data begins in device (-1 if
+                                   none) */
+    int64_t overlay_size;       /**< Size of overlay data in bytes (0 if none) */
+    xx_endian_t endian;         /**< Format endianness (XX_ENDIAN_LITTLE/BIG/UNKNOWN) */
+    xx_file_type_t file_type;   /**< Detected or assigned file type (0: unknown, 1:
+                                   binary, 2: ZIP, 3: ZIP64) */
+    xx_file_type_t handle_type; /**< Unpacking interpretation, independent of file_type.
+                                    Refreshed by successful base-info handling/getter;
+                                    before validation a factory may store the requested handle. */
     xx_unpack_carrier_t handle_carrier;
     xx_os_t os;                   /**< Operating system enum (XX_OS_UNKNOWN, XX_OS_WINDOWS, etc.) */
     xx_format_type_t format_type; /**< Target binary type enum (XX_TYPE_CONSOLE_APPLICATION, XX_TYPE_DRIVER, XX_TYPE_LIBRARY, etc.) */

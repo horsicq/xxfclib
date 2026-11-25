@@ -1199,8 +1199,7 @@ static bool xx_ar_populate_archive_record(xx_archive_record *record, const xx_ar
      * can apply their path checks even to COFF build-machine absolute names.
      * Keep the exact archive spelling in the comment when it differs. */
     return xx_archive_record_set_meta_str(record, XX_META_ID_ORIGINAL_NAME, member->extract_name ? member->extract_name : member->name) &&
-           (!member->extract_name || xx_str_cmp(member->extract_name, member->name) == 0 ||
-            xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, member->name)) &&
+           (!member->extract_name || xx_str_cmp(member->extract_name, member->name) == 0 || xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, member->name)) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->data_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->data_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&

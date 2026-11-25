@@ -113,21 +113,29 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
             ++nl;
         }
         name[nl] = 0;
-        if (!nl) { xx_rt_memcpy(name, "_unnamed", 9); nl = 8; }
+        if (!nl) {
+            xx_rt_memcpy(name, "_unnamed", 9);
+            nl = 8;
+        }
         /* Every member lives inside the data region [8, dir_off). */
-        if (offset < 8U || (int64_t)offset > total || (int64_t)packed > total - (int64_t)offset ||
-            (int64_t)offset + (int64_t)packed > (int64_t)dir_off) {
+        if (offset < 8U || (int64_t)offset > total || (int64_t)packed > total - (int64_t)offset || (int64_t)offset + (int64_t)packed > (int64_t)dir_off) {
             xx_mem_free(dir);
             return false;
         }
-        if (!pm_add(f, s, name, (int64_t)offset, (int64_t)packed)) { xx_mem_free(dir); return false; }
+        if (!pm_add(f, s, name, (int64_t)offset, (int64_t)packed)) {
+            xx_mem_free(dir);
+            return false;
+        }
         m = &s->items[s->count - 1];
         xx_rt_memcpy(m->name, name, nl + 1U);
         m->size = (int64_t)original;
         m->packed_size = (int64_t)packed;
         m->compression_method = (packed == original) ? 0U : 1U;
         m->read_all = ir_read_all;
-        if (pd && xx_pd_is_stopped(pd)) { xx_mem_free(dir); return false; }
+        if (pd && xx_pd_is_stopped(pd)) {
+            xx_mem_free(dir);
+            return false;
+        }
     }
     xx_mem_free(dir);
     return true;

@@ -60,8 +60,14 @@ static Abstractformat *member_child_create(xx_io_device *d, int64_t at)
     xx_swag *child = xx_swag_create(d, at);
     return child ? &child->format : NULL;
 }
-static void member_child_free(Abstractformat *f) { xx_swag_free((xx_swag *)f); }
-static bool member_child_complete(Abstractformat *f) { return ((xx_swag *)f)->is_complete; }
+static void member_child_free(Abstractformat *f)
+{
+    xx_swag_free((xx_swag *)f);
+}
+static bool member_child_complete(Abstractformat *f)
+{
+    return ((xx_swag *)f)->is_complete;
+}
 #include "../sfx_chz/xx_sfx_member_delegate.h"
 
 void xx_sfx_swag_init(xx_sfx_swag *r, xx_io_device *d, int64_t b)

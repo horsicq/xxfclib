@@ -88,14 +88,14 @@ typedef struct profile_info {
 static const profile_info profiles[] = {
     {XX_ARCHIVE_CONSOLE_ALL, "", NULL, XX_FILE_TYPE_UNKNOWN, NULL, NULL},
 #define XX_ARCHIVE_PROFILE_ID(id)
-#define XX_ARCHIVE_PROFILE(id, label, reader, type, create, filter) \
-    {XX_ARCHIVE_CONSOLE_##id, label, reader, type, create, filter},
+#define XX_ARCHIVE_PROFILE(id, label, reader, type, create, filter) {XX_ARCHIVE_CONSOLE_##id, label, reader, type, create, filter},
 #include "xxfclib/console/xx_archive_console_profiles.inc"
 #undef XX_ARCHIVE_PROFILE
 #undef XX_ARCHIVE_PROFILE_ID
 };
 
-static const profile_info *profile_find(xx_archive_console_format format) {
+static const profile_info *profile_find(xx_archive_console_format format)
+{
     size_t i;
     for (i = 0; i < sizeof(profiles) / sizeof(profiles[0]); ++i)
         if (profiles[i].format == format) return &profiles[i];
@@ -103,27 +103,31 @@ static const profile_info *profile_find(xx_archive_console_format format) {
 }
 
 /* The configuration was validated by xx_archive_console_main(). */
-static const profile_info *profile_of(const xx_archive_console_config *config) {
+static const profile_info *profile_of(const xx_archive_console_config *config)
+{
     const profile_info *profile = profile_find(config->format);
     return profile ? profile : &profiles[0];
 }
 
-static const char *profile_description(const xx_archive_console_config *config) {
+static const char *profile_description(const xx_archive_console_config *config)
+{
     return profile_of(config)->label;
 }
 
 /* Whether this build links the profile's family. */
-static bool profile_compiled(xx_archive_console_format format) {
+static bool profile_compiled(xx_archive_console_format format)
+{
     return profile_find(format) != NULL;
 }
 
 /* A one-file stream: `a` writes --format=raw behind the family's filter. */
-static bool profile_stream(const profile_info *profile) {
+static bool profile_stream(const profile_info *profile)
+{
     return profile->create && !strcmp(profile->create, "raw");
 }
 
-static bool profile_type_allowed(const xx_archive_console_config *config,
-                                  xx_file_type_t type) {
+static bool profile_type_allowed(const xx_archive_console_config *config, xx_file_type_t type)
+{
     xx_file_type_t chain[XX_FILE_TYPE_CHAIN_MAX];
     size_t i, count;
     if (config->format == XX_ARCHIVE_CONSOLE_ALL) return true;
@@ -150,7 +154,8 @@ static bool profile_type_allowed(const xx_archive_console_config *config,
     return false;
 }
 
-static bool profile_tar_can_create(const char *name) {
+static bool profile_tar_can_create(const char *name)
+{
 #ifdef XFU_SUPPORT_FORMAT_TAR
     return xfu_native_tar_can_create(name);
 #else
@@ -159,11 +164,11 @@ static bool profile_tar_can_create(const char *name) {
 #endif
 }
 
-static bool profile_ar_can_create(const char *name) {
+static bool profile_ar_can_create(const char *name)
+{
 #ifdef XFU_SUPPORT_FORMAT_AR
-    return name && (!strcmp(name, "ar") || !strcmp(name, "ar_bsd") ||
-        !strcmp(name, "ar_svr4") || !strcmp(name, "ar_gnu") ||
-        !strcmp(name, "arbsd") || !strcmp(name, "argnu") || !strcmp(name, "arsvr4"));
+    return name && (!strcmp(name, "ar") || !strcmp(name, "ar_bsd") || !strcmp(name, "ar_svr4") || !strcmp(name, "ar_gnu") || !strcmp(name, "arbsd") ||
+                    !strcmp(name, "argnu") || !strcmp(name, "arsvr4"));
 #else
     (void)name;
     return false;
@@ -171,7 +176,8 @@ static bool profile_ar_can_create(const char *name) {
 }
 
 /* The --format names the profile creates. */
-static bool profile_can_create(const xx_archive_console_config *config, const char *name) {
+static bool profile_can_create(const xx_archive_console_config *config, const char *name)
+{
     if (!name) return false;
     switch (config->format) {
         case XX_ARCHIVE_CONSOLE_ALL: return true;
@@ -179,16 +185,15 @@ static bool profile_can_create(const xx_archive_console_config *config, const ch
         case XX_ARCHIVE_CONSOLE_TAR: return profile_tar_can_create(name);
         case XX_ARCHIVE_CONSOLE_AR: return profile_ar_can_create(name);
         case XX_ARCHIVE_CONSOLE_7ZIP: return !strcmp(name, "7zip") || !strcmp(name, "7z");
-        case XX_ARCHIVE_CONSOLE_ISO9660:
-            return !strcmp(name, "iso9660") || !strcmp(name, "iso") || !strcmp(name, "cd9660");
-        case XX_ARCHIVE_CONSOLE_CPIO:
-            return !strcmp(name, "cpio") || !strcmp(name, "cpio_newc") || !strcmp(name, "newc");
+        case XX_ARCHIVE_CONSOLE_ISO9660: return !strcmp(name, "iso9660") || !strcmp(name, "iso") || !strcmp(name, "cd9660");
+        case XX_ARCHIVE_CONSOLE_CPIO: return !strcmp(name, "cpio") || !strcmp(name, "cpio_newc") || !strcmp(name, "newc");
         default: return profile_stream(profile_of(config)) && !strcmp(name, "raw");
     }
 }
 
 /* The --filter names the profile creates with. */
-static bool profile_filter_allowed(const xx_archive_console_config *config, const char *name) {
+static bool profile_filter_allowed(const xx_archive_console_config *config, const char *name)
+{
     const profile_info *profile = profile_of(config);
     if (!name) return false;
     if (config->format == XX_ARCHIVE_CONSOLE_ALL) return true;
@@ -198,7 +203,8 @@ static bool profile_filter_allowed(const xx_archive_console_config *config, cons
 
 /* Keep capability answers derived from the backend, limited to this tool's
  * scope. A format label never advertises a writer that is not compiled. */
-static char *profile_capabilities(const xx_archive_console_config *config) {
+static char *profile_capabilities(const xx_archive_console_config *config)
+{
     const profile_info *profile = profile_of(config);
     char *all, *result, *line;
     size_t used = 0;
@@ -210,19 +216,23 @@ static char *profile_capabilities(const xx_archive_console_config *config) {
     all = xfu_native_capabilities_text();
     if (!all) return NULL;
     result = (char *)malloc(strlen(all) + 1);
-    if (!result) { free(all); return NULL; }
+    if (!result) {
+        free(all);
+        return NULL;
+    }
     for (line = all; *line;) {
         char name[64];
         const char *end = strchr(line, '\n');
         size_t length = end ? (size_t)(end - line) + 1 : strlen(line);
         bool keep = !strncmp(line, "backend ", 8);
         if (sscanf(line, "format %63s", name) == 1)
-            keep = profile_can_create(config, name) ||
-                   (profile->reader && !strcmp(name, profile->reader)) ||
+            keep = profile_can_create(config, name) || (profile->reader && !strcmp(name, profile->reader)) ||
                    (config->format == XX_ARCHIVE_CONSOLE_TAR && !strcmp(name, "tar_solaris"));
-        else if (sscanf(line, "filter %63s", name) == 1)
-            keep = profile_filter_allowed(config, name);
-        if (keep) { memcpy(result + used, line, length); used += length; }
+        else if (sscanf(line, "filter %63s", name) == 1) keep = profile_filter_allowed(config, name);
+        if (keep) {
+            memcpy(result + used, line, length);
+            used += length;
+        }
         line += length;
     }
     result[used] = '\0';
@@ -230,7 +240,8 @@ static char *profile_capabilities(const xx_archive_console_config *config) {
     return result;
 }
 
-static char *profile_supported_types(const xx_archive_console_config *config) {
+static char *profile_supported_types(const xx_archive_console_config *config)
+{
     xx_list_t *types;
     char *capabilities, *text;
     size_t i, count = 0, capacity = 256, used;
@@ -240,7 +251,10 @@ static char *profile_supported_types(const xx_archive_console_config *config) {
     types = xx_format_get_supported_file_types();
     if (!types) return NULL;
     capabilities = profile_capabilities(config);
-    if (!capabilities) { xx_list_destroy(types); return NULL; }
+    if (!capabilities) {
+        xx_list_destroy(types);
+        return NULL;
+    }
     capacity += strlen(capabilities);
     for (i = 0; i < xx_list_count(types); ++i) {
         xx_file_type_t type = *(const xx_file_type_t *)xx_list_at(types, i);
@@ -250,14 +264,11 @@ static char *profile_supported_types(const xx_archive_console_config *config) {
     }
     text = (char *)malloc(capacity);
     if (text) {
-        used = (size_t)snprintf(text, capacity,
-            "Supported %sfile types (xxfclib): %zu\n\n%s\n   ID  File type\n",
-            profile_description(config), count, capabilities);
+        used = (size_t)snprintf(text, capacity, "Supported %sfile types (xxfclib): %zu\n\n%s\n   ID  File type\n", profile_description(config), count, capabilities);
         for (i = 0; i < xx_list_count(types); ++i) {
             xx_file_type_t type = *(const xx_file_type_t *)xx_list_at(types, i);
             if (profile_type_allowed(config, type))
-                used += (size_t)snprintf(text + used, capacity - used, "%5u  %s\n",
-                    (unsigned)type, xx_format_file_type_to_string(type));
+                used += (size_t)snprintf(text + used, capacity - used, "%5u  %s\n", (unsigned)type, xx_format_file_type_to_string(type));
         }
     }
     free(capabilities);
@@ -265,25 +276,23 @@ static char *profile_supported_types(const xx_archive_console_config *config) {
     return text;
 }
 
-static bool profile_error(const xfu_request *request, const char *message) {
-    if (request->callbacks.log)
-        request->callbacks.log(request->callbacks.user, true, message);
+static bool profile_error(const xfu_request *request, const char *message)
+{
+    if (request->callbacks.log) request->callbacks.log(request->callbacks.user, true, message);
     return false;
 }
 
 static int handle_name_equal(const char *left, const char *right);
 
-static bool profile_reader_allowed(const xx_archive_console_config *config,
-                                    const char *name) {
-    static const char *const tar_readers[] = {
-        "tar", "tar_gz", "tar_bz2", "tar_xz", "tar_lz4", "tar_zstd",
-        "tar_compress", "tar_lzip", "tar_lzma", "tar_lzop", "tar_lz", "tar_zst"
-    };
+static bool profile_reader_allowed(const xx_archive_console_config *config, const char *name)
+{
+    static const char *const tar_readers[] = {"tar",          "tar_gz",   "tar_bz2",  "tar_xz",   "tar_lz4", "tar_zstd",
+                                              "tar_compress", "tar_lzip", "tar_lzma", "tar_lzop", "tar_lz",  "tar_zst"};
     /* The engine's reader aliases (xxfc_readers.c) of the restricted families. */
-    static const struct { const char *name; xx_file_type_t type; } aliases[] = {
-        {"zip64", XX_FILE_TYPE_ZIP64}, {"7z", XX_FILE_TYPE_7ZIP},
-        {"gzip", XX_FILE_TYPE_GZ}, {"bzip2", XX_FILE_TYPE_BZ2}
-    };
+    static const struct {
+        const char *name;
+        xx_file_type_t type;
+    } aliases[] = {{"zip64", XX_FILE_TYPE_ZIP64}, {"7z", XX_FILE_TYPE_7ZIP}, {"gzip", XX_FILE_TYPE_GZ}, {"bzip2", XX_FILE_TYPE_BZ2}};
     xx_list_t *types;
     size_t i;
     bool allowed = false;
@@ -291,14 +300,12 @@ static bool profile_reader_allowed(const xx_archive_console_config *config,
         for (i = 0; i < sizeof(tar_readers) / sizeof(tar_readers[0]); ++i)
             if (handle_name_equal(name, tar_readers[i])) return true;
     for (i = 0; i < sizeof(aliases) / sizeof(aliases[0]); ++i)
-        if (handle_name_equal(name, aliases[i].name))
-            return profile_type_allowed(config, aliases[i].type);
+        if (handle_name_equal(name, aliases[i].name)) return profile_type_allowed(config, aliases[i].type);
     types = xx_format_get_supported_file_types();
     if (!types) return false;
     for (i = 0; i < xx_list_count(types); ++i) {
         xx_file_type_t type = *(const xx_file_type_t *)xx_list_at(types, i);
-        if (profile_type_allowed(config, type) &&
-            handle_name_equal(name, xx_format_file_type_to_string(type))) {
+        if (profile_type_allowed(config, type) && handle_name_equal(name, xx_format_file_type_to_string(type))) {
             allowed = true;
             break;
         }
@@ -311,19 +318,18 @@ static bool profile_reader_allowed(const xx_archive_console_config *config,
 /* The compound LZ4 reader owns single content-sized frames. The unpacker
  * handles unsized or multiple frames by decoding a layer, then reading TAR.
  * Inspect framing only, with a bounded number of reads and no decompression. */
-static bool profile_lz4_single_sized(xx_io_device *device, int64_t offset, int64_t size) {
+static bool profile_lz4_single_sized(xx_io_device *device, int64_t offset, int64_t size)
+{
     uint8_t header[6], block[4];
     int64_t cursor;
     size_t i;
-    if (!xx_io_read_at(device, offset, header, sizeof(header)) ||
-        memcmp(header, "\x04\x22\x4d\x18", 4) || !(header[4] & 0x08U)) return false;
+    if (!xx_io_read_at(device, offset, header, sizeof(header)) || memcmp(header, "\x04\x22\x4d\x18", 4) || !(header[4] & 0x08U)) return false;
     cursor = offset + 7 + 8 + ((header[4] & 1U) ? 4 : 0);
     for (i = 0; i < 65536 && cursor <= size - 4; ++i) {
         uint32_t length;
         if (!xx_io_read_at(device, cursor, block, sizeof(block))) return true;
         cursor += 4;
-        length = (uint32_t)block[0] | ((uint32_t)block[1] << 8) |
-                 ((uint32_t)block[2] << 16) | ((uint32_t)block[3] << 24);
+        length = (uint32_t)block[0] | ((uint32_t)block[1] << 8) | ((uint32_t)block[2] << 16) | ((uint32_t)block[3] << 24);
         if (!length) {
             if (header[4] & 0x04U) cursor += 4;
             return cursor >= size; /* A cut checksum stays with the compound reader. */
@@ -340,13 +346,14 @@ static bool profile_lz4_single_sized(xx_io_device *device, int64_t offset, int64
  * decoding; the core validates the complete TAR and compression stream under
  * the operation's progress and memory limits. This also works after renaming
  * a compressed archive, without trusting its filename extension. */
-static const char *profile_tar_reader(const char *path) {
-    static const struct { xx_file_type_t type; const char *reader; } codecs[] = {
-        {XX_FILE_TYPE_GZ, "tar_gz"}, {XX_FILE_TYPE_BZ2, "tar_bz2"},
-        {XX_FILE_TYPE_XZ, "tar_xz"}, {XX_FILE_TYPE_LZIP, "tar_lzip"},
-        {XX_FILE_TYPE_LZOP, "tar_lzop"}, {XX_FILE_TYPE_UNIX_COMPRESS, "tar_compress"},
-        {XX_FILE_TYPE_LZ4, "tar_lz4"}, {XX_FILE_TYPE_ZSTD, "tar_zstd"}
-    };
+static const char *profile_tar_reader(const char *path)
+{
+    static const struct {
+        xx_file_type_t type;
+        const char *reader;
+    } codecs[] = {{XX_FILE_TYPE_GZ, "tar_gz"},     {XX_FILE_TYPE_BZ2, "tar_bz2"},   {XX_FILE_TYPE_XZ, "tar_xz"},
+                  {XX_FILE_TYPE_LZIP, "tar_lzip"}, {XX_FILE_TYPE_LZOP, "tar_lzop"}, {XX_FILE_TYPE_UNIX_COMPRESS, "tar_compress"},
+                  {XX_FILE_TYPE_LZ4, "tar_lz4"},   {XX_FILE_TYPE_ZSTD, "tar_zstd"}};
     xx_io_device *device = xx_io_file_open(path, "rb");
     Abstractextractor *extractor;
     const char *reader = NULL;
@@ -357,20 +364,16 @@ static const char *profile_tar_reader(const char *path) {
     if (!device) return NULL; /* The core supplies the normal open diagnostic. */
     /* V7 has no ustar magic. Its checksum must take precedence over names
      * that happen to resemble a compression header (for example "cb"). */
-    if (xx_io_read_at(device, 0, tar_block, sizeof(tar_block)) &&
-        xx_tar_block_is_header(tar_block)) goto done;
+    if (xx_io_read_at(device, 0, tar_block, sizeof(tar_block)) && xx_tar_block_is_header(tar_block)) goto done;
     extractor = xx_abstract_extractor_get(XX_FILE_TYPE_TAR);
-    if (extractor && extractor->signature && extractor->signature(device, 0, false) == 1)
-        goto done;
+    if (extractor && extractor->signature && extractor->signature(device, 0, false) == 1) goto done;
     size = xx_io_total_size(device);
     /* LZ4 and Zstandard share skippable frames. Read at most 64 framing
      * headers, skipping payloads by offset, to find the actual codec magic. */
     for (i = 0; i < 64 && offset <= size - 8 && xx_io_read_at(device, offset, head, 8); ++i) {
         uint32_t length;
-        if ((head[0] & 0xf0U) != 0x50U || head[1] != 0x2a || head[2] != 0x4d || head[3] != 0x18)
-            break;
-        length = (uint32_t)head[4] | ((uint32_t)head[5] << 8) |
-                 ((uint32_t)head[6] << 16) | ((uint32_t)head[7] << 24);
+        if ((head[0] & 0xf0U) != 0x50U || head[1] != 0x2a || head[2] != 0x4d || head[3] != 0x18) break;
+        length = (uint32_t)head[4] | ((uint32_t)head[5] << 8) | ((uint32_t)head[6] << 16) | ((uint32_t)head[7] << 24);
         if ((uint64_t)length > (uint64_t)(size - offset - 8)) goto done;
         offset += 8 + (int64_t)length;
     }
@@ -378,8 +381,7 @@ static const char *profile_tar_reader(const char *path) {
     for (i = 0; i < sizeof(codecs) / sizeof(codecs[0]); ++i) {
         extractor = xx_abstract_extractor_get(codecs[i].type);
         if (extractor && extractor->signature && extractor->signature(device, offset, false) == 1) {
-            if (codecs[i].type != XX_FILE_TYPE_LZ4 || profile_lz4_single_sized(device, offset, size))
-                reader = codecs[i].reader;
+            if (codecs[i].type != XX_FILE_TYPE_LZ4 || profile_lz4_single_sized(device, offset, size)) reader = codecs[i].reader;
             goto done;
         }
     }
@@ -387,9 +389,9 @@ static const char *profile_tar_reader(const char *path) {
      * its range-coder prefix and nonzero dictionary avoids treating a plain
      * TAR's short, zero-padded member name as a compression header. */
 #if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZMA)
-    if (!offset && xx_io_read_at(device, 0, head, sizeof(head)) &&
-        !head[13] && (head[1] || head[2] || head[3] || head[4]) &&
-        xx_lzma_alone_has_header(head, sizeof(head))) reader = "tar_lzma";
+    if (!offset && xx_io_read_at(device, 0, head, sizeof(head)) && !head[13] && (head[1] || head[2] || head[3] || head[4]) &&
+        xx_lzma_alone_has_header(head, sizeof(head)))
+        reader = "tar_lzma";
 #endif
 done:
     xx_io_close(device);
@@ -400,22 +402,19 @@ done:
 /* Apply the same policy after parsing every alias. In particular --reader
  * and --handle cannot bypass the application's archive family. The core
  * validates selected types against file contents, never just extensions. */
-static bool profile_apply(const xx_archive_console_config *config, xfu_request *request) {
+static bool profile_apply(const xx_archive_console_config *config, xfu_request *request)
+{
     const profile_info *profile = profile_of(config);
     if (config->format == XX_ARCHIVE_CONSOLE_ALL) return true;
     if (request->command == XFU_COMMAND_ADD) {
         static char message[96];
-        if (!profile->create)
-            return profile_error(request, "a: this archive family has no writer in this tool");
+        if (!profile->create) return profile_error(request, "a: this archive family has no writer in this tool");
         if (request->archive_format && !profile_can_create(config, request->archive_format))
             return profile_error(request, "--format: select a creation format for this archive family");
-        if (request->volume_size)
-            return profile_error(request, "--volume-size requires the split writer; unavailable for this archive family");
+        if (request->volume_size) return profile_error(request, "--volume-size requires the split writer; unavailable for this archive family");
         if (request->archive_filter && !profile_filter_allowed(config, request->archive_filter)) {
-            if (!profile->filter)
-                return profile_error(request, "--filter: select a filter listed by --capabilities");
-            snprintf(message, sizeof(message), "--filter: select %s for this archive family",
-                     profile->filter);
+            if (!profile->filter) return profile_error(request, "--filter: select a filter listed by --capabilities");
+            snprintf(message, sizeof(message), "--filter: select %s for this archive family", profile->filter);
             return profile_error(request, message);
         }
         if (!request->archive_format) request->archive_format = profile->create;
@@ -426,8 +425,7 @@ static bool profile_apply(const xx_archive_console_config *config, xfu_request *
         return true;
     }
     if (request->handle.type != XX_FILE_TYPE_UNKNOWN) {
-        if (!profile_type_allowed(config, request->handle.type))
-            return profile_error(request, "--handle: select an unpack handle for this archive family");
+        if (!profile_type_allowed(config, request->handle.type)) return profile_error(request, "--handle: select an unpack handle for this archive family");
         return true;
     }
     if (request->reader_name) {
@@ -438,25 +436,23 @@ static bool profile_apply(const xx_archive_console_config *config, xfu_request *
 #else
         bool raw = false;
         if (!strncmp(name, "native", 6)) {
-            if (!xfu_native_reader_resolve(name, &name, &raw) || raw)
-                return profile_error(request, "--reader: select a reader for this archive format");
+            if (!xfu_native_reader_resolve(name, &name, &raw) || raw) return profile_error(request, "--reader: select a reader for this archive format");
         }
 #endif
-        if (name && !profile_reader_allowed(config, name))
-            return profile_error(request, "--reader: select a reader for this archive family");
+        if (name && !profile_reader_allowed(config, name)) return profile_error(request, "--reader: select a reader for this archive family");
         /* A bare native selector must still be constrained by this profile. */
         request->reader_name = name;
         if (name) return true;
     }
 #ifdef XFU_SUPPORT_FORMAT_TAR
-    if (config->format == XX_ARCHIVE_CONSOLE_TAR)
-        request->reader_name = profile_tar_reader(request->archive_path);
+    if (config->format == XX_ARCHIVE_CONSOLE_TAR) request->reader_name = profile_tar_reader(request->archive_path);
 #endif
     if (!request->reader_name) request->file_type = profile->type;
     return true;
 }
 
-static bool console_is_terminal(void) {
+static bool console_is_terminal(void)
+{
 #ifdef _WIN32
     DWORD mode;
     HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -476,21 +472,18 @@ static bool console_is_terminal(void) {
  * name reversed, on two lines, or the same as another. U+200C and U+200D
  * stay: scripts and emoji need them; the variation selectors are
  * console_hidden_selector's. */
-static int console_format_control(const unsigned char *p, size_t length) {
-    static const unsigned long ranges[][2] = {
-        {0x00AD, 0x00AD}, {0x034F, 0x034F}, {0x0600, 0x0605}, {0x061C, 0x061C},
-        {0x06DD, 0x06DD}, {0x070F, 0x070F}, {0x0890, 0x0891}, {0x08E2, 0x08E2},
-        {0x115F, 0x1160}, {0x17B4, 0x17B5}, {0x180E, 0x180E}, {0x200B, 0x200B},
-        {0x200E, 0x200F}, {0x2028, 0x202E}, {0x2060, 0x206F}, {0x3164, 0x3164},
-        {0xFEFF, 0xFEFF}, {0xFFA0, 0xFFA0}, {0xFFF0, 0xFFFB}, {0x110BD, 0x110BD},
-        {0x110CD, 0x110CD}, {0x13430, 0x1343F}, {0x1BCA0, 0x1BCA3}, {0x1D173, 0x1D17A},
-        {0xE0000, 0xE00FF}, {0xE01F0, 0xE0FFF}};
+static int console_format_control(const unsigned char *p, size_t length)
+{
+    static const unsigned long ranges[][2] = {{0x00AD, 0x00AD},   {0x034F, 0x034F},   {0x0600, 0x0605},   {0x061C, 0x061C},   {0x06DD, 0x06DD},   {0x070F, 0x070F},
+                                              {0x0890, 0x0891},   {0x08E2, 0x08E2},   {0x115F, 0x1160},   {0x17B4, 0x17B5},   {0x180E, 0x180E},   {0x200B, 0x200B},
+                                              {0x200E, 0x200F},   {0x2028, 0x202E},   {0x2060, 0x206F},   {0x3164, 0x3164},   {0xFEFF, 0xFEFF},   {0xFFA0, 0xFFA0},
+                                              {0xFFF0, 0xFFFB},   {0x110BD, 0x110BD}, {0x110CD, 0x110CD}, {0x13430, 0x1343F}, {0x1BCA0, 0x1BCA3}, {0x1D173, 0x1D17A},
+                                              {0xE0000, 0xE00FF}, {0xE01F0, 0xE0FFF}};
     unsigned long c;
     size_t i;
     if (length == 2) c = (unsigned long)(p[0] & 0x1f) << 6 | (p[1] & 0x3f);
     else if (length == 3) c = (unsigned long)(p[0] & 0x0f) << 12 | (unsigned long)(p[1] & 0x3f) << 6 | (p[2] & 0x3f);
-    else if (length == 4) c = (unsigned long)(p[0] & 0x07) << 18 | (unsigned long)(p[1] & 0x3f) << 12 |
-                              (unsigned long)(p[2] & 0x3f) << 6 | (p[3] & 0x3f);
+    else if (length == 4) c = (unsigned long)(p[0] & 0x07) << 18 | (unsigned long)(p[1] & 0x3f) << 12 | (unsigned long)(p[2] & 0x3f) << 6 | (p[3] & 0x3f);
     else return 0;
     for (i = 0; i < sizeof(ranges) / sizeof(ranges[0]); ++i)
         if (c >= ranges[i][0] && c <= ranges[i][1]) return 1;
@@ -498,11 +491,11 @@ static int console_format_control(const unsigned char *p, size_t length) {
 }
 
 /* The code point of the well-formed UTF-8 sequence of length bytes at p. */
-static unsigned long console_code_point(const unsigned char *p, size_t length) {
+static unsigned long console_code_point(const unsigned char *p, size_t length)
+{
     if (length == 2) return (unsigned long)(p[0] & 0x1f) << 6 | (p[1] & 0x3f);
     if (length == 3) return (unsigned long)(p[0] & 0x0f) << 12 | (unsigned long)(p[1] & 0x3f) << 6 | (p[2] & 0x3f);
-    if (length == 4) return (unsigned long)(p[0] & 0x07) << 18 | (unsigned long)(p[1] & 0x3f) << 12 |
-                            (unsigned long)(p[2] & 0x3f) << 6 | (p[3] & 0x3f);
+    if (length == 4) return (unsigned long)(p[0] & 0x07) << 18 | (unsigned long)(p[1] & 0x3f) << 12 | (unsigned long)(p[2] & 0x3f) << 6 | (p[3] & 0x3f);
     return p[0];
 }
 
@@ -514,23 +507,19 @@ static unsigned long console_code_point(const unsigned char *p, size_t length) {
  * form, or between a keycap's 0-9, # or * and U+20E3; U+FE00-U+FE02 and
  * U+E0100-U+E01EF after a CJK ideograph; the Mongolian ones after a
  * Mongolian letter. */
-static int console_hidden_selector(unsigned long previous, const unsigned char *p, size_t length) {
-    static const unsigned long emoji[][2] = {
-        {0x00A9, 0x00A9}, {0x00AE, 0x00AE}, {0x203C, 0x203C}, {0x2049, 0x2049},
-        {0x2122, 0x2122}, {0x2139, 0x2139}, {0x2194, 0x2199}, {0x21A9, 0x21AA},
-        {0x231A, 0x231B}, {0x2328, 0x2328}, {0x23CF, 0x23CF}, {0x23E9, 0x23FA},
-        {0x24C2, 0x24C2}, {0x25AA, 0x25AB}, {0x25B6, 0x25B6}, {0x25C0, 0x25C0},
-        {0x25FB, 0x25FE}, {0x2600, 0x27BF}, {0x2934, 0x2935}, {0x2B05, 0x2B07},
-        {0x2B1B, 0x2B1C}, {0x2B50, 0x2B50}, {0x2B55, 0x2B55}, {0x3030, 0x3030},
-        {0x303D, 0x303D}, {0x3297, 0x3297}, {0x3299, 0x3299}, {0x1F000, 0x1FAFF}};
-    static const unsigned long ideographs[][2] = {
-        {0x3400, 0x4DBF}, {0x4E00, 0x9FFF}, {0xF900, 0xFAFF}, {0x20000, 0x3FFFF}};
+static int console_hidden_selector(unsigned long previous, const unsigned char *p, size_t length)
+{
+    static const unsigned long emoji[][2] = {{0x00A9, 0x00A9}, {0x00AE, 0x00AE}, {0x203C, 0x203C}, {0x2049, 0x2049},  {0x2122, 0x2122}, {0x2139, 0x2139},
+                                             {0x2194, 0x2199}, {0x21A9, 0x21AA}, {0x231A, 0x231B}, {0x2328, 0x2328},  {0x23CF, 0x23CF}, {0x23E9, 0x23FA},
+                                             {0x24C2, 0x24C2}, {0x25AA, 0x25AB}, {0x25B6, 0x25B6}, {0x25C0, 0x25C0},  {0x25FB, 0x25FE}, {0x2600, 0x27BF},
+                                             {0x2934, 0x2935}, {0x2B05, 0x2B07}, {0x2B1B, 0x2B1C}, {0x2B50, 0x2B50},  {0x2B55, 0x2B55}, {0x3030, 0x3030},
+                                             {0x303D, 0x303D}, {0x3297, 0x3297}, {0x3299, 0x3299}, {0x1F000, 0x1FAFF}};
+    static const unsigned long ideographs[][2] = {{0x3400, 0x4DBF}, {0x4E00, 0x9FFF}, {0xF900, 0xFAFF}, {0x20000, 0x3FFFF}};
     unsigned long c = length >= 3 ? console_code_point(p, length) : 0;
     size_t i;
     if ((c >= 0x180B && c <= 0x180D) || c == 0x180F) return previous < 0x1820 || previous > 0x18AA;
     if (c == 0xFE0E || c == 0xFE0F) {
-        if ((previous >= '0' && previous <= '9') || previous == '#' || previous == '*')
-            return p[3] != 0xe2 || p[4] != 0x83 || p[5] != 0xa3;
+        if ((previous >= '0' && previous <= '9') || previous == '#' || previous == '*') return p[3] != 0xe2 || p[4] != 0x83 || p[5] != 0xa3;
         for (i = 0; i < sizeof(emoji) / sizeof(emoji[0]); ++i)
             if (previous >= emoji[i][0] && previous <= emoji[i][1]) return 0;
         return 1;
@@ -548,7 +537,8 @@ static int console_hidden_selector(unsigned long previous, const unsigned char *
  * DEL, C1), the format controls and hidden variation selectors above, and
  * bytes of no well-formed UTF-8 sequence, which an archive's member names can
  * carry and which would otherwise drive the terminal or disguise the name. */
-static char *console_escape(const char *text, int newline) {
+static char *console_escape(const char *text, int newline)
+{
     static const char hex[] = "0123456789ABCDEF";
     const unsigned char *p = (const unsigned char *)text;
     size_t size = strlen(text), position = 0;
@@ -556,36 +546,39 @@ static char *console_escape(const char *text, int newline) {
     unsigned long previous = 0;
     if (!result) return NULL;
     while (*p) {
-        size_t length = *p < 0x80 ? 1 : *p >= 0xc2 && *p <= 0xdf ? 2 :
-            *p >= 0xe0 && *p <= 0xef ? 3 : *p >= 0xf0 && *p <= 0xf4 ? 4 : 0, i;
+        size_t length = *p < 0x80 ? 1 : *p >= 0xc2 && *p <= 0xdf ? 2 : *p >= 0xe0 && *p <= 0xef ? 3 : *p >= 0xf0 && *p <= 0xf4 ? 4 : 0, i;
         for (i = 1; i < length; ++i)
-            if ((p[i] & 0xc0) != 0x80) { length = 0; break; }
-        if (length > 1 && ((*p == 0xc2 && p[1] < 0xa0) || (*p == 0xe0 && p[1] < 0xa0) ||
-            (*p == 0xed && p[1] >= 0xa0) || (*p == 0xf0 && p[1] < 0x90) || (*p == 0xf4 && p[1] >= 0x90)))
+            if ((p[i] & 0xc0) != 0x80) {
+                length = 0;
+                break;
+            }
+        if (length > 1 &&
+            ((*p == 0xc2 && p[1] < 0xa0) || (*p == 0xe0 && p[1] < 0xa0) || (*p == 0xed && p[1] >= 0xa0) || (*p == 0xf0 && p[1] < 0x90) || (*p == 0xf4 && p[1] >= 0x90)))
             length = 0;
         if (console_format_control(p, length) || console_hidden_selector(previous, p, length)) length = 0;
         if (!length || *p < 0x20 || *p == 0x7f) {
-            result[position++] = '\\'; result[position++] = 'x';
-            result[position++] = hex[*p >> 4]; result[position++] = hex[*p & 15];
+            result[position++] = '\\';
+            result[position++] = 'x';
+            result[position++] = hex[*p >> 4];
+            result[position++] = hex[*p & 15];
             previous = 0;
             ++p;
             continue;
         }
         previous = console_code_point(p, length);
         memcpy(result + position, p, length);
-        position += length; p += length;
+        position += length;
+        p += length;
     }
     if (newline) result[position++] = '\n';
     result[position] = '\0';
     return result;
 }
 
-static bool select_output_format(output_format *current, output_format requested,
-                                 const char *option) {
+static bool select_output_format(output_format *current, output_format requested, const char *option)
+{
     if (*current != OUTPUT_TEXT) {
-        fprintf(stderr, *current == requested ?
-                "output format specified more than once: %s\n" :
-                "output formats are mutually exclusive: %s\n", option);
+        fprintf(stderr, *current == requested ? "output format specified more than once: %s\n" : "output formats are mutually exclusive: %s\n", option);
         return false;
     }
     *current = requested;
@@ -593,7 +586,8 @@ static bool select_output_format(output_format *current, output_format requested
 }
 
 /* 1 consumed, 0 is not a format option, -1 is duplicate/conflicting. */
-static int consume_output_option(const char *argument, output_format *format) {
+static int consume_output_option(const char *argument, output_format *format)
+{
     output_format requested;
     if (!strcmp(argument, "--json") || !strcmp(argument, "-j")) requested = OUTPUT_JSON;
     else if (!strcmp(argument, "--xml") || !strcmp(argument, "-x")) requested = OUTPUT_XML;
@@ -604,15 +598,14 @@ static int consume_output_option(const char *argument, output_format *format) {
 /* console_escape first turns invalid UTF-8 and controls into printable ASCII
  * \xNN sequences. These writers then apply the syntax-specific quoting, so
  * arbitrary archive member bytes cannot break a JSON or XML document. */
-static xxfc_status_t structured_file_write(void *context, const char *data,
-                                           size_t size) {
+static xxfc_status_t structured_file_write(void *context, const char *data, size_t size)
+{
     FILE *out = (FILE *)context;
-    return size == 0U || fwrite(data, 1U, size, out) == size
-               ? XXFC_OK
-               : XXFC_ERR_IO;
+    return size == 0U || fwrite(data, 1U, size, out) == size ? XXFC_OK : XXFC_ERR_IO;
 }
 
-static int json_string(FILE *out, const char *text) {
+static int json_string(FILE *out, const char *text)
+{
     char *safe = console_escape(text ? text : "", 0);
     xx_terminal_writer writer;
     xxfc_status_t status;
@@ -623,7 +616,8 @@ static int json_string(FILE *out, const char *text) {
     return status == XXFC_OK ? 0 : -1;
 }
 
-static int xml_string(FILE *out, const char *text) {
+static int xml_string(FILE *out, const char *text)
+{
     char *safe = console_escape(text ? text : "", 0);
     xx_terminal_writer writer;
     xxfc_status_t status;
@@ -634,7 +628,8 @@ static int xml_string(FILE *out, const char *text) {
     return status == XXFC_OK ? 0 : -1;
 }
 
-static const char *command_name(xfu_command command) {
+static const char *command_name(xfu_command command)
+{
     switch (command) {
         case XFU_COMMAND_EXTRACT: return "extract";
         case XFU_COMMAND_LIST: return "list";
@@ -644,42 +639,31 @@ static const char *command_name(xfu_command command) {
     }
 }
 
-static void structured_begin(const xx_archive_console_config *config,
-                             structured_output *output, const char *command,
-                             const char *archive) {
+static void structured_begin(const xx_archive_console_config *config, structured_output *output, const char *command, const char *archive)
+{
     output->first_event = true;
     output->output_failed = false;
     if (output->format == OUTPUT_JSON) {
-        if (fputs("{\"tool\":", stdout) == EOF ||
-            json_string(stdout, config->application_name) < 0 ||
-            fputs(",\"version\":", stdout) == EOF ||
-            json_string(stdout, config->application_version) < 0 ||
-            fputs(",\"command\":", stdout) == EOF ||
-            json_string(stdout, command) < 0 ||
-            fputs(",\"archive\":", stdout) == EOF ||
-            (archive ? json_string(stdout, archive) : fputs("null", stdout)) < 0 ||
-            fputs(",\"events\":[", stdout) == EOF) output->output_failed = true;
-    } else {
-        if (fputs("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<xx_xfuc tool=\"", stdout) == EOF ||
-            xml_string(stdout, config->application_name) < 0 ||
-            fputs("\" version=\"", stdout) == EOF ||
-            xml_string(stdout, config->application_version) < 0 ||
-            fputs("\" command=\"", stdout) == EOF ||
-            xml_string(stdout, command) < 0 ||
-            fputs("\"", stdout) == EOF) output->output_failed = true;
-        if (archive && !output->output_failed &&
-            (fputs(" archive=\"", stdout) == EOF || xml_string(stdout, archive) < 0 ||
-             fputc('"', stdout) == EOF)) output->output_failed = true;
-        if (!output->output_failed && fputs(">\n  <events>\n", stdout) == EOF)
+        if (fputs("{\"tool\":", stdout) == EOF || json_string(stdout, config->application_name) < 0 || fputs(",\"version\":", stdout) == EOF ||
+            json_string(stdout, config->application_version) < 0 || fputs(",\"command\":", stdout) == EOF || json_string(stdout, command) < 0 ||
+            fputs(",\"archive\":", stdout) == EOF || (archive ? json_string(stdout, archive) : fputs("null", stdout)) < 0 || fputs(",\"events\":[", stdout) == EOF)
             output->output_failed = true;
+    } else {
+        if (fputs("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<xx_xfuc tool=\"", stdout) == EOF || xml_string(stdout, config->application_name) < 0 ||
+            fputs("\" version=\"", stdout) == EOF || xml_string(stdout, config->application_version) < 0 || fputs("\" command=\"", stdout) == EOF ||
+            xml_string(stdout, command) < 0 || fputs("\"", stdout) == EOF)
+            output->output_failed = true;
+        if (archive && !output->output_failed && (fputs(" archive=\"", stdout) == EOF || xml_string(stdout, archive) < 0 || fputc('"', stdout) == EOF))
+            output->output_failed = true;
+        if (!output->output_failed && fputs(">\n  <events>\n", stdout) == EOF) output->output_failed = true;
     }
 }
 
-static int structured_event_prefix(structured_output *output) {
+static int structured_event_prefix(structured_output *output)
+{
     if (output->output_failed) return -1;
     if (output->format == OUTPUT_JSON) {
-        if ((!output->first_event && fputc(',', stdout) == EOF) ||
-            fputc('{', stdout) == EOF) {
+        if ((!output->first_event && fputc(',', stdout) == EOF) || fputc('{', stdout) == EOF) {
             output->output_failed = true;
             return -1;
         }
@@ -688,21 +672,20 @@ static int structured_event_prefix(structured_output *output) {
     return 0;
 }
 
-static void structured_message(structured_output *output, bool error,
-                               const char *line) {
+static void structured_message(structured_output *output, bool error, const char *line)
+{
     if (structured_event_prefix(output) < 0) return;
     if (output->format == OUTPUT_JSON) {
-        if (fputs("\"type\":\"message\",\"level\":", stdout) == EOF ||
-            json_string(stdout, error ? "error" : "info") < 0 ||
-            fputs(",\"text\":", stdout) == EOF || json_string(stdout, line) < 0 ||
-            fputc('}', stdout) == EOF) output->output_failed = true;
-    } else if (fputs("    <message level=\"", stdout) == EOF ||
-               xml_string(stdout, error ? "error" : "info") < 0 ||
-               fputs("\">", stdout) == EOF || xml_string(stdout, line) < 0 ||
-               fputs("</message>\n", stdout) == EOF) output->output_failed = true;
+        if (fputs("\"type\":\"message\",\"level\":", stdout) == EOF || json_string(stdout, error ? "error" : "info") < 0 || fputs(",\"text\":", stdout) == EOF ||
+            json_string(stdout, line) < 0 || fputc('}', stdout) == EOF)
+            output->output_failed = true;
+    } else if (fputs("    <message level=\"", stdout) == EOF || xml_string(stdout, error ? "error" : "info") < 0 || fputs("\">", stdout) == EOF ||
+               xml_string(stdout, line) < 0 || fputs("</message>\n", stdout) == EOF)
+        output->output_failed = true;
 }
 
-static const char *encryption_status_name(xfu_encryption_status status) {
+static const char *encryption_status_name(xfu_encryption_status status)
+{
     switch (status) {
         case XFU_ENCRYPTION_DETECTED: return "detected";
         case XFU_ENCRYPTION_PASSWORD_REQUIRED: return "password_required";
@@ -711,12 +694,11 @@ static const char *encryption_status_name(xfu_encryption_status status) {
     }
 }
 
-static const char *encryption_message(xfu_encryption_status status) {
+static const char *encryption_message(xfu_encryption_status status)
+{
     switch (status) {
-        case XFU_ENCRYPTION_DETECTED:
-            return "Encrypted archive or member detected. Testing or extraction may require -p<password> or --password-env=<name>.";
-        case XFU_ENCRYPTION_PASSWORD_REQUIRED:
-            return "Password required for encrypted data. Supply -p<password> or --password-env=<name>.";
+        case XFU_ENCRYPTION_DETECTED: return "Encrypted archive or member detected. Testing or extraction may require -p<password> or --password-env=<name>.";
+        case XFU_ENCRYPTION_PASSWORD_REQUIRED: return "Password required for encrypted data. Supply -p<password> or --password-env=<name>.";
         case XFU_ENCRYPTION_PASSWORD_REJECTED:
             return "Encrypted data could not be opened with the supplied password. Check the password or archive integrity; use -p<password> or --password-env=<name>.";
         default: return NULL;
@@ -726,7 +708,8 @@ static const char *encryption_message(xfu_encryption_status status) {
 /* Detection may be reported for both the archive and every encrypted member.
  * One notice per status keeps large solid archives and scripts readable. The
  * per-entry encrypted field preserves the complete member information. */
-static bool encryption_first(encryption_notice *notice, xfu_encryption_status status) {
+static bool encryption_first(encryption_notice *notice, xfu_encryption_status status)
+{
     unsigned bit;
     if (!encryption_status_name(status)) return false;
     bit = 1U << (unsigned)status;
@@ -735,105 +718,87 @@ static bool encryption_first(encryption_notice *notice, xfu_encryption_status st
     return true;
 }
 
-static void structured_encryption(void *user, xfu_encryption_status status,
-                                  const char *member_name) {
+static void structured_encryption(void *user, xfu_encryption_status status, const char *member_name)
+{
     structured_output *output = (structured_output *)user;
     if (!encryption_first(&output->encryption, status) || structured_event_prefix(output) < 0) return;
     if (output->format == OUTPUT_JSON) {
-        if (fputs("\"type\":\"encryption\",\"encrypted\":true,\"status\":", stdout) == EOF ||
-            json_string(stdout, encryption_status_name(status)) < 0 ||
-            fputs(",\"member\":", stdout) == EOF ||
-            (member_name ? json_string(stdout, member_name) : fputs("null", stdout)) < 0 ||
-            fputs(",\"text\":", stdout) == EOF || json_string(stdout, encryption_message(status)) < 0 ||
-            fputc('}', stdout) == EOF) output->output_failed = true;
+        if (fputs("\"type\":\"encryption\",\"encrypted\":true,\"status\":", stdout) == EOF || json_string(stdout, encryption_status_name(status)) < 0 ||
+            fputs(",\"member\":", stdout) == EOF || (member_name ? json_string(stdout, member_name) : fputs("null", stdout)) < 0 || fputs(",\"text\":", stdout) == EOF ||
+            json_string(stdout, encryption_message(status)) < 0 || fputc('}', stdout) == EOF)
+            output->output_failed = true;
     } else {
-        if (fputs("    <encryption encrypted=\"true\" status=\"", stdout) == EOF ||
-            xml_string(stdout, encryption_status_name(status)) < 0 || fputc('"', stdout) == EOF ||
-            (member_name && (fputs(" member=\"", stdout) == EOF || xml_string(stdout, member_name) < 0 || fputc('"', stdout) == EOF)) ||
-            fputc('>', stdout) == EOF || xml_string(stdout, encryption_message(status)) < 0 ||
-            fputs("</encryption>\n", stdout) == EOF) output->output_failed = true;
+        if (fputs("    <encryption encrypted=\"true\" status=\"", stdout) == EOF || xml_string(stdout, encryption_status_name(status)) < 0 || fputc('"', stdout) == EOF ||
+            (member_name && (fputs(" member=\"", stdout) == EOF || xml_string(stdout, member_name) < 0 || fputc('"', stdout) == EOF)) || fputc('>', stdout) == EOF ||
+            xml_string(stdout, encryption_message(status)) < 0 || fputs("</encryption>\n", stdout) == EOF)
+            output->output_failed = true;
     }
 }
 
-static void structured_report(structured_output *output, const char *kind,
-                              const char *text) {
+static void structured_report(structured_output *output, const char *kind, const char *text)
+{
     if (structured_event_prefix(output) < 0) return;
     if (output->format == OUTPUT_JSON) {
-        if (fputs("\"type\":", stdout) == EOF || json_string(stdout, kind) < 0 ||
-            fputs(",\"text\":", stdout) == EOF || json_string(stdout, text) < 0 ||
-            fputc('}', stdout) == EOF) output->output_failed = true;
-    } else if (fputs("    <report type=\"", stdout) == EOF ||
-               xml_string(stdout, kind) < 0 || fputs("\">", stdout) == EOF ||
-               xml_string(stdout, text) < 0 || fputs("</report>\n", stdout) == EOF)
+        if (fputs("\"type\":", stdout) == EOF || json_string(stdout, kind) < 0 || fputs(",\"text\":", stdout) == EOF || json_string(stdout, text) < 0 ||
+            fputc('}', stdout) == EOF)
+            output->output_failed = true;
+    } else if (fputs("    <report type=\"", stdout) == EOF || xml_string(stdout, kind) < 0 || fputs("\">", stdout) == EOF || xml_string(stdout, text) < 0 ||
+               fputs("</report>\n", stdout) == EOF)
         output->output_failed = true;
 }
 
-static void structured_password(structured_output *output, const char *password,
-                                size_t members) {
+static void structured_password(structured_output *output, const char *password, size_t members)
+{
     if (structured_event_prefix(output) < 0) return;
     if (output->format == OUTPUT_JSON) {
-        if (fputs("\"type\":\"password\",\"value\":", stdout) == EOF ||
-            json_string(stdout, password) < 0 ||
-            fprintf(stdout, ",\"members\":%zu}", members) < 0) output->output_failed = true;
-    } else if (fputs("    <password members=\"", stdout) == EOF ||
-               fprintf(stdout, "%zu\">", members) < 0 || xml_string(stdout, password) < 0 ||
-               fputs("</password>\n", stdout) == EOF) output->output_failed = true;
+        if (fputs("\"type\":\"password\",\"value\":", stdout) == EOF || json_string(stdout, password) < 0 || fprintf(stdout, ",\"members\":%zu}", members) < 0)
+            output->output_failed = true;
+    } else if (fputs("    <password members=\"", stdout) == EOF || fprintf(stdout, "%zu\">", members) < 0 || xml_string(stdout, password) < 0 ||
+               fputs("</password>\n", stdout) == EOF)
+        output->output_failed = true;
 }
 
-static void structured_entry(structured_output *output, const xfu_entry *entry,
-                             int has_result, bool success) {
+static void structured_entry(structured_output *output, const xfu_entry *entry, int has_result, bool success)
+{
     size_t i;
     if (structured_event_prefix(output) < 0) return;
     if (output->format == OUTPUT_JSON) {
-        if (fputs("\"type\":\"entry\",\"name\":", stdout) == EOF ||
-            json_string(stdout, entry->name) < 0 ||
-            fprintf(stdout, ",\"directory\":%s,\"encrypted\":%s,\"packed_size\":",
-                    entry->is_directory ? "true" : "false", entry->is_encrypted ? "true" : "false") < 0) goto failed;
-        if (entry->packed_size < 0 ? fputs("null", stdout) == EOF :
-            fprintf(stdout, "%lld", (long long)entry->packed_size) < 0) goto failed;
-        if (fputs(",\"unpacked_size\":", stdout) == EOF) goto failed;
-        if (entry->unpacked_size < 0 ? fputs("null", stdout) == EOF :
-            fprintf(stdout, "%lld", (long long)entry->unpacked_size) < 0) goto failed;
-        if (fputs(",\"modified\":", stdout) == EOF ||
-            (entry->modified[0] ? json_string(stdout, entry->modified) : fputs("null", stdout)) < 0 ||
-            fputs(",\"attributes\":", stdout) == EOF ||
-            (entry->attributes[0] ? json_string(stdout, entry->attributes) : fputs("null", stdout)) < 0)
+        if (fputs("\"type\":\"entry\",\"name\":", stdout) == EOF || json_string(stdout, entry->name) < 0 ||
+            fprintf(stdout, ",\"directory\":%s,\"encrypted\":%s,\"packed_size\":", entry->is_directory ? "true" : "false", entry->is_encrypted ? "true" : "false") < 0)
             goto failed;
-        if (has_result && (fprintf(stdout, ",\"success\":%s,\"failure\":",
-                                  success ? "true" : "false") < 0 ||
-            (entry->failure ? json_string(stdout, entry->failure) : fputs("null", stdout)) < 0)) goto failed;
+        if (entry->packed_size < 0 ? fputs("null", stdout) == EOF : fprintf(stdout, "%lld", (long long)entry->packed_size) < 0) goto failed;
+        if (fputs(",\"unpacked_size\":", stdout) == EOF) goto failed;
+        if (entry->unpacked_size < 0 ? fputs("null", stdout) == EOF : fprintf(stdout, "%lld", (long long)entry->unpacked_size) < 0) goto failed;
+        if (fputs(",\"modified\":", stdout) == EOF || (entry->modified[0] ? json_string(stdout, entry->modified) : fputs("null", stdout)) < 0 ||
+            fputs(",\"attributes\":", stdout) == EOF || (entry->attributes[0] ? json_string(stdout, entry->attributes) : fputs("null", stdout)) < 0)
+            goto failed;
+        if (has_result && (fprintf(stdout, ",\"success\":%s,\"failure\":", success ? "true" : "false") < 0 ||
+                           (entry->failure ? json_string(stdout, entry->failure) : fputs("null", stdout)) < 0))
+            goto failed;
         if (fputs(",\"properties\":[", stdout) == EOF) goto failed;
         for (i = 0; i < entry->property_count; ++i) {
-            if ((i && fputc(',', stdout) == EOF) || fputs("{\"name\":", stdout) == EOF ||
-                json_string(stdout, entry->properties[i].name) < 0 ||
-                fputs(",\"value\":", stdout) == EOF ||
-                json_string(stdout, entry->properties[i].value) < 0 ||
-                fputc('}', stdout) == EOF) goto failed;
+            if ((i && fputc(',', stdout) == EOF) || fputs("{\"name\":", stdout) == EOF || json_string(stdout, entry->properties[i].name) < 0 ||
+                fputs(",\"value\":", stdout) == EOF || json_string(stdout, entry->properties[i].value) < 0 || fputc('}', stdout) == EOF)
+                goto failed;
         }
         if (fputs("]}", stdout) == EOF) goto failed;
         return;
     }
     if (fputs("    <entry name=\"", stdout) == EOF || xml_string(stdout, entry->name) < 0 ||
-        fprintf(stdout, "\" directory=\"%s\" encrypted=\"%s\"", entry->is_directory ? "true" : "false",
-                entry->is_encrypted ? "true" : "false") < 0)
+        fprintf(stdout, "\" directory=\"%s\" encrypted=\"%s\"", entry->is_directory ? "true" : "false", entry->is_encrypted ? "true" : "false") < 0)
         goto failed;
-    if (entry->packed_size >= 0 && fprintf(stdout, " packed_size=\"%lld\"", (long long)entry->packed_size) < 0)
-        goto failed;
-    if (entry->unpacked_size >= 0 && fprintf(stdout, " unpacked_size=\"%lld\"", (long long)entry->unpacked_size) < 0)
-        goto failed;
+    if (entry->packed_size >= 0 && fprintf(stdout, " packed_size=\"%lld\"", (long long)entry->packed_size) < 0) goto failed;
+    if (entry->unpacked_size >= 0 && fprintf(stdout, " unpacked_size=\"%lld\"", (long long)entry->unpacked_size) < 0) goto failed;
     if (has_result && fprintf(stdout, " success=\"%s\"", success ? "true" : "false") < 0) goto failed;
     if (fputs(">\n", stdout) == EOF) goto failed;
-    if (entry->modified[0] && (fputs("      <modified>", stdout) == EOF ||
-        xml_string(stdout, entry->modified) < 0 || fputs("</modified>\n", stdout) == EOF)) goto failed;
-    if (entry->attributes[0] && (fputs("      <attributes>", stdout) == EOF ||
-        xml_string(stdout, entry->attributes) < 0 || fputs("</attributes>\n", stdout) == EOF)) goto failed;
-    if (entry->failure && (fputs("      <failure>", stdout) == EOF ||
-        xml_string(stdout, entry->failure) < 0 || fputs("</failure>\n", stdout) == EOF)) goto failed;
+    if (entry->modified[0] && (fputs("      <modified>", stdout) == EOF || xml_string(stdout, entry->modified) < 0 || fputs("</modified>\n", stdout) == EOF)) goto failed;
+    if (entry->attributes[0] && (fputs("      <attributes>", stdout) == EOF || xml_string(stdout, entry->attributes) < 0 || fputs("</attributes>\n", stdout) == EOF))
+        goto failed;
+    if (entry->failure && (fputs("      <failure>", stdout) == EOF || xml_string(stdout, entry->failure) < 0 || fputs("</failure>\n", stdout) == EOF)) goto failed;
     for (i = 0; i < entry->property_count; ++i) {
-        if (fputs("      <property name=\"", stdout) == EOF ||
-            xml_string(stdout, entry->properties[i].name) < 0 ||
-            fputs("\">", stdout) == EOF || xml_string(stdout, entry->properties[i].value) < 0 ||
-            fputs("</property>\n", stdout) == EOF) goto failed;
+        if (fputs("      <property name=\"", stdout) == EOF || xml_string(stdout, entry->properties[i].name) < 0 || fputs("\">", stdout) == EOF ||
+            xml_string(stdout, entry->properties[i].value) < 0 || fputs("</property>\n", stdout) == EOF)
+            goto failed;
     }
     if (fputs("    </entry>\n", stdout) == EOF) goto failed;
     return;
@@ -841,24 +806,27 @@ failed:
     output->output_failed = true;
 }
 
-static void structured_log(void *user, bool error, const char *line) {
+static void structured_log(void *user, bool error, const char *line)
+{
     structured_message((structured_output *)user, error, line);
 }
 
-static void structured_list_entry(void *user, const xfu_entry *entry) {
+static void structured_list_entry(void *user, const xfu_entry *entry)
+{
     structured_entry((structured_output *)user, entry, 0, false);
 }
 
-static void structured_test_result(void *user, const xfu_entry *entry, bool success) {
+static void structured_test_result(void *user, const xfu_entry *entry, bool success)
+{
     structured_entry((structured_output *)user, entry, 1, success);
 }
 
-static int structured_end(structured_output *output, int status) {
+static int structured_end(structured_output *output, int status)
+{
     if (!output->output_failed) {
         if (output->format == OUTPUT_JSON) {
             if (fprintf(stdout, "],\"status\":%d}\n", status) < 0) output->output_failed = true;
-        } else if (fprintf(stdout, "  </events>\n  <status>%d</status>\n</xx_xfuc>\n", status) < 0)
-            output->output_failed = true;
+        } else if (fprintf(stdout, "  </events>\n  <status>%d</status>\n</xx_xfuc>\n", status) < 0) output->output_failed = true;
     }
     if (fflush(stdout) == EOF || ferror(stdout)) output->output_failed = true;
     return output->output_failed ? 2 : status;
@@ -867,7 +835,8 @@ static int structured_end(structured_output *output, int status) {
 /* One line of text, escaped. A stderr line goes out in one write (fprintf
  * to unbuffered stderr writes in small pieces, so lines of processes sharing
  * it would mix), after stdout's pending lines (2>&1 must keep the order). */
-static int console_line(FILE *out, const char *text) {
+static int console_line(FILE *out, const char *text)
+{
     char *escaped = console_escape(text, 1);
     int status = -1;
     if (out == stderr) fflush(stdout);
@@ -878,7 +847,8 @@ static int console_line(FILE *out, const char *text) {
 
 /* message, then an argument escaped like a name (it can be a file name),
  * then after, as one stderr write like console_line's. */
-static void console_error_argument(const char *message, const char *argument, const char *after) {
+static void console_error_argument(const char *message, const char *argument, const char *after)
+{
     char *escaped = console_escape(argument, 0);
     size_t size = strlen(message) + (escaped ? strlen(escaped) : 1) + strlen(after) + 2;
     char *line = (char *)malloc(size);
@@ -892,30 +862,29 @@ static void console_error_argument(const char *message, const char *argument, co
     free(escaped);
 }
 
-static void console_encryption(void *user, xfu_encryption_status status,
-                               const char *member_name) {
+static void console_encryption(void *user, xfu_encryption_status status, const char *member_name)
+{
     encryption_notice *notice = (encryption_notice *)user;
     (void)member_name;
-    if (encryption_first(notice, status) &&
-        (console_line(stderr, encryption_message(status)) < 0 || fflush(stderr) == EOF))
-        notice->output_failed = true;
+    if (encryption_first(notice, status) && (console_line(stderr, encryption_message(status)) < 0 || fflush(stderr) == EOF)) notice->output_failed = true;
 }
 
-static void test_output_failed(console_test *test) {
+static void test_output_failed(console_test *test)
+{
     test->output_failed = true;
     xx_pd_stop(&test->progress);
 }
 
-static void test_finish_line(console_test *test) {
+static void test_finish_line(console_test *test)
+{
     if (test->line_open) {
         test->line_open = false;
-        if (fputc('\n', stdout) == EOF || fflush(stdout) == EOF)
-            test_output_failed(test);
+        if (fputc('\n', stdout) == EOF || fflush(stdout) == EOF) test_output_failed(test);
     }
 }
 
-static void test_encryption(void *user, xfu_encryption_status status,
-                            const char *member_name) {
+static void test_encryption(void *user, xfu_encryption_status status, const char *member_name)
+{
     console_test *test = (console_test *)user;
     if (!encryption_status_name(status) || (test->encryption.seen & (1U << (unsigned)status))) return;
     test_finish_line(test);
@@ -923,29 +892,30 @@ static void test_encryption(void *user, xfu_encryption_status status,
     if (test->encryption.output_failed) test_output_failed(test);
 }
 
-static void test_log(void *user, bool error, const char *line) {
+static void test_log(void *user, bool error, const char *line)
+{
     console_test *test = (console_test *)user;
     if (!error || test->output_failed) return;
     test_finish_line(test);
-    if (console_line(stderr, line) < 0 || fflush(stderr) == EOF)
-        test_output_failed(test);
+    if (console_line(stderr, line) < 0 || fflush(stderr) == EOF) test_output_failed(test);
 }
 
-static void test_progress(void *user, unsigned percent) {
+static void test_progress(void *user, unsigned percent)
+{
     console_test *test = (console_test *)user;
     if (test->verbose || test->output_failed) return;
     if (percent > 100U) percent = 100U;
     if ((int)percent <= test->last_percent) return;
     test->last_percent = (int)percent;
-    if (fprintf(stdout, test->terminal ? "\r%3u%%" : "%u%%\n", percent) < 0 ||
-        fflush(stdout) == EOF) {
+    if (fprintf(stdout, test->terminal ? "\r%3u%%" : "%u%%\n", percent) < 0 || fflush(stdout) == EOF) {
         test_output_failed(test);
         return;
     }
     test->line_open = test->terminal;
 }
 
-static void test_result(void *user, const xfu_entry *entry, bool success) {
+static void test_result(void *user, const xfu_entry *entry, bool success)
+{
     console_test *test = (console_test *)user;
     char *name, *reason = NULL;
     /* Installing this callback also suppresses the core's member log in the
@@ -955,9 +925,10 @@ static void test_result(void *user, const xfu_entry *entry, bool success) {
     /* A failure says why when the core can tell, as the log line would. */
     if (!success && entry->failure) reason = console_escape(entry->failure, 0);
     if (!name || (!success && entry->failure && !reason) ||
-        (reason ? fprintf(stdout, "%s -- FAILED (%s)%s\n", name, reason, entry->is_encrypted ? " [encrypted]" : "") :
-                  fprintf(stdout, "%s -- %s%s\n", name, success ? "OK" : "FAILED", entry->is_encrypted ? " [encrypted]" : "")) < 0 ||
-        fflush(stdout) == EOF) test_output_failed(test);
+        (reason ? fprintf(stdout, "%s -- FAILED (%s)%s\n", name, reason, entry->is_encrypted ? " [encrypted]" : "")
+                : fprintf(stdout, "%s -- %s%s\n", name, success ? "OK" : "FAILED", entry->is_encrypted ? " [encrypted]" : "")) < 0 ||
+        fflush(stdout) == EOF)
+        test_output_failed(test);
     free(name);
     free(reason);
 }
@@ -965,21 +936,25 @@ static void test_result(void *user, const xfu_entry *entry, bool success) {
 /* Handle names are case-insensitive; punctuation separates words only.
  * Thus TAR_GZ and tar.gz name the same unpack operation. Numeric IDs must
  * belong to the unpack-handle catalog, never the file-inspection enum. */
-static int handle_name_equal(const char *left, const char *right) {
+static int handle_name_equal(const char *left, const char *right)
+{
     for (;;) {
         unsigned char a, b;
         while (*left && !((*left >= '0' && *left <= '9') || (*left >= 'A' && *left <= 'Z') || (*left >= 'a' && *left <= 'z'))) ++left;
         while (*right && !((*right >= '0' && *right <= '9') || (*right >= 'A' && *right <= 'Z') || (*right >= 'a' && *right <= 'z'))) ++right;
-        a = (unsigned char)*left; b = (unsigned char)*right;
+        a = (unsigned char)*left;
+        b = (unsigned char)*right;
         if (a >= 'A' && a <= 'Z') a = (unsigned char)(a + 'a' - 'A');
         if (b >= 'A' && b <= 'Z') b = (unsigned char)(b + 'a' - 'A');
         if (a != b) return 0;
         if (!a) return 1;
-        ++left; ++right;
+        ++left;
+        ++right;
     }
 }
 
-static int parse_unpack_handle(const char *name, xx_unpack_handle_t *handle) {
+static int parse_unpack_handle(const char *name, xx_unpack_handle_t *handle)
+{
     xx_list_t *supported;
     size_t i;
     unsigned long numeric = 0;
@@ -988,7 +963,8 @@ static int parse_unpack_handle(const char *name, xx_unpack_handle_t *handle) {
     if (!name || !*name) return 0;
     if (strlen(name) >= 13) {
         char prefix[14];
-        memcpy(prefix, name, 13); prefix[13] = 0;
+        memcpy(prefix, name, 13);
+        prefix[13] = 0;
         if (handle_name_equal(prefix, "XX_FILE_TYPE_")) name += 13;
     }
     if (handle_name_equal(name, "auto") || handle_name_equal(name, "automatic")) {
@@ -1000,7 +976,8 @@ static int parse_unpack_handle(const char *name, xx_unpack_handle_t *handle) {
     else if (handle_name_equal(name, "bzip2")) name = "bz2";
     else if (handle_name_equal(name, "tar.zst")) name = "tar.zstd";
     if (*name >= '0' && *name <= '9') {
-        errno = 0; numeric = strtoul(name, &end, 10);
+        errno = 0;
+        numeric = strtoul(name, &end, 10);
         /* 7ZIP is a name, not a malformed numeric ID. */
         if (!*end) {
             if (errno || numeric > UINT32_MAX) return 0;
@@ -1018,14 +995,17 @@ static int parse_unpack_handle(const char *name, xx_unpack_handle_t *handle) {
         xx_unpack_handle_t candidate = *(const xx_unpack_handle_t *)xx_list_at(supported, i);
         if ((is_numeric && candidate.carrier == XX_UNPACK_CARRIER_NONE && numeric == (unsigned long)candidate.type) ||
             (!is_numeric && handle_name_equal(name, xx_format_unpack_handle_to_string(candidate)))) {
-            *handle = candidate; found = 1; break;
+            *handle = candidate;
+            found = 1;
+            break;
         }
     }
     xx_list_destroy(supported);
     return found;
 }
 
-static void usage(const xx_archive_console_config *config, FILE *out, const char *program) {
+static void usage(const xx_archive_console_config *config, FILE *out, const char *program)
+{
     /* The program name is an argument like the others: escaped. */
     char *shown = console_escape(program ? program : config->application_name, 0);
     fprintf(out,
@@ -1072,43 +1052,55 @@ static void usage(const xx_archive_console_config *config, FILE *out, const char
             "Notes:\n",
             config->application_name, profile_description(config), shown ? shown : config->application_name);
     if (config->format == XX_ARCHIVE_CONSOLE_ZIP)
-        fputs("  Reads and creates ZIP archives. Creation defaults to ZIP regardless\n"
-              "  of the destination extension. The outer filter must be none.\n", out);
+        fputs(
+            "  Reads and creates ZIP archives. Creation defaults to ZIP regardless\n"
+            "  of the destination extension. The outer filter must be none.\n",
+            out);
     else if (config->format == XX_ARCHIVE_CONSOLE_TAR)
-        fputs("  Reads and creates TAR archives, including compressed TAR. Creation\n"
-              "  defaults to TAR; .tar.gz/.tgz, .tar.bz2 and other compressed\n"
-              "  suffixes select the outer filter. --filter overrides that choice.\n"
-              "  --format selects a TAR variant, such as pax, ustar or gnutar.\n", out);
+        fputs(
+            "  Reads and creates TAR archives, including compressed TAR. Creation\n"
+            "  defaults to TAR; .tar.gz/.tgz, .tar.bz2 and other compressed\n"
+            "  suffixes select the outer filter. --filter overrides that choice.\n"
+            "  --format selects a TAR variant, such as pax, ustar or gnutar.\n",
+            out);
     else if (config->format == XX_ARCHIVE_CONSOLE_AR)
-        fputs("  Reads and creates uncompressed AR archives. Creation defaults to\n"
-              "  BSD AR regardless of the destination extension. --format=ar_svr4\n"
-              "  or ar_gnu selects GNU/SVR4 long names; ar_bsd selects BSD names.\n"
-              "  Add files individually; AR does not store directory members.\n", out);
+        fputs(
+            "  Reads and creates uncompressed AR archives. Creation defaults to\n"
+            "  BSD AR regardless of the destination extension. --format=ar_svr4\n"
+            "  or ar_gnu selects GNU/SVR4 long names; ar_bsd selects BSD names.\n"
+            "  Add files individually; AR does not store directory members.\n",
+            out);
     else if (config->format == XX_ARCHIVE_CONSOLE_ALL)
-        fputs("  Creation follows the destination extension unless --format overrides it.\n"
-              "  See --capabilities for available containers and filters.\n", out);
+        fputs(
+            "  Creation follows the destination extension unless --format overrides it.\n"
+            "  See --capabilities for available containers and filters.\n",
+            out);
     else if (!profile_of(config)->create)
-        fprintf(out, "  Reads %sarchives. This tool has no %swriter: `a` is unavailable.\n",
-                profile_description(config), profile_description(config));
+        fprintf(out, "  Reads %sarchives. This tool has no %swriter: `a` is unavailable.\n", profile_description(config), profile_description(config));
     else if (profile_stream(profile_of(config)))
-        fprintf(out, "  Reads and creates %sstreams. A stream holds one file: `a` takes\n"
-                     "  exactly one input file and writes --format=raw --filter=%s.\n",
+        fprintf(out,
+                "  Reads and creates %sstreams. A stream holds one file: `a` takes\n"
+                "  exactly one input file and writes --format=raw --filter=%s.\n",
                 profile_description(config), profile_of(config)->filter);
     else
-        fprintf(out, "  Reads and creates %sarchives. Creation defaults to --format=%s\n"
-                     "  regardless of the destination extension. The outer filter must be none.\n",
+        fprintf(out,
+                "  Reads and creates %sarchives. Creation defaults to --format=%s\n"
+                "  regardless of the destination extension. The outer filter must be none.\n",
                 profile_description(config), profile_of(config)->create);
-    fputs("  `a` creates an archive; it does not append to an existing archive.\n"
-          "  Use -- before input filenames that begin with a dash.\n"
-          "  --options keys: handle, reader, password, password-env and output for\n"
-          "  l, t, p and x; format, filter, compression, level, volume-size,\n"
-          "  password and password-env for a. A <format>:<name> key goes to the\n"
-          "  reader or writer (cpio:hdrcharset=CP437). An empty value or auto keeps\n"
-          "  the default, so the strings of --defaultoptions can be given back.\n", out);
+    fputs(
+        "  `a` creates an archive; it does not append to an existing archive.\n"
+        "  Use -- before input filenames that begin with a dash.\n"
+        "  --options keys: handle, reader, password, password-env and output for\n"
+        "  l, t, p and x; format, filter, compression, level, volume-size,\n"
+        "  password and password-env for a. A <format>:<name> key goes to the\n"
+        "  reader or writer (cpio:hdrcharset=CP437). An empty value or auto keeps\n"
+        "  the default, so the strings of --defaultoptions can be given back.\n",
+        out);
     free(shown);
 }
 
-static bool parse_volume_size(const char *text, uint64_t *size) {
+static bool parse_volume_size(const char *text, uint64_t *size)
+{
     char *end;
     unsigned long long value;
     unsigned shift = 0;
@@ -1118,9 +1110,12 @@ static bool parse_volume_size(const char *text, uint64_t *size) {
     if (errno == ERANGE || !value) return false;
     if (*end) {
         switch (*end++) {
-            case 'k': case 'K': shift = 10; break;
-            case 'm': case 'M': shift = 20; break;
-            case 'g': case 'G': shift = 30; break;
+            case 'k':
+            case 'K': shift = 10; break;
+            case 'm':
+            case 'M': shift = 20; break;
+            case 'g':
+            case 'G': shift = 30; break;
             default: return false;
         }
         if (*end == 'i' || *end == 'I') ++end;
@@ -1145,26 +1140,27 @@ static bool console_log_to_stderr;
  * the string, or `auto` for a selector, leaves the default: the strings that
  * --defaultoptions prints can be given back unchanged. */
 typedef enum option_key {
-    OPTION_PASSWORD, OPTION_PASSWORD_ENV, OPTION_HANDLE, OPTION_READER, OPTION_OUTPUT,
-    OPTION_FORMAT, OPTION_FILTER, OPTION_COMPRESSION, OPTION_LEVEL, OPTION_VOLUME_SIZE,
+    OPTION_PASSWORD,
+    OPTION_PASSWORD_ENV,
+    OPTION_HANDLE,
+    OPTION_READER,
+    OPTION_OUTPUT,
+    OPTION_FORMAT,
+    OPTION_FILTER,
+    OPTION_COMPRESSION,
+    OPTION_LEVEL,
+    OPTION_VOLUME_SIZE,
     OPTION_COUNT
 } option_key;
 
 static const struct option_name {
-    const char *key;       /* the --options spelling */
-    bool pack, unpack;     /* applies to a; applies to l, t, p and x */
-    bool selector;         /* `auto` leaves the default */
+    const char *key;   /* the --options spelling */
+    bool pack, unpack; /* applies to a; applies to l, t, p and x */
+    bool selector;     /* `auto` leaves the default */
 } option_names[OPTION_COUNT] = {
-    {"password", true, true, false},
-    {"password-env", true, true, false},
-    {"handle", false, true, true},
-    {"reader", false, true, true},
-    {"output", false, true, false},
-    {"format", true, false, true},
-    {"filter", true, false, true},
-    {"compression", true, false, true},
-    {"level", true, false, true},
-    {"volume-size", true, false, true},
+    {"password", true, true, false}, {"password-env", true, true, false}, {"handle", false, true, true}, {"reader", false, true, true},
+    {"output", false, true, false},  {"format", true, false, true},       {"filter", true, false, true}, {"compression", true, false, true},
+    {"level", true, false, true},    {"volume-size", true, false, true},
 };
 
 typedef struct console_options {
@@ -1176,7 +1172,8 @@ typedef struct console_options {
 
 /* --password-env=<name>: a copy of the variable in *password. Returns the
  * failure message, or NULL. */
-static const char *environment_password(const char *name, char **password) {
+static const char *environment_password(const char *name, char **password)
+{
     if (!*name) return "name a password environment variable";
 #ifdef _WIN32
     {
@@ -1194,9 +1191,9 @@ static const char *environment_password(const char *name, char **password) {
         wide_value = (wchar_t *)calloc(needed ? needed : 1, sizeof(wchar_t));
         SetLastError(ERROR_SUCCESS);
         copied = wide_value && needed ? GetEnvironmentVariableW(wide_name, wide_value, needed) : 0;
-        if (!wide_value || copied >= (needed ? needed : 1) ||
-            (!copied && GetLastError() != ERROR_SUCCESS)) {
-            xx_str_wfree(wide_name); free(wide_value);
+        if (!wide_value || copied >= (needed ? needed : 1) || (!copied && GetLastError() != ERROR_SUCCESS)) {
+            xx_str_wfree(wide_name);
+            free(wide_value);
             return "cannot read password environment variable";
         }
         xx_str_wfree(wide_name);
@@ -1222,7 +1219,8 @@ static const char *environment_password(const char *name, char **password) {
     return *password ? NULL : "cannot allocate password";
 }
 
-static void options_release(console_options *options) {
+static void options_release(console_options *options)
+{
     if (options->environment_password) {
         volatile char *wipe = options->environment_password;
         size_t size = strlen(options->environment_password);
@@ -1232,7 +1230,8 @@ static void options_release(console_options *options) {
     free(options->passthrough);
 }
 
-static bool option_failure(const char *shown, const char *message) {
+static bool option_failure(const char *shown, const char *message)
+{
     fprintf(stderr, "%s: %s\n", shown, message);
     return false;
 }
@@ -1240,22 +1239,17 @@ static bool option_failure(const char *shown, const char *message) {
 /* Sets one option of the request. `shown` names it in messages. `literal`
  * values come from an --options string: there an empty value leaves the
  * default, on the command line it is an error. */
-static bool option_set(console_options *options, option_key key, const char *shown,
-                       const char *value, bool literal) {
+static bool option_set(console_options *options, option_key key, const char *shown, const char *value, bool literal)
+{
     xfu_request *request = options->request;
     option_key slot = key == OPTION_PASSWORD_ENV ? OPTION_PASSWORD : key;
     if (!value || (!literal && key != OPTION_PASSWORD && (!*value || (*value == '-' && key != OPTION_LEVEL))))
-        return option_failure(shown, key == OPTION_OUTPUT ? "name an output directory" :
-                              key == OPTION_LEVEL ? "specify one integer" : "specify one value");
+        return option_failure(shown, key == OPTION_OUTPUT ? "name an output directory" : key == OPTION_LEVEL ? "specify one integer" : "specify one value");
     if (literal && !*value && key != OPTION_PASSWORD) return true;
     if (option_names[key].selector && !strcmp(value, "auto")) return true;
-    if (options->set[slot])
-        return option_failure(shown, slot == OPTION_PASSWORD ? "password specified more than once" :
-                              "specified more than once");
+    if (options->set[slot]) return option_failure(shown, slot == OPTION_PASSWORD ? "password specified more than once" : "specified more than once");
     switch (key) {
-        case OPTION_PASSWORD:
-            request->password = value;
-            break;
+        case OPTION_PASSWORD: request->password = value; break;
         case OPTION_PASSWORD_ENV: {
             const char *failure = environment_password(value, &options->environment_password);
             if (failure) return option_failure(shown, failure);
@@ -1265,8 +1259,7 @@ static bool option_set(console_options *options, option_key key, const char *sho
         case OPTION_HANDLE: {
             xx_unpack_handle_t handle = {XX_FILE_TYPE_UNKNOWN, XX_UNPACK_CARRIER_NONE};
             if (options->set[OPTION_READER]) return option_failure(shown, "cannot combine with --reader");
-            if (!parse_unpack_handle(value, &handle))
-                return option_failure(shown, "select one supported unpack handle for l, t, p or x");
+            if (!parse_unpack_handle(value, &handle)) return option_failure(shown, "select one supported unpack handle for l, t, p or x");
             if (handle.type == XX_FILE_TYPE_UNKNOWN) return true;
             request->handle = handle;
             break;
@@ -1282,20 +1275,17 @@ static bool option_set(console_options *options, option_key key, const char *sho
         case OPTION_LEVEL: {
             char *end = NULL;
             long level;
-            if ((value[0] != '-' && (value[0] < '0' || value[0] > '9')) ||
-                (value[0] == '-' && (value[1] < '0' || value[1] > '9')))
+            if ((value[0] != '-' && (value[0] < '0' || value[0] > '9')) || (value[0] == '-' && (value[1] < '0' || value[1] > '9')))
                 return option_failure(shown, "specify one integer");
             errno = 0;
             level = strtol(value, &end, 10);
-            if (errno == ERANGE || !end || *end || level < INT_MIN || level > INT_MAX)
-                return option_failure(shown, "invalid integer");
+            if (errno == ERANGE || !end || *end || level < INT_MIN || level > INT_MAX) return option_failure(shown, "invalid integer");
             request->compression_level = (int)level;
             request->compression_level_set = true;
             break;
         }
         case OPTION_VOLUME_SIZE:
-            if (!parse_volume_size(value, &request->volume_size))
-                return option_failure(shown, "specify one positive size in bytes, K, M or G");
+            if (!parse_volume_size(value, &request->volume_size)) return option_failure(shown, "specify one positive size in bytes, K, M or G");
             break;
         default: return false;
     }
@@ -1303,10 +1293,14 @@ static bool option_set(console_options *options, option_key key, const char *sho
     return true;
 }
 
-static bool passthrough_append(console_options *options, const char *pair) {
+static bool passthrough_append(console_options *options, const char *pair)
+{
     size_t used = options->passthrough ? strlen(options->passthrough) : 0, add = strlen(pair);
     char *grown = (char *)realloc(options->passthrough, used + add + 2);
-    if (!grown) { fprintf(stderr, "cannot allocate options\n"); return false; }
+    if (!grown) {
+        fprintf(stderr, "cannot allocate options\n");
+        return false;
+    }
     if (used) grown[used++] = ';';
     memcpy(grown + used, pair, add + 1);
     options->passthrough = grown;
@@ -1314,7 +1308,8 @@ static bool passthrough_append(console_options *options, const char *pair) {
 }
 
 /* --options=<text>: key=value pairs separated by ';', split in place. */
-static bool options_apply(console_options *options, char *text) {
+static bool options_apply(console_options *options, char *text)
+{
     bool pack = options->request->command == XFU_COMMAND_ADD;
     char *pair = text;
     while (pair) {
@@ -1345,14 +1340,14 @@ static bool options_apply(console_options *options, char *text) {
                     if (!passthrough_append(options, joined)) return false;
                 }
             } else {
-                for (i = 0; i < OPTION_COUNT && strcmp(option_names[i].key, pair); ++i) {}
+                for (i = 0; i < OPTION_COUNT && strcmp(option_names[i].key, pair); ++i) {
+                }
                 if (i == OPTION_COUNT) {
                     console_error_argument("--options: unknown key: ", pair, "");
                     return false;
                 }
                 if (pack ? !option_names[i].pack : !option_names[i].unpack) {
-                    fprintf(stderr, "--options: %s applies to %s only\n", option_names[i].key,
-                            pack ? "l, t, p and x" : "a");
+                    fprintf(stderr, "--options: %s applies to %s only\n", option_names[i].key, pack ? "l, t, p and x" : "a");
                     return false;
                 }
                 snprintf(shown, sizeof(shown), "--options: %s", option_names[i].key);
@@ -1366,12 +1361,12 @@ static bool options_apply(console_options *options, char *text) {
 
 /* `--name=value` or `--name value`: *value (NULL when missing), advancing
  * *index past a separate value. */
-static bool long_option(char **argv, int argc, int *index, const char *name, char **value) {
+static bool long_option(char **argv, int argc, int *index, const char *name, char **value)
+{
     size_t length = strlen(name);
     const char *argument = argv[*index];
     if (strncmp(argument, name, length) || (argument[length] && argument[length] != '=')) return false;
-    *value = argument[length] == '=' ? argv[*index] + length + 1 :
-             (++*index < argc ? argv[*index] : NULL);
+    *value = argument[length] == '=' ? argv[*index] + length + 1 : (++*index < argc ? argv[*index] : NULL);
     return true;
 }
 
@@ -1381,35 +1376,47 @@ static bool long_option(char **argv, int argc, int *index, const char *name, cha
  * option that is not set. The compression defaults are the writers': ZIP
  * deflate level 6, 7-Zip LZMA2 level 5, gzip, XZ, LZMA-Alone and lzip
  * level 6, bzip2 level 6, Zstandard level 3. */
-static const char *default_pack_options(const xx_archive_console_config *config,
-                                        char *buffer, size_t size) {
+static const char *default_pack_options(const xx_archive_console_config *config, char *buffer, size_t size)
+{
     const profile_info *profile = profile_of(config);
     const char *compression = NULL, *level = NULL, *password = "", *volume = "";
     bool all = config->format == XX_ARCHIVE_CONSOLE_ALL;
     if (!all && !profile->create) return NULL;
     switch (config->format) {
         case XX_ARCHIVE_CONSOLE_ALL:
-            compression = "auto"; level = "auto"; password = ";password="; volume = ";volume-size=";
+            compression = "auto";
+            level = "auto";
+            password = ";password=";
+            volume = ";volume-size=";
             break;
-        case XX_ARCHIVE_CONSOLE_ZIP: compression = "deflate"; level = "6"; password = ";password="; break;
-        case XX_ARCHIVE_CONSOLE_7ZIP: compression = "lzma2"; level = "5"; password = ";password="; break;
+        case XX_ARCHIVE_CONSOLE_ZIP:
+            compression = "deflate";
+            level = "6";
+            password = ";password=";
+            break;
+        case XX_ARCHIVE_CONSOLE_7ZIP:
+            compression = "lzma2";
+            level = "5";
+            password = ";password=";
+            break;
         case XX_ARCHIVE_CONSOLE_TAR: level = "auto"; break;
-        case XX_ARCHIVE_CONSOLE_GZ: case XX_ARCHIVE_CONSOLE_BZ2: case XX_ARCHIVE_CONSOLE_XZ:
-        case XX_ARCHIVE_CONSOLE_LZMA: case XX_ARCHIVE_CONSOLE_LZIP: level = "6"; break;
+        case XX_ARCHIVE_CONSOLE_GZ:
+        case XX_ARCHIVE_CONSOLE_BZ2:
+        case XX_ARCHIVE_CONSOLE_XZ:
+        case XX_ARCHIVE_CONSOLE_LZMA:
+        case XX_ARCHIVE_CONSOLE_LZIP: level = "6"; break;
         case XX_ARCHIVE_CONSOLE_ZSTD: level = "3"; break;
         default: break;
     }
-    snprintf(buffer, size, "format=%s;filter=%s%s%s%s%s%s%s",
-             all ? "auto" : profile->create,
-             all || !profile->filter ? "auto" : profile->filter,
-             compression ? ";compression=" : "", compression ? compression : "",
-             level ? ";level=" : "", level ? level : "", password, volume);
+    snprintf(buffer, size, "format=%s;filter=%s%s%s%s%s%s%s", all ? "auto" : profile->create, all || !profile->filter ? "auto" : profile->filter,
+             compression ? ";compression=" : "", compression ? compression : "", level ? ";level=" : "", level ? level : "", password, volume);
     return buffer;
 }
 
 #define DEFAULT_UNPACK_OPTIONS "handle=auto;reader=auto;password=;output=."
 
-static int show_default_options(const xx_archive_console_config *config, output_format format) {
+static int show_default_options(const xx_archive_console_config *config, output_format format)
+{
     static const char *const modes[] = {"pack", "unpack"};
     char pack[160];
     const char *strings[2];
@@ -1429,38 +1436,36 @@ static int show_default_options(const xx_archive_console_config *config, output_
             if (!strings[i]) continue;
             if (structured_event_prefix(&document) < 0) break;
             if (format == OUTPUT_JSON) {
-                if (fputs("\"type\":\"default-options\",\"mode\":", stdout) == EOF ||
-                    json_string(stdout, modes[i]) < 0 ||
-                    fputs(",\"options\":", stdout) == EOF ||
-                    json_string(stdout, strings[i]) < 0 ||
-                    fputc('}', stdout) == EOF) document.output_failed = true;
-            } else if (fputs("    <default-options mode=\"", stdout) == EOF ||
-                       xml_string(stdout, modes[i]) < 0 ||
-                       fputs("\" options=\"", stdout) == EOF ||
-                       xml_string(stdout, strings[i]) < 0 ||
-                       fputs("\"/>\n", stdout) == EOF) document.output_failed = true;
+                if (fputs("\"type\":\"default-options\",\"mode\":", stdout) == EOF || json_string(stdout, modes[i]) < 0 || fputs(",\"options\":", stdout) == EOF ||
+                    json_string(stdout, strings[i]) < 0 || fputc('}', stdout) == EOF)
+                    document.output_failed = true;
+            } else if (fputs("    <default-options mode=\"", stdout) == EOF || xml_string(stdout, modes[i]) < 0 || fputs("\" options=\"", stdout) == EOF ||
+                       xml_string(stdout, strings[i]) < 0 || fputs("\"/>\n", stdout) == EOF)
+                document.output_failed = true;
         }
         return structured_end(&document, 0);
     }
 }
 
-static bool console_names_stdout(const char *path) {
+static bool console_names_stdout(const char *path)
+{
 #ifdef _WIN32
     (void)path; /* No path names standard output there. */
     return false;
 #else
     struct stat named, out;
-    return path && stat(path, &named) == 0 && fstat(STDOUT_FILENO, &out) == 0 &&
-           named.st_dev == out.st_dev && named.st_ino == out.st_ino;
+    return path && stat(path, &named) == 0 && fstat(STDOUT_FILENO, &out) == 0 && named.st_dev == out.st_dev && named.st_ino == out.st_ino;
 #endif
 }
 
-static void console_log(void *user, bool error, const char *line) {
+static void console_log(void *user, bool error, const char *line)
+{
     (void)user;
     console_line(error || console_log_to_stderr ? stderr : stdout, line);
 }
 
-static void console_advanced_entry(void *user, const xfu_entry *entry) {
+static void console_advanced_entry(void *user, const xfu_entry *entry)
+{
     size_t i;
     (void)user;
     fprintf(stdout, "    Type: %s\n", entry->is_directory ? "Directory" : "File");
@@ -1476,7 +1481,8 @@ static void console_advanced_entry(void *user, const xfu_entry *entry) {
     for (i = 0; i < entry->property_count; ++i) {
         char *name = console_escape(entry->properties[i].name, 0), *value = console_escape(entry->properties[i].value, 0);
         if (name && value) fprintf(stdout, "    %s: %s\n", name, value);
-        free(name); free(value);
+        free(name);
+        free(value);
     }
 }
 
@@ -1495,14 +1501,15 @@ typedef struct password_retrieval {
     encryption_notice encryption;
 } password_retrieval;
 
-static void retrieval_encryption(void *user, xfu_encryption_status status,
-                                 const char *member_name) {
+static void retrieval_encryption(void *user, xfu_encryption_status status, const char *member_name)
+{
     password_retrieval *retrieval = (password_retrieval *)user;
     if (retrieval->output) structured_encryption(retrieval->output, status, member_name);
     else console_encryption(&retrieval->encryption, status, member_name);
 }
 
-static void wipe_password(char *password) {
+static void wipe_password(char *password)
+{
     if (password) {
         volatile char *byte = password;
         size_t size = strlen(password) + 1U;
@@ -1511,7 +1518,8 @@ static void wipe_password(char *password) {
     }
 }
 
-static void retrieval_cleanup(password_retrieval *retrieval) {
+static void retrieval_cleanup(password_retrieval *retrieval)
+{
     size_t i;
     for (i = 0; i < retrieval->count; ++i) {
         wipe_password(retrieval->groups[i].raw);
@@ -1524,7 +1532,8 @@ static void retrieval_cleanup(password_retrieval *retrieval) {
 /* Password metadata already escapes ASCII controls and literal backslashes.
  * Preserve that reversible text, while escaping any remaining invalid UTF-8
  * bytes or Unicode C1 controls so the summary is safe single-line output. */
-static char *retrieval_display(const char *property) {
+static char *retrieval_display(const char *property)
+{
     static const char digits[] = "0123456789ABCDEF";
     size_t size = strlen(property), i = 0, used = 0;
     char *text;
@@ -1541,22 +1550,24 @@ static char *retrieval_display(const char *property) {
         if (length > size - i) length = 0;
         for (j = 1; j < length; ++j)
             if (((unsigned char)property[i + j] & 0xc0U) != 0x80U) {
-                length = 0; break;
+                length = 0;
+                break;
             }
         if (length > 1) {
             unsigned char second = (unsigned char)property[i + 1];
-            if ((c == 0xc2U && second < 0xa0U) ||
-                (c == 0xe0U && second < 0xa0U) ||
-                (c == 0xedU && second >= 0xa0U) ||
-                (c == 0xf0U && second < 0x90U) ||
-                (c == 0xf4U && second >= 0x90U)) length = 0;
+            if ((c == 0xc2U && second < 0xa0U) || (c == 0xe0U && second < 0xa0U) || (c == 0xedU && second >= 0xa0U) || (c == 0xf0U && second < 0x90U) ||
+                (c == 0xf4U && second >= 0x90U))
+                length = 0;
         }
         if (length) {
             memcpy(text + used, property + i, length);
-            used += length; i += length;
+            used += length;
+            i += length;
         } else {
-            text[used++] = '\\'; text[used++] = 'x';
-            text[used++] = digits[c >> 4]; text[used++] = digits[c & 15U];
+            text[used++] = '\\';
+            text[used++] = 'x';
+            text[used++] = digits[c >> 4];
+            text[used++] = digits[c & 15U];
             ++i;
         }
     }
@@ -1564,12 +1575,14 @@ static char *retrieval_display(const char *property) {
     return text;
 }
 
-static void retrieval_fail(password_retrieval *retrieval, int reason) {
+static void retrieval_fail(password_retrieval *retrieval, int reason)
+{
     retrieval->failed = reason;
     xx_pd_stop(&retrieval->progress);
 }
 
-static void retrieval_log(void *user, bool error, const char *line) {
+static void retrieval_log(void *user, bool error, const char *line)
+{
     password_retrieval *retrieval = (password_retrieval *)user;
     if (!error) return;
     if (retrieval->output) {
@@ -1578,7 +1591,8 @@ static void retrieval_log(void *user, bool error, const char *line) {
     } else if (console_line(stderr, line) < 0) retrieval_fail(retrieval, 2);
 }
 
-static void retrieval_entry(void *user, const xfu_entry *entry) {
+static void retrieval_entry(void *user, const xfu_entry *entry)
+{
     password_retrieval *retrieval = (password_retrieval *)user;
     const char *property = NULL;
     char *raw, *display;
@@ -1596,24 +1610,39 @@ static void retrieval_entry(void *user, const xfu_entry *entry) {
             property = entry->properties[i].value;
             break;
         }
-    if (!property) { retrieval_fail(retrieval, 3); return; }
+    if (!property) {
+        retrieval_fail(retrieval, 3);
+        return;
+    }
     size = strlen(entry->embedded_password);
-    if (size == SIZE_MAX) { retrieval_fail(retrieval, 1); return; }
+    if (size == SIZE_MAX) {
+        retrieval_fail(retrieval, 1);
+        return;
+    }
     raw = (char *)malloc(size + 1U);
     if (raw) memcpy(raw, entry->embedded_password, size + 1U);
     display = retrieval_display(property);
     if (!raw || !display) {
-        wipe_password(raw); wipe_password(display); retrieval_fail(retrieval, 1); return;
+        wipe_password(raw);
+        wipe_password(display);
+        retrieval_fail(retrieval, 1);
+        return;
     }
     if (retrieval->count == retrieval->capacity) {
         size_t capacity = retrieval->capacity ? retrieval->capacity * 2U : 4U;
         password_group *grown;
         if (capacity < retrieval->capacity || capacity > SIZE_MAX / sizeof(*grown)) {
-            wipe_password(raw); wipe_password(display); retrieval_fail(retrieval, 1); return;
+            wipe_password(raw);
+            wipe_password(display);
+            retrieval_fail(retrieval, 1);
+            return;
         }
         grown = (password_group *)realloc(retrieval->groups, capacity * sizeof(*grown));
         if (!grown) {
-            wipe_password(raw); wipe_password(display); retrieval_fail(retrieval, 1); return;
+            wipe_password(raw);
+            wipe_password(display);
+            retrieval_fail(retrieval, 1);
+            return;
         }
         retrieval->groups = grown;
         retrieval->capacity = capacity;
@@ -1623,13 +1652,14 @@ static void retrieval_entry(void *user, const xfu_entry *entry) {
     retrieval->groups[retrieval->count++].members = 1;
 }
 
-static int retrieval_result(password_retrieval *retrieval, int status) {
+static int retrieval_result(password_retrieval *retrieval, int status)
+{
     size_t i;
     if (!retrieval->output && (fflush(stderr) == EOF || ferror(stderr))) return 2;
     if (retrieval->failed) {
-        const char *message = retrieval->failed == 1 ?
-            "cannot allocate recovered password summary" : retrieval->failed == 2 ?
-            "cannot write password diagnostics" : "recovered password display is unavailable";
+        const char *message = retrieval->failed == 1   ? "cannot allocate recovered password summary"
+                              : retrieval->failed == 2 ? "cannot write password diagnostics"
+                                                       : "recovered password display is unavailable";
         if (retrieval->output) structured_message(retrieval->output, true, message);
         else fprintf(stderr, "%s\n", message);
         return 2;
@@ -1640,27 +1670,21 @@ static int retrieval_result(password_retrieval *retrieval, int status) {
             structured_report(retrieval->output, "password", "No embedded password found.");
             return 1;
         }
-        if (fputs("No embedded password found.\n", stdout) == EOF ||
-            fflush(stdout) == EOF || ferror(stdout)) return 2;
+        if (fputs("No embedded password found.\n", stdout) == EOF || fflush(stdout) == EOF || ferror(stdout)) return 2;
         return 1;
     }
     if (retrieval->output) {
-        for (i = 0; i < retrieval->count; ++i)
-            structured_password(retrieval->output, retrieval->groups[i].display,
-                                retrieval->groups[i].members);
+        for (i = 0; i < retrieval->count; ++i) structured_password(retrieval->output, retrieval->groups[i].display, retrieval->groups[i].members);
         return retrieval->output->output_failed ? 2 : 0;
     }
     for (i = 0; i < retrieval->count; ++i) {
-        if ((i && fputc('\n', stdout) == EOF) ||
-            fprintf(stdout, "Password: %s\nMembers: %zu\n",
-                    retrieval->groups[i].display, retrieval->groups[i].members) < 0)
+        if ((i && fputc('\n', stdout) == EOF) || fprintf(stdout, "Password: %s\nMembers: %zu\n", retrieval->groups[i].display, retrieval->groups[i].members) < 0)
             return 2;
     }
     return fflush(stdout) == EOF || ferror(stdout) ? 2 : 0;
 }
 
-static int show_supported_types(const xx_archive_console_config *config,
-                                int argc, char **argv, output_format initial_format)
+static int show_supported_types(const xx_archive_console_config *config, int argc, char **argv, output_format initial_format)
 {
     char *text, *rows;
     int i, color = 0, ansi = 0, mode = 0, result;
@@ -1678,10 +1702,16 @@ static int show_supported_types(const xx_archive_console_config *config,
         if (!strcmp(argv[i], "--color=auto")) mode = 0;
         else if (!strcmp(argv[i], "--color=always")) mode = 1;
         else if (!strcmp(argv[i], "--color=never")) mode = 2;
-        else { console_error_argument("unexpected argument: ", argv[i], ""); return 2; }
+        else {
+            console_error_argument("unexpected argument: ", argv[i], "");
+            return 2;
+        }
     }
     text = profile_supported_types(config);
-    if (!text) { fprintf(stderr, "cannot allocate supported file type list\n"); return 2; }
+    if (!text) {
+        fprintf(stderr, "cannot allocate supported file type list\n");
+        return 2;
+    }
     if (format != OUTPUT_TEXT) {
         structured_output document = {0};
         document.format = format;
@@ -1705,13 +1735,19 @@ static int show_supported_types(const xx_archive_console_config *config,
     if (rows) rows += strlen("   ID  File type\n");
     if (color && ansi) fputs("\033[1;36m", stdout);
 #ifdef _WIN32
-    if (color && !ansi) { fflush(stdout); SetConsoleTextAttribute(output, FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY); }
+    if (color && !ansi) {
+        fflush(stdout);
+        SetConsoleTextAttribute(output, FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+    }
 #endif
     if (rows) {
         fwrite(text, 1, (size_t)(rows - text), stdout);
         if (color && ansi) fputs("\033[0;32m", stdout);
 #ifdef _WIN32
-        if (color && !ansi) { fflush(stdout); SetConsoleTextAttribute(output, FOREGROUND_GREEN | FOREGROUND_INTENSITY); }
+        if (color && !ansi) {
+            fflush(stdout);
+            SetConsoleTextAttribute(output, FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+        }
 #endif
         fputs(rows, stdout);
     } else fputs(text, stdout);
@@ -1728,9 +1764,8 @@ static int show_supported_types(const xx_archive_console_config *config,
     return result;
 }
 
-static int show_report(const xx_archive_console_config *config,
-                       output_format format, const char *command,
-                       const char *kind, const char *text) {
+static int show_report(const xx_archive_console_config *config, output_format format, const char *command, const char *kind, const char *text)
+{
     if (format == OUTPUT_TEXT) {
         if (fputs(text, stdout) == EOF || fflush(stdout) == EOF || ferror(stdout)) return 2;
         return 0;
@@ -1744,7 +1779,8 @@ static int show_report(const xx_archive_console_config *config,
     }
 }
 
-static int show_raw_profiles(const xx_archive_console_config *config, output_format format) {
+static int show_raw_profiles(const xx_archive_console_config *config, output_format format)
+{
 #if XFU_FORMAT_SUPPORT_FULL
     size_t index;
 #endif
@@ -1752,9 +1788,8 @@ static int show_raw_profiles(const xx_archive_console_config *config, output_for
 #if XFU_FORMAT_SUPPORT_FULL
         for (index = 0; config->format == XX_ARCHIVE_CONSOLE_ALL && index < xx_hxc_raw_floppy_profile_count(); ++index) {
             const xx_hxc_raw_profile *profile = xx_hxc_raw_floppy_profile_at(index);
-            printf("hxc-raw:%s\t%llu bytes\t%u cylinders\t%u heads\n", profile->name,
-                   (unsigned long long)profile->source_size,
-                   (unsigned)profile->tracks, (unsigned)profile->sides);
+            printf("hxc-raw:%s\t%llu bytes\t%u cylinders\t%u heads\n", profile->name, (unsigned long long)profile->source_size, (unsigned)profile->tracks,
+                   (unsigned)profile->sides);
         }
 #endif
         return ferror(stdout) ? 2 : 0;
@@ -1768,18 +1803,15 @@ static int show_raw_profiles(const xx_archive_console_config *config, output_for
             const xx_hxc_raw_profile *profile = xx_hxc_raw_floppy_profile_at(index);
             if (structured_event_prefix(&document) < 0) break;
             if (format == OUTPUT_JSON) {
-                if (fputs("\"type\":\"raw-profile\",\"name\":", stdout) == EOF ||
-                    json_string(stdout, profile->name) < 0 ||
-                    fprintf(stdout, ",\"source_size\":%llu,"
-                                    "\"cylinders\":%u,\"heads\":%u}",
-                            (unsigned long long)profile->source_size,
-                            (unsigned)profile->tracks, (unsigned)profile->sides) < 0)
+                if (fputs("\"type\":\"raw-profile\",\"name\":", stdout) == EOF || json_string(stdout, profile->name) < 0 ||
+                    fprintf(stdout,
+                            ",\"source_size\":%llu,"
+                            "\"cylinders\":%u,\"heads\":%u}",
+                            (unsigned long long)profile->source_size, (unsigned)profile->tracks, (unsigned)profile->sides) < 0)
                     document.output_failed = true;
-            } else if (fputs("    <raw-profile name=\"", stdout) == EOF ||
-                       xml_string(stdout, profile->name) < 0 ||
-                       fprintf(stdout, "\" source_size=\"%llu\" cylinders=\"%u\" heads=\"%u\"/>\n",
-                               (unsigned long long)profile->source_size,
-                               (unsigned)profile->tracks, (unsigned)profile->sides) < 0)
+            } else if (fputs("    <raw-profile name=\"", stdout) == EOF || xml_string(stdout, profile->name) < 0 ||
+                       fprintf(stdout, "\" source_size=\"%llu\" cylinders=\"%u\" heads=\"%u\"/>\n", (unsigned long long)profile->source_size, (unsigned)profile->tracks,
+                               (unsigned)profile->sides) < 0)
                 document.output_failed = true;
         }
 #endif
@@ -1787,8 +1819,8 @@ static int show_raw_profiles(const xx_archive_console_config *config, output_for
     }
 }
 
-static int run_cli_arguments(const xx_archive_console_config *config,
-                             int argc, char **argv, output_format initial_output) {
+static int run_cli_arguments(const xx_archive_console_config *config, int argc, char **argv, output_format initial_output)
+{
     xfu_request request = {0};
     const char **files = NULL;
     bool literal_files = false;
@@ -1807,7 +1839,10 @@ static int run_cli_arguments(const xx_archive_console_config *config,
         for (i = 2; i < argc; ++i) {
             int consumed = consume_output_option(argv[i], &output);
             if (consumed < 0) return 2;
-            if (!consumed) { fprintf(stderr, "--version takes no arguments except --json or --xml\n"); return 2; }
+            if (!consumed) {
+                fprintf(stderr, "--version takes no arguments except --json or --xml\n");
+                return 2;
+            }
         }
         if (output == OUTPUT_TEXT) {
             printf("%s %s\n", config->application_name, config->application_version);
@@ -1817,17 +1852,22 @@ static int run_cli_arguments(const xx_archive_console_config *config,
         structured_begin(config, &document, "version", NULL);
         return structured_end(&document, 0);
     }
-    if (argc >= 2 && (!strcmp(argv[1], "--formats") || !strcmp(argv[1], "i")))
-        return show_supported_types(config, argc, argv, output);
+    if (argc >= 2 && (!strcmp(argv[1], "--formats") || !strcmp(argv[1], "i"))) return show_supported_types(config, argc, argv, output);
     if (argc >= 2 && !strcmp(argv[1], "--capabilities")) {
         char *capabilities;
         for (i = 2; i < argc; ++i) {
             int consumed = consume_output_option(argv[i], &output);
             if (consumed < 0) return 2;
-            if (!consumed) { fprintf(stderr, "--capabilities takes no arguments except --json or --xml\n"); return 2; }
+            if (!consumed) {
+                fprintf(stderr, "--capabilities takes no arguments except --json or --xml\n");
+                return 2;
+            }
         }
         capabilities = profile_capabilities(config);
-        if (!capabilities) { fprintf(stderr, "cannot allocate capability list\n"); return 2; }
+        if (!capabilities) {
+            fprintf(stderr, "cannot allocate capability list\n");
+            return 2;
+        }
         result = show_report(config, output, "capabilities", "capabilities", capabilities);
         free(capabilities);
         return result;
@@ -1836,7 +1876,10 @@ static int run_cli_arguments(const xx_archive_console_config *config,
         for (i = 2; i < argc; ++i) {
             int consumed = consume_output_option(argv[i], &output);
             if (consumed < 0) return 2;
-            if (!consumed) { fprintf(stderr, "--raw-profiles takes no arguments except --json or --xml\n"); return 2; }
+            if (!consumed) {
+                fprintf(stderr, "--raw-profiles takes no arguments except --json or --xml\n");
+                return 2;
+            }
         }
         return show_raw_profiles(config, output);
     }
@@ -1844,16 +1887,16 @@ static int run_cli_arguments(const xx_archive_console_config *config,
         for (i = 2; i < argc; ++i) {
             int consumed = consume_output_option(argv[i], &output);
             if (consumed < 0) return 2;
-            if (!consumed) { fprintf(stderr, "--defaultoptions takes no arguments except --json or --xml\n"); return 2; }
+            if (!consumed) {
+                fprintf(stderr, "--defaultoptions takes no arguments except --json or --xml\n");
+                return 2;
+            }
         }
         return show_default_options(config, output);
     }
 
-    if (argc == 1 || (argc == 2 &&
-        (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0))) {
-        if (output != OUTPUT_TEXT)
-            return show_report(config, output, "help", "usage",
-                               "<command> <archive> [arguments]; use --help for text details");
+    if (argc == 1 || (argc == 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0))) {
+        if (output != OUTPUT_TEXT) return show_report(config, output, "help", "usage", "<command> <archive> [arguments]; use --help for text details");
         usage(config, stdout, argv[0]);
         return 0;
     }
@@ -1861,8 +1904,7 @@ static int run_cli_arguments(const xx_archive_console_config *config,
         usage(config, stderr, argv[0]);
         return 2;
     }
-    get_password = !strcmp(argv[1], "--get-password") ||
-                   !strcmp(argv[1], "p") || !strcmp(argv[1], "P");
+    get_password = !strcmp(argv[1], "--get-password") || !strcmp(argv[1], "p") || !strcmp(argv[1], "P");
     request.command = get_password ? XFU_COMMAND_LIST : xfu_parse_command(argv[1]);
     if (request.command == XFU_COMMAND_NONE) {
         console_error_argument("unknown command: ", argv[1], "\n");
@@ -1887,7 +1929,10 @@ static int run_cli_arguments(const xx_archive_console_config *config,
         char *value = NULL;
         bool ok = true;
         int output_option = !literal_files ? consume_output_option(argv[i], &output) : 0;
-        if (output_option < 0) { result = 2; goto cleanup; }
+        if (output_option < 0) {
+            result = 2;
+            goto cleanup;
+        }
         if (output_option > 0) continue;
         if (!literal_files && strncmp(argv[i], "-p", 2) == 0) {
             ok = option_set(&options, OPTION_PASSWORD, "-p", argv[i] + 2, false);
@@ -1904,24 +1949,18 @@ static int run_cli_arguments(const xx_archive_console_config *config,
                 ok = false;
             } else ok = options_apply(&options, value);
         } else if (request.command == XFU_COMMAND_ADD) {
-            if (!literal_files && long_option(argv, argc, &i, "--format", &value))
-                ok = option_set(&options, OPTION_FORMAT, "--format", value, false);
-            else if (!literal_files && long_option(argv, argc, &i, "--filter", &value))
-                ok = option_set(&options, OPTION_FILTER, "--filter", value, false);
-            else if (!literal_files && long_option(argv, argc, &i, "--compression", &value))
-                ok = option_set(&options, OPTION_COMPRESSION, "--compression", value, false);
+            if (!literal_files && long_option(argv, argc, &i, "--format", &value)) ok = option_set(&options, OPTION_FORMAT, "--format", value, false);
+            else if (!literal_files && long_option(argv, argc, &i, "--filter", &value)) ok = option_set(&options, OPTION_FILTER, "--filter", value, false);
+            else if (!literal_files && long_option(argv, argc, &i, "--compression", &value)) ok = option_set(&options, OPTION_COMPRESSION, "--compression", value, false);
             else if (!literal_files && long_option(argv, argc, &i, "--compression-level", &value))
                 ok = option_set(&options, OPTION_LEVEL, "--compression-level", value, false);
-            else if (!literal_files && long_option(argv, argc, &i, "--volume-size", &value))
-                ok = option_set(&options, OPTION_VOLUME_SIZE, "--volume-size", value, false);
-            else if (!literal_files && strcmp(argv[i], "--") == 0)
-                literal_files = true;
+            else if (!literal_files && long_option(argv, argc, &i, "--volume-size", &value)) ok = option_set(&options, OPTION_VOLUME_SIZE, "--volume-size", value, false);
+            else if (!literal_files && strcmp(argv[i], "--") == 0) literal_files = true;
             else if (!literal_files && argv[i][0] == '-') {
                 console_error_argument("unknown option: ", argv[i], "");
                 ok = false;
             } else files[request.file_count++] = argv[i];
-        } else if (request.command == XFU_COMMAND_TEST &&
-                   (!strcmp(argv[i], "--verbose") || !strcmp(argv[i], "-v"))) {
+        } else if (request.command == XFU_COMMAND_TEST && (!strcmp(argv[i], "--verbose") || !strcmp(argv[i], "-v"))) {
             if (verbose_test) {
                 fprintf(stderr, "verbose testing specified more than once\n");
                 ok = false;
@@ -1931,15 +1970,14 @@ static int run_cli_arguments(const xx_archive_console_config *config,
             ok = option_set(&options, OPTION_READER, "--reader", value, false);
         } else if (!strcmp(argv[i], "--get-password")) {
             if (request.command != XFU_COMMAND_LIST || get_password || advanced_listing) {
-                fprintf(stderr, "%s\n", request.command != XFU_COMMAND_LIST ?
-                        "--get-password requires l or p" : get_password ?
-                        "password retrieval specified more than once" :
-                        "--get-password cannot be combined with --advanced or -slt");
+                fprintf(stderr, "%s\n",
+                        request.command != XFU_COMMAND_LIST ? "--get-password requires l or p"
+                        : get_password                      ? "password retrieval specified more than once"
+                                                            : "--get-password cannot be combined with --advanced or -slt");
                 ok = false;
             }
             get_password = true;
-        } else if (request.command == XFU_COMMAND_LIST &&
-                   (!strcmp(argv[i], "--advanced") || !strcmp(argv[i], "-slt"))) {
+        } else if (request.command == XFU_COMMAND_LIST && (!strcmp(argv[i], "--advanced") || !strcmp(argv[i], "-slt"))) {
             if (get_password) {
                 fprintf(stderr, "--get-password cannot be combined with --advanced or -slt\n");
                 ok = false;
@@ -1951,34 +1989,31 @@ static int run_cli_arguments(const xx_archive_console_config *config,
         } else if (request.command == XFU_COMMAND_EXTRACT && !strcmp(argv[i], "--force")) {
             /* Salvage; repeating it is harmless. See xfu_request.force. */
             request.force = true;
-        } else if (request.command == XFU_COMMAND_EXTRACT &&
-                   strncmp(argv[i], "-o", 2) == 0) {
+        } else if (request.command == XFU_COMMAND_EXTRACT && strncmp(argv[i], "-o", 2) == 0) {
             ok = option_set(&options, OPTION_OUTPUT, "-o", argv[i] + 2, false);
         } else {
             console_error_argument(argv[i][0] == '-' ? "unknown option: " : "unexpected argument: ", argv[i], "");
             ok = false;
         }
-        if (!ok) { result = 2; goto cleanup; }
+        if (!ok) {
+            result = 2;
+            goto cleanup;
+        }
     }
     if (options.passthrough) request.archive_options = options.passthrough;
-    if (output != OUTPUT_TEXT && request.command == XFU_COMMAND_ADD &&
-        console_names_stdout(request.archive_path)) {
+    if (output != OUTPUT_TEXT && request.command == XFU_COMMAND_ADD && console_names_stdout(request.archive_path)) {
         fprintf(stderr, "--json and --xml cannot be used when the archive is written to standard output\n");
         result = 2;
         goto cleanup;
     }
     if (output != OUTPUT_TEXT) {
         document.format = output;
-        structured_begin(config, &document, get_password ? "password" : command_name(request.command),
-                         request.archive_path);
+        structured_begin(config, &document, get_password ? "password" : command_name(request.command), request.archive_path);
         request.callbacks.user = &document;
         request.callbacks.log = structured_log;
         request.callbacks.encryption = structured_encryption;
-        if (!get_password && (request.command == XFU_COMMAND_LIST ||
-                              request.command == XFU_COMMAND_EXTRACT))
-            request.callbacks.entry = structured_list_entry;
-        if (!get_password && request.command == XFU_COMMAND_TEST)
-            request.callbacks.test_result = structured_test_result;
+        if (!get_password && (request.command == XFU_COMMAND_LIST || request.command == XFU_COMMAND_EXTRACT)) request.callbacks.entry = structured_list_entry;
+        if (!get_password && request.command == XFU_COMMAND_TEST) request.callbacks.test_result = structured_test_result;
     } else if (advanced_listing) {
         request.callbacks.entry = console_advanced_entry;
     }
@@ -2006,8 +2041,7 @@ static int run_cli_arguments(const xx_archive_console_config *config,
     if (get_password) result = retrieval_result(&retrieval, result);
     else if (request.command == XFU_COMMAND_TEST && output == OUTPUT_TEXT) {
         test_finish_line(&test);
-        if (fflush(stdout) == EOF || fflush(stderr) == EOF ||
-            ferror(stdout) || ferror(stderr)) test_output_failed(&test);
+        if (fflush(stdout) == EOF || fflush(stderr) == EOF || ferror(stdout) || ferror(stderr)) test_output_failed(&test);
         if (test.output_failed) result = 2;
     }
     if (output != OUTPUT_TEXT) result = structured_end(&document, result);
@@ -2019,7 +2053,8 @@ cleanup:
     return result;
 }
 
-static int run_cli(const xx_archive_console_config *config, int argc, char **argv) {
+static int run_cli(const xx_archive_console_config *config, int argc, char **argv)
+{
     output_format output = OUTPUT_TEXT;
     int first = 1, destination = 1, result;
     char **arguments;
@@ -2047,11 +2082,11 @@ static int run_cli(const xx_archive_console_config *config, int argc, char **arg
     return result;
 }
 
-int xx_archive_console_main(int argc, char **argv,
-                            const xx_archive_console_config *config) {
-    if (!config || !config->application_name || !config->application_version ||
-        config->format < XX_ARCHIVE_CONSOLE_ALL || config->format >= XX_ARCHIVE_CONSOLE_COUNT ||
-        argc < 1 || !argv || !argv[0]) return 2;
+int xx_archive_console_main(int argc, char **argv, const xx_archive_console_config *config)
+{
+    if (!config || !config->application_name || !config->application_version || config->format < XX_ARCHIVE_CONSOLE_ALL || config->format >= XX_ARCHIVE_CONSOLE_COUNT ||
+        argc < 1 || !argv || !argv[0])
+        return 2;
     if (!profile_compiled(config->format)) return 2;
     console_log_to_stderr = false;
 #ifdef SIGXFSZ

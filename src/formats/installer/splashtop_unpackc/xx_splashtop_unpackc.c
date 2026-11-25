@@ -61,7 +61,8 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
         }
         size = xx_data_get_u64(record + 8, 8, 0, false);
         cumulative = xx_data_get_u64(record + 16, 8, 0, false);
-        if (magic != SU_MAGIC || ++count > SU_MAX_FILES || size > (uint64_t)(available - at - (int64_t)SU_RECORD) || cumulative != total + size || !su_name_ok(record + 24))
+        if (magic != SU_MAGIC || ++count > SU_MAX_FILES || size > (uint64_t)(available - at - (int64_t)SU_RECORD) || cumulative != total + size ||
+            !su_name_ok(record + 24))
             return false;
         total += size;
         at += (int64_t)SU_RECORD;

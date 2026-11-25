@@ -8,17 +8,23 @@
 /* No physical signature: detection keeps the outer PE/NE/MSDOS identity. */
 static bool xx_overlay_no_physical_signature(xx_io_device *device, int64_t base, bool mapped)
 {
-    (void)device; (void)base; (void)mapped;
+    (void)device;
+    (void)base;
+    (void)mapped;
     return false;
 }
 static xx_file_type_t xx_overlay_reader_type(xx_io_device *device, int64_t base, bool mapped)
 {
-    (void)device; (void)base; (void)mapped;
+    (void)device;
+    (void)base;
+    (void)mapped;
     return XX_FILE_TYPE_EXECUTABLE_OVERLAY;
 }
 static int xx_overlay_structural_signature(xx_io_device *device, int64_t base, bool mapped)
 {
-    (void)device; (void)base; (void)mapped;
+    (void)device;
+    (void)base;
+    (void)mapped;
     return -1;
 }
 static Abstractformat *xx_overlay_open(xx_io_device *device)
@@ -30,9 +36,7 @@ static void xx_overlay_close(Abstractformat *format)
     xx_executable_overlay_free((xx_executable_overlay *)format);
 }
 static const xx_file_type_t xx_overlay_types[] = {XX_FILE_TYPE_EXECUTABLE_OVERLAY};
-static const xx_format_search_desc xx_overlay_desc = {
-    xx_overlay_types, 1, NULL, 0, xx_overlay_open, xx_overlay_close, true
-};
+static const xx_format_search_desc xx_overlay_desc = {xx_overlay_types, 1, NULL, 0, xx_overlay_open, xx_overlay_close, true};
 static int64_t xx_overlay_size(xx_io_device *device, int64_t base, bool mapped)
 {
     return xx_format_search_size(&xx_overlay_desc, device, base, mapped);
@@ -88,26 +92,21 @@ xx_format_extractor xx_executable_overlay_extractor = {xx_overlay_legacy_create,
 
 Abstractextractor *xx_executable_overlay_get_abstract_extractor(void)
 {
-    static Abstractextractor descriptor = {
-        .fast_detect = xx_overlay_no_physical_signature,
-        .size = xx_overlay_size,
-        .create_format_search = xx_overlay_search,
-        .get_current_format_info = xx_overlay_current,
-        .format_search_find_next = xx_overlay_next,
-        .free_format_search = xx_overlay_free_search,
-        .file_type = xx_overlay_reader_type,
-        .get_version = xx_overlay_version,
-        .create_reader = xx_overlay_open,
-        .free_reader = xx_overlay_close,
-        .signature = xx_overlay_structural_signature
-    };
+    static Abstractextractor descriptor = {.fast_detect = xx_overlay_no_physical_signature,
+                                           .size = xx_overlay_size,
+                                           .create_format_search = xx_overlay_search,
+                                           .get_current_format_info = xx_overlay_current,
+                                           .format_search_find_next = xx_overlay_next,
+                                           .free_format_search = xx_overlay_free_search,
+                                           .file_type = xx_overlay_reader_type,
+                                           .get_version = xx_overlay_version,
+                                           .create_reader = xx_overlay_open,
+                                           .free_reader = xx_overlay_close,
+                                           .signature = xx_overlay_structural_signature};
     return &descriptor;
 }
 Abstractdetector *xx_executable_overlay_get_abstract_detector(void)
 {
-    static Abstractdetector descriptor = {
-        .fast_detect = xx_overlay_no_physical_signature,
-        .file_type = xx_overlay_reader_type
-    };
+    static Abstractdetector descriptor = {.fast_detect = xx_overlay_no_physical_signature, .file_type = xx_overlay_reader_type};
     return &descriptor;
 }

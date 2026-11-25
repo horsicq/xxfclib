@@ -344,12 +344,10 @@ uint64_t xx_pe_get_number_of_symbols(Abstractformat *format, xx_pd_struct *pd)
 
 const StreamSymbols *xx_pe_get_stream_symbols(void)
 {
-    static const StreamSymbols stream = {
-        .get_number_of_symbols = xx_pe_get_number_of_symbols,
-        .create_symbols_reading = xx_pe_create_symbols_reading,
-        .get_current_symbol = xx_pe_get_current_symbol,
-        .symbol_move_to_next = xx_pe_symbol_move_to_next,
-        .free_symbols_reading = xx_pe_free_symbols_reading
-    };
+    static const StreamSymbols stream = {.get_number_of_symbols = xx_pe_get_number_of_symbols,
+                                         .create_symbols_reading = xx_pe_create_symbols_reading,
+                                         .get_current_symbol = xx_pe_get_current_symbol,
+                                         .symbol_move_to_next = xx_pe_symbol_move_to_next,
+                                         .free_symbols_reading = xx_pe_free_symbols_reading};
     return &stream;
 }

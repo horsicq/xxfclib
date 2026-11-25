@@ -238,14 +238,14 @@ XXFC_API bool xx_data_signature_match_text(const void *data, size_t data_size, i
  * Return its first matching offset, or -1. A negative length searches to the
  * end; an oversized range is clamped. Optional pd enables cancellation. */
 XXFC_API int64_t xx_data_signature_find(const void *data, size_t data_size, int64_t offset, int64_t length, const xx_data_signature *signature,
-                                      const xx_data_sig_context *context, xx_pd_struct *pd);
+                                        const xx_data_sig_context *context, xx_pd_struct *pd);
 
 /** True when any borrowed parsed signature matches the search window.
  * Uses the same bounds and record semantics as xx_data_signature_find().
  * Literal-leading signatures share a pass over the bytes; other signatures
  * retain the general search. An empty list or cancellation returns false. */
-XXFC_API bool xx_data_signature_find_any(const void *data, size_t data_size, int64_t offset, int64_t length, const xx_data_signature *signatures,
-                                       size_t count, const xx_data_sig_context *context, xx_pd_struct *pd);
+XXFC_API bool xx_data_signature_find_any(const void *data, size_t data_size, int64_t offset, int64_t length, const xx_data_signature *signatures, size_t count,
+                                         const xx_data_sig_context *context, xx_pd_struct *pd);
 
 /**
  * @brief Normalise, parse, and search for the first offset that matches.
@@ -270,13 +270,13 @@ XXFC_API bool xx_io_signature_match(xx_io_device *device, int64_t offset, const 
 /** Search caller-owned parsed records using bounded device reads. A literal
  * signature uses the native byte finder. Optional pd enables cancellation;
  * a supported device position is restored. */
-XXFC_API int64_t xx_io_signature_find(xx_io_device *device, int64_t offset, int64_t length, const xx_data_signature *signature,
-                                    const xx_data_sig_context *context, xx_pd_struct *pd);
+XXFC_API int64_t xx_io_signature_find(xx_io_device *device, int64_t offset, int64_t length, const xx_data_signature *signature, const xx_data_sig_context *context,
+                                      xx_pd_struct *pd);
 
 /** Device counterpart to xx_data_signature_find_any(). Uses bounded scratch
  * storage, honours cancellation, and restores a supported device position. */
-XXFC_API bool xx_io_signature_find_any(xx_io_device *device, int64_t offset, int64_t length, const xx_data_signature *signatures,
-                                     size_t count, const xx_data_sig_context *context, xx_pd_struct *pd);
+XXFC_API bool xx_io_signature_find_any(xx_io_device *device, int64_t offset, int64_t length, const xx_data_signature *signatures, size_t count,
+                                       const xx_data_sig_context *context, xx_pd_struct *pd);
 
 /** Parse and search a device without copying its complete contents or
  * allocating a needle-sized overlap buffer. Restores a supported position. */

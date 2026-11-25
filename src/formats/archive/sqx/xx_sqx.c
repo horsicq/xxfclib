@@ -96,7 +96,8 @@ XXFC_API bool xx_sqx_decode_memory(const uint8_t *input, size_t input_size, cons
 
 XXFC_API xx_sqx_decoder *xx_sqx_decoder_create(void);
 XXFC_API void xx_sqx_decoder_free(xx_sqx_decoder *dec);
-XXFC_API bool xx_sqx_decoder_decode(xx_sqx_decoder *dec, const uint8_t *input, size_t input_size, const struct xx_sqx_member *member, uint8_t *output, size_t output_size, size_t *written);
+XXFC_API bool xx_sqx_decoder_decode(xx_sqx_decoder *dec, const uint8_t *input, size_t input_size, const struct xx_sqx_member *member, uint8_t *output, size_t output_size,
+                                    size_t *written);
 
 typedef struct xx_sqx_stream_s {
     xx_sqx_member *items;
@@ -217,7 +218,6 @@ static bool xx_sqx_table_add(xx_sqx_codec_member **table, size_t *count, const x
 static bool xx_sqx_walk(Abstractformat *self, xx_pd_struct *pd, xx_sqx_stream *stream, xx_sqx_codec_member **table, size_t *table_count);
 static xx_sqx_stream *xx_sqx_parse(Abstractformat *self, xx_pd_struct *pd);
 static bool xx_sqx_decode(Abstractformat *self, xx_sqx_stream *stream, const xx_sqx_member *member, uint8_t **out, size_t *out_size, xx_pd_struct *pd);
-
 
 static bool xx_sqx_is_end_type(uint8_t type)
 {

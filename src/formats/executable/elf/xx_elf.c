@@ -4,7 +4,6 @@
 
 #include "xxfclib/formats/executable/elf/xx_elf.h"
 
-
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"

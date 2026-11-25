@@ -225,8 +225,7 @@ static bool sda_detect(const uint8_t *p, uint32_t n, uint32_t *start)
         if (line == 10U && xx_data_get_u32(p + 0x10, 4, 0, false) != UINT32_C(0xFD85F7A9)) return false;
     } else if (link == load + 0x21U) {
         if (xx_rt_memcmp(p + 8, "7198", 4) || p[0x1C] || p[0x1D] || p[0x1E]) return false;
-    } else
-        return false;
+    } else return false;
     *start = (line - 6U) * SDA_SECTOR - (load == 0x1C01U && link == 0x1C0DU && line == 15U ? 1U : 0U);
     return *start != n;
 }
@@ -297,10 +296,8 @@ static bool sda_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
                 else ok = sda_put(&o, b->p[i++], true, size);
             }
             ok = ok && o.state == 0;
-        } else if (method == 2U || method == 4U)
-            ok = sda_huffman(b, &bits, &o, size);
-        else
-            ok = sda_lzw(b, &bits, &o, method == 3U, size, method == 5U);
+        } else if (method == 2U || method == 4U) ok = sda_huffman(b, &bits, &o, size);
+        else ok = sda_lzw(b, &bits, &o, method == 3U, size, method == 5U);
         if (ok && method == 5U) {
             uint32_t used = at + bits.pos - pos;
             sectors = (used + SDA_SECTOR - 1U) / SDA_SECTOR;

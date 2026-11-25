@@ -216,8 +216,10 @@ static bool xx_swag_canonical_footer(const uint8_t footer[XX_SWAG_FOOTER_SIZE])
     for (field = 0U; field < 2U; ++field) {
         size_t start = starts[field], length = footer[start], i;
         if (length == 0U || length > capacities[field]) return false;
-        for (i = 1U; i <= length; ++i) if (footer[start + i] < 32U || footer[start + i] > 126U) return false;
-        for (i = length + 1U; i <= capacities[field]; ++i) if (footer[start + i] != 0U) return false;
+        for (i = 1U; i <= length; ++i)
+            if (footer[start + i] < 32U || footer[start + i] > 126U) return false;
+        for (i = length + 1U; i <= capacities[field]; ++i)
+            if (footer[start + i] != 0U) return false;
     }
     return footer[0] >= sizeof(prefix) - 1U && xx_rt_memcmp(footer + 1U, prefix, sizeof(prefix) - 1U) == 0;
 }
@@ -359,13 +361,16 @@ static xx_swag_stream *xx_swag_parse(Abstractformat *self, xx_pd_struct *pd)
         uint8_t terminal;
         if (!xx_swag_read_at(self, self->base_address + offset, &terminal, 1U)) goto fail;
         if (pd && xx_pd_is_stopped(pd)) goto fail;
-        if (terminal == 0U) { stream->incomplete_tail = false; stream->advisory_footer = true; }
+        if (terminal == 0U) {
+            stream->incomplete_tail = false;
+            stream->advisory_footer = true;
+        }
     }
     if (span - offset == 2 * XX_SWAG_FOOTER_SIZE || span - offset == 2 * XX_SWAG_FOOTER_SIZE + 1) {
         uint8_t duplicate[XX_SWAG_FOOTER_SIZE];
         int64_t footer_at = span - 2 * XX_SWAG_FOOTER_SIZE;
-        if (xx_swag_read_at(self, self->base_address + footer_at, duplicate, sizeof(duplicate)) &&
-            xx_rt_memcmp(duplicate, footer, sizeof(footer)) == 0) stream->duplicate_footer = true;
+        if (xx_swag_read_at(self, self->base_address + footer_at, duplicate, sizeof(duplicate)) && xx_rt_memcmp(duplicate, footer, sizeof(footer)) == 0)
+            stream->duplicate_footer = true;
     }
 
     stream->archive_size = span;
@@ -711,9 +716,10 @@ const xx_archive_record *xx_swag_get_current_archive_record(Abstractformat *self
     stream = (xx_swag_stream *)state->internal_state;
     if (stream && (stream->duplicate_footer || stream->incomplete_tail || stream->advisory_footer) &&
         !xx_archive_record_set_meta_str(&state->current_record, XX_META_ID_COMMENT,
-            stream->advisory_footer ? "SWAG footer counter exceeds physical member count; member checksums remain verified" :
-            stream->duplicate_footer ? "Repeated identical SWAG footer; member checksums remain verified" :
-                                     "Incomplete SWAG tail; only complete checksum-verified members can be extracted")) return NULL;
+                                        stream->advisory_footer    ? "SWAG footer counter exceeds physical member count; member checksums remain verified"
+                                        : stream->duplicate_footer ? "Repeated identical SWAG footer; member checksums remain verified"
+                                                                   : "Incomplete SWAG tail; only complete checksum-verified members can be extracted"))
+        return NULL;
     return &state->current_record;
 }
 

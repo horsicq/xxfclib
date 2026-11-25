@@ -277,8 +277,9 @@ static bool sp_blob(Abstractformat *f, int64_t at, int64_t end, xx_pd_struct *pd
         if (carrier_stop(pd) || end - p < 21 || !pm_read(f, p, h, 21)) return false;
         if (!xx_rt_memcmp(h, "SPIS\x1a", 5)) {
             if (total != declared || h[12] != 1U || xx_data_get_u32(h + 17, 4, 0, false) > 2U ||
-                (xx_rt_memcmp(h + 5, "NON", 3) && xx_rt_memcmp(h + 5, "RLE", 3) && xx_rt_memcmp(h + 5, "LZH", 3) &&
-                 xx_rt_memcmp(h + 5, "CUS", 3) && xx_rt_memcmp(h + 5, "LH5", 3))) return false;
+                (xx_rt_memcmp(h + 5, "NON", 3) && xx_rt_memcmp(h + 5, "RLE", 3) && xx_rt_memcmp(h + 5, "LZH", 3) && xx_rt_memcmp(h + 5, "CUS", 3) &&
+                 xx_rt_memcmp(h + 5, "LH5", 3)))
+                return false;
             declared = xx_data_get_u32(h + 8, 4, 0, false);
             total = 0U;
             p += 21;

@@ -1017,8 +1017,8 @@ bool xx_zstd_decode_stream(const xx_zstd_stream_io *io, uint64_t window_limit, u
                 ++input.position;
             } else {
                 if (block_size == 0U || !xx_zstd_stream_fill(&input, block_size) ||
-                    !xx_zstd_decode_compressed_block(&context, input.data + input.position, block_size, history, capacity, frame_start, &position,
-                                                     window_size, block_limit, NULL))
+                    !xx_zstd_decode_compressed_block(&context, input.data + input.position, block_size, history, capacity, frame_start, &position, window_size,
+                                                     block_limit, NULL))
                     goto done;
                 input.position += block_size;
             }
@@ -1033,9 +1033,7 @@ bool xx_zstd_decode_stream(const xx_zstd_stream_io *io, uint64_t window_limit, u
         }
         if (content_size_bytes != 0U && frame_output != frame_content_size) goto done;
         if (checksum) {
-            if (!xx_zstd_stream_fill(&input, 4U) ||
-                xx_data_get_u32(input.data + input.position, 4, 0, false) != (uint32_t)xx_zstd_xxh64_digest(&hash))
-                goto done;
+            if (!xx_zstd_stream_fill(&input, 4U) || xx_data_get_u32(input.data + input.position, 4, 0, false) != (uint32_t)xx_zstd_xxh64_digest(&hash)) goto done;
             input.position += 4U;
         }
         saw_frame = true;

@@ -23,9 +23,9 @@ static bool rel_span(uint64_t offset, uint64_t size, uint64_t available)
 
 static bool rel_read(const Abstractformat *format, uint64_t available, uint64_t offset, void *data, size_t size)
 {
-    if (!format || !format->device || !data || format->base_address < 0 ||
-        !rel_span(offset, (uint64_t)size, available) || offset > (uint64_t)INT64_MAX ||
-        format->base_address > INT64_MAX - (int64_t)offset) return false;
+    if (!format || !format->device || !data || format->base_address < 0 || !rel_span(offset, (uint64_t)size, available) || offset > (uint64_t)INT64_MAX ||
+        format->base_address > INT64_MAX - (int64_t)offset)
+        return false;
     return xx_io_read_at(format->device, format->base_address + (int64_t)offset, data, size);
 }
 
@@ -66,8 +66,8 @@ static void rel_decode_header(xx_nintendo_rel_header *header, const uint8_t byte
     header->unresolved_offset = xx_data_get_u32(bytes, XX_NINTENDO_REL_HEADER_SIZE, 0x3cU, true);
 }
 
-static bool rel_scan_relocation_table(const Abstractformat *format, uint64_t available, uint32_t table_offset,
-                                      uint32_t section_count, uint32_t *count, uint64_t *end, xx_pd_struct *pd)
+static bool rel_scan_relocation_table(const Abstractformat *format, uint64_t available, uint32_t table_offset, uint32_t section_count, uint32_t *count, uint64_t *end,
+                                      xx_pd_struct *pd)
 {
     uint64_t offset = table_offset;
     uint32_t result = 0U;
@@ -75,8 +75,7 @@ static bool rel_scan_relocation_table(const Abstractformat *format, uint64_t ava
     if (table_offset == 0U || (table_offset & 3U) != 0U) return false;
     for (;;) {
         uint8_t type;
-        if (result >= XX_NINTENDO_REL_MAX_RELOCATIONS || rel_stopped(pd) ||
-            !rel_read(format, available, offset, bytes, sizeof(bytes))) return false;
+        if (result >= XX_NINTENDO_REL_MAX_RELOCATIONS || rel_stopped(pd) || !rel_read(format, available, offset, bytes, sizeof(bytes))) return false;
         type = bytes[2];
         offset += sizeof(bytes);
         if (type == XX_NINTENDO_REL_R_RVL_STOP) {
@@ -121,15 +120,13 @@ static bool rel_fill_relocations(xx_nintendo_rel *reader, uint64_t available, xx
         uint8_t patch_section = UINT8_MAX;
         uint32_t local_index;
         import_entry->first_relocation = output_index;
-        import_entry->resolvable = import_entry->module_id == XX_NINTENDO_REL_MAIN_DOL_MODULE ||
-                                   import_entry->module_id == reader->header.module_id;
+        import_entry->resolvable = import_entry->module_id == XX_NINTENDO_REL_MAIN_DOL_MODULE || import_entry->module_id == reader->header.module_id;
         for (local_index = 0U; local_index < import_entry->relocation_count; ++local_index) {
             xx_nintendo_rel_relocation *relocation;
             uint16_t delta;
             uint8_t type;
             uint8_t section;
-            if (output_index >= reader->relocation_count || rel_stopped(pd) ||
-                !rel_read(&reader->format, available, table_offset, bytes, sizeof(bytes))) return false;
+            if (output_index >= reader->relocation_count || rel_stopped(pd) || !rel_read(&reader->format, available, table_offset, bytes, sizeof(bytes))) return false;
             relocation = &reader->relocations[output_index++];
             delta = xx_data_get_u16(bytes, sizeof(bytes), 0U, true);
             type = bytes[2];
@@ -160,8 +157,7 @@ static bool rel_fill_relocations(xx_nintendo_rel *reader, uint64_t available, xx
                 relocation->patch_address = patch_address;
                 if (relative < source->size) {
                     relocation->patch_address_valid = true;
-                    if (!source->bss && relative <= UINT32_MAX - source->file_offset)
-                        relocation->patch_file_offset = source->file_offset + (uint32_t)relative;
+                    if (!source->bss && relative <= UINT32_MAX - source->file_offset) relocation->patch_file_offset = source->file_offset + (uint32_t)relative;
                 }
             }
             table_offset += sizeof(bytes);
@@ -245,10 +241,9 @@ bool xx_nintendo_rel_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
     available = (uint64_t)(total - self->base_address);
     if (!rel_read(self, available, 0U, header_bytes, sizeof(header_bytes))) return false;
     rel_decode_header(&reader->header, header_bytes);
-    if (reader->header.version > 3U || reader->header.section_count == 0U ||
-        reader->header.section_count > XX_NINTENDO_REL_MAX_SECTIONS ||
-        (reader->header.import_table_size & 7U) != 0U ||
-        reader->header.import_table_size / 8U > XX_NINTENDO_REL_MAX_IMPORTS) return false;
+    if (reader->header.version > 3U || reader->header.section_count == 0U || reader->header.section_count > XX_NINTENDO_REL_MAX_SECTIONS ||
+        (reader->header.import_table_size & 7U) != 0U || reader->header.import_table_size / 8U > XX_NINTENDO_REL_MAX_IMPORTS)
+        return false;
 
     extent = reader->header.version == 3U ? XX_NINTENDO_REL_V3_HEADER_SIZE : XX_NINTENDO_REL_HEADER_SIZE;
     if (reader->header.version == 3U) {
@@ -304,9 +299,9 @@ bool xx_nintendo_rel_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
         if (rel_stopped(pd) || !rel_read(self, available, offset, entry_bytes, sizeof(entry_bytes))) goto fail;
         import_entry->module_id = xx_data_get_u32(entry_bytes, sizeof(entry_bytes), 0U, true);
         import_entry->relocation_table_offset = xx_data_get_u32(entry_bytes, sizeof(entry_bytes), 4U, true);
-        if (!rel_scan_relocation_table(self, available, import_entry->relocation_table_offset,
-                                       reader->section_count, &relocation_counts[index], &relocation_end, pd) ||
-            relocation_counts[index] > XX_NINTENDO_REL_MAX_RELOCATIONS - total_relocations) goto fail;
+        if (!rel_scan_relocation_table(self, available, import_entry->relocation_table_offset, reader->section_count, &relocation_counts[index], &relocation_end, pd) ||
+            relocation_counts[index] > XX_NINTENDO_REL_MAX_RELOCATIONS - total_relocations)
+            goto fail;
         import_entry->relocation_count = relocation_counts[index];
         total_relocations += relocation_counts[index];
         if (relocation_end > extent) extent = relocation_end;
@@ -350,24 +345,25 @@ const xx_nintendo_rel_header *xx_nintendo_rel_get_header(xx_nintendo_rel *reader
 
 const xx_nintendo_rel_section *xx_nintendo_rel_get_section(xx_nintendo_rel *reader, uint32_t index, xx_pd_struct *pd)
 {
-    return reader && (reader->format.base_info_handled || xx_nintendo_rel_handle_base_info(&reader->format, pd)) &&
-                   index < reader->section_count ? &reader->sections[index] : NULL;
+    return reader && (reader->format.base_info_handled || xx_nintendo_rel_handle_base_info(&reader->format, pd)) && index < reader->section_count
+               ? &reader->sections[index]
+               : NULL;
 }
 
 const xx_nintendo_rel_import *xx_nintendo_rel_get_import(xx_nintendo_rel *reader, uint32_t index, xx_pd_struct *pd)
 {
-    return reader && (reader->format.base_info_handled || xx_nintendo_rel_handle_base_info(&reader->format, pd)) &&
-                   index < reader->import_count ? &reader->imports[index] : NULL;
+    return reader && (reader->format.base_info_handled || xx_nintendo_rel_handle_base_info(&reader->format, pd)) && index < reader->import_count ? &reader->imports[index]
+                                                                                                                                                 : NULL;
 }
 
 const xx_nintendo_rel_relocation *xx_nintendo_rel_get_relocation(xx_nintendo_rel *reader, uint32_t index, xx_pd_struct *pd)
 {
-    return reader && (reader->format.base_info_handled || xx_nintendo_rel_handle_base_info(&reader->format, pd)) &&
-                   index < reader->relocation_count ? &reader->relocations[index] : NULL;
+    return reader && (reader->format.base_info_handled || xx_nintendo_rel_handle_base_info(&reader->format, pd)) && index < reader->relocation_count
+               ? &reader->relocations[index]
+               : NULL;
 }
 
-bool xx_nintendo_rel_get_special_symbol_address(xx_nintendo_rel *reader, xx_nintendo_rel_special_symbol symbol,
-                                                uint32_t *address, xx_pd_struct *pd)
+bool xx_nintendo_rel_get_special_symbol_address(xx_nintendo_rel *reader, xx_nintendo_rel_special_symbol symbol, uint32_t *address, xx_pd_struct *pd)
 {
     uint8_t section_index;
     uint32_t offset;
@@ -386,8 +382,7 @@ bool xx_nintendo_rel_get_special_symbol_address(xx_nintendo_rel *reader, xx_nint
             section_index = reader->header.unresolved_section;
             offset = reader->header.unresolved_offset;
             break;
-        default:
-            return false;
+        default: return false;
     }
     if (section_index == 0U || section_index >= reader->section_count) return false;
     section = &reader->sections[section_index];
@@ -409,15 +404,15 @@ static void rel_write_be32(uint8_t *data, uint32_t value)
     data[3] = (uint8_t)value;
 }
 
-bool xx_nintendo_rel_apply_relocations(xx_nintendo_rel *reader, uint8_t *module, size_t module_size,
-                                       xx_nintendo_rel_apply_report *report, xx_pd_struct *pd)
+bool xx_nintendo_rel_apply_relocations(xx_nintendo_rel *reader, uint8_t *module, size_t module_size, xx_nintendo_rel_apply_report *report, xx_pd_struct *pd)
 {
     xx_nintendo_rel_apply_report result;
     uint32_t import_index;
     bool success = true;
     xx_mem_zero(&result, sizeof(result));
-    if (!reader || !module || (!reader->format.base_info_handled && !xx_nintendo_rel_handle_base_info(&reader->format, pd)) ||
-        reader->format.format_size < 0 || (uint64_t)reader->format.format_size > module_size) return false;
+    if (!reader || !module || (!reader->format.base_info_handled && !xx_nintendo_rel_handle_base_info(&reader->format, pd)) || reader->format.format_size < 0 ||
+        (uint64_t)reader->format.format_size > module_size)
+        return false;
     for (import_index = 0U; import_index < reader->import_count; ++import_index) {
         const xx_nintendo_rel_import *import_entry = &reader->imports[import_index];
         uint32_t local_index;
@@ -435,16 +430,15 @@ bool xx_nintendo_rel_apply_relocations(xx_nintendo_rel *reader, uint8_t *module,
             size_t write_size;
             if (rel_stopped(pd)) return false;
             if (relocation->type == XX_NINTENDO_REL_R_RVL_SECT || relocation->type == XX_NINTENDO_REL_R_RVL_NONE) continue;
-            if (!relocation->patch_address_valid || relocation->patch_file_offset == XX_NINTENDO_REL_INVALID_FILE_OFFSET ||
-                relocation->patch_file_offset > module_size || module_size - relocation->patch_file_offset < 4U) {
+            if (!relocation->patch_address_valid || relocation->patch_file_offset == XX_NINTENDO_REL_INVALID_FILE_OFFSET || relocation->patch_file_offset > module_size ||
+                module_size - relocation->patch_file_offset < 4U) {
                 ++result.invalid_relocations;
                 success = false;
                 continue;
             }
             if (import_entry->module_id == XX_NINTENDO_REL_MAIN_DOL_MODULE) {
                 symbol_address = 0U;
-            } else if (relocation->target_section < reader->section_count &&
-                       reader->sections[relocation->target_section].virtual_address != 0U) {
+            } else if (relocation->target_section < reader->section_count && reader->sections[relocation->target_section].virtual_address != 0U) {
                 symbol_address = reader->sections[relocation->target_section].virtual_address;
             } else {
                 ++result.invalid_relocations;
@@ -456,15 +450,10 @@ bool xx_nintendo_rel_apply_relocations(xx_nintendo_rel *reader, uint8_t *module,
             new_value = old_value;
             write_size = 4U;
             switch (relocation->type) {
-                case XX_NINTENDO_REL_R_PPC_ADDR32:
-                    new_value = expression;
-                    break;
-                case XX_NINTENDO_REL_R_PPC_ADDR24:
-                    new_value = (old_value & UINT32_C(0xfc000003)) | (expression & UINT32_C(0x03fffffc));
-                    break;
+                case XX_NINTENDO_REL_R_PPC_ADDR32: new_value = expression; break;
+                case XX_NINTENDO_REL_R_PPC_ADDR24: new_value = (old_value & UINT32_C(0xfc000003)) | (expression & UINT32_C(0x03fffffc)); break;
                 case XX_NINTENDO_REL_R_PPC_REL24:
-                    new_value = (old_value & UINT32_C(0xfc000003)) |
-                                ((expression - relocation->patch_address) & UINT32_C(0x03fffffc));
+                    new_value = (old_value & UINT32_C(0xfc000003)) | ((expression - relocation->patch_address) & UINT32_C(0x03fffffc));
                     break;
                 case XX_NINTENDO_REL_R_PPC_ADDR16_LO:
                     new_value = (expression << 16U) | (old_value & UINT32_C(0x0000ffff));
@@ -475,8 +464,7 @@ bool xx_nintendo_rel_apply_relocations(xx_nintendo_rel *reader, uint8_t *module,
                     write_size = 2U;
                     break;
                 case XX_NINTENDO_REL_R_PPC_ADDR16_HA:
-                    new_value = ((((expression >> 16U) + ((expression & UINT32_C(0x8000)) ? 1U : 0U)) & UINT32_C(0xffff)) << 16U) |
-                                (old_value & UINT32_C(0x0000ffff));
+                    new_value = ((((expression >> 16U) + ((expression & UINT32_C(0x8000)) ? 1U : 0U)) & UINT32_C(0xffff)) << 16U) | (old_value & UINT32_C(0x0000ffff));
                     write_size = 2U;
                     break;
                 default:
@@ -503,7 +491,8 @@ bool xx_nintendo_rel_get_memory_map(Abstractformat *self, xx_memory_map_mode_t m
     uint32_t index;
     uint32_t entry = 0U;
     if (!reader || !output || (mode != XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_SECTIONS) ||
-        (!self->base_info_handled && !xx_nintendo_rel_handle_base_info(self, pd))) return false;
+        (!self->base_info_handled && !xx_nintendo_rel_handle_base_info(self, pd)))
+        return false;
     output->binary_offset = self->base_address;
     output->binary_size = self->format_size;
     output->module_address = reader->load_address;
@@ -516,21 +505,19 @@ bool xx_nintendo_rel_get_memory_map(Abstractformat *self, xx_memory_map_mode_t m
     output->arch = self->arch;
     output->mode = XX_MEMORY_MAP_MODE_SECTIONS;
     output->is_image = true;
-    if (xx_nintendo_rel_get_special_symbol_address(reader, XX_NINTENDO_REL_SYMBOL_PROLOG, &entry, pd))
-        output->entry_point_address = entry;
+    if (xx_nintendo_rel_get_special_symbol_address(reader, XX_NINTENDO_REL_SYMBOL_PROLOG, &entry, pd)) output->entry_point_address = entry;
     for (index = 0U; index < reader->section_count; ++index) {
         const xx_nintendo_rel_section *section = &reader->sections[index];
         char name[32];
         if (section->size == 0U) continue;
         if (section->bss) {
             (void)snprintf(name, sizeof(name), "bss");
-            if (!xx_memory_map_add_part(output, -1, 0, section->virtual_address, section->size,
-                                        XX_FILE_PART_SECTION, (int32_t)index, name, false)) return false;
+            if (!xx_memory_map_add_part(output, -1, 0, section->virtual_address, section->size, XX_FILE_PART_SECTION, (int32_t)index, name, false)) return false;
         } else {
             (void)snprintf(name, sizeof(name), "%s_%u", section->executable ? "text" : "data", index);
-            if (!xx_memory_map_add_part(output, self->base_address + section->file_offset, section->size,
-                                        section->virtual_address, section->size, XX_FILE_PART_SECTION,
-                                        (int32_t)index, name, false)) return false;
+            if (!xx_memory_map_add_part(output, self->base_address + section->file_offset, section->size, section->virtual_address, section->size, XX_FILE_PART_SECTION,
+                                        (int32_t)index, name, false))
+                return false;
         }
     }
     return !rel_stopped(pd) && xx_memory_map_finalize(output);

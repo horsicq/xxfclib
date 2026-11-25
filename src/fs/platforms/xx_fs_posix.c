@@ -95,9 +95,9 @@ bool xx_fs_platform_enumerate(const char *path, xx_fs_platform_entry_fn callback
         /* d_type is an optional extension. Only trust the unambiguous file
          * and directory cases; stat still follows links and handles unknown
          * types, special files and platforms without the extension. */
-#if defined(DT_REG) && defined(DT_DIR) && \
-    (defined(_DIRENT_HAVE_D_TYPE) || defined(__APPLE__) || defined(__FreeBSD__) || \
-     defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__CYGWIN__))
+#if defined(DT_REG) && defined(DT_DIR) &&                                                                                                                   \
+    (defined(_DIRENT_HAVE_D_TYPE) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || \
+     defined(__CYGWIN__))
         if (item->d_type == DT_REG || item->d_type == DT_DIR) {
             is_dir = item->d_type == DT_DIR;
             known_type = true;

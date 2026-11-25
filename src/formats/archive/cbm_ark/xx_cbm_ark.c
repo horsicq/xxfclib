@@ -73,8 +73,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
         size = (int64_t)(blocks - 1U) * AK_BLOCK + (int64_t)(last - 1U);
         /* Only the last member may end inside its final block: some copies
          * were cut right after the last data byte instead of padded. */
-        if (used + (uint64_t)blocks * AK_BLOCK > (uint64_t)(total - data) &&
-            (i + 1U != count || used + (uint64_t)size > (uint64_t)(total - data))) return false;
+        if (used + (uint64_t)blocks * AK_BLOCK > (uint64_t)(total - data) && (i + 1U != count || used + (uint64_t)size > (uint64_t)(total - data))) return false;
         if (!pm_add(f, s, name, data + (int64_t)used, size)) return false;
         m = &s->items[s->count - 1U];
         xx_rt_memcpy(m->name, name, xx_rt_strlen(name) + 1U);

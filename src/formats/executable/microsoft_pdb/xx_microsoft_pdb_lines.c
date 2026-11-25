@@ -97,31 +97,31 @@ static int32_t lines_find_file(const xx_ms_pdb_source_file *files, size_t count,
 const char *xx_ms_pdb_checksum_kind_to_string(uint8_t kind)
 {
     switch (kind) {
-    case XX_MS_PDB_CHECKSUM_NONE: return "None";
-    case XX_MS_PDB_CHECKSUM_MD5: return "MD5";
-    case XX_MS_PDB_CHECKSUM_SHA1: return "SHA1";
-    case XX_MS_PDB_CHECKSUM_SHA256: return "SHA256";
-    default: return "Unknown";
+        case XX_MS_PDB_CHECKSUM_NONE: return "None";
+        case XX_MS_PDB_CHECKSUM_MD5: return "MD5";
+        case XX_MS_PDB_CHECKSUM_SHA1: return "SHA1";
+        case XX_MS_PDB_CHECKSUM_SHA256: return "SHA256";
+        default: return "Unknown";
     }
 }
 
 const char *xx_ms_pdb_debug_subsection_to_string(uint32_t kind)
 {
     switch (kind & 0x7FFFFFFFu) {
-    case 0xF1: return "DEBUG_S_SYMBOLS";
-    case 0xF2: return "DEBUG_S_LINES";
-    case 0xF3: return "DEBUG_S_STRINGTABLE";
-    case 0xF4: return "DEBUG_S_FILECHKSMS";
-    case 0xF5: return "DEBUG_S_FRAMEDATA";
-    case 0xF6: return "DEBUG_S_INLINEELINES";
-    case 0xF7: return "DEBUG_S_CROSSSCOPEIMPORTS";
-    case 0xF8: return "DEBUG_S_CROSSSCOPEEXPORTS";
-    case 0xF9: return "DEBUG_S_IL_LINES";
-    case 0xFA: return "DEBUG_S_FUNC_MDTOKEN_MAP";
-    case 0xFB: return "DEBUG_S_TYPE_MDTOKEN_MAP";
-    case 0xFC: return "DEBUG_S_MERGED_ASSEMBLYINPUT";
-    case 0xFD: return "DEBUG_S_COFF_SYMBOL_RVA";
-    default: return "Unknown";
+        case 0xF1: return "DEBUG_S_SYMBOLS";
+        case 0xF2: return "DEBUG_S_LINES";
+        case 0xF3: return "DEBUG_S_STRINGTABLE";
+        case 0xF4: return "DEBUG_S_FILECHKSMS";
+        case 0xF5: return "DEBUG_S_FRAMEDATA";
+        case 0xF6: return "DEBUG_S_INLINEELINES";
+        case 0xF7: return "DEBUG_S_CROSSSCOPEIMPORTS";
+        case 0xF8: return "DEBUG_S_CROSSSCOPEEXPORTS";
+        case 0xF9: return "DEBUG_S_IL_LINES";
+        case 0xFA: return "DEBUG_S_FUNC_MDTOKEN_MAP";
+        case 0xFB: return "DEBUG_S_TYPE_MDTOKEN_MAP";
+        case 0xFC: return "DEBUG_S_MERGED_ASSEMBLYINPUT";
+        case 0xFD: return "DEBUG_S_COFF_SYMBOL_RVA";
+        default: return "Unknown";
     }
 }
 
@@ -138,10 +138,7 @@ void xx_ms_pdb_module_lines_free(xx_ms_pdb_module_lines *lines)
     memset(lines, 0, sizeof(*lines));
 }
 
-bool xx_ms_pdb_get_module_lines(xx_ms_pdb *pdb, int32_t module_index,
-                                const xx_ms_pdb_names *names,
-                                const xx_ms_pdb_addr_map *map,
-                                xx_ms_pdb_module_lines *out)
+bool xx_ms_pdb_get_module_lines(xx_ms_pdb *pdb, int32_t module_index, const xx_ms_pdb_names *names, const xx_ms_pdb_addr_map *map, xx_ms_pdb_module_lines *out)
 {
     if (!pdb || !out || module_index < 0) {
         return false;
@@ -294,8 +291,7 @@ bool xx_ms_pdb_get_module_lines(xx_ms_pdb *pdb, int32_t module_index,
 
     /* Pass 2: Lines, Inlinees, Others */
     lines_vec lines_v, inlinees_v, others_v;
-    if (!lines_vec_init(&lines_v, sizeof(xx_ms_pdb_line), 64) ||
-        !lines_vec_init(&inlinees_v, sizeof(xx_ms_pdb_inlinee_line), 16) ||
+    if (!lines_vec_init(&lines_v, sizeof(xx_ms_pdb_line), 64) || !lines_vec_init(&inlinees_v, sizeof(xx_ms_pdb_inlinee_line), 16) ||
         !lines_vec_init(&others_v, sizeof(xx_ms_pdb_subsection), 8)) {
         lines_vec_free(&lines_v);
         lines_vec_free(&inlinees_v);
@@ -321,20 +317,20 @@ bool xx_ms_pdb_get_module_lines(xx_ms_pdb *pdb, int32_t module_index,
             if (length >= 12) {
                 uint32_t offCon = lines_read_u32(payload + 0);
                 uint16_t segCon = lines_read_u16(payload + 4);
-                uint16_t flags  = lines_read_u16(payload + 6);
-                uint32_t cbCon  = lines_read_u32(payload + 8);
+                uint16_t flags = lines_read_u16(payload + 6);
+                uint32_t cbCon = lines_read_u32(payload + 8);
 
                 size_t blk_off = 12;
                 while (blk_off + 12 <= (size_t)length) {
                     uint32_t file_id = lines_read_u32(payload + blk_off + 0);
-                    uint32_t nLines  = lines_read_u32(payload + blk_off + 4);
+                    uint32_t nLines = lines_read_u32(payload + blk_off + 4);
                     uint32_t cbBlock = lines_read_u32(payload + blk_off + 8);
 
                     if (nLines > (SIZE_MAX - 12u) / 12u) {
                         break;
                     }
                     size_t line_bytes = (size_t)nLines * 8u;
-                    size_t col_bytes  = (flags & 1) ? ((size_t)nLines * 4u) : 0u;
+                    size_t col_bytes = (flags & 1) ? ((size_t)nLines * 4u) : 0u;
                     size_t min_block_size = 12u + line_bytes + col_bytes;
 
                     if ((size_t)cbBlock < min_block_size || blk_off + (size_t)cbBlock > (size_t)length) {
@@ -343,11 +339,11 @@ bool xx_ms_pdb_get_module_lines(xx_ms_pdb *pdb, int32_t module_index,
 
                     int32_t file_idx = lines_find_file(out->files, out->file_count, file_id, files_sorted);
                     const uint8_t *lines_data = payload + blk_off + 12;
-                    const uint8_t *cols_data  = (flags & 1) ? (lines_data + line_bytes) : NULL;
+                    const uint8_t *cols_data = (flags & 1) ? (lines_data + line_bytes) : NULL;
 
                     for (uint32_t i = 0; i < nLines; ++i) {
                         uint32_t entry_off = lines_read_u32(lines_data + (size_t)i * 8u);
-                        uint32_t bits      = lines_read_u32(lines_data + (size_t)i * 8u + 4);
+                        uint32_t bits = lines_read_u32(lines_data + (size_t)i * 8u + 4);
 
                         xx_ms_pdb_line *ln = (xx_ms_pdb_line *)lines_vec_add(&lines_v);
                         if (!ln) {
@@ -355,8 +351,8 @@ bool xx_ms_pdb_get_module_lines(xx_ms_pdb *pdb, int32_t module_index,
                         }
                         memset(ln, 0, sizeof(*ln));
                         ln->segment = segCon;
-                        ln->offset  = offCon + entry_off;
-                        ln->file    = file_idx;
+                        ln->offset = offCon + entry_off;
+                        ln->file = file_idx;
 
                         if (map) {
                             ln->rva = xx_ms_pdb_addr_map_rva(map, ln->segment, ln->offset);
@@ -371,10 +367,10 @@ bool xx_ms_pdb_get_module_lines(xx_ms_pdb *pdb, int32_t module_index,
                         ln->is_statement = ((bits >> 31) & 1u) != 0;
 
                         if (flags & 1) {
-                            ln->column     = lines_read_u16(cols_data + (size_t)i * 4u);
+                            ln->column = lines_read_u16(cols_data + (size_t)i * 4u);
                             ln->column_end = lines_read_u16(cols_data + (size_t)i * 4u + 2);
                         } else {
-                            ln->column     = 0;
+                            ln->column = 0;
                             ln->column_end = 0;
                         }
 
@@ -405,8 +401,8 @@ bool xx_ms_pdb_get_module_lines(xx_ms_pdb *pdb, int32_t module_index,
                 if (sig == 0) {
                     while (in_off + 12 <= (size_t)length) {
                         uint32_t inlinee_id = lines_read_u32(payload + in_off);
-                        uint32_t file_id    = lines_read_u32(payload + in_off + 4);
-                        uint32_t line_no    = lines_read_u32(payload + in_off + 8);
+                        uint32_t file_id = lines_read_u32(payload + in_off + 4);
+                        uint32_t line_no = lines_read_u32(payload + in_off + 8);
                         in_off += 12;
 
                         xx_ms_pdb_inlinee_line *inl = (xx_ms_pdb_inlinee_line *)lines_vec_add(&inlinees_v);
@@ -423,9 +419,9 @@ bool xx_ms_pdb_get_module_lines(xx_ms_pdb *pdb, int32_t module_index,
                 } else if (sig == 1) {
                     while (in_off + 16 <= (size_t)length) {
                         uint32_t inlinee_id = lines_read_u32(payload + in_off);
-                        uint32_t file_id    = lines_read_u32(payload + in_off + 4);
-                        uint32_t line_no    = lines_read_u32(payload + in_off + 8);
-                        uint32_t extra_cnt  = lines_read_u32(payload + in_off + 12);
+                        uint32_t file_id = lines_read_u32(payload + in_off + 4);
+                        uint32_t line_no = lines_read_u32(payload + in_off + 8);
+                        uint32_t extra_cnt = lines_read_u32(payload + in_off + 12);
 
                         if ((size_t)extra_cnt > ((size_t)length - (in_off + 16)) / 4u) {
                             break;

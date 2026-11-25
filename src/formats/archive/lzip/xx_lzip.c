@@ -84,8 +84,8 @@ static bool xx_lzip_decode_stream(Abstractformat *self, xx_io_device *destinatio
     /* Writing replays the walk the measuring pass chose: a strict attempt
      * that fails part-way would already have written its first members. */
     if ((destination && ((xx_lzip *)self)->lenient_framing) ||
-        !xx_lzip_decode_prefix_device(self->device, self->base_address, input_size, &sink, &decoded_size, &members, &consumed_size, pd) || counter.failed || decoded_size < 0 ||
-        (uint64_t)decoded_size != counter.written || members == 0U) {
+        !xx_lzip_decode_prefix_device(self->device, self->base_address, input_size, &sink, &decoded_size, &members, &consumed_size, pd) || counter.failed ||
+        decoded_size < 0 || (uint64_t)decoded_size != counter.written || members == 0U) {
         /* A stream whose header or trailer fields are damaged but whose data
          * decodes cleanly to the end marker is still published; what was
          * wrong is kept in integrity_issues and shown on the record. */
@@ -152,10 +152,8 @@ static bool xx_lzip_populate_record(Abstractformat *self, xx_archive_record *rec
     record->compressed_size = self->format_size;
     if (archive->integrity_issues != 0U) {
         char note[160];
-        xx_rt_snprintf(note, sizeof(note), "warning: damaged lzip framing:%s%s%s%s%s",
-                       (archive->integrity_issues & XX_LZIP_ISSUE_DICTIONARY) ? " dictionary-size" : "",
-                       (archive->integrity_issues & XX_LZIP_ISSUE_CRC) ? " crc32" : "",
-                       (archive->integrity_issues & XX_LZIP_ISSUE_DATA_SIZE) ? " data-size" : "",
+        xx_rt_snprintf(note, sizeof(note), "warning: damaged lzip framing:%s%s%s%s%s", (archive->integrity_issues & XX_LZIP_ISSUE_DICTIONARY) ? " dictionary-size" : "",
+                       (archive->integrity_issues & XX_LZIP_ISSUE_CRC) ? " crc32" : "", (archive->integrity_issues & XX_LZIP_ISSUE_DATA_SIZE) ? " data-size" : "",
                        (archive->integrity_issues & XX_LZIP_ISSUE_MEMBER_SIZE) ? " member-size" : "",
                        (archive->integrity_issues & XX_LZIP_ISSUE_VERSION0_CHAIN) ? " version-0-in-chain" : "");
         if (!xx_archive_record_set_meta_str(record, XX_META_ID_COMMENT, note)) return false;

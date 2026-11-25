@@ -518,7 +518,6 @@ static uint8_t xx_fat_short_checksum(const uint8_t *short_name)
  * a US system; disks written under another code page get stable but
  * non-native names. */
 
-
 static size_t xx_fat_oem_put(unsigned char ch, char *out)
 {
     if (ch < 0x80U) {
@@ -1789,9 +1788,9 @@ static bool xx_fat_layout(xx_fat_geometry *geometry, const xx_fat_bpb *bpb)
      * Compute the heap from FAT #0 first: selecting a copy never moves data. */
     if (geometry->kind == XX_FAT_KIND_FAT32 && (bpb->extended_flags & 0x80U)) {
         uint32_t active = bpb->extended_flags & 0x0FU;
-        if (active >= geometry->num_fats ||
-            !xx_fat_add(geometry->fat_offset, (uint64_t)active * (uint64_t)geometry->fat_bytes, &geometry->fat_offset) ||
-            !xx_fat_range_within(geometry->total_size, geometry->fat_offset, geometry->fat_bytes)) return false;
+        if (active >= geometry->num_fats || !xx_fat_add(geometry->fat_offset, (uint64_t)active * (uint64_t)geometry->fat_bytes, &geometry->fat_offset) ||
+            !xx_fat_range_within(geometry->total_size, geometry->fat_offset, geometry->fat_bytes))
+            return false;
         geometry->mirroring_disabled = true;
     }
     /* Cluster 2 must exist; the last cluster is bounds-checked per access. */

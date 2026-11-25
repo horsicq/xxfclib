@@ -79,24 +79,17 @@ typedef struct {
 /* vt.net.EnrichedIP.in_range(cidr): `ip` is the struct's `raw` field,
  * parsed like Rust's IpAddr, and `cidr` is parsed like ipnet's IpNet.
  * Unparsable input yields false. */
-XXFC_API bool xx_domain_yx_ip_in_range(const char *ip, size_t ip_length,
-                                       const char *cidr, size_t cidr_length);
+XXFC_API bool xx_domain_yx_ip_in_range(const char *ip, size_t ip_length, const char *cidr, size_t cidr_length);
 
 /* Length of psl::suffix(name), 0 for None. */
-XXFC_API size_t xx_domain_yx_public_suffix_length(const char *name,
-                                                  size_t length);
+XXFC_API size_t xx_domain_yx_public_suffix_length(const char *name, size_t length);
 
-XXFC_API bool xx_domain_yx_parse_domain(const char *name, size_t length,
-                                        xx_domain_yx_parts *parts);
+XXFC_API bool xx_domain_yx_parse_domain(const char *name, size_t length, xx_domain_yx_parts *parts);
 
 /* vt.net.EnrichedDomain.permutation_of(target[, kinds]): `domain` is the
  * struct's `raw` field; `kinds` is a vt.Domain.Permutation bit set
  * (permutation_of(target) uses ALL = 0x1F). */
-XXFC_API bool xx_domain_yx_permutation_of(const char *domain,
-                                          size_t domain_length,
-                                          const char *target,
-                                          size_t target_length,
-                                          int64_t kinds);
+XXFC_API bool xx_domain_yx_permutation_of(const char *domain, size_t domain_length, const char *target, size_t target_length, int64_t kinds);
 
 #ifdef __cplusplus
 }

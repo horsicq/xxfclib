@@ -17,8 +17,6 @@ uint64_t xx_le_get_number_of_resources(Abstractformat *format, xx_pd_struct *pd)
 
 const StreamResources *xx_le_get_stream_resources(void)
 {
-    static const StreamResources stream = {
-        .get_number_of_resources = xx_le_get_number_of_resources
-    };
+    static const StreamResources stream = {.get_number_of_resources = xx_le_get_number_of_resources};
     return &stream;
 }

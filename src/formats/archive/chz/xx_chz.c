@@ -145,8 +145,8 @@ static const xx_archive_record *chz_current(Abstractformat *f, xx_archive_record
     const xx_archive_record *record = pm_current(f, st);
     pm_stream *stream = st ? (pm_stream *)st->internal_state : NULL;
     if (record && stream && stream->size < pm_available(f) &&
-        !xx_archive_record_set_meta_str(&st->current_record, XX_META_ID_COMMENT,
-            "Truncated CHZ tail; only physically complete members are available")) return NULL;
+        !xx_archive_record_set_meta_str(&st->current_record, XX_META_ID_COMMENT, "Truncated CHZ tail; only physically complete members are available"))
+        return NULL;
     return record;
 }
 void xx_chz_init(xx_chz *r, xx_io_device *d, int64_t b)

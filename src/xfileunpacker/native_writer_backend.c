@@ -91,13 +91,25 @@
 #define XFU_NATIVE_FOLDER_DEPTH 256U
 
 typedef enum native_format {
-    NATIVE_UNSUPPORTED = 0, NATIVE_RAW, NATIVE_TAR, NATIVE_CPIO,
-    NATIVE_ZIP, NATIVE_7ZIP, NATIVE_EXTRA, NATIVE_TAR_VARIANT
+    NATIVE_UNSUPPORTED = 0,
+    NATIVE_RAW,
+    NATIVE_TAR,
+    NATIVE_CPIO,
+    NATIVE_ZIP,
+    NATIVE_7ZIP,
+    NATIVE_EXTRA,
+    NATIVE_TAR_VARIANT
 } native_format;
 
 typedef enum native_filter {
-    FILTER_UNSUPPORTED = 0, FILTER_NONE, FILTER_GZIP, FILTER_BZIP2,
-    FILTER_XZ, FILTER_ZSTD, FILTER_LZMA, FILTER_EXTRA
+    FILTER_UNSUPPORTED = 0,
+    FILTER_NONE,
+    FILTER_GZIP,
+    FILTER_BZIP2,
+    FILTER_XZ,
+    FILTER_ZSTD,
+    FILTER_LZMA,
+    FILTER_EXTRA
 } native_filter;
 
 typedef struct native_source {
@@ -107,13 +119,13 @@ typedef struct native_source {
     char *wire_name;
     int64_t size;
     uint64_t mtime;
-    int64_t stamp; /* mtime as the file system gives it: negative before 1970. */
+    int64_t stamp;          /* mtime as the file system gives it: negative before 1970. */
     uint64_t device, inode; /* POSIX file identity; zero elsewhere. */
     uint32_t mode;
     uint32_t uid, gid; /* POSIX owner; zero elsewhere. */
     bool directory;
     bool walked; /* Found in a folder, not named as an input. */
-    bool skip; /* A repeated input (the same file or folder again). */
+    bool skip;   /* A repeated input (the same file or folder again). */
 } native_source;
 
 /* The members to write: the inputs, each folder followed by its contents. */
@@ -127,30 +139,23 @@ typedef struct native_list {
  * UTF-8 path used to open the input file. */
 static char *native_cp437_name(const char *utf8)
 {
-    static const uint16_t high[128] = {
-        0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7,
-        0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5,
-        0x00C9, 0x00E6, 0x00C6, 0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9,
-        0x00FF, 0x00D6, 0x00DC, 0x00A2, 0x00A3, 0x00A5, 0x20A7, 0x0192,
-        0x00E1, 0x00ED, 0x00F3, 0x00FA, 0x00F1, 0x00D1, 0x00AA, 0x00BA,
-        0x00BF, 0x2310, 0x00AC, 0x00BD, 0x00BC, 0x00A1, 0x00AB, 0x00BB,
-        0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556,
-        0x2555, 0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510,
-        0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F,
-        0x255A, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256C, 0x2567,
-        0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B,
-        0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590, 0x2580,
-        0x03B1, 0x00DF, 0x0393, 0x03C0, 0x03A3, 0x03C3, 0x00B5, 0x03C4,
-        0x03A6, 0x0398, 0x03A9, 0x03B4, 0x221E, 0x03C6, 0x03B5, 0x2229,
-        0x2261, 0x00B1, 0x2265, 0x2264, 0x2320, 0x2321, 0x00F7, 0x2248,
-        0x00B0, 0x2219, 0x00B7, 0x221A, 0x207F, 0x00B2, 0x25A0, 0x00A0
-    };
+    static const uint16_t high[128] = {0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7, 0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5,
+                                       0x00C9, 0x00E6, 0x00C6, 0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9, 0x00FF, 0x00D6, 0x00DC, 0x00A2, 0x00A3, 0x00A5, 0x20A7, 0x0192,
+                                       0x00E1, 0x00ED, 0x00F3, 0x00FA, 0x00F1, 0x00D1, 0x00AA, 0x00BA, 0x00BF, 0x2310, 0x00AC, 0x00BD, 0x00BC, 0x00A1, 0x00AB, 0x00BB,
+                                       0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556, 0x2555, 0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510,
+                                       0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F, 0x255A, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256C, 0x2567,
+                                       0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B, 0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590, 0x2580,
+                                       0x03B1, 0x00DF, 0x0393, 0x03C0, 0x03A3, 0x03C3, 0x00B5, 0x03C4, 0x03A6, 0x0398, 0x03A9, 0x03B4, 0x221E, 0x03C6, 0x03B5, 0x2229,
+                                       0x2261, 0x00B1, 0x2265, 0x2264, 0x2320, 0x2321, 0x00F7, 0x2248, 0x00B0, 0x2219, 0x00B7, 0x221A, 0x207F, 0x00B2, 0x25A0, 0x00A0};
     wchar_t *wide = xx_str_utf8_to_unicode(utf8);
     char *encoded;
     size_t i, j = 0U;
     if (!wide) return NULL;
     encoded = (char *)malloc(strlen(utf8) + 1U);
-    if (!encoded) { xx_str_wfree(wide); return NULL; }
+    if (!encoded) {
+        xx_str_wfree(wide);
+        return NULL;
+    }
     for (i = 0U; wide[i]; ++i) {
         unsigned codepoint = (unsigned)wide[i];
         size_t entry;
@@ -158,8 +163,13 @@ static char *native_cp437_name(const char *utf8)
             encoded[j++] = (char)codepoint;
             continue;
         }
-        for (entry = 0U; entry < 128U && high[entry] != codepoint; ++entry) {}
-        if (entry == 128U) { free(encoded); xx_str_wfree(wide); return NULL; }
+        for (entry = 0U; entry < 128U && high[entry] != codepoint; ++entry) {
+        }
+        if (entry == 128U) {
+            free(encoded);
+            xx_str_wfree(wide);
+            return NULL;
+        }
         encoded[j++] = (char)(entry + 0x80U);
     }
     encoded[j] = '\0';
@@ -191,8 +201,7 @@ static void native_log(const xfu_request *request, bool error, const char *forma
 
 static bool native_cancelled(const xfu_request *request, xx_pd_struct *pd)
 {
-    if (request->callbacks.cancelled &&
-        request->callbacks.cancelled(request->callbacks.user)) xx_pd_stop(pd);
+    if (request->callbacks.cancelled && request->callbacks.cancelled(request->callbacks.user)) xx_pd_stop(pd);
     return xx_pd_is_stopped(pd);
 }
 
@@ -215,8 +224,7 @@ static void native_watch_log(void *user, bool error, const char *line)
     watch->callbacks->log(watch->callbacks->user, error, line);
 }
 
-static void native_watch_progress(void *user, uint64_t completed, uint64_t total,
-                                  const char *name)
+static void native_watch_progress(void *user, uint64_t completed, uint64_t total, const char *name)
 {
     const native_watch *watch = (const native_watch *)user;
     watch->callbacks->progress(watch->callbacks->user, completed, total, name);
@@ -279,8 +287,7 @@ void xfu_native_warn(const xfu_request *request, const char *format, ...)
     if (request->callbacks.log == native_watch_log) {
         native_watch *watch = (native_watch *)request->callbacks.user;
         size_t length = strlen(line) + 1U;
-        char *grown = watch->warnings_size <= SIZE_MAX - length ?
-            (char *)realloc(watch->warnings, watch->warnings_size + length) : NULL;
+        char *grown = watch->warnings_size <= SIZE_MAX - length ? (char *)realloc(watch->warnings, watch->warnings_size + length) : NULL;
         if (grown) {
             memcpy(grown + watch->warnings_size, line, length);
             watch->warnings = grown;
@@ -295,7 +302,10 @@ void xfu_native_civil(int64_t seconds, xfu_native_time *civil)
     /* Days to a proleptic Gregorian date (H. Hinnant's civil_from_days). */
     int64_t days = seconds / 86400, rest = seconds % 86400, era, of_era, year_of_era, of_year;
     unsigned month_index;
-    if (rest < 0) { rest += 86400; --days; }
+    if (rest < 0) {
+        rest += 86400;
+        --days;
+    }
     days += 719468;
     era = (days >= 0 ? days : days - 146096) / 146097;
     of_era = days - era * 146097;
@@ -312,41 +322,35 @@ void xfu_native_civil(int64_t seconds, xfu_native_time *civil)
 
 /* "<date>", or "<date> <time>" when the other date of the line is the same
  * day (the times differ then). */
-static void native_time_text(const xfu_native_time *moment, bool same_day, char *text,
-                             size_t size)
+static void native_time_text(const xfu_native_time *moment, bool same_day, char *text, size_t size)
 {
     if (same_day)
-        (void)snprintf(text, size, "%04" PRId64 "-%02u-%02u %02u:%02u:%02u", moment->year,
-                       moment->month, moment->day, moment->hour, moment->minute,
-                       moment->second);
-    else
-        (void)snprintf(text, size, "%04" PRId64 "-%02u-%02u", moment->year, moment->month,
-                       moment->day);
+        (void)snprintf(text, size, "%04" PRId64 "-%02u-%02u %02u:%02u:%02u", moment->year, moment->month, moment->day, moment->hour, moment->minute, moment->second);
+    else (void)snprintf(text, size, "%04" PRId64 "-%02u-%02u", moment->year, moment->month, moment->day);
 }
 
 /* The line of xfu_native_warn_time, for times already in the calendar the
  * format uses (later: the given time is past the format's range). */
-static void native_warn_civil(const xfu_request *request, const char *path, const char *label,
-                              const xfu_native_time *given, const xfu_native_time *instead,
-                              bool later, bool kept)
+static void native_warn_civil(const xfu_request *request, const char *path, const char *label, const xfu_native_time *given, const xfu_native_time *instead, bool later,
+                              bool kept)
 {
     char given_text[64], stored_text[64];
-    bool same_day = kept && given->year == instead->year && given->month == instead->month &&
-        given->day == instead->day;
+    bool same_day = kept && given->year == instead->year && given->month == instead->month && given->day == instead->day;
     native_time_text(given, same_day, given_text, sizeof(given_text));
     if (kept) {
         native_time_text(instead, same_day, stored_text, sizeof(stored_text));
-        xfu_native_warn(request, "%s: its modification time (%s) is %s than %s can store; "
-                        "stored as %s", path, given_text, later ? "later" : "earlier", label,
-                        stored_text);
+        xfu_native_warn(request,
+                        "%s: its modification time (%s) is %s than %s can store; "
+                        "stored as %s",
+                        path, given_text, later ? "later" : "earlier", label, stored_text);
     } else
-        xfu_native_warn(request, "%s: its modification time (%s) is %s than %s can store; "
-                        "stored without one", path, given_text, later ? "later" : "earlier",
-                        label);
+        xfu_native_warn(request,
+                        "%s: its modification time (%s) is %s than %s can store; "
+                        "stored without one",
+                        path, given_text, later ? "later" : "earlier", label);
 }
 
-void xfu_native_warn_time(const xfu_request *request, const char *path, const char *label,
-                          int64_t mtime, int64_t stored, bool kept)
+void xfu_native_warn_time(const xfu_request *request, const char *path, const char *label, int64_t mtime, int64_t stored, bool kept)
 {
     xfu_native_time given, instead;
     xfu_native_civil(mtime, &given);
@@ -448,8 +452,7 @@ static char *native_member_name(const char *path)
 #ifdef _WIN32
     /* "C:" starts a drive's path on Windows only; elsewhere "9:00-notes.txt"
      * and "a:" are names. */
-    bool drive = ((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) &&
-        path[1] == ':';
+    bool drive = ((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) && path[1] == ':';
 #else
     const bool drive = false;
 #endif
@@ -458,9 +461,7 @@ static char *native_member_name(const char *path)
     char *name = (char *)malloc(strlen(path) + 1U);
     if (!name) return NULL;
     for (cursor = path; *cursor; ++cursor)
-        if (*cursor == '.' && cursor[1] == '.' &&
-            (cursor == path || native_separator(cursor[-1])) &&
-            (!cursor[2] || native_separator(cursor[2]))) basename = true;
+        if (*cursor == '.' && cursor[1] == '.' && (cursor == path || native_separator(cursor[-1])) && (!cursor[2] || native_separator(cursor[2]))) basename = true;
     cursor = drive ? path + 2 : path;
     while (*cursor) {
         const char *begin = cursor;
@@ -506,13 +507,11 @@ static bool native_valid_utf8(const char *text)
 {
     const unsigned char *p = (const unsigned char *)text;
     while (*p) {
-        size_t length = *p < 0x80U ? 1U : *p >= 0xC2U && *p <= 0xDFU ? 2U :
-            *p >= 0xE0U && *p <= 0xEFU ? 3U : *p >= 0xF0U && *p <= 0xF4U ? 4U : 0U, i;
+        size_t length = *p < 0x80U ? 1U : *p >= 0xC2U && *p <= 0xDFU ? 2U : *p >= 0xE0U && *p <= 0xEFU ? 3U : *p >= 0xF0U && *p <= 0xF4U ? 4U : 0U, i;
         if (!length) return false;
         for (i = 1U; i < length; ++i)
             if ((p[i] & 0xC0U) != 0x80U) return false;
-        if (length > 1U && ((*p == 0xE0U && p[1] < 0xA0U) || (*p == 0xEDU && p[1] >= 0xA0U) ||
-                            (*p == 0xF0U && p[1] < 0x90U) || (*p == 0xF4U && p[1] >= 0x90U)))
+        if (length > 1U && ((*p == 0xE0U && p[1] < 0xA0U) || (*p == 0xEDU && p[1] >= 0xA0U) || (*p == 0xF0U && p[1] < 0x90U) || (*p == 0xF4U && p[1] >= 0x90U)))
             return false;
         p += length;
     }
@@ -529,8 +528,7 @@ static bool native_name_surrogate(const wchar_t *path)
     HANDLE find = FindFirstFileW(path, &data);
     if (find == INVALID_HANDLE_VALUE) return true;
     FindClose(find);
-    return (data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) &&
-        IsReparseTagNameSurrogate(data.dwReserved0);
+    return (data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) && IsReparseTagNameSurrogate(data.dwReserved0);
 }
 #endif
 
@@ -543,18 +541,28 @@ static bool native_name_surrogate(const wchar_t *path)
 static int native_windows_errno_of(DWORD error)
 {
     switch (error) {
-    case ERROR_FILE_NOT_FOUND: case ERROR_PATH_NOT_FOUND: case ERROR_BAD_NETPATH:
-    case ERROR_BAD_NET_NAME: case ERROR_INVALID_DRIVE: case ERROR_BAD_PATHNAME: return ENOENT;
-    case ERROR_ACCESS_DENIED: case ERROR_SHARING_VIOLATION: case ERROR_LOCK_VIOLATION:
-    case ERROR_NETWORK_ACCESS_DENIED: return EACCES;
-    case ERROR_INVALID_NAME: return EINVAL;
-    case ERROR_DIRECTORY: return ENOTDIR;
-    case ERROR_FILENAME_EXCED_RANGE: case ERROR_BUFFER_OVERFLOW: return ENAMETOOLONG;
-    case ERROR_DISK_FULL: case ERROR_HANDLE_DISK_FULL: return ENOSPC;
-    case ERROR_FILE_EXISTS: case ERROR_ALREADY_EXISTS: return EEXIST;
-    case ERROR_WRITE_PROTECT: return EROFS;
-    case ERROR_NOT_ENOUGH_MEMORY: case ERROR_OUTOFMEMORY: return ENOMEM;
-    default: return 0;
+        case ERROR_FILE_NOT_FOUND:
+        case ERROR_PATH_NOT_FOUND:
+        case ERROR_BAD_NETPATH:
+        case ERROR_BAD_NET_NAME:
+        case ERROR_INVALID_DRIVE:
+        case ERROR_BAD_PATHNAME: return ENOENT;
+        case ERROR_ACCESS_DENIED:
+        case ERROR_SHARING_VIOLATION:
+        case ERROR_LOCK_VIOLATION:
+        case ERROR_NETWORK_ACCESS_DENIED: return EACCES;
+        case ERROR_INVALID_NAME: return EINVAL;
+        case ERROR_DIRECTORY: return ENOTDIR;
+        case ERROR_FILENAME_EXCED_RANGE:
+        case ERROR_BUFFER_OVERFLOW: return ENAMETOOLONG;
+        case ERROR_DISK_FULL:
+        case ERROR_HANDLE_DISK_FULL: return ENOSPC;
+        case ERROR_FILE_EXISTS:
+        case ERROR_ALREADY_EXISTS: return EEXIST;
+        case ERROR_WRITE_PROTECT: return EROFS;
+        case ERROR_NOT_ENOUGH_MEMORY:
+        case ERROR_OUTOFMEMORY: return ENOMEM;
+        default: return 0;
     }
 }
 
@@ -587,8 +595,7 @@ static void native_entry_of(native_entry *entry, const struct stat *info)
  * not store (a link, a device or another special file). */
 static int native_fill_source(native_source *source, const native_entry *entry)
 {
-    if ((!S_ISREG((mode_t)entry->mode) && !S_ISDIR((mode_t)entry->mode)) || entry->size < 0)
-        return 2;
+    if ((!S_ISREG((mode_t)entry->mode) && !S_ISDIR((mode_t)entry->mode)) || entry->size < 0) return 2;
     source->directory = S_ISDIR((mode_t)entry->mode);
     source->size = source->directory ? 0 : entry->size;
     source->mode = entry->mode & 07777U;
@@ -626,11 +633,12 @@ static int native_stat_source(native_source *source, bool follow)
     if (result && (attributes & FILE_ATTRIBUTE_REPARSE_POINT) && native_name_surrogate(wide)) {
         HANDLE handle;
         BY_HANDLE_FILE_INFORMATION target = {0};
-        if (!follow) { xx_str_wfree(wide); return 2; }
+        if (!follow) {
+            xx_str_wfree(wide);
+            return 2;
+        }
         /* Opened through the link: the file or folder it names. */
-        handle = CreateFileW(wide, FILE_READ_ATTRIBUTES,
-                             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                             NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+        handle = CreateFileW(wide, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
         result = handle != INVALID_HANDLE_VALUE && GetFileInformationByHandle(handle, &target);
         if (!result) error = native_windows_errno();
         if (handle != INVALID_HANDLE_VALUE) CloseHandle(handle);
@@ -641,15 +649,16 @@ static int native_stat_source(native_source *source, bool follow)
         }
     }
     xx_str_wfree(wide);
-    if (!result) { errno = error; return 1; }
+    if (!result) {
+        errno = error;
+        return 1;
+    }
     source->directory = (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
     if (!source->directory && size > INT64_MAX) return 2;
     source->size = source->directory ? 0 : (int64_t)size;
-    source->mode = source->directory ? 0755U :
-        ((attributes & FILE_ATTRIBUTE_READONLY) ? 0444U : 0644U);
+    source->mode = source->directory ? 0755U : ((attributes & FILE_ATTRIBUTE_READONLY) ? 0444U : 0644U);
     stamp = ((uint64_t)written.dwHighDateTime << 32) | written.dwLowDateTime;
-    source->mtime = stamp / UINT64_C(10000000) > UINT64_C(11644473600) ?
-        stamp / UINT64_C(10000000) - UINT64_C(11644473600) : 0U;
+    source->mtime = stamp / UINT64_C(10000000) > UINT64_C(11644473600) ? stamp / UINT64_C(10000000) - UINT64_C(11644473600) : 0U;
     source->stamp = (int64_t)(stamp / UINT64_C(10000000)) - INT64_C(11644473600);
 #else
     struct stat info;
@@ -662,14 +671,10 @@ static int native_stat_source(native_source *source, bool follow)
 }
 
 /* Why an input cannot be added, in one line that names it. */
-static void native_log_unusable(const xfu_request *request, const char *path, int kind,
-                                int error)
+static void native_log_unusable(const xfu_request *request, const char *path, int kind, int error)
 {
-    if (kind == 2)
-        native_log(request, true, "%s: links and special files cannot be added", path);
-    else
-        native_log(request, true, "%s: cannot read the input: %s", path,
-                   error ? strerror(error) : "its metadata is unavailable");
+    if (kind == 2) native_log(request, true, "%s: links and special files cannot be added", path);
+    else native_log(request, true, "%s: cannot read the input: %s", path, error ? strerror(error) : "its metadata is unavailable");
 }
 
 static bool native_same_file(const char *left, const char *right)
@@ -678,8 +683,7 @@ static bool native_same_file(const char *left, const char *right)
 #ifndef _WIN32
     {
         struct stat a, b;
-        return stat(left, &a) == 0 && stat(right, &b) == 0 &&
-            a.st_dev == b.st_dev && a.st_ino == b.st_ino;
+        return stat(left, &a) == 0 && stat(right, &b) == 0 && a.st_dev == b.st_dev && a.st_ino == b.st_ino;
     }
 #else
     {
@@ -689,14 +693,10 @@ static bool native_same_file(const char *left, const char *right)
         BY_HANDLE_FILE_INFORMATION ai, bi;
         bool same = false;
         if (a && b) {
-            ah = CreateFileW(a, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                             NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
-            bh = CreateFileW(b, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                             NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
-            same = ah != INVALID_HANDLE_VALUE && bh != INVALID_HANDLE_VALUE &&
-                GetFileInformationByHandle(ah, &ai) && GetFileInformationByHandle(bh, &bi) &&
-                ai.dwVolumeSerialNumber == bi.dwVolumeSerialNumber &&
-                ai.nFileIndexHigh == bi.nFileIndexHigh && ai.nFileIndexLow == bi.nFileIndexLow;
+            ah = CreateFileW(a, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+            bh = CreateFileW(b, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+            same = ah != INVALID_HANDLE_VALUE && bh != INVALID_HANDLE_VALUE && GetFileInformationByHandle(ah, &ai) && GetFileInformationByHandle(bh, &bi) &&
+                   ai.dwVolumeSerialNumber == bi.dwVolumeSerialNumber && ai.nFileIndexHigh == bi.nFileIndexHigh && ai.nFileIndexLow == bi.nFileIndexLow;
         }
         if (ah != INVALID_HANDLE_VALUE) CloseHandle(ah);
         if (bh != INVALID_HANDLE_VALUE) CloseHandle(bh);
@@ -745,10 +745,14 @@ static bool native_names_add(char ***names, size_t *count, size_t *capacity, cha
         size_t grown_capacity = *capacity ? *capacity * 2U : 32U;
         char **grown;
         if (grown_capacity < *capacity || grown_capacity > SIZE_MAX / sizeof(*grown)) {
-            free(name); return false;
+            free(name);
+            return false;
         }
         grown = (char **)realloc(*names, grown_capacity * sizeof(*grown));
-        if (!grown) { free(name); return false; }
+        if (!grown) {
+            free(name);
+            return false;
+        }
         *names = grown;
         *capacity = grown_capacity;
     }
@@ -781,7 +785,7 @@ typedef struct native_folder {
     size_t count;
 #ifndef _WIN32
     native_entry *infos; /* Each entry as lstat would give it. */
-    int *errors; /* The errno of an entry that cannot be read, else 0. */
+    int *errors;         /* The errno of an entry that cannot be read, else 0. */
 #endif
 } native_folder;
 
@@ -799,8 +803,7 @@ static void native_folder_free(native_folder *folder)
 
 /* 0: read; 1: cannot be read (errno says why); 2: not the folder the walk
  * found. follow: a folder named as an input, reached through its link. */
-static int native_folder_read(const char *path, const native_source *expected, bool follow,
-                              native_folder *result)
+static int native_folder_read(const char *path, const native_source *expected, bool follow, native_folder *result)
 {
     char **names = NULL;
     size_t count = 0U, capacity = 0U, i;
@@ -813,12 +816,10 @@ static int native_folder_read(const char *path, const native_source *expected, b
     size_t length = wide ? wcslen(wide) : 0U;
     (void)expected;
     (void)follow;
-    if (wide && length < SIZE_MAX / sizeof(*pattern) - 3U)
-        pattern = (wchar_t *)malloc((length + 3U) * sizeof(*pattern));
+    if (wide && length < SIZE_MAX / sizeof(*pattern) - 3U) pattern = (wchar_t *)malloc((length + 3U) * sizeof(*pattern));
     if (pattern) {
         memcpy(pattern, wide, length * sizeof(*pattern));
-        if (length && pattern[length - 1U] != L'\\' && pattern[length - 1U] != L'/')
-            pattern[length++] = L'\\';
+        if (length && pattern[length - 1U] != L'\\' && pattern[length - 1U] != L'/') pattern[length++] = L'\\';
         pattern[length++] = L'*';
         pattern[length] = 0;
         find = FindFirstFileW(pattern, &data);
@@ -830,8 +831,7 @@ static int native_folder_read(const char *path, const native_source *expected, b
     if (find != INVALID_HANDLE_VALUE) {
         for (;;) {
             const wchar_t *leaf = data.cFileName;
-            if (!(leaf[0] == L'.' && (!leaf[1] || (leaf[1] == L'.' && !leaf[2]))) &&
-                !native_names_add(&names, &count, &capacity, native_utf8_copy(leaf))) {
+            if (!(leaf[0] == L'.' && (!leaf[1] || (leaf[1] == L'.' && !leaf[2]))) && !native_names_add(&names, &count, &capacity, native_utf8_copy(leaf))) {
                 error = ENOMEM;
                 break;
             }
@@ -850,15 +850,13 @@ static int native_folder_read(const char *path, const native_source *expected, b
     int *errors = NULL;
     struct stat info;
     DIR *folder = NULL;
-    int descriptor = open(path, O_RDONLY | O_NOCTTY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC |
-                                    (follow ? 0 : O_NOFOLLOW));
+    int descriptor = open(path, O_RDONLY | O_NOCTTY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC | (follow ? 0 : O_NOFOLLOW));
     if (descriptor < 0) {
         error = errno;
         /* A walked folder that is now a link or a file. */
         if (!follow && (error == ELOOP || error == EMLINK || error == ENOTDIR)) status = 2;
     } else if (fstat(descriptor, &info) != 0) error = errno;
-    else if (!S_ISDIR(info.st_mode) || (uint64_t)info.st_dev != expected->device ||
-             (uint64_t)info.st_ino != expected->inode) status = 2;
+    else if (!S_ISDIR(info.st_mode) || (uint64_t)info.st_dev != expected->device || (uint64_t)info.st_ino != expected->inode) status = 2;
     else if (!(folder = fdopendir(descriptor))) error = errno;
     if (!folder && descriptor >= 0) (void)close(descriptor);
     if (folder) {
@@ -866,9 +864,12 @@ static int native_folder_read(const char *path, const native_source *expected, b
             struct dirent *item;
             errno = 0;
             item = readdir(folder);
-            if (!item) { success = errno == 0; error = errno; break; }
-            if (item->d_name[0] == '.' && (!item->d_name[1] ||
-                (item->d_name[1] == '.' && !item->d_name[2]))) continue;
+            if (!item) {
+                success = errno == 0;
+                error = errno;
+                break;
+            }
+            if (item->d_name[0] == '.' && (!item->d_name[1] || (item->d_name[1] == '.' && !item->d_name[2]))) continue;
             if (!native_names_add(&names, &count, &capacity, native_copy_text(item->d_name))) {
                 error = ENOMEM;
                 break;
@@ -878,15 +879,20 @@ static int native_folder_read(const char *path, const native_source *expected, b
         if (success && count) {
             infos = (native_entry *)calloc(count, sizeof(*infos));
             errors = (int *)calloc(count, sizeof(*errors));
-            if (!infos || !errors) { success = false; error = ENOMEM; }
+            if (!infos || !errors) {
+                success = false;
+                error = ENOMEM;
+            }
         }
         /* Through the open folder (fdopendir's descriptor, only read here). */
         for (i = 0; success && i < count; ++i) {
-            if (fstatat(descriptor, names[i], &info, AT_SYMLINK_NOFOLLOW) != 0)
-                errors[i] = errno ? errno : EIO;
+            if (fstatat(descriptor, names[i], &info, AT_SYMLINK_NOFOLLOW) != 0) errors[i] = errno ? errno : EIO;
             else native_entry_of(&infos[i], &info);
         }
-        if (closedir(folder) != 0 && success) { success = false; error = errno; }
+        if (closedir(folder) != 0 && success) {
+            success = false;
+            error = errno;
+        }
     }
     if (!success) {
         free(infos);
@@ -924,10 +930,8 @@ static void native_find_destination(native_walk *walk)
 #ifdef _WIN32
     wchar_t *wide = xx_str_utf8_to_unicode(walk->request->archive_path);
     WIN32_FILE_ATTRIBUTE_DATA info = {0};
-    walk->have_destination = wide && GetFileAttributesExW(wide, GetFileExInfoStandard, &info) &&
-        !(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
-    if (walk->have_destination)
-        walk->destination_size = (int64_t)(((uint64_t)info.nFileSizeHigh << 32) | info.nFileSizeLow);
+    walk->have_destination = wide && GetFileAttributesExW(wide, GetFileExInfoStandard, &info) && !(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+    if (walk->have_destination) walk->destination_size = (int64_t)(((uint64_t)info.nFileSizeHigh << 32) | info.nFileSizeLow);
     xx_str_wfree(wide);
 #else
     struct stat info;
@@ -944,8 +948,7 @@ static void native_find_destination(native_walk *walk)
  * it): the new archive never holds its own previous version. */
 static bool native_is_destination(const native_walk *walk, const native_source *item)
 {
-    if (!walk->have_destination || item->directory || item->size != walk->destination_size)
-        return false;
+    if (!walk->have_destination || item->directory || item->size != walk->destination_size) return false;
 #ifdef _WIN32
     return native_same_file(walk->request->archive_path, item->path);
 #else
@@ -958,8 +961,7 @@ static bool native_digits(const char **cursor, size_t limit, bool hex)
     const char *start = *cursor;
     while ((size_t)(*cursor - start) < limit &&
            ((**cursor >= '0' && **cursor <= '9') ||
-            (hex && ((**cursor >= 'a' && **cursor <= 'f') || (**cursor >= 'A' && **cursor <= 'F') ||
-                     **cursor == 'x' || **cursor == 'X'))))
+            (hex && ((**cursor >= 'a' && **cursor <= 'f') || (**cursor >= 'A' && **cursor <= 'F') || **cursor == 'x' || **cursor == 'X'))))
         ++*cursor;
     return *cursor != start;
 }
@@ -987,17 +989,15 @@ static bool native_stage_leaf(const char *leaf)
     }
     if (!native || native == leaf) return false;
     cursor = native + 12;
-    if (!native_digits(&cursor, 32U, true) || *cursor++ != '-' ||
-        !native_digits(&cursor, 20U, false) || *cursor++ != '-' ||
-        !native_digits(&cursor, 3U, false)) return false;
+    if (!native_digits(&cursor, 32U, true) || *cursor++ != '-' || !native_digits(&cursor, 20U, false) || *cursor++ != '-' || !native_digits(&cursor, 3U, false))
+        return false;
     return !strcmp(cursor, ".tmp");
 }
 
 /* Adds what a folder holds below its member name, each folder before its
  * contents. folder: the walked folder's identity; follow: a folder named as
  * an input. 0: done; 1: cancelled; 2: failed (logged). */
-static int native_walk_folder(native_walk *walk, const char *path, const char *name,
-                              const native_source *folder, bool follow, unsigned depth)
+static int native_walk_folder(native_walk *walk, const char *path, const char *name, const native_source *folder, bool follow, unsigned depth)
 {
 #ifdef _WIN32
     const char separator = '\\';
@@ -1009,8 +1009,7 @@ static int native_walk_folder(native_walk *walk, const char *path, const char *n
     int status = 0;
     memset(&children, 0, sizeof(children));
     if (depth > XFU_NATIVE_FOLDER_DEPTH) {
-        native_log(walk->request, true, "%s: folders nested deeper than %u levels cannot be added",
-                   path, XFU_NATIVE_FOLDER_DEPTH);
+        native_log(walk->request, true, "%s: folders nested deeper than %u levels cannot be added", path, XFU_NATIVE_FOLDER_DEPTH);
         return 2;
     }
     status = native_folder_read(path, folder, follow, &children);
@@ -1025,12 +1024,10 @@ static int native_walk_folder(native_walk *walk, const char *path, const char *n
         int kind, error = 0;
         if (native_stage_leaf(children.names[i])) continue;
         child_path = native_join(path, separator, children.names[i]);
-        child_name = name[0] ? native_join(name, '/', children.names[i]) :
-            native_copy_text(children.names[i]);
+        child_name = name[0] ? native_join(name, '/', children.names[i]) : native_copy_text(children.names[i]);
         if (native_cancelled(walk->request, walk->pd)) status = 1;
         else if (walk->list->count >= XFU_NATIVE_RECORD_LIMIT) {
-            native_log(walk->request, true, "%s: the archive member limit is %u",
-                       walk->request->archive_path, XFU_NATIVE_RECORD_LIMIT);
+            native_log(walk->request, true, "%s: the archive member limit is %u", walk->request->archive_path, XFU_NATIVE_RECORD_LIMIT);
             status = 2;
         } else if (!child_path || !child_name || !(item = native_list_add(walk->list))) {
             native_log(walk->request, true, "cannot allocate the input list");
@@ -1057,8 +1054,7 @@ static int native_walk_folder(native_walk *walk, const char *path, const char *n
             } else if (item->directory) {
                 /* item can move while the list grows: pass copies. */
                 native_source walked = *item;
-                status = native_walk_folder(walk, walked.path, walked.name, &walked, false,
-                                            depth + 1U);
+                status = native_walk_folder(walk, walked.path, walked.name, &walked, false, depth + 1U);
             }
         }
         free(child_path);
@@ -1074,7 +1070,8 @@ static int native_compare_members(const void *left, const void *right)
     const native_source *x = *(const native_source *const *)left;
     const native_source *y = *(const native_source *const *)right;
     const unsigned char *a = (const unsigned char *)x->name, *b = (const unsigned char *)y->name;
-    for (; *a && *a == *b; ++a, ++b) {}
+    for (; *a && *a == *b; ++a, ++b) {
+    }
     if (*a != *b) {
         unsigned ka = !*a ? 0U : *a == '/' ? 1U : *a + 1U;
         unsigned kb = !*b ? 0U : *b == '/' ? 1U : *b + 1U;
@@ -1102,8 +1099,7 @@ static bool native_check_names(const xfu_request *request, native_list *list)
     size_t i, kept = 0U;
     bool success = true;
     if (list->count < 2U) return true;
-    if (list->count > SIZE_MAX / sizeof(*order) ||
-        !(order = (native_source **)malloc(list->count * sizeof(*order)))) {
+    if (list->count > SIZE_MAX / sizeof(*order) || !(order = (native_source **)malloc(list->count * sizeof(*order)))) {
         native_log(request, true, "cannot allocate the input list");
         return false;
     }
@@ -1113,16 +1109,14 @@ static bool native_check_names(const xfu_request *request, native_list *list)
         native_source *first = order[i - 1U], *item = order[i];
         size_t length = strlen(first->name);
         if (!strcmp(first->name, item->name)) {
-            if ((first->directory && item->directory) ||
-                (!first->directory && !item->directory && native_same_source(first, item))) {
+            if ((first->directory && item->directory) || (!first->directory && !item->directory && native_same_source(first, item))) {
                 item->skip = true;
                 order[i] = order[i - 1U]; /* Compare what follows with the kept one. */
                 continue;
             }
             native_log(request, true, "duplicate archive member name: %s", item->name);
             success = false;
-        } else if (!first->directory && length && !strncmp(first->name, item->name, length) &&
-                   item->name[length] == '/') {
+        } else if (!first->directory && length && !strncmp(first->name, item->name, length) && item->name[length] == '/') {
             native_log(request, true, "%s: the name is both a file and a folder", first->name);
             success = false;
         }
@@ -1143,44 +1137,40 @@ static bool native_check_names(const xfu_request *request, native_list *list)
 /* How a collection treats a folder input. */
 typedef enum native_folders {
     NATIVE_FOLDERS_WALK = 0, /* Stored with everything it holds. */
-    NATIVE_FOLDERS_REFUSE, /* The format has no folder members. */
-    NATIVE_FOLDERS_RAW, /* A raw stream holds one file's bytes. */
-    NATIVE_FOLDERS_STREAM /* core.c's compressed one-file streams. */
+    NATIVE_FOLDERS_REFUSE,   /* The format has no folder members. */
+    NATIVE_FOLDERS_RAW,      /* A raw stream holds one file's bytes. */
+    NATIVE_FOLDERS_STREAM    /* core.c's compressed one-file streams. */
 } native_folders;
 
 /* A folder given to a one-file stream (stream: its filter or xxfclib kind),
  * with the archive that holds a folder instead. */
-static void native_log_stream_folder(const xfu_request *request, const char *path,
-                                     const char *stream)
+static void native_log_stream_folder(const xfu_request *request, const char *path, const char *stream)
 {
-    static const struct { const char *name, *article, *display, *suffix; } streams[] = {
-        {"gz", "a", "gzip", ".tar.gz"}, {"gzip", "a", "gzip", ".tar.gz"},
-        {"bz2", "a", "bzip2", ".tar.bz2"}, {"bzip2", "a", "bzip2", ".tar.bz2"},
-        {"xz", "an", "xz", ".tar.xz"}, {"zstd", "a", "zstd", ".tar.zst"},
-        {"lzma", "an", "lzma", ".tar.lzma"}, {"lz4", "an", "lz4", ".tar.lz4"},
-        {"lzip", "an", "lzip", ".tar.lz"}, {"lzop", "an", "lzop", ".tar.lzo"},
-        {"compress", "a", "compress", ".tar.Z"}, {"uuencode", "a", "uuencoded", ".tar.uue"},
-        {"b64encode", "a", "Base64", ".tar.b64"}
-    };
+    static const struct {
+        const char *name, *article, *display, *suffix;
+    } streams[] = {{"gz", "a", "gzip", ".tar.gz"},          {"gzip", "a", "gzip", ".tar.gz"},        {"bz2", "a", "bzip2", ".tar.bz2"},
+                   {"bzip2", "a", "bzip2", ".tar.bz2"},     {"xz", "an", "xz", ".tar.xz"},           {"zstd", "a", "zstd", ".tar.zst"},
+                   {"lzma", "an", "lzma", ".tar.lzma"},     {"lz4", "an", "lz4", ".tar.lz4"},        {"lzip", "an", "lzip", ".tar.lz"},
+                   {"lzop", "an", "lzop", ".tar.lzo"},      {"compress", "a", "compress", ".tar.Z"}, {"uuencode", "a", "uuencoded", ".tar.uue"},
+                   {"b64encode", "a", "Base64", ".tar.b64"}};
     size_t i;
     for (i = 0; stream && i < sizeof(streams) / sizeof(streams[0]); ++i) {
         if (!strcmp(stream, streams[i].name)) {
-            native_log(request, true, "%s: %s %s stream holds one file, not a folder; use %s",
-                       path, streams[i].article, streams[i].display, streams[i].suffix);
+            native_log(request, true, "%s: %s %s stream holds one file, not a folder; use %s", path, streams[i].article, streams[i].display, streams[i].suffix);
             return;
         }
     }
-    native_log(request, true, "%s: a raw stream holds one file, not a folder; use an archive "
-               "format such as --format=pax", path);
+    native_log(request, true,
+               "%s: a raw stream holds one file, not a folder; use an archive "
+               "format such as --format=pax",
+               path);
 }
 
 /* The members: each input, and for a folder what it holds, walked before
  * anything is written; each file or folder once, and every name checked.
  * label names the format in messages (for a raw stream, its filter). 0:
  * collected; 1: cancelled; 2: refused (logged). */
-static int native_collect(const xfu_request *request, const char *label,
-                          native_folders folders, bool needs_utf8,
-                          native_list *list, xx_pd_struct *pd)
+static int native_collect(const xfu_request *request, const char *label, native_folders folders, bool needs_utf8, native_list *list, xx_pd_struct *pd)
 {
     native_walk walk;
     size_t i;
@@ -1194,12 +1184,10 @@ static int native_collect(const xfu_request *request, const char *label,
         int kind;
         if (native_cancelled(request, pd)) return 1;
         if (!request->files[i] || native_same_file(request->archive_path, request->files[i])) {
-            native_log(request, true, "%s: cannot add output archive to itself",
-                       request->archive_path);
+            native_log(request, true, "%s: cannot add output archive to itself", request->archive_path);
             return 2;
         }
-        if (!(item = native_list_add(list)) ||
-            !(item->name = native_member_name(request->files[i]))) {
+        if (!(item = native_list_add(list)) || !(item->name = native_member_name(request->files[i]))) {
             native_log(request, true, "cannot allocate the input list");
             return 2;
         }
@@ -1219,8 +1207,7 @@ static int native_collect(const xfu_request *request, const char *label,
             return 2;
         }
         if (folders == NATIVE_FOLDERS_REFUSE) {
-            native_log(request, true, "%s: %s archives cannot store folders; name its files",
-                       request->files[i], label);
+            native_log(request, true, "%s: %s archives cannot store folders; name its files", request->files[i], label);
             return 2;
         }
         {
@@ -1240,14 +1227,12 @@ static int native_collect(const xfu_request *request, const char *label,
     }
     if (!native_check_names(request, list)) return 2;
     if (list->count > XFU_NATIVE_RECORD_LIMIT) {
-        native_log(request, true, "%s: the archive member limit is %u", request->archive_path,
-                   XFU_NATIVE_RECORD_LIMIT);
+        native_log(request, true, "%s: the archive member limit is %u", request->archive_path, XFU_NATIVE_RECORD_LIMIT);
         return 2;
     }
     for (i = 0; needs_utf8 && i < list->count; ++i) {
         if (!native_valid_utf8(list->items[i].name)) {
-            native_log(request, true, "%s: the name is not valid UTF-8, which %s cannot store",
-                       list->items[i].path, label);
+            native_log(request, true, "%s: the name is not valid UTF-8, which %s cannot store", list->items[i].path, label);
             return 2;
         }
     }
@@ -1256,8 +1241,7 @@ static int native_collect(const xfu_request *request, const char *label,
 
 /* After publication, as core.c's writer did: each member added (a folder's
  * path ending in '/'), then the archive summary. */
-static void native_log_members(const xfu_request *request, const native_list *list,
-                               const char *label)
+static void native_log_members(const xfu_request *request, const native_list *list, const char *label)
 {
     uint64_t files = 0U, folders = 0U;
     size_t i;
@@ -1270,11 +1254,8 @@ static void native_log_members(const xfu_request *request, const native_list *li
         else ++files;
     }
     if (folders)
-        native_log(request, false, "%s: %llu file(s) and %llu folder(s) as %s", request->archive_path,
-                   (unsigned long long)files, (unsigned long long)folders, label);
-    else
-        native_log(request, false, "%s: %llu file(s) as %s", request->archive_path,
-                   (unsigned long long)files, label);
+        native_log(request, false, "%s: %llu file(s) and %llu folder(s) as %s", request->archive_path, (unsigned long long)files, (unsigned long long)folders, label);
+    else native_log(request, false, "%s: %llu file(s) as %s", request->archive_path, (unsigned long long)files, label);
 }
 
 static bool native_write_all(xx_io_device *output, const void *bytes, size_t size)
@@ -1289,15 +1270,13 @@ static bool native_write_all(xx_io_device *output, const void *bytes, size_t siz
     return true;
 }
 
-static bool native_copy(const xfu_request *request, xx_pd_struct *pd,
-                        xx_io_device *source, xx_io_device *output)
+static bool native_copy(const xfu_request *request, xx_pd_struct *pd, xx_io_device *source, xx_io_device *output)
 {
     uint8_t buffer[XFU_NATIVE_CHUNK];
     ssize_t amount;
     if (xx_io_seek64(source, 0, SEEK_SET) != 0) return false;
     while ((amount = xx_io_read(source, buffer, sizeof(buffer))) > 0) {
-        if (native_cancelled(request, pd) ||
-            !native_write_all(output, buffer, (size_t)amount)) return false;
+        if (native_cancelled(request, pd) || !native_write_all(output, buffer, (size_t)amount)) return false;
     }
     return amount == 0 && !native_cancelled(request, pd);
 }
@@ -1312,10 +1291,10 @@ static bool native_copy(const xfu_request *request, xx_pd_struct *pd,
 typedef struct native_checked {
     xx_io_device device; /* What the writer writes to. */
     xx_io_device *inner;
-    xx_pd_struct *pd; /* Takes the reason of the first failure. */
+    xx_pd_struct *pd;         /* Takes the reason of the first failure. */
     int64_t position, extent; /* The next write's offset; the end of the data. */
-    int error; /* The errno of the first failure, or 0. */
-    bool file; /* It can seek and has a size (not a FIFO). */
+    int error;                /* The errno of the first failure, or 0. */
+    bool file;                /* It can seek and has a size (not a FIFO). */
     bool failed;
 } native_checked;
 
@@ -1330,8 +1309,7 @@ static void native_checked_fail(native_checked *checked, int error)
     if (checked->failed) return;
     checked->failed = true;
     checked->error = error;
-    (void)snprintf(text, sizeof(text), "the archive could not be written: %s",
-                   error ? strerror(error) : "a write failed");
+    (void)snprintf(text, sizeof(text), "the archive could not be written: %s", error ? strerror(error) : "a write failed");
     if (checked->pd) xx_pd_set_error(checked->pd, error ? error : EIO, text);
 }
 
@@ -1363,8 +1341,7 @@ static ssize_t native_checked_write(xx_io_device *device, const void *buffer, si
 static int native_checked_seek64(xx_io_device *device, int64_t offset, int whence)
 {
     native_checked *checked = native_checked_of(device);
-    int64_t position = whence == SEEK_SET ? offset :
-        whence == SEEK_CUR && offset <= INT64_MAX - checked->position ? checked->position + offset : -1;
+    int64_t position = whence == SEEK_SET ? offset : whence == SEEK_CUR && offset <= INT64_MAX - checked->position ? checked->position + offset : -1;
     if (checked->failed || !checked->inner) return -1;
     errno = 0;
     if (xx_io_seek64(checked->inner, offset, whence) != 0) {
@@ -1415,8 +1392,7 @@ static int native_checked_close(xx_io_device *device)
 }
 
 /* inner: a newly opened output, taken over (closed by xx_io_close). */
-static xx_io_device *native_checked_open(native_checked *checked, xx_io_device *inner,
-                                         xx_pd_struct *pd, bool file)
+static xx_io_device *native_checked_open(native_checked *checked, xx_io_device *inner, xx_pd_struct *pd, bool file)
 {
     memset(checked, 0, sizeof(*checked));
     checked->inner = inner;
@@ -1457,8 +1433,7 @@ const char *xfu_native_output_failure(xx_io_device *output, char *buffer, size_t
     if (!output || output->write != native_checked_write) return NULL;
     checked = native_checked_of(output);
     if (!checked->failed) return NULL;
-    (void)snprintf(buffer, size, "the archive could not be written: %s",
-                   checked->error ? strerror(checked->error) : "a write failed");
+    (void)snprintf(buffer, size, "the archive could not be written: %s", checked->error ? strerror(checked->error) : "a write failed");
     return buffer;
 }
 
@@ -1571,26 +1546,22 @@ xx_io_device *xfu_native_open_member(const xfu_native_member *member)
     wchar_t *wide = member && member->path ? xx_str_utf8_to_unicode(member->path) : NULL;
     BY_HANDLE_FILE_INFORMATION info = {0}, again = {0};
     FILE_ATTRIBUTE_TAG_INFO tag = {0};
-    HANDLE handle = wide ? CreateFileW(wide, GENERIC_READ, share, NULL, OPEN_EXISTING,
-                                       FILE_FLAG_SEQUENTIAL_SCAN |
-                                       (member->walked ? FILE_FLAG_OPEN_REPARSE_POINT : 0U), NULL) :
-        INVALID_HANDLE_VALUE, reopened;
+    HANDLE handle =
+               wide ? CreateFileW(wide, GENERIC_READ, share, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN | (member->walked ? FILE_FLAG_OPEN_REPARSE_POINT : 0U), NULL)
+                    : INVALID_HANDLE_VALUE,
+           reopened;
     /* Why it could not be opened; a check below that fails means "changed". */
     int failure = handle == INVALID_HANDLE_VALUE && wide ? native_windows_errno_of(GetLastError()) : 0;
     if (handle != INVALID_HANDLE_VALUE &&
         (!GetFileInformationByHandle(handle, &info) ||
          ((info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) && member->walked &&
-          (!GetFileInformationByHandleEx(handle, FileAttributeTagInfo, &tag, sizeof(tag)) ||
-           IsReparseTagNameSurrogate(tag.ReparseTag))))) {
+          (!GetFileInformationByHandleEx(handle, FileAttributeTagInfo, &tag, sizeof(tag)) || IsReparseTagNameSurrogate(tag.ReparseTag))))) {
         CloseHandle(handle);
         handle = INVALID_HANDLE_VALUE;
     }
-    if (handle != INVALID_HANDLE_VALUE && (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) &&
-        member->walked) {
-        reopened = CreateFileW(wide, GENERIC_READ, share, NULL, OPEN_EXISTING,
-                               FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-        if (reopened == INVALID_HANDLE_VALUE || !GetFileInformationByHandle(reopened, &again) ||
-            again.dwVolumeSerialNumber != info.dwVolumeSerialNumber ||
+    if (handle != INVALID_HANDLE_VALUE && (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) && member->walked) {
+        reopened = CreateFileW(wide, GENERIC_READ, share, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+        if (reopened == INVALID_HANDLE_VALUE || !GetFileInformationByHandle(reopened, &again) || again.dwVolumeSerialNumber != info.dwVolumeSerialNumber ||
             again.nFileIndexHigh != info.nFileIndexHigh || again.nFileIndexLow != info.nFileIndexLow) {
             if (reopened != INVALID_HANDLE_VALUE) CloseHandle(reopened);
             reopened = INVALID_HANDLE_VALUE;
@@ -1605,8 +1576,7 @@ xx_io_device *xfu_native_open_member(const xfu_native_member *member)
         errno = failure == ENOENT ? 0 : failure;
         return NULL;
     }
-    if ((info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ||
-        (int64_t)(((uint64_t)info.nFileSizeHigh << 32) | info.nFileSizeLow) != member->size ||
+    if ((info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || (int64_t)(((uint64_t)info.nFileSizeHigh << 32) | info.nFileSizeLow) != member->size ||
         !(file = (native_member_file *)calloc(1U, sizeof(*file)))) {
         CloseHandle(handle);
         errno = 0;
@@ -1621,18 +1591,14 @@ xx_io_device *xfu_native_open_member(const xfu_native_member *member)
         errno = 0;
         return NULL;
     }
-    descriptor = open(member->path, O_RDONLY | O_NOCTTY | O_NONBLOCK | O_CLOEXEC |
-                                        (member->walked ? O_NOFOLLOW : 0));
+    descriptor = open(member->path, O_RDONLY | O_NOCTTY | O_NONBLOCK | O_CLOEXEC | (member->walked ? O_NOFOLLOW : 0));
     /* Gone, or a link put in a walked file's place: changed since found. */
     if (descriptor < 0) {
         if (errno == ENOENT || errno == ELOOP) errno = 0;
         return NULL;
     }
-    if (fstat(descriptor, &info) != 0 || !S_ISREG(info.st_mode) ||
-        (int64_t)info.st_size != member->size ||
-        (uint64_t)info.st_dev != member->device || (uint64_t)info.st_ino != member->inode ||
-        (flags = fcntl(descriptor, F_GETFL)) < 0 ||
-        fcntl(descriptor, F_SETFL, flags & ~O_NONBLOCK) != 0 ||
+    if (fstat(descriptor, &info) != 0 || !S_ISREG(info.st_mode) || (int64_t)info.st_size != member->size || (uint64_t)info.st_dev != member->device ||
+        (uint64_t)info.st_ino != member->inode || (flags = fcntl(descriptor, F_GETFL)) < 0 || fcntl(descriptor, F_SETFL, flags & ~O_NONBLOCK) != 0 ||
         !(file = (native_member_file *)calloc(1U, sizeof(*file)))) {
         (void)close(descriptor);
         errno = 0;
@@ -1665,7 +1631,7 @@ const char *xfu_native_open_failure(int error, char *buffer, size_t size)
 typedef struct native_target {
     char *path;
     bool replaces; /* A regular file is there: the stage takes its mode. */
-    bool direct; /* A device or FIFO: written as it is, with no stage. */
+    bool direct;   /* A device or FIFO: written as it is, with no stage. */
     uint32_t mode, uid, gid;
 } native_target;
 
@@ -1678,12 +1644,21 @@ static char *native_link_target(const char *link, size_t hint)
     ssize_t length;
     for (;;) {
         char *grown = (char *)realloc(text, capacity);
-        if (!grown) { free(text); return NULL; }
+        if (!grown) {
+            free(text);
+            return NULL;
+        }
         text = grown;
         length = readlink(link, text, capacity);
-        if (length < 0) { free(text); return NULL; }
+        if (length < 0) {
+            free(text);
+            return NULL;
+        }
         if ((size_t)length < capacity) break;
-        if (capacity > 65536U) { free(text); return NULL; }
+        if (capacity > 65536U) {
+            free(text);
+            return NULL;
+        }
         capacity *= 2U;
     }
     text[length] = '\0';
@@ -1720,9 +1695,7 @@ static bool native_link_trusted(const char *link, const struct stat *info)
     path = native_copy_text(folder ? link : ".");
     if (!path) return false;
     if (folder) path[folder] = '\0';
-    trusted = stat(path, &parent) == 0 &&
-        (!(parent.st_mode & S_ISVTX) || !(parent.st_mode & S_IWOTH) ||
-         info->st_uid == parent.st_uid);
+    trusted = stat(path, &parent) == 0 && (!(parent.st_mode & S_ISVTX) || !(parent.st_mode & S_IWOTH) || info->st_uid == parent.st_uid);
     free(path);
     return trusted;
 }
@@ -1793,8 +1766,7 @@ static bool native_find_target(const xfu_request *request, native_target *target
 #ifdef _WIN32
     wchar_t *wide = xx_str_utf8_to_unicode(request->archive_path);
     DWORD attributes = wide ? GetFileAttributesW(wide) : INVALID_FILE_ATTRIBUTES;
-    bool link = attributes != INVALID_FILE_ATTRIBUTES &&
-        (attributes & FILE_ATTRIBUTE_REPARSE_POINT) && native_name_surrogate(wide);
+    bool link = attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_REPARSE_POINT) && native_name_surrogate(wide);
     const wchar_t *leaf = wide, *cursor;
     memset(target, 0, sizeof(*target));
     for (cursor = wide; cursor && *cursor; ++cursor)
@@ -1807,14 +1779,11 @@ static bool native_find_target(const xfu_request *request, native_target *target
     xx_str_wfree(wide);
     /* MoveFileEx would replace the link itself. */
     if (link) {
-        native_log(request, true, "%s: the destination is a link; name the archive it points to",
-                   request->archive_path);
+        native_log(request, true, "%s: the destination is a link; name the archive it points to", request->archive_path);
         return false;
     }
-    if (attributes != INVALID_FILE_ATTRIBUTES &&
-        (attributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_READONLY))) {
-        native_refuse_destination(request, strerror((attributes & FILE_ATTRIBUTE_DIRECTORY) ?
-                                                    EISDIR : EACCES));
+    if (attributes != INVALID_FILE_ATTRIBUTES && (attributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_READONLY))) {
+        native_refuse_destination(request, strerror((attributes & FILE_ATTRIBUTE_DIRECTORY) ? EISDIR : EACCES));
         return false;
     }
     target->replaces = attributes != INVALID_FILE_ATTRIBUTES;
@@ -1830,20 +1799,20 @@ static bool native_find_target(const xfu_request *request, native_target *target
     int error;
     memset(target, 0, sizeof(*target));
     target->path = native_copy_text(request->archive_path);
-    for (hops = 0; target->path && lstat(target->path, &info) == 0 && S_ISLNK(info.st_mode);
-         ++hops) {
+    for (hops = 0; target->path && lstat(target->path, &info) == 0 && S_ISLNK(info.st_mode); ++hops) {
         char *next;
         if (!native_link_trusted(target->path, &info)) {
-            native_log(request, true, "%s: the destination is another user's symbolic link "
-                       "in a shared folder; it is not followed", request->archive_path);
+            native_log(request, true,
+                       "%s: the destination is another user's symbolic link "
+                       "in a shared folder; it is not followed",
+                       request->archive_path);
             free(target->path);
             target->path = NULL;
             return false;
         }
         next = hops < 40U ? native_link_target(target->path, (size_t)info.st_size) : NULL;
         if (!next) {
-            native_log(request, true, "%s: cannot follow the symbolic link to the archive",
-                       request->archive_path);
+            native_log(request, true, "%s: cannot follow the symbolic link to the archive", request->archive_path);
             free(target->path);
             target->path = NULL;
             return false;
@@ -1868,15 +1837,13 @@ static bool native_find_target(const xfu_request *request, native_target *target
         } else if (S_ISCHR(info.st_mode) || S_ISBLK(info.st_mode) || S_ISFIFO(info.st_mode)) {
             target->direct = true;
         } else {
-            native_refuse_destination(request, S_ISDIR(info.st_mode) ? strerror(EISDIR) :
-                                      "a socket or another special file is there");
+            native_refuse_destination(request, S_ISDIR(info.st_mode) ? strerror(EISDIR) : "a socket or another special file is there");
             goto refused;
         }
         return true;
     }
     error = errno;
-    if (error == ENOENT && stat(request->archive_path, &info) == 0 &&
-        (S_ISCHR(info.st_mode) || S_ISFIFO(info.st_mode))) {
+    if (error == ENOENT && stat(request->archive_path, &info) == 0 && (S_ISCHR(info.st_mode) || S_ISFIFO(info.st_mode))) {
         /* A link that only the kernel resolves (/dev/stdout names
          * "pipe:[...]"): the pipe or terminal it is now. */
         free(target->path);
@@ -2005,8 +1972,7 @@ static int native_open_errno(void)
  * walk leaves out. Created exclusively; a stage that will replace an archive
  * is open to its owner only until it takes that archive's mode. NULL: error
  * holds the errno. */
-static xx_io_device *native_stage(const native_target *target, char **stage,
-                                  const void *nonce, int *error)
+static xx_io_device *native_stage(const native_target *target, char **stage, const void *nonce, int *error)
 {
     const char *destination = target->path;
     size_t length = strlen(destination), folder = 0U, i;
@@ -2028,8 +1994,7 @@ static xx_io_device *native_stage(const native_target *target, char **stage,
         if (!strcmp(name, destination)) continue;
 #ifndef _WIN32
         {
-            int descriptor = open(name, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC,
-                                  target->replaces ? 0600 : 0666);
+            int descriptor = open(name, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, target->replaces ? 0600 : 0666);
             if (descriptor < 0) {
                 *error = errno;
                 if (*error == EEXIST) continue;
@@ -2048,7 +2013,10 @@ static xx_io_device *native_stage(const native_target *target, char **stage,
             break; /* The folder takes no file: no other name helps. */
         }
 #endif
-        if (output) { *stage = name; return output; }
+        if (output) {
+            *stage = name;
+            return output;
+        }
     }
     free(name);
     return NULL;
@@ -2070,7 +2038,10 @@ static bool native_create_folders(const char *destination)
 #else
     struct stat info;
 #endif
-    if (!path) { errno = ENOMEM; return false; }
+    if (!path) {
+        errno = ENOMEM;
+        return false;
+    }
     for (i = 0; path[i]; ++i) {
 #ifdef _WIN32
         if (path[i] == '/' || path[i] == '\\') cut = i;
@@ -2078,7 +2049,10 @@ static bool native_create_folders(const char *destination)
         if (path[i] == '/') cut = i;
 #endif
     }
-    if (!cut) { free(path); return true; } /* The current folder or the root. */
+    if (!cut) {
+        free(path);
+        return true;
+    } /* The current folder or the root. */
     path[cut] = '\0';
 #ifdef _WIN32
     wide = xx_str_utf8_to_unicode(path);
@@ -2094,8 +2068,7 @@ static bool native_create_folders(const char *destination)
         char saved = path[i];
         if (i < cut && path[i] != '/') continue;
         path[i] = '\0';
-        if (!(stat(path, &info) == 0 && S_ISDIR(info.st_mode)) && mkdir(path, 0777) != 0 &&
-            !(errno == EEXIST && stat(path, &info) == 0 && S_ISDIR(info.st_mode))) {
+        if (!(stat(path, &info) == 0 && S_ISDIR(info.st_mode)) && mkdir(path, 0777) != 0 && !(errno == EEXIST && stat(path, &info) == 0 && S_ISDIR(info.st_mode))) {
             success = false;
             error = errno == EEXIST ? ENOTDIR : errno;
         }
@@ -2118,8 +2091,7 @@ static void native_stage_mode(const native_target *target, xx_io_device *stage)
     /* Through the stage's own descriptor (native_stage_wrap), not its name. */
     if (!target->replaces || !stage || stage->close != native_stage_close) return;
     descriptor = fileno(((native_stage_file *)stage->priv)->file);
-    if (fchown(descriptor, (uid_t)target->uid, (gid_t)target->gid) != 0 &&
-        fchown(descriptor, (uid_t)-1, (gid_t)target->gid) != 0) mode &= ~(mode_t)070;
+    if (fchown(descriptor, (uid_t)target->uid, (gid_t)target->gid) != 0 && fchown(descriptor, (uid_t)-1, (gid_t)target->gid) != 0) mode &= ~(mode_t)070;
     (void)fchmod(descriptor, mode);
 #else
     (void)target;
@@ -2135,10 +2107,10 @@ static void native_stage_mode(const native_target *target, xx_io_device *stage)
  * header. */
 typedef struct native_output {
     native_checked checked;
-    char *stage; /* The stage beside the destination. */
+    char *stage;         /* The stage beside the destination. */
     xx_io_device *final; /* The FIFO a temporary stage goes to. */
-    bool open; /* checked holds an open device. */
-    bool in_place; /* A temporary stage, copied to the destination at the end. */
+    bool open;           /* checked holds an open device. */
+    bool in_place;       /* A temporary stage, copied to the destination at the end. */
     bool published;
 #ifndef _WIN32
     struct stat stage_identity; /* The stage as created: it is what is published. */
@@ -2146,8 +2118,7 @@ typedef struct native_output {
 } native_output;
 
 /* false: refused (logged), before anything is written. */
-static bool native_open_output(const xfu_request *request, const native_target *target,
-                               native_output *output, xx_pd_struct *pd)
+static bool native_open_output(const xfu_request *request, const native_target *target, native_output *output, xx_pd_struct *pd)
 {
     xx_io_device *device;
     int error = 0;
@@ -2163,8 +2134,7 @@ static bool native_open_output(const xfu_request *request, const native_target *
             output->final = device;
             errno = 0;
             if (!(device = xx_io_temp_open())) {
-                native_log(request, true, "cannot create temporary archive stream: %s",
-                           strerror(errno ? errno : EIO));
+                native_log(request, true, "cannot create temporary archive stream: %s", strerror(errno ? errno : EIO));
                 (void)xx_io_close(output->final);
                 output->final = NULL;
                 return false;
@@ -2173,14 +2143,12 @@ static bool native_open_output(const xfu_request *request, const native_target *
         }
     } else {
         if (!native_create_folders(target->path)) {
-            native_log(request, true, "%s: cannot create its folder: %s", request->archive_path,
-                       strerror(errno));
+            native_log(request, true, "%s: cannot create its folder: %s", request->archive_path, strerror(errno));
             return false;
         }
         device = native_stage(target, &output->stage, output, &error);
 #ifndef _WIN32
-        if (device && fstat(fileno(((native_stage_file *)device->priv)->file),
-                            &output->stage_identity) != 0) {
+        if (device && fstat(fileno(((native_stage_file *)device->priv)->file), &output->stage_identity) != 0) {
             error = errno;
             (void)xx_io_close(device);
             device = NULL;
@@ -2196,8 +2164,7 @@ static bool native_open_output(const xfu_request *request, const native_target *
         }
         if (!device) {
             char *folder = native_folder_text(target->path);
-            native_log(request, true, "%s: cannot create a staging file in %s: %s",
-                       request->archive_path, folder ? folder : ".", strerror(error));
+            native_log(request, true, "%s: cannot create a staging file in %s: %s", request->archive_path, folder ? folder : ".", strerror(error));
             free(folder);
             return false;
         }
@@ -2210,8 +2177,7 @@ static bool native_open_output(const xfu_request *request, const native_target *
 }
 
 /* Writes the complete temporary stage over the archive. */
-static bool native_write_in_place(const xfu_request *request, const native_target *target,
-                                  native_output *output, xx_pd_struct *pd)
+static bool native_write_in_place(const xfu_request *request, const native_target *target, native_output *output, xx_pd_struct *pd)
 {
     native_checked written;
     uint8_t buffer[XFU_NATIVE_CHUNK];
@@ -2229,15 +2195,12 @@ static bool native_write_in_place(const xfu_request *request, const native_targe
         return false;
     }
     (void)native_checked_open(&written, file, pd, !target->direct);
-    while ((amount = xx_io_read(stage, buffer, sizeof(buffer))) > 0 &&
-           native_write_all(&written.device, buffer, (size_t)amount))
-        copied += amount;
+    while ((amount = xx_io_read(stage, buffer, sizeof(buffer))) > 0 && native_write_all(&written.device, buffer, (size_t)amount)) copied += amount;
     success = amount == 0 && copied == output->checked.extent;
     if (xx_io_close(&written.device) != 0) success = false;
     if (!success)
-        native_log(request, true, "%s: the archive could not be written %s: %s",
-                   request->archive_path, target->direct ? "completely" :
-                   "in place, and is incomplete", strerror(written.error ? written.error : EIO));
+        native_log(request, true, "%s: the archive could not be written %s: %s", request->archive_path, target->direct ? "completely" : "in place, and is incomplete",
+                   strerror(written.error ? written.error : EIO));
     return success;
 }
 
@@ -2273,8 +2236,7 @@ static int native_publish_stage(const native_output *output, const native_target
 
 /* After a writer finished: the output closed and checked, and published.
  * 0: published; 1: failed (logged). */
-static int native_publish(const xfu_request *request, const native_target *target,
-                          native_output *output, xx_pd_struct *pd)
+static int native_publish(const xfu_request *request, const native_target *target, native_output *output, xx_pd_struct *pd)
 {
     int error;
     bool complete;
@@ -2285,42 +2247,38 @@ static int native_publish(const xfu_request *request, const native_target *targe
         if (xx_io_close(&output->checked.device) != 0) complete = false;
         if (complete) output->published = true;
         else if (output->checked.failed)
-            native_log(request, true, "%s: the archive could not be written: %s",
-                       request->archive_path,
-                       strerror(output->checked.error ? output->checked.error : EIO));
+            native_log(request, true, "%s: the archive could not be written: %s", request->archive_path, strerror(output->checked.error ? output->checked.error : EIO));
         return complete ? 0 : 1;
     }
     output->open = false;
     if (output->stage) native_stage_mode(target, output->checked.inner);
-    complete = xx_io_close(&output->checked.device) == 0 &&
-        (!output->stage || native_checked_complete(&output->checked, output->stage));
+    complete = xx_io_close(&output->checked.device) == 0 && (!output->stage || native_checked_complete(&output->checked, output->stage));
     if (!complete) {
-        native_log(request, true, "%s: the archive could not be written: %s",
-                   request->archive_path,
-                   strerror(output->checked.error ? output->checked.error : EIO));
+        native_log(request, true, "%s: the archive could not be written: %s", request->archive_path, strerror(output->checked.error ? output->checked.error : EIO));
         return 1;
     }
-    if (!output->stage) { output->published = true; return 0; } /* A device or FIFO. */
+    if (!output->stage) {
+        output->published = true;
+        return 0;
+    } /* A device or FIFO. */
 #ifndef _WIN32
     {
         /* Another file (a link) put in the stage's place is not published. */
         struct stat info;
-        if (lstat(output->stage, &info) != 0 || !S_ISREG(info.st_mode) ||
-            info.st_dev != output->stage_identity.st_dev ||
-            info.st_ino != output->stage_identity.st_ino) error = NATIVE_STAGE_REPLACED;
+        if (lstat(output->stage, &info) != 0 || !S_ISREG(info.st_mode) || info.st_dev != output->stage_identity.st_dev || info.st_ino != output->stage_identity.st_ino)
+            error = NATIVE_STAGE_REPLACED;
         else error = native_publish_stage(output, target);
     }
 #else
     /* MoveFileEx, replacing only the archive that was there. */
-    error = xx_io_file_replace_a(output->stage, target->path, target->replaces) ? 0 :
-        native_windows_errno();
+    error = xx_io_file_replace_a(output->stage, target->path, target->replaces) ? 0 : native_windows_errno();
 #endif
     if (error) {
-        native_log(request, true, "%s: cannot publish completed archive: %s",
-                   request->archive_path,
-                   error == NATIVE_STAGE_REPLACED ? "its staging file was replaced" :
-                   error == EEXIST ? "another file was created at its name meanwhile, and is "
-                   "left as it is" : strerror(error));
+        native_log(request, true, "%s: cannot publish completed archive: %s", request->archive_path,
+                   error == NATIVE_STAGE_REPLACED ? "its staging file was replaced"
+                   : error == EEXIST              ? "another file was created at its name meanwhile, and is "
+                                                    "left as it is"
+                                                  : strerror(error));
         return 1;
     }
     output->published = true;
@@ -2341,17 +2299,21 @@ static void native_close_output(native_output *output)
 
 static bool native_method(native_format format, const char *name, uint64_t *id)
 {
-    static const struct { const char *name; uint64_t zip, seven; } methods[] = {
-        {"store", 0U, 0U}, {"stored", 0U, 0U}, {"deflate", 8U, UINT64_C(0x040108)},
-        {"deflate64", 9U, UINT64_C(0x040109)},
-        {"bzip2", 12U, UINT64_C(0x040202)},
-        {"lzma", 14U, UINT64_C(0x030101)},
-        {"lzma1", 14U, UINT64_C(0x030101)},
-        {"lzma2", UINT64_MAX, 0x21U}, {"xz", 95U, UINT64_MAX},
-        {"zstd", 93U, UINT64_C(0x04F71101)},
-        {"ppmd", 98U, UINT64_C(0x030401)},
-        {"ppmd8", 98U, UINT64_C(0x030401)}
-    };
+    static const struct {
+        const char *name;
+        uint64_t zip, seven;
+    } methods[] = {{"store", 0U, 0U},
+                   {"stored", 0U, 0U},
+                   {"deflate", 8U, UINT64_C(0x040108)},
+                   {"deflate64", 9U, UINT64_C(0x040109)},
+                   {"bzip2", 12U, UINT64_C(0x040202)},
+                   {"lzma", 14U, UINT64_C(0x030101)},
+                   {"lzma1", 14U, UINT64_C(0x030101)},
+                   {"lzma2", UINT64_MAX, 0x21U},
+                   {"xz", 95U, UINT64_MAX},
+                   {"zstd", 93U, UINT64_C(0x04F71101)},
+                   {"ppmd", 98U, UINT64_C(0x030401)},
+                   {"ppmd8", 98U, UINT64_C(0x030401)}};
     size_t i;
     if (!name) return true;
     if (format != NATIVE_ZIP && format != NATIVE_7ZIP) return false;
@@ -2398,12 +2360,9 @@ static size_t native_device_name(const char *component, size_t length)
     while (base < length && component[base] != '.') ++base;
     for (i = 0; i < sizeof(devices) / sizeof(devices[0]); ++i)
         if (native_ascii_same(component, base, devices[i])) return base;
-    if (base < 4U ||
-        !(native_ascii_same(component, 3U, "COM") || native_ascii_same(component, 3U, "LPT")))
-        return 0U;
+    if (base < 4U || !(native_ascii_same(component, 3U, "COM") || native_ascii_same(component, 3U, "LPT"))) return 0U;
     if (base == 4U && bytes[3] >= '1' && bytes[3] <= '9') return base;
-    return base == 5U && bytes[3] == 0xC2U &&
-        (bytes[4] == 0xB9U || bytes[4] == 0xB2U || bytes[4] == 0xB3U) ? base : 0U;
+    return base == 5U && bytes[3] == 0xC2U && (bytes[4] == 0xB9U || bytes[4] == 0xB2U || bytes[4] == 0xB3U) ? base : 0U;
 }
 
 /* The rules of xxfclib's writers (xx_tar_record_name_utf8, cpio_safe_output_name,
@@ -2411,9 +2370,7 @@ static size_t native_device_name(const char *component, size_t length)
  * checked before anything is written: they refuse without saying why. They
  * take '\' for a separator too, and so would store a POSIX name with a '\'
  * in it as folders: such a name is refused there. */
-bool xfu_native_xxfclib_member_fits(const char *kind, const char *label,
-                                    const xfu_native_member *member,
-                                    char *reason, size_t capacity)
+bool xfu_native_xxfclib_member_fits(const char *kind, const char *label, const xfu_native_member *member, char *reason, size_t capacity)
 {
     bool tar = !strncmp(kind, "tar", 3U), cpio = !strcmp(kind, "cpio");
     bool wim = !strcmp(kind, "wim"), sevenzip = !strcmp(kind, "7z") || !strcmp(kind, "7zip");
@@ -2423,16 +2380,13 @@ bool xfu_native_xxfclib_member_fits(const char *kind, const char *label,
     char problem[64];
     size_t length = strlen(name), end = length, start, at;
     problem[0] = '\0';
-    if (!member->directory && ((tar && member->size > INT64_C(077777777777)) ||
-                               (cpio && member->size > INT64_C(0xFFFFFFFF)))) {
-        (void)snprintf(reason, capacity, "the file is %s or larger, which %s cannot store",
-                       tar ? "8 GiB" : "4 GiB", label);
+    if (!member->directory && ((tar && member->size > INT64_C(077777777777)) || (cpio && member->size > INT64_C(0xFFFFFFFF)))) {
+        (void)snprintf(reason, capacity, "the file is %s or larger, which %s cannot store", tar ? "8 GiB" : "4 GiB", label);
         return false;
     }
 #ifndef _WIN32
     if ((separators || !strcmp(kind, "zip")) && strchr(name, '\\')) {
-        (void)snprintf(reason, capacity, "the name contains '\\', which %s cannot store%s", label,
-                       tar ? "; --format=pax stores it" : "");
+        (void)snprintf(reason, capacity, "the name contains '\\', which %s cannot store%s", label, tar ? "; --format=pax stores it" : "");
         return false;
     }
 #endif
@@ -2440,44 +2394,38 @@ bool xfu_native_xxfclib_member_fits(const char *kind, const char *label,
         /* The ZIP writer turns '\' into '/', and a final '/' marks a folder:
          * the file's data would be lost. */
         if (!strcmp(kind, "zip") && !member->directory && length && name[length - 1U] == '\\') {
-            (void)snprintf(reason, capacity, "the name ends in '\\' as a folder's does, "
-                           "which %s cannot store", label);
+            (void)snprintf(reason, capacity,
+                           "the name ends in '\\' as a folder's does, "
+                           "which %s cannot store",
+                           label);
             return false;
         }
         return true;
     }
     for (at = 0; at < length && !problem[0]; ++at) {
         unsigned char c = (unsigned char)name[at];
-        if (c == ':' || (safe_names && strchr("<>\"|?*", c)))
-            (void)snprintf(problem, sizeof(problem), "contains '%c'", c);
-        else if (safe_names && (c < 0x20U || (cpio && c == 0x7FU)))
-            (void)snprintf(problem, sizeof(problem), "contains a control character");
+        if (c == ':' || (safe_names && strchr("<>\"|?*", c))) (void)snprintf(problem, sizeof(problem), "contains '%c'", c);
+        else if (safe_names && (c < 0x20U || (cpio && c == 0x7FU))) (void)snprintf(problem, sizeof(problem), "contains a control character");
     }
     /* A final separator marks a folder: WIM drops one, the others every one. */
     while (end && name[end - 1U] == '\\' && (end == length || !wim)) --end;
-    if (!problem[0] && end < length && !member->directory)
-        (void)snprintf(problem, sizeof(problem), "ends in '\\' as a folder's does");
+    if (!problem[0] && end < length && !member->directory) (void)snprintf(problem, sizeof(problem), "ends in '\\' as a folder's does");
     for (start = at = 0; !problem[0] && at <= end; ++at) {
         size_t size = at - start, device;
         if (at < end && name[at] != '/' && name[at] != '\\') continue;
-        if (size == 2U && name[start] == '.' && name[start + 1U] == '.')
-            (void)snprintf(problem, sizeof(problem), "has a \"..\" component");
+        if (size == 2U && name[start] == '.' && name[start + 1U] == '.') (void)snprintf(problem, sizeof(problem), "has a \"..\" component");
         else if (!size || (size == 1U && name[start] == '.')) {
             /* CPIO drops these, but not every component. */
-            if (!cpio || (at == end && !kept))
-                (void)snprintf(problem, sizeof(problem), "has an empty or \".\" component");
+            if (!cpio || (at == end && !kept)) (void)snprintf(problem, sizeof(problem), "has an empty or \".\" component");
         } else if (safe_names && (name[at - 1U] == '.' || name[at - 1U] == ' '))
-            (void)snprintf(problem, sizeof(problem), "has a component ending in %s",
-                           name[at - 1U] == '.' ? "'.'" : "a space");
+            (void)snprintf(problem, sizeof(problem), "has a component ending in %s", name[at - 1U] == '.' ? "'.'" : "a space");
         else if (safe_names && (device = native_device_name(name + start, size)) != 0U)
-            (void)snprintf(problem, sizeof(problem), "has the Windows device name \"%.*s\"",
-                           (int)device, name + start);
+            (void)snprintf(problem, sizeof(problem), "has the Windows device name \"%.*s\"", (int)device, name + start);
         else kept = true;
         start = at + 1U;
     }
     if (!problem[0]) return true;
-    (void)snprintf(reason, capacity, "the name %s, which %s cannot store%s", problem, label,
-                   tar ? "; --format=pax stores it" : "");
+    (void)snprintf(reason, capacity, "the name %s, which %s cannot store%s", problem, label, tar ? "; --format=pax stores it" : "");
     return false;
 }
 
@@ -2507,10 +2455,8 @@ static int native_dos_time(int64_t seconds, uint16_t *date, uint16_t *time_of_da
         *time_of_day = (uint16_t)((23U << 11) | (59U << 5) | 29U);
         return 1;
     }
-    *date = (uint16_t)(((unsigned)(parts->tm_year - 80) << 9) |
-                       ((unsigned)(parts->tm_mon + 1) << 5) | (unsigned)parts->tm_mday);
-    *time_of_day = (uint16_t)(((unsigned)parts->tm_hour << 11) |
-                              ((unsigned)parts->tm_min << 5) | ((unsigned)parts->tm_sec / 2U));
+    *date = (uint16_t)(((unsigned)(parts->tm_year - 80) << 9) | ((unsigned)(parts->tm_mon + 1) << 5) | (unsigned)parts->tm_mday);
+    *time_of_day = (uint16_t)(((unsigned)parts->tm_hour << 11) | ((unsigned)parts->tm_min << 5) | ((unsigned)parts->tm_sec / 2U));
     return 0;
 }
 
@@ -2568,25 +2514,22 @@ static void native_local_civil(int64_t seconds, xfu_native_time *civil)
 #define NATIVE_NOBODY_ID 65534U
 #define NATIVE_USTAR_ID_LAST 07777777U
 
-void xfu_native_record_warnings(const xfu_request *request, const char *kind,
-                                const char *label, const xfu_native_member *member)
+void xfu_native_record_warnings(const xfu_request *request, const char *kind, const char *label, const xfu_native_member *member)
 {
     int64_t first, last;
     if (!request || !kind || !member) return;
-    if (!strncmp(kind, "tar", 3U) &&
-        (member->uid > NATIVE_USTAR_ID_LAST || member->gid > NATIVE_USTAR_ID_LAST)) {
+    if (!strncmp(kind, "tar", 3U) && (member->uid > NATIVE_USTAR_ID_LAST || member->gid > NATIVE_USTAR_ID_LAST)) {
         bool owner = member->uid > NATIVE_USTAR_ID_LAST, group = member->gid > NATIVE_USTAR_ID_LAST;
         if (owner && group)
-            xfu_native_warn(request, "%s: its owner and group ids (%lu, %lu) are larger than %s "
+            xfu_native_warn(request,
+                            "%s: its owner and group ids (%lu, %lu) are larger than %s "
                             "can store; stored as %u (nobody); --format=pax stores them",
-                            member->path, (unsigned long)member->uid,
-                            (unsigned long)member->gid, label, NATIVE_NOBODY_ID);
+                            member->path, (unsigned long)member->uid, (unsigned long)member->gid, label, NATIVE_NOBODY_ID);
         else
-            xfu_native_warn(request, "%s: its %s id (%lu) is larger than %s can store; stored "
-                            "as %u (nobody); --format=pax stores it", member->path,
-                            owner ? "owner" : "group",
-                            (unsigned long)(owner ? member->uid : member->gid), label,
-                            NATIVE_NOBODY_ID);
+            xfu_native_warn(request,
+                            "%s: its %s id (%lu) is larger than %s can store; stored "
+                            "as %u (nobody); --format=pax stores it",
+                            member->path, owner ? "owner" : "group", (unsigned long)(owner ? member->uid : member->gid), label, NATIVE_NOBODY_ID);
     }
     if (!strcmp(kind, "zip")) {
         uint16_t date, time_of_day;
@@ -2611,13 +2554,10 @@ void xfu_native_record_warnings(const xfu_request *request, const char *kind,
     }
     if (!native_time_range(kind, &first, &last)) return;
     if (member->mtime < first || member->mtime > last)
-        xfu_native_warn_time(request, member->path, label, member->mtime,
-                             member->mtime < first ? first : last,
-                             strcmp(kind, "7z") && strcmp(kind, "7zip"));
+        xfu_native_warn_time(request, member->path, label, member->mtime, member->mtime < first ? first : last, strcmp(kind, "7z") && strcmp(kind, "7zip"));
 }
 
-bool xfu_native_record_metadata(xx_archive_record *record, const char *kind,
-                                const xfu_native_member *member)
+bool xfu_native_record_metadata(xx_archive_record *record, const char *kind, const xfu_native_member *member)
 {
     const uint32_t mode = member->mode & 07777U;
     const uint32_t unix_mode = (member->directory ? 0040000U : 0100000U) | mode;
@@ -2632,26 +2572,19 @@ bool xfu_native_record_metadata(xx_archive_record *record, const char *kind,
         const bool tar = !strncmp(kind, "tar", 3U);
         (void)native_time_range(kind, &first, &last);
         mtime = mtime < first ? first : mtime > last ? last : mtime;
-        return xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, mode) &&
-            xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, (uint64_t)mtime) &&
-            xx_archive_record_set_meta_u64(record, XX_META_ID_OWNER_ID,
-                                           tar && member->uid > NATIVE_USTAR_ID_LAST ?
-                                               NATIVE_NOBODY_ID : member->uid) &&
-            xx_archive_record_set_meta_u64(record, XX_META_ID_GROUP_ID,
-                                           tar && member->gid > NATIVE_USTAR_ID_LAST ?
-                                               NATIVE_NOBODY_ID : member->gid);
+        return xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, mode) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, (uint64_t)mtime) &&
+               xx_archive_record_set_meta_u64(record, XX_META_ID_OWNER_ID, tar && member->uid > NATIVE_USTAR_ID_LAST ? NATIVE_NOBODY_ID : member->uid) &&
+               xx_archive_record_set_meta_u64(record, XX_META_ID_GROUP_ID, tar && member->gid > NATIVE_USTAR_ID_LAST ? NATIVE_NOBODY_ID : member->gid);
     }
     if (!strcmp(kind, "zip")) {
         uint16_t date, time_of_day;
         (void)native_dos_time(member->mtime, &date, &time_of_day);
-        return xx_archive_record_set_meta_u64(record, XX_META_ID_EXTERNAL_ATTRS,
-                                              ((uint64_t)unix_mode << 16U) | windows) &&
+        return xx_archive_record_set_meta_u64(record, XX_META_ID_EXTERNAL_ATTRS, ((uint64_t)unix_mode << 16U) | windows) &&
 #ifndef _WIN32
-            /* Made on Unix: readers apply the mode in the attributes. */
-            xx_archive_record_set_meta_u64(record, XX_META_ID_VERSION_MADE_BY, 3U << 8U) &&
+               /* Made on Unix: readers apply the mode in the attributes. */
+               xx_archive_record_set_meta_u64(record, XX_META_ID_VERSION_MADE_BY, 3U << 8U) &&
 #endif
-            xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, time_of_day) &&
-            xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, date);
+               xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, time_of_day) && xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, date);
     }
     if (!strcmp(kind, "7z") || !strcmp(kind, "7zip")) {
         /* FILETIME: 100 ns units since 1601. 7-Zip marks the Unix mode in the
@@ -2663,23 +2596,18 @@ bool xfu_native_record_metadata(xx_archive_record *record, const char *kind,
         if (!xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, attributes)) return false;
         (void)native_time_range(kind, &first, &last);
         if (member->mtime < first || member->mtime > last) return true;
-        return xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP,
-                                              (uint64_t)(member->mtime + NATIVE_FILETIME_EPOCH) *
-                                                  UINT64_C(10000000));
+        return xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, (uint64_t)(member->mtime + NATIVE_FILETIME_EPOCH) * UINT64_C(10000000));
     }
     return true;
 }
 
-static bool native_pack_records(const xfu_request *request, native_format kind,
-                                const char *label, const native_source *sources,
-                                const xfu_native_member *members, xx_io_device *output,
-                                uint64_t method, bool have_method, xx_pd_struct *pd)
+static bool native_pack_records(const xfu_request *request, native_format kind, const char *label, const native_source *sources, const xfu_native_member *members,
+                                xx_io_device *output, uint64_t method, bool have_method, xx_pd_struct *pd)
 {
     xxfc_release_fn release = NULL;
     Abstractformat *format = NULL;
     xx_archive_write_state *state = NULL;
-    const char *writer = kind == NATIVE_TAR ? "tar" : kind == NATIVE_CPIO ? "cpio" :
-        kind == NATIVE_ZIP ? "zip" : "7zip";
+    const char *writer = kind == NATIVE_TAR ? "tar" : kind == NATIVE_CPIO ? "cpio" : kind == NATIVE_ZIP ? "zip" : "7zip";
     size_t i;
     bool success = false;
     for (i = 0; i < request->file_count; ++i) {
@@ -2705,30 +2633,26 @@ static bool native_pack_records(const xfu_request *request, native_format kind,
         xx_io_device *source = NULL;
         xx_archive_record record;
         bool packed;
-        if (native_cancelled(request, pd)) { success = false; break; }
-        if (request->callbacks.progress)
-            request->callbacks.progress(request->callbacks.user, i,
-                                        request->file_count, item->path);
+        if (native_cancelled(request, pd)) {
+            success = false;
+            break;
+        }
+        if (request->callbacks.progress) request->callbacks.progress(request->callbacks.user, i, request->file_count, item->path);
         if (!item->directory && !(source = xfu_native_open_member(&members[i]))) {
             char why[128];
-            native_log(request, true, "%s: %s", item->path,
-                       xfu_native_open_failure(errno, why, sizeof(why)));
-            success = false; break;
+            native_log(request, true, "%s: %s", item->path, xfu_native_open_failure(errno, why, sizeof(why)));
+            success = false;
+            break;
         }
         xfu_native_record_warnings(request, writer, label, &members[i]);
         xx_archive_record_init(&record);
-        packed = xx_archive_record_set_original_name(&record,
-                                                     item->wire_name ? item->wire_name : item->name) &&
-            xx_archive_record_set_meta_bool(&record, XX_META_ID_IS_FOLDER, item->directory) &&
-            xfu_native_record_metadata(&record, writer, &members[i]) &&
-            (!have_method || item->directory ||
-             xx_archive_record_set_meta_u64(&record, XX_META_ID_COMPRESSION_METHOD, method)) &&
-            (!request->compression_level_set || item->directory ||
-             xx_archive_record_set_meta_i64(&record, XX_META_ID_COMPRESSION_LEVEL,
-                                            request->compression_level)) &&
+        packed =
+            xx_archive_record_set_original_name(&record, item->wire_name ? item->wire_name : item->name) &&
+            xx_archive_record_set_meta_bool(&record, XX_META_ID_IS_FOLDER, item->directory) && xfu_native_record_metadata(&record, writer, &members[i]) &&
+            (!have_method || item->directory || xx_archive_record_set_meta_u64(&record, XX_META_ID_COMPRESSION_METHOD, method)) &&
+            (!request->compression_level_set || item->directory || xx_archive_record_set_meta_i64(&record, XX_META_ID_COMPRESSION_LEVEL, request->compression_level)) &&
             (!(request->password && kind == NATIVE_ZIP && !item->directory) ||
-             xx_archive_record_set_meta_u64(&record, XX_META_ID_ENCRYPTION_METHOD,
-                                            XX_ZIP_ENCRYPTION_AES_256)) &&
+             xx_archive_record_set_meta_u64(&record, XX_META_ID_ENCRYPTION_METHOD, XX_ZIP_ENCRYPTION_AES_256)) &&
             xx_format_pack_archive_record(format, state, &record, source, pd);
         xx_archive_record_cleanup(&record);
         if (source && xx_io_close(source) != 0) packed = false;
@@ -2736,21 +2660,17 @@ static bool native_pack_records(const xfu_request *request, native_format kind,
             /* A Cancel is logged once, by the caller. */
             if (!native_cancelled(request, pd))
                 native_log(request, true, "%s: cannot pack member: %s", item->path,
-                           pd && pd->error_string[0] ? pd->error_string :
-                           "the writer failed (a read or write error, or one of its limits)");
-            success = false; break;
+                           pd && pd->error_string[0] ? pd->error_string : "the writer failed (a read or write error, or one of its limits)");
+            success = false;
+            break;
         }
-        if (request->callbacks.progress)
-            request->callbacks.progress(request->callbacks.user, i + 1U,
-                                        request->file_count, NULL);
+        if (request->callbacks.progress) request->callbacks.progress(request->callbacks.user, i + 1U, request->file_count, NULL);
     }
     if (success && !native_cancelled(request, pd)) {
         success = xx_format_finalize_archive_records_writing(format, state, pd);
         if (!success && !native_cancelled(request, pd))
-            native_log(request, true, "%s: cannot finish archive%s%s",
-                                 request->archive_path,
-                                 pd && pd->error_string[0] ? ": " : "",
-                                 pd && pd->error_string[0] ? pd->error_string : "");
+            native_log(request, true, "%s: cannot finish archive%s%s", request->archive_path, pd && pd->error_string[0] ? ": " : "",
+                       pd && pd->error_string[0] ? pd->error_string : "");
     } else success = false;
 done:
     if (state) xx_format_free_archive_records_writing(format, state);
@@ -2759,16 +2679,14 @@ done:
 }
 
 #if XFU_FORMAT_SUPPORT_FULL || XFU_FORMAT_SUPPORT_COMMON_WRITERS
-static bool native_raw_input(const xfu_request *request, const xfu_native_member *item,
-                             xx_io_device *output, xx_pd_struct *pd)
+static bool native_raw_input(const xfu_request *request, const xfu_native_member *item, xx_io_device *output, xx_pd_struct *pd)
 {
     xx_io_device *source;
     bool success;
     if (request->file_count != 1U || item->directory) return false;
     if (!(source = xfu_native_open_member(item))) {
         char why[128];
-        native_log(request, true, "%s: %s", item->path,
-                   xfu_native_open_failure(errno, why, sizeof(why)));
+        native_log(request, true, "%s: %s", item->path, xfu_native_open_failure(errno, why, sizeof(why)));
         return false;
     }
     success = native_copy(request, pd, source, output);
@@ -2776,28 +2694,25 @@ static bool native_raw_input(const xfu_request *request, const xfu_native_member
     return success;
 }
 
-static bool native_stream_filter(const xfu_request *request, native_filter filter,
-                                 xx_io_device *input, xx_io_device *output,
-                                 const char *name, xx_pd_struct *pd)
+static bool native_stream_filter(const xfu_request *request, native_filter filter, xx_io_device *input, xx_io_device *output, const char *name, xx_pd_struct *pd)
 {
     xxfc_release_fn release = NULL;
     Abstractformat *format;
     xx_archive_write_state *state;
     xx_archive_record record;
     bool success;
-    const char *kind = filter == FILTER_GZIP ? "gz" :
-        filter == FILTER_BZIP2 ? "bz2" : "xz";
+    const char *kind = filter == FILTER_GZIP ? "gz" : filter == FILTER_BZIP2 ? "bz2" : "xz";
     format = xxfc_make_writer(kind, output, &release);
     if (!format) return false;
     state = xx_format_create_archive_records_writing(format, NULL, pd);
-    if (!state) { release(format); return false; }
+    if (!state) {
+        release(format);
+        return false;
+    }
     xx_archive_record_init(&record);
     success = (!name || xx_archive_record_set_original_name(&record, name)) &&
-        (!request->compression_level_set ||
-         xx_archive_record_set_meta_i64(&record, XX_META_ID_COMPRESSION_LEVEL,
-                                        request->compression_level)) &&
-        xx_format_pack_archive_record(format, state, &record, input, pd) &&
-        xx_format_finalize_archive_records_writing(format, state, pd);
+              (!request->compression_level_set || xx_archive_record_set_meta_i64(&record, XX_META_ID_COMPRESSION_LEVEL, request->compression_level)) &&
+              xx_format_pack_archive_record(format, state, &record, input, pd) && xx_format_finalize_archive_records_writing(format, state, pd);
     xx_archive_record_cleanup(&record);
     xx_format_free_archive_records_writing(format, state);
     release(format);
@@ -2805,12 +2720,10 @@ static bool native_stream_filter(const xfu_request *request, native_filter filte
 }
 
 #if NATIVE_LZMA_FILTER
-static bool native_lzma_filter(const xfu_request *request, xx_io_device *input,
-                               xx_io_device *output, int64_t size, xx_pd_struct *pd)
+static bool native_lzma_filter(const xfu_request *request, xx_io_device *input, xx_io_device *output, int64_t size, xx_pd_struct *pd)
 {
     int level = request->compression_level_set ? request->compression_level : 6;
-    return size >= 0 &&
-        xx_lzma_pack_to_device(input, 0, size, output, level, pd);
+    return size >= 0 && xx_lzma_pack_to_device(input, 0, size, output, level, pd);
 }
 
 #endif
@@ -2818,8 +2731,7 @@ static bool native_lzma_filter(const xfu_request *request, xx_io_device *input,
 
 /* The name a one-file stream carries (gzip's FNAME): a raw stream's input
  * file, without its folders. A filtered archive's stream stays unnamed. */
-static const char *native_stream_name(native_format format, const xfu_native_member *members,
-                                      size_t count)
+static const char *native_stream_name(native_format format, const xfu_native_member *members, size_t count)
 {
     const char *name, *at;
     if (format != NATIVE_RAW || count != 1U || !members || !members[0].name) return NULL;
@@ -2829,10 +2741,8 @@ static const char *native_stream_name(native_format format, const xfu_native_mem
     return *name ? name : NULL;
 }
 
-static bool native_apply_filter(const xfu_request *request, native_filter filter,
-                                const char *filter_name, const char *stream_name,
-                                xx_io_device *input, xx_io_device *output,
-                                xx_pd_struct *pd)
+static bool native_apply_filter(const xfu_request *request, native_filter filter, const char *filter_name, const char *stream_name, xx_io_device *input,
+                                xx_io_device *output, xx_pd_struct *pd)
 {
 #if !XFU_FORMAT_SUPPORT_FULL && !XFU_FORMAT_SUPPORT_COMMON_WRITERS
     (void)filter_name;
@@ -2848,8 +2758,9 @@ static bool native_apply_filter(const xfu_request *request, native_filter filter
     if (size < 0 || xx_io_seek64(input, 0, SEEK_SET) != 0) return false;
     switch (filter) {
         case FILTER_NONE: return native_copy(request, pd, input, output);
-        case FILTER_GZIP: case FILTER_BZIP2: case FILTER_XZ:
-            return native_stream_filter(request, filter, input, output, stream_name, pd);
+        case FILTER_GZIP:
+        case FILTER_BZIP2:
+        case FILTER_XZ: return native_stream_filter(request, filter, input, output, stream_name, pd);
 #ifdef XFU_SUPPORT_FORMAT_ZSTD
         case FILTER_ZSTD: return xx_zstd_pack_device(input, 0, size, output, level, pd);
 #endif
@@ -2857,8 +2768,7 @@ static bool native_apply_filter(const xfu_request *request, native_filter filter
         case FILTER_LZMA: return native_lzma_filter(request, input, output, size, pd);
 #endif
 #if XFU_FORMAT_SUPPORT_FULL || XFU_FORMAT_SUPPORT_EXTRA_FILTERS
-        case FILTER_EXTRA: return xfu_native_filter_encode(request, filter_name, stream_name,
-                                                           input, output, pd);
+        case FILTER_EXTRA: return xfu_native_filter_encode(request, filter_name, stream_name, input, output, pd);
 #endif
         default: return false;
     }
@@ -2875,8 +2785,7 @@ static bool native_stores_folders(native_format format, const char *format_name)
 #else
     (void)format_name;
 #endif
-    return format == NATIVE_ZIP || format == NATIVE_7ZIP ||
-           format == NATIVE_CPIO || format == NATIVE_TAR_VARIANT;
+    return format == NATIVE_ZIP || format == NATIVE_7ZIP || format == NATIVE_CPIO || format == NATIVE_TAR_VARIANT;
 #else
     if (format == NATIVE_RAW) return false;
     return format != NATIVE_EXTRA || xfu_native_extra_stores_folders(format_name);
@@ -2896,8 +2805,7 @@ static bool native_needs_utf8(native_format format, const char *format_name)
 #endif
     return format == NATIVE_ZIP || format == NATIVE_7ZIP || format == NATIVE_TAR_VARIANT;
 #else
-    return format == NATIVE_ZIP || format == NATIVE_7ZIP ||
-        (format == NATIVE_EXTRA && xfu_native_extra_needs_utf8(format_name));
+    return format == NATIVE_ZIP || format == NATIVE_7ZIP || (format == NATIVE_EXTRA && xfu_native_extra_needs_utf8(format_name));
 #endif
 }
 
@@ -2906,9 +2814,7 @@ static xfu_native_member *native_members(const native_list *list)
 {
     xfu_native_member *members;
     size_t i;
-    if (list->count > SIZE_MAX / sizeof(*members) ||
-        !(members = (xfu_native_member *)malloc((list->count ? list->count : 1U) *
-                                                sizeof(*members)))) return NULL;
+    if (list->count > SIZE_MAX / sizeof(*members) || !(members = (xfu_native_member *)malloc((list->count ? list->count : 1U) * sizeof(*members)))) return NULL;
     for (i = 0; i < list->count; ++i) {
         const native_source *item = &list->items[i];
         members[i].path = item->path;
@@ -2926,8 +2832,7 @@ static xfu_native_member *native_members(const native_list *list)
     return members;
 }
 
-int xfu_native_create(const xfu_request *request, const char *format_name,
-                      const char *filter_name, xx_pd_struct *pd)
+int xfu_native_create(const xfu_request *request, const char *format_name, const char *filter_name, xx_pd_struct *pd)
 {
     native_format format = native_parse_format(format_name);
     native_filter filter = native_parse_filter(filter_name);
@@ -2948,15 +2853,13 @@ int xfu_native_create(const xfu_request *request, const char *format_name,
     memset(&output, 0, sizeof(output));
     if (!request || !request->archive_path || !pd) return 2;
     if (format == NATIVE_UNSUPPORTED || filter == FILTER_UNSUPPORTED) {
-        native_log(request, true, "unsupported native writer format/filter: %s / %s",
-                   format_name ? format_name : "(null)", filter_name ? filter_name : "none");
+        native_log(request, true, "unsupported native writer format/filter: %s / %s", format_name ? format_name : "(null)", filter_name ? filter_name : "none");
         return 2;
     }
     if (request->archive_options && request->archive_options[0]) {
         static const char *const known[] = {"cpio:hdrcharset=CP437"};
         size_t length = 0;
-        const char *unknown = xfu_option_unknown(request->archive_options, known,
-                                                 format == NATIVE_CPIO ? 1U : 0U, &length);
+        const char *unknown = xfu_option_unknown(request->archive_options, known, format == NATIVE_CPIO ? 1U : 0U, &length);
         if (unknown) {
             native_log(request, true, "unsupported writer option: %.*s", (int)length, unknown);
             return 2;
@@ -2964,8 +2867,7 @@ int xfu_native_create(const xfu_request *request, const char *format_name,
         cp437_names = xfu_option_listed(request->archive_options, "cpio:hdrcharset=CP437");
     }
     if (request->file_count > XFU_NATIVE_RECORD_LIMIT || (request->file_count && !request->files)) {
-        native_log(request, true, "%s: the archive member limit is %u", request->archive_path,
-                   XFU_NATIVE_RECORD_LIMIT);
+        native_log(request, true, "%s: the archive member limit is %u", request->archive_path, XFU_NATIVE_RECORD_LIMIT);
         return 2;
     }
     if (format == NATIVE_RAW && request->file_count != 1U) {
@@ -2976,15 +2878,12 @@ int xfu_native_create(const xfu_request *request, const char *format_name,
         native_log(request, true, "password protection is available for ZIP and 7-Zip only");
         return 2;
     }
-    if (request->compression_method &&
-        !(filter != FILTER_NONE && !strcmp(request->compression_method, filter_name)) &&
+    if (request->compression_method && !(filter != FILTER_NONE && !strcmp(request->compression_method, filter_name)) &&
         !native_method(format, request->compression_method, &method)) {
-        native_log(request, true, "unsupported compression method for %s: %s",
-                   format_name, request->compression_method);
+        native_log(request, true, "unsupported compression method for %s: %s", format_name, request->compression_method);
         return 2;
     }
-    if (request->compression_level_set &&
-        !native_level_valid(format, filter, request->compression_level)) {
+    if (request->compression_level_set && !native_level_valid(format, filter, request->compression_level)) {
         native_log(request, true, "unsupported compression level %d", request->compression_level);
         return 2;
     }
@@ -2992,21 +2891,19 @@ int xfu_native_create(const xfu_request *request, const char *format_name,
     /* The members: each input, and for a folder what it holds, walked before
      * anything is written. A folder input's member is the folder itself. */
     result = native_collect(request, format == NATIVE_RAW ? filter_name : format_name,
-                            format == NATIVE_RAW ? NATIVE_FOLDERS_RAW :
-                            native_stores_folders(format, format_name) ? NATIVE_FOLDERS_WALK :
-                            NATIVE_FOLDERS_REFUSE,
+                            format == NATIVE_RAW                         ? NATIVE_FOLDERS_RAW
+                            : native_stores_folders(format, format_name) ? NATIVE_FOLDERS_WALK
+                                                                         : NATIVE_FOLDERS_REFUSE,
                             native_needs_utf8(format, format_name), &list, pd);
     if (result) goto done;
     result = 2;
     for (i = 0; cp437_names && i < list.count; ++i) {
         if (!(list.items[i].wire_name = native_cp437_name(list.items[i].name))) {
-            native_log(request, true, "%s: member name cannot be represented in CP437",
-                       list.items[i].name);
+            native_log(request, true, "%s: member name cannot be represented in CP437", list.items[i].name);
             goto done;
         }
     }
-    if (list.count > SIZE_MAX / sizeof(*paths) ||
-        !(paths = (const char **)malloc((list.count ? list.count : 1U) * sizeof(*paths))) ||
+    if (list.count > SIZE_MAX / sizeof(*paths) || !(paths = (const char **)malloc((list.count ? list.count : 1U) * sizeof(*paths))) ||
         !(members = native_members(&list))) {
         native_log(request, true, "cannot allocate the input list");
         goto done;
@@ -3016,51 +2913,48 @@ int xfu_native_create(const xfu_request *request, const char *format_name,
     expanded = native_watched(request, &watch);
     expanded.files = paths;
     expanded.file_count = list.count;
-    if (native_cancelled(request, pd)) { result = 1; goto done; }
+    if (native_cancelled(request, pd)) {
+        result = 1;
+        goto done;
+    }
     /* Where the archive goes is settled before anything is compressed. */
     if (!native_open_output(request, &target, &output, pd)) goto done;
     errno = 0;
     if (!(temporary = xx_io_temp_open())) {
-        native_log(request, true, "cannot create temporary archive stream: %s",
-                   strerror(errno ? errno : EIO));
+        native_log(request, true, "cannot create temporary archive stream: %s", strerror(errno ? errno : EIO));
         goto done;
     }
     archive = native_checked_open(&container, temporary, pd, true);
 #if XFU_FORMAT_SUPPORT_FULL || NATIVE_EXTRA_WRITERS
-    if (format == NATIVE_EXTRA)
-        success = xfu_native_extra_write(&expanded, format_name, members, archive, pd);
+    if (format == NATIVE_EXTRA) success = xfu_native_extra_write(&expanded, format_name, members, archive, pd);
     else
 #endif
 #if XFU_FORMAT_SUPPORT_FULL || XFU_FORMAT_SUPPORT_COMMON_WRITERS
-    if (format == NATIVE_RAW) success = native_raw_input(&expanded, members, archive, pd);
+        if (format == NATIVE_RAW)
+        success = native_raw_input(&expanded, members, archive, pd);
 #ifdef XFU_SUPPORT_FORMAT_TAR
-    else if (format == NATIVE_TAR_VARIANT)
-        success = xfu_native_tar_write(&expanded, format_name, members, archive, pd);
+    else if (format == NATIVE_TAR_VARIANT) success = xfu_native_tar_write(&expanded, format_name, members, archive, pd);
 #endif
     else
 #endif
-    success = native_pack_records(&expanded, format, format_name, list.items, members,
-                                       archive, method, request->compression_method &&
-                                       !(filter != FILTER_NONE &&
-                                         !strcmp(request->compression_method, filter_name)), pd);
+        success = native_pack_records(&expanded, format, format_name, list.items, members, archive, method,
+                                      request->compression_method && !(filter != FILTER_NONE && !strcmp(request->compression_method, filter_name)), pd);
     if (!success || container.failed) {
         if (native_cancelled(request, pd)) result = 1;
         else if (!watch.reported || container.failed)
-            native_log(request, true, "%s: cannot construct native archive%s%s",
-                       request->archive_path, container.failed ? ": " : "",
+            native_log(request, true, "%s: cannot construct native archive%s%s", request->archive_path, container.failed ? ": " : "",
                        container.failed ? pd->error_string : "");
         goto done;
     }
-    if (native_cancelled(request, pd)) { result = 1; goto done; }
-    success = native_apply_filter(request, filter, filter_name,
-                                  native_stream_name(format, members, list.count), archive,
-                                  &output.checked.device, pd);
+    if (native_cancelled(request, pd)) {
+        result = 1;
+        goto done;
+    }
+    success = native_apply_filter(request, filter, filter_name, native_stream_name(format, members, list.count), archive, &output.checked.device, pd);
     if (!success || container.failed || output.checked.failed || native_cancelled(request, pd)) {
         result = 1;
         if (!native_cancelled(request, pd))
-            native_log(request, true, "%s: cannot finish native archive%s%s",
-                       request->archive_path,
-                       pd->error_string[0] ? ": " : "",
+            native_log(request, true, "%s: cannot finish native archive%s%s", request->archive_path, pd->error_string[0] ? ": " : "",
                        pd->error_string[0] ? pd->error_string : "");
         goto done;
     }
@@ -3079,8 +2973,7 @@ done:
     return result;
 }
 
-int xfu_native_create_with(const xfu_request *request, const char *label, unsigned flags,
-                           xfu_native_member_writer writer, void *context, xx_pd_struct *pd)
+int xfu_native_create_with(const xfu_request *request, const char *label, unsigned flags, xfu_native_member_writer writer, void *context, xx_pd_struct *pd)
 {
     native_list list = {0};
     native_watch watch = {0};
@@ -3093,15 +2986,14 @@ int xfu_native_create_with(const xfu_request *request, const char *label, unsign
     memset(&output, 0, sizeof(output));
     if (!request || !request->archive_path || !label || !writer || !pd) return 2;
     if (request->file_count > XFU_NATIVE_RECORD_LIMIT || (request->file_count && !request->files)) {
-        native_log(request, true, "%s: the archive member limit is %u", request->archive_path,
-                   XFU_NATIVE_RECORD_LIMIT);
+        native_log(request, true, "%s: the archive member limit is %u", request->archive_path, XFU_NATIVE_RECORD_LIMIT);
         return 2;
     }
     if (!native_find_target(request, &target)) return 2;
     result = native_collect(request, label,
-                            (flags & XFU_NATIVE_WITH_STREAM) ? NATIVE_FOLDERS_STREAM :
-                            (flags & XFU_NATIVE_WITH_FOLDERS) ? NATIVE_FOLDERS_WALK :
-                            NATIVE_FOLDERS_REFUSE,
+                            (flags & XFU_NATIVE_WITH_STREAM)    ? NATIVE_FOLDERS_STREAM
+                            : (flags & XFU_NATIVE_WITH_FOLDERS) ? NATIVE_FOLDERS_WALK
+                                                                : NATIVE_FOLDERS_REFUSE,
                             (flags & XFU_NATIVE_WITH_UTF8) != 0U, &list, pd);
     if (result) goto done;
     result = 2;
@@ -3109,7 +3001,10 @@ int xfu_native_create_with(const xfu_request *request, const char *label, unsign
         native_log(request, true, "cannot allocate the input list");
         goto done;
     }
-    if (native_cancelled(request, pd)) { result = 1; goto done; }
+    if (native_cancelled(request, pd)) {
+        result = 1;
+        goto done;
+    }
     if (!native_open_output(request, &target, &output, pd)) goto done;
     /* The writer fills the stage; the destination stays as it was until the
      * stage is complete. */
@@ -3118,10 +3013,8 @@ int xfu_native_create_with(const xfu_request *request, const char *label, unsign
     if (!success || native_cancelled(request, pd)) {
         if (native_cancelled(request, pd)) result = 1;
         else if (!watch.reported)
-            native_log(request, true, "%s: cannot write %s archive%s%s", request->archive_path,
-                       label, output.checked.failed ? ": " : "",
-                       output.checked.failed ? strerror(output.checked.error ?
-                                                        output.checked.error : EIO) : "");
+            native_log(request, true, "%s: cannot write %s archive%s%s", request->archive_path, label, output.checked.failed ? ": " : "",
+                       output.checked.failed ? strerror(output.checked.error ? output.checked.error : EIO) : "");
         goto done;
     }
     if ((result = native_publish(request, &target, &output, pd)) != 0) goto done;
@@ -3139,13 +3032,17 @@ done:
 
 char *xfu_native_capabilities_text(void)
 {
-    static const struct { const char *name; bool read; } formats[] = {
+    static const struct {
+        const char *name;
+        bool read;
+    } formats[] = {
 #if XFU_FORMAT_SUPPORT_TAR_FILTERS
-        {"tar", true}, {"pax", true}, {"pax_restricted", true},
-        {"gnutar", true}, {"ustar", true}, {"v7tar", true},
-        {"tar_solaris", true},
+        {"tar", true}, {"pax", true}, {"pax_restricted", true}, {"gnutar", true}, {"ustar", true}, {"v7tar", true}, {"tar_solaris", true},
 #elif XFU_FORMAT_SUPPORT_AR_ONLY
-        {"ar", true}, {"ar_bsd", true}, {"ar_svr4", true}, {"ar_gnu", true},
+        {"ar", true},
+        {"ar_bsd", true},
+        {"ar_svr4", true},
+        {"ar_gnu", true},
 #elif !XFU_FORMAT_SUPPORT_FULL
 #define XX_SUPPORTED_FORMAT(type, name, label) {#name, true},
 #include "xxfclib/formats/xx_format_support_rows.inc"
@@ -3154,21 +3051,18 @@ char *xfu_native_capabilities_text(void)
         {"raw", false},
 #endif
 #else
-        {"tar", true}, {"pax", true}, {"pax_restricted", true},
-        {"gnutar", true}, {"ustar", true}, {"v7tar", true},
-        {"tar_solaris", true}, {"cpio", true}, {"cpio_newc", true},
-        {"cpio_odc", true}, {"cpio_bin", true}, {"cpio_bin_le", true},
-        {"cpio_bin_be", true}, {"cpio_crc", true},
-        {"cpio_afio", true}, {"cpio_pwb", true},
-        {"ar", true}, {"ar_bsd", true}, {"ar_svr4", true},
-        {"mtree", true}, {"mtree_classic", true},
-        {"iso9660", true}, {"shar", true}, {"shar_dump", true},
-        {"zip", true}, {"7zip", true}, {"warc", true}, {"xar", true},
-        {"raw", true}, {"cab", true}, {"lha", true}, {"rar", true},
-        {"rar5", true}, {"rpm", true}, {"empty", true}
+        {"tar", true},         {"pax", true},      {"pax_restricted", true}, {"gnutar", true},   {"ustar", true},    {"v7tar", true},
+        {"tar_solaris", true}, {"cpio", true},     {"cpio_newc", true},      {"cpio_odc", true}, {"cpio_bin", true}, {"cpio_bin_le", true},
+        {"cpio_bin_be", true}, {"cpio_crc", true}, {"cpio_afio", true},      {"cpio_pwb", true}, {"ar", true},       {"ar_bsd", true},
+        {"ar_svr4", true},     {"mtree", true},    {"mtree_classic", true},  {"iso9660", true},  {"shar", true},     {"shar_dump", true},
+        {"zip", true},         {"7zip", true},     {"warc", true},           {"xar", true},      {"raw", true},      {"cab", true},
+        {"lha", true},         {"rar", true},      {"rar5", true},           {"rpm", true},      {"empty", true}
 #endif
     };
-    static const struct { const char *name; bool read; } filters[] = {
+    static const struct {
+        const char *name;
+        bool read;
+    } filters[] = {
 #if !XFU_FORMAT_SUPPORT_FULL
         {"none", true},
 #ifdef XFU_SUPPORT_FORMAT_GZ
@@ -3205,11 +3099,8 @@ char *xfu_native_capabilities_text(void)
         {"b64encode", true},
 #endif
 #else
-        {"none", true}, {"gzip", true}, {"bzip2", true},
-        {"compress", true}, {"lzma", true}, {"xz", true},
-        {"lzip", true}, {"lz4", true}, {"lzop", true},
-        {"zstd", true}, {"uuencode", true}, {"b64encode", true},
-        {"rpm", true}, {"lrzip", false}, {"grzip", false}
+        {"none", true}, {"gzip", true}, {"bzip2", true},    {"compress", true},  {"lzma", true}, {"xz", true},     {"lzip", true},  {"lz4", true},
+        {"lzop", true}, {"zstd", true}, {"uuencode", true}, {"b64encode", true}, {"rpm", true},  {"lrzip", false}, {"grzip", false}
 #endif
     };
     size_t i, used = 0U;
@@ -3218,23 +3109,28 @@ char *xfu_native_capabilities_text(void)
     int amount;
     if (!text) return NULL;
     amount = snprintf(text, capacity, "backend native xxfclib\n");
-    if (amount < 0 || (size_t)amount >= capacity) { free(text); return NULL; }
+    if (amount < 0 || (size_t)amount >= capacity) {
+        free(text);
+        return NULL;
+    }
     used = (size_t)amount;
     for (i = 0; i < sizeof(formats) / sizeof(formats[0]); ++i) {
         if (i && !strcmp(formats[i].name, formats[i - 1U].name)) continue;
-        amount = snprintf(text + used, capacity - used,
-                          "format %s read=%s create=%s\n", formats[i].name,
-                          formats[i].read ? "yes" : "no",
+        amount = snprintf(text + used, capacity - used, "format %s read=%s create=%s\n", formats[i].name, formats[i].read ? "yes" : "no",
                           xfu_native_can_create_format(formats[i].name) ? "yes" : "no");
-        if (amount < 0 || (size_t)amount >= capacity - used) { free(text); return NULL; }
+        if (amount < 0 || (size_t)amount >= capacity - used) {
+            free(text);
+            return NULL;
+        }
         used += (size_t)amount;
     }
     for (i = 0; i < sizeof(filters) / sizeof(filters[0]); ++i) {
-        amount = snprintf(text + used, capacity - used,
-                          "filter %s read=%s create=%s\n", filters[i].name,
-                          filters[i].read ? "yes" : "no",
+        amount = snprintf(text + used, capacity - used, "filter %s read=%s create=%s\n", filters[i].name, filters[i].read ? "yes" : "no",
                           xfu_native_can_create_filter(filters[i].name) ? "yes" : "no");
-        if (amount < 0 || (size_t)amount >= capacity - used) { free(text); return NULL; }
+        if (amount < 0 || (size_t)amount >= capacity - used) {
+            free(text);
+            return NULL;
+        }
         used += (size_t)amount;
     }
     return text;

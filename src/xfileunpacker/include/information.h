@@ -11,7 +11,5 @@
  * metadata. Display values are already escaped by the metadata/UI adapters;
  * their whitespace and punctuation are preserved. Free the returned string.
  * NULL indicates invalid input or an allocation/size failure. */
-char *xfu_information_text(const char *archive, const xfu_entry *entries,
-                           size_t count, const xfu_entry *selected,
-                           bool advanced);
+char *xfu_information_text(const char *archive, const xfu_entry *entries, size_t count, const xfu_entry *selected, bool advanced);
 #endif

@@ -23,47 +23,38 @@ static bool qnx_lmf_stopped(xx_pd_struct *pd)
     return pd && xx_pd_is_stopped(pd);
 }
 
-static bool qnx_lmf_read_record_header(const Abstractformat *format, uint64_t available, uint64_t offset,
-                                       xx_qnx_lmf_record_type *type, uint16_t *data_size)
+static bool qnx_lmf_read_record_header(const Abstractformat *format, uint64_t available, uint64_t offset, xx_qnx_lmf_record_type *type, uint16_t *data_size)
 {
     uint8_t bytes[XX_QNX_LMF_RECORD_HEADER_SIZE];
     uint16_t spare;
-    if (!format || !format->device || format->base_address < 0 || !type || !data_size ||
-        offset > available || available - offset < sizeof(bytes) || offset > (uint64_t)INT64_MAX ||
-        format->base_address > INT64_MAX - (int64_t)offset ||
-        !xx_io_read_at(format->device, format->base_address + (int64_t)offset, bytes, sizeof(bytes))) return false;
+    if (!format || !format->device || format->base_address < 0 || !type || !data_size || offset > available || available - offset < sizeof(bytes) ||
+        offset > (uint64_t)INT64_MAX || format->base_address > INT64_MAX - (int64_t)offset ||
+        !xx_io_read_at(format->device, format->base_address + (int64_t)offset, bytes, sizeof(bytes)))
+        return false;
     *type = (xx_qnx_lmf_record_type)bytes[0];
     *data_size = xx_data_get_u16(bytes, sizeof(bytes), 2U, false);
     spare = xx_data_get_u16(bytes, sizeof(bytes), 4U, false);
-    return bytes[1] == 0U && spare == 0U && (unsigned)*type <= XX_QNX_LMF_RECORD_LINEAR_FIXUP &&
-           *data_size <= XX_QNX_LMF_MAX_RECORD_DATA_SIZE &&
+    return bytes[1] == 0U && spare == 0U && (unsigned)*type <= XX_QNX_LMF_RECORD_LINEAR_FIXUP && *data_size <= XX_QNX_LMF_MAX_RECORD_DATA_SIZE &&
            (uint64_t)*data_size <= available - offset - sizeof(bytes);
 }
 
 static bool qnx_lmf_record_shape_is_valid(xx_qnx_lmf_record_type type, uint16_t data_size)
 {
     switch (type) {
-        case XX_QNX_LMF_RECORD_HEADER:
-            return false;
+        case XX_QNX_LMF_RECORD_HEADER: return false;
         case XX_QNX_LMF_RECORD_LOAD:
         case XX_QNX_LMF_RECORD_FIXUP:
         case XX_QNX_LMF_RECORD_8087_FIXUP:
-        case XX_QNX_LMF_RECORD_LINEAR_FIXUP:
-            return data_size >= XX_QNX_LMF_DATA_HEADER_SIZE;
-        case XX_QNX_LMF_RECORD_RESOURCE:
-            return data_size >= XX_QNX_LMF_RESOURCE_HEADER_SIZE;
+        case XX_QNX_LMF_RECORD_LINEAR_FIXUP: return data_size >= XX_QNX_LMF_DATA_HEADER_SIZE;
+        case XX_QNX_LMF_RECORD_RESOURCE: return data_size >= XX_QNX_LMF_RESOURCE_HEADER_SIZE;
         case XX_QNX_LMF_RECORD_READ_WRITE_END:
-        case XX_QNX_LMF_RECORD_IMAGE_END:
-            return data_size >= 6U;
-        case XX_QNX_LMF_RECORD_COMMENT:
-            return true;
-        default:
-            return false;
+        case XX_QNX_LMF_RECORD_IMAGE_END: return data_size >= 6U;
+        case XX_QNX_LMF_RECORD_COMMENT: return true;
+        default: return false;
     }
 }
 
-static bool qnx_lmf_scan(const Abstractformat *format, uint64_t available, uint16_t first_size,
-                         qnx_lmf_scan_counts *counts, xx_pd_struct *pd)
+static bool qnx_lmf_scan(const Abstractformat *format, uint64_t available, uint16_t first_size, qnx_lmf_scan_counts *counts, xx_pd_struct *pd)
 {
     uint64_t offset = XX_QNX_LMF_RECORD_HEADER_SIZE + first_size;
     qnx_lmf_scan_counts result = {1U, 0U, 0U, 0U, 0U};
@@ -71,15 +62,14 @@ static bool qnx_lmf_scan(const Abstractformat *format, uint64_t available, uint1
         xx_qnx_lmf_record_type type;
         uint16_t data_size;
         uint64_t next;
-        if (result.records >= XX_QNX_LMF_MAX_RECORDS || qnx_lmf_stopped(pd) ||
-            !qnx_lmf_read_record_header(format, available, offset, &type, &data_size) ||
-            !qnx_lmf_record_shape_is_valid(type, data_size)) return false;
+        if (result.records >= XX_QNX_LMF_MAX_RECORDS || qnx_lmf_stopped(pd) || !qnx_lmf_read_record_header(format, available, offset, &type, &data_size) ||
+            !qnx_lmf_record_shape_is_valid(type, data_size))
+            return false;
         next = offset + XX_QNX_LMF_RECORD_HEADER_SIZE + data_size;
         ++result.records;
         if (type == XX_QNX_LMF_RECORD_LOAD) ++result.sections;
         else if (type == XX_QNX_LMF_RECORD_RESOURCE) ++result.resources;
-        else if (type == XX_QNX_LMF_RECORD_FIXUP || type == XX_QNX_LMF_RECORD_8087_FIXUP ||
-                 type == XX_QNX_LMF_RECORD_LINEAR_FIXUP) ++result.fixups;
+        else if (type == XX_QNX_LMF_RECORD_FIXUP || type == XX_QNX_LMF_RECORD_8087_FIXUP || type == XX_QNX_LMF_RECORD_LINEAR_FIXUP) ++result.fixups;
         if (type == XX_QNX_LMF_RECORD_IMAGE_END) {
             result.image_end = next;
             *counts = result;
@@ -95,9 +85,7 @@ static bool qnx_lmf_read_header_fields(xx_qnx_lmf *reader)
     uint8_t bytes[XX_QNX_LMF_HEADER_SIZE];
     xx_qnx_lmf_header *header;
     unsigned index;
-    if (!reader || !xx_io_read_at(reader->format.device,
-                                  reader->format.base_address + XX_QNX_LMF_RECORD_HEADER_SIZE,
-                                  bytes, sizeof(bytes))) return false;
+    if (!reader || !xx_io_read_at(reader->format.device, reader->format.base_address + XX_QNX_LMF_RECORD_HEADER_SIZE, bytes, sizeof(bytes))) return false;
     header = &reader->header;
     header->version = xx_data_get_u16(bytes, sizeof(bytes), 0U, false);
     header->cflags = xx_data_get_u16(bytes, sizeof(bytes), 2U, false);
@@ -116,8 +104,7 @@ static bool qnx_lmf_read_header_fields(xx_qnx_lmf *reader)
     return true;
 }
 
-static void qnx_lmf_free_arrays(xx_qnx_lmf_record *records, xx_qnx_lmf_section *sections,
-                                xx_qnx_lmf_resource *resources, xx_qnx_lmf_fixup *fixups)
+static void qnx_lmf_free_arrays(xx_qnx_lmf_record *records, xx_qnx_lmf_section *sections, xx_qnx_lmf_resource *resources, xx_qnx_lmf_fixup *fixups)
 {
     xx_mem_free(fixups);
     xx_mem_free(resources);
@@ -181,11 +168,9 @@ bool xx_qnx_lmf_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
     int64_t total;
     uint64_t available;
     (void)pd;
-    if (!self || !self->device || self->base_address < 0 ||
-        (total = xx_io_total_size(self->device)) < self->base_address) return false;
+    if (!self || !self->device || self->base_address < 0 || (total = xx_io_total_size(self->device)) < self->base_address) return false;
     available = (uint64_t)(total - self->base_address);
-    return qnx_lmf_read_record_header(self, available, 0U, &type, &data_size) &&
-           type == XX_QNX_LMF_RECORD_HEADER && data_size >= XX_QNX_LMF_HEADER_SIZE &&
+    return qnx_lmf_read_record_header(self, available, 0U, &type, &data_size) && type == XX_QNX_LMF_RECORD_HEADER && data_size >= XX_QNX_LMF_HEADER_SIZE &&
            qnx_lmf_scan(self, available, data_size, &counts, pd);
 }
 
@@ -210,9 +195,9 @@ bool xx_qnx_lmf_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
     total = xx_io_total_size(self->device);
     if (total < self->base_address) return false;
     available = (uint64_t)(total - self->base_address);
-    if (!qnx_lmf_read_record_header(self, available, 0U, &first_type, &first_size) ||
-        first_type != XX_QNX_LMF_RECORD_HEADER || first_size < XX_QNX_LMF_HEADER_SIZE ||
-        !qnx_lmf_scan(self, available, first_size, &counts, pd) || !qnx_lmf_read_header_fields(reader)) return false;
+    if (!qnx_lmf_read_record_header(self, available, 0U, &first_type, &first_size) || first_type != XX_QNX_LMF_RECORD_HEADER || first_size < XX_QNX_LMF_HEADER_SIZE ||
+        !qnx_lmf_scan(self, available, first_size, &counts, pd) || !qnx_lmf_read_header_fields(reader))
+        return false;
 
     records = (xx_qnx_lmf_record *)xx_mem_alloc((size_t)counts.records * sizeof(*records));
     if (!records) goto cleanup;
@@ -249,8 +234,7 @@ bool xx_qnx_lmf_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
         records[record_index].file_offset = (int64_t)offset;
         records[record_index].data_offset = (int64_t)data_offset;
         records[record_index].data_size = data_size;
-        if (type == XX_QNX_LMF_RECORD_LOAD || type == XX_QNX_LMF_RECORD_FIXUP ||
-            type == XX_QNX_LMF_RECORD_8087_FIXUP || type == XX_QNX_LMF_RECORD_LINEAR_FIXUP) {
+        if (type == XX_QNX_LMF_RECORD_LOAD || type == XX_QNX_LMF_RECORD_FIXUP || type == XX_QNX_LMF_RECORD_8087_FIXUP || type == XX_QNX_LMF_RECORD_LINEAR_FIXUP) {
             if (!xx_io_read_at(self->device, self->base_address + (int64_t)data_offset, small, XX_QNX_LMF_DATA_HEADER_SIZE)) goto cleanup;
             if (type == XX_QNX_LMF_RECORD_LOAD) {
                 xx_qnx_lmf_section *section = &sections[section_index++];
@@ -284,8 +268,7 @@ bool xx_qnx_lmf_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
         ++record_index;
         if (type == XX_QNX_LMF_RECORD_IMAGE_END) break;
     }
-    if (record_index != counts.records || section_index != counts.sections ||
-        resource_index != counts.resources || fixup_index != counts.fixups) goto cleanup;
+    if (record_index != counts.records || section_index != counts.sections || resource_index != counts.resources || fixup_index != counts.fixups) goto cleanup;
 
     reader->records = records;
     reader->sections = sections;
@@ -383,7 +366,8 @@ bool xx_qnx_lmf_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, 
     uint32_t resource_index = 0U;
     int32_t part_number = 0;
     if (!reader || !output || (mode != XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_SECTIONS) ||
-        (!self->base_info_handled && !xx_qnx_lmf_handle_base_info(self, pd))) return false;
+        (!self->base_info_handled && !xx_qnx_lmf_handle_base_info(self, pd)))
+        return false;
     output->binary_offset = self->base_address;
     output->binary_size = self->format_size;
     output->module_address = reader->header.image_base;
@@ -399,19 +383,18 @@ bool xx_qnx_lmf_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, 
     if (!xx_memory_map_reserve(output, (size_t)reader->section_count + reader->resource_count)) return false;
     while (section_index < reader->section_count || resource_index < reader->resource_count) {
         bool use_resource = resource_index < reader->resource_count &&
-                            (section_index >= reader->section_count ||
-                             reader->resources[resource_index].data_offset <= reader->sections[section_index].raw_data_offset);
+                            (section_index >= reader->section_count || reader->resources[resource_index].data_offset <= reader->sections[section_index].raw_data_offset);
         if (qnx_lmf_stopped(pd)) return false;
         if (use_resource) {
             const xx_qnx_lmf_resource *resource = &reader->resources[resource_index++];
-            if (!xx_memory_map_add_part(output, self->base_address + resource->data_offset, resource->size,
-                                        (uint64_t)resource->data_offset, resource->size, XX_FILE_PART_RESOURCE,
-                                        part_number++, "LMF_RESOURCE", false)) return false;
+            if (!xx_memory_map_add_part(output, self->base_address + resource->data_offset, resource->size, (uint64_t)resource->data_offset, resource->size,
+                                        XX_FILE_PART_RESOURCE, part_number++, "LMF_RESOURCE", false))
+                return false;
         } else {
             const xx_qnx_lmf_section *section = &reader->sections[section_index++];
-            if (!xx_memory_map_add_part(output, self->base_address + section->raw_data_offset, section->size,
-                                        (uint64_t)section->raw_data_offset, section->size, XX_FILE_PART_SECTION,
-                                        part_number++, "LMF_LOAD", false)) return false;
+            if (!xx_memory_map_add_part(output, self->base_address + section->raw_data_offset, section->size, (uint64_t)section->raw_data_offset, section->size,
+                                        XX_FILE_PART_SECTION, part_number++, "LMF_LOAD", false))
+                return false;
         }
     }
     return !qnx_lmf_stopped(pd) && xx_memory_map_finalize(output);

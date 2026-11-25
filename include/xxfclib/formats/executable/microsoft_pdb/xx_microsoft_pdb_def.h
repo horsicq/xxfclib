@@ -9,11 +9,11 @@
 #define XX_MICROSOFT_PDB_DEF_H
 
 /* MSF magic strings (including the terminating padding bytes) */
-#define XX_MS_PDB_MAGIC_SIZE_PDB7 32  /* "Microsoft C/C++ MSF 7.00\r\n\x1aDS\0\0\0" */
-#define XX_MS_PDB_MAGIC_SIZE_PDB2 44  /* "Microsoft C/C++ program database 2.00\r\n\x1aJG\0\0" */
+#define XX_MS_PDB_MAGIC_SIZE_PDB7 32 /* "Microsoft C/C++ MSF 7.00\r\n\x1aDS\0\0\0" */
+#define XX_MS_PDB_MAGIC_SIZE_PDB2 44 /* "Microsoft C/C++ program database 2.00\r\n\x1aJG\0\0" */
 
 /* Well known stream indexes */
-#define XX_MS_PDB_STREAM_ROOT 0  /* Old MSF directory */
+#define XX_MS_PDB_STREAM_ROOT 0 /* Old MSF directory */
 #define XX_MS_PDB_STREAM_PDB 1  /* PDB info stream */
 #define XX_MS_PDB_STREAM_TPI 2  /* Type info stream */
 #define XX_MS_PDB_STREAM_DBI 3  /* Debug info stream */
@@ -39,8 +39,8 @@
 /* PDB_FEATURE */
 #define XX_MS_PDB_PDB_FEATURE_VC110 20091201
 #define XX_MS_PDB_PDB_FEATURE_VC140 20140508
-#define XX_MS_PDB_PDB_FEATURE_NOTYPEMERGE 0x4D544F4E  /* "NOTM" */
-#define XX_MS_PDB_PDB_FEATURE_MINIMALDEBUGINFO 0x494E494D  /* "MINI" */
+#define XX_MS_PDB_PDB_FEATURE_NOTYPEMERGE 0x4D544F4E      /* "NOTM" */
+#define XX_MS_PDB_PDB_FEATURE_MINIMALDEBUGINFO 0x494E494D /* "MINI" */
 
 /* TPI/IPI stream versions */
 /* TPI_VERSION */
@@ -494,12 +494,12 @@
 /* Portable PDB: an ECMA-335 metadata file, not an MSF container. The debug */
 /* information lives in metadata tables instead of CodeView records. */
 /* https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md */
-#define XX_MS_PDB_PORTABLE_SIGNATURE 0x424A5342  /* "BSJB" */
+#define XX_MS_PDB_PORTABLE_SIGNATURE 0x424A5342 /* "BSJB" */
 #define XX_MS_PDB_PORTABLE_VERSION_OFFSET 16
 
 /* Heap size flags of the table stream header */
 /* PORTABLE_HEAPSIZE */
-#define XX_MS_PDB_PORTABLE_HEAPSIZE_STRINGS 0x01  /* #Strings uses 4 byte indexes */
+#define XX_MS_PDB_PORTABLE_HEAPSIZE_STRINGS 0x01 /* #Strings uses 4 byte indexes */
 #define XX_MS_PDB_PORTABLE_HEAPSIZE_GUID 0x02
 #define XX_MS_PDB_PORTABLE_HEAPSIZE_BLOB 0x04
 

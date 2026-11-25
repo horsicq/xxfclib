@@ -40,11 +40,13 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
         if (format && xx_format_is_valid(format, NULL)) {
             /* Preserve ZIP64 refinement and authenticated encrypted headers. */
             bool parsed = xx_format_handle_base_info(format, NULL);
-            if ((parsed && format->is_archive) || format->is_crypted)
-                type = format->file_type == XX_FILE_TYPE_UNKNOWN ? candidate : format->file_type;
+            if ((parsed && format->is_archive) || format->is_crypted) type = format->file_type == XX_FILE_TYPE_UNKNOWN ? candidate : format->file_type;
         }
         xx_format_free_reader(format);
-        if (xx_io_seek64(dev, saved, SEEK_SET)) { type = XX_FILE_TYPE_UNKNOWN; break; }
+        if (xx_io_seek64(dev, saved, SEEK_SET)) {
+            type = XX_FILE_TYPE_UNKNOWN;
+            break;
+        }
         if (type != XX_FILE_TYPE_BINARY) break;
     }
     xx_list_destroy(supported);
@@ -3187,7 +3189,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
     bool is_lzdiet = magic_size >= 6 && xx_rt_memcmp(magic, "lZdIeT", 6U) == 0;
     bool is_lzpis2 = magic_size >= 6 && xx_rt_memcmp(magic, "LZPIS2", 6U) == 0;
     bool is_zie = total_size >= 0x118 && magic_size >= 4U && xx_rt_memcmp(magic, "PIT2", 4U) == 0;
-    bool is_xeditpack = total_size >= 9 && magic_size >= 4 && magic[0x0] == 0x00U && magic[0x1] == 0x01U && magic[0x2] == 0x40U && (magic[3] == 0xc6U || magic[3] == 0xe5U);
+    bool is_xeditpack =
+        total_size >= 9 && magic_size >= 4 && magic[0x0] == 0x00U && magic[0x1] == 0x01U && magic[0x2] == 0x40U && (magic[3] == 0xc6U || magic[3] == 0xe5U);
     bool is_wpk = magic_size >= 0x0c && ((magic[0x0] == 0x03U && magic[0x1] == 0x24U && magic[0x2] == 0x01U && magic[0x3] == 0x01U) ||
                                          (magic[0x0] == 0x03U && magic[0x1] == 0x24U && magic[0x2] == 0x33U && magic[0x3] == 0x01U));
     bool is_wintersoft =
@@ -3251,9 +3254,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
     /* Past the 64-byte window or magicless: qnx6's superblock is at
      * 0x2000, btrfs's at 0x10000, dmg's koly trailer in the LAST 512
      * bytes, csman/dlob/vxworks/uefi_capsule need structural probes. */
-    bool is_qnx6 = total_size > 0x3000 || (magic_size >= 4U &&
-                    (xx_data_get_u32(magic, magic_size, 0, false) == UINT32_C(0x68191122) ||
-                     xx_data_get_u32(magic, magic_size, 0, true) == UINT32_C(0x68191122)));
+    bool is_qnx6 = total_size > 0x3000 || (magic_size >= 4U && (xx_data_get_u32(magic, magic_size, 0, false) == UINT32_C(0x68191122) ||
+                                                                xx_data_get_u32(magic, magic_size, 0, true) == UINT32_C(0x68191122)));
     bool is_btrfs = total_size > 0x11000;
     bool is_dmg = total_size >= 512;
     bool is_applesingle = (magic_size >= 4U && magic[0] == 0x00U && magic[1] == 0x05U && magic[2] == 0x16U && (magic[3] == 0x00U || magic[3] == 0x07U));
@@ -3329,8 +3331,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
     bool is_fdi = (magic_size >= 4U && xx_rt_memcmp(magic, "FDI", 3U) == 0 && magic[3] <= 1U);
     bool is_twoimg = (magic_size >= 4U && xx_rt_memcmp(magic, "2IMG", 4U) == 0);
     bool is_imd = (magic_size >= 4U && xx_rt_memcmp(magic, "IMD ", 4U) == 0);
-    bool is_diskdupe = (magic_size >= 21U && xx_rt_memcmp(magic, "MSD Image Version 1 \x1A", 21U) == 0) ||
-                       (magic_size >= 10U && xx_rt_memcmp(magic, "IM\0\0\0\0\0\0\0\0", 10U) == 0);
+    bool is_diskdupe =
+        (magic_size >= 21U && xx_rt_memcmp(magic, "MSD Image Version 1 \x1A", 21U) == 0) || (magic_size >= 10U && xx_rt_memcmp(magic, "IM\0\0\0\0\0\0\0\0", 10U) == 0);
     bool is_pmdiskcopy = (magic_size >= 11U && xx_rt_memcmp(magic, "PM Diskcopy", 11U) == 0);
     bool is_pax = (magic_size >= 38U && xx_rt_memcmp(magic, "LZF0", 4U) == 0);
     bool is_beospkg = (magic_size >= 8U && magic[0] == 0x41U && magic[1] == 0x6CU && magic[2] == 0x42U && magic[3] == 0x1AU && magic[4] == 0xFFU && magic[5] == 0x0AU &&
@@ -4137,17 +4139,17 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
         }
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         /* Validate the packed DOS image before the generic executable view. */
-        if (xx_pklite_fast_detect(dev,0,false)) {
-            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+        if (xx_pklite_fast_detect(dev, 0, false)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
             return XX_FILE_TYPE_PKLITE;
         }
-        (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         /* All specific SFX readers precede this named-resource container. */
-        if (xx_pe_rawfile_fast_detect(dev,0,false)) {
-            (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+        if (xx_pe_rawfile_fast_detect(dev, 0, false)) {
+            (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
             return XX_FILE_TYPE_PE_RAWFILE;
         }
-        (void)xx_io_seek64(dev,orig_pos,SEEK_SET);
+        (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         xx_pe pe;
         xx_ne ne;
         xx_le le;
@@ -7419,9 +7421,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
      * prefix. Keep this bounded native check after stronger concrete formats. */
     if (total_size >= 1276) {
         uint8_t tail[8];
-        bool candidate = xx_io_seek64(dev, total_size - 8, SEEK_SET) == 0 &&
-                         xx_format_read_probe_exact(dev, tail, sizeof(tail)) &&
-                         xx_rt_memcmp(tail, "cdsaencr", sizeof(tail)) == 0;
+        bool candidate =
+            xx_io_seek64(dev, total_size - 8, SEEK_SET) == 0 && xx_format_read_probe_exact(dev, tail, sizeof(tail)) && xx_rt_memcmp(tail, "cdsaencr", sizeof(tail)) == 0;
         (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
         if (candidate && xx_format_is_encrypted_apple_disk_image_device(dev)) {
             (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
@@ -7434,10 +7435,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
     if (total_size >= 512 && magic_size >= 10 && magic[8] == 0xFFU && magic[9] == 0xFFU) {
         uint32_t le_type = xx_data_get_u32(magic, magic_size, 0, false);
         uint32_t be_type = xx_data_get_u32(magic, magic_size, 0, true);
-        bool little = (le_type == 1 || le_type == 2 || le_type == 3 || le_type == 5) &&
-                      xx_data_get_u32(magic, magic_size, 4, false) == 1;
-        bool big = (be_type == 1 || be_type == 2 || be_type == 3 || be_type == 5) &&
-                   xx_data_get_u32(magic, magic_size, 4, true) == 1;
+        bool little = (le_type == 1 || le_type == 2 || le_type == 3 || le_type == 5) && xx_data_get_u32(magic, magic_size, 4, false) == 1;
+        bool big = (be_type == 1 || be_type == 2 || be_type == 3 || be_type == 5) && xx_data_get_u32(magic, magic_size, 4, true) == 1;
         if ((little || big) && xx_format_is_yaffs_device(dev)) {
             (void)xx_io_seek64(dev, orig_pos, SEEK_SET);
             return XX_FILE_TYPE_YAFFS;
@@ -7447,9 +7446,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
     /* MUB also accepts the historical 7-Zip little-endian container magic.
      * Keep existing Java/FAT detectors above; validate the entire bounded
      * slice table before accepting this weaker physical container view. */
-    if (magic_size >= 8U &&
-        ((magic[0] == 0xCAU && magic[1] == 0xFEU && magic[2] == 0xBAU && (magic[3] == 0xBEU || magic[3] == 0xBFU)) ||
-         (magic[0] == 0xB9U && magic[1] == 0xFAU && magic[2] == 0xF1U && magic[3] == 0x0EU))) {
+    if (magic_size >= 8U && ((magic[0] == 0xCAU && magic[1] == 0xFEU && magic[2] == 0xBAU && (magic[3] == 0xBEU || magic[3] == 0xBFU)) ||
+                             (magic[0] == 0xB9U && magic[1] == 0xFAU && magic[2] == 0xF1U && magic[3] == 0x0EU))) {
         xx_mub reader;
         bool valid;
         xx_mub_init(&reader, dev, 0);

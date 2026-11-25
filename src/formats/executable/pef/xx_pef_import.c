@@ -230,12 +230,10 @@ void xx_pef_free_imports_reading(Abstractformat *self, xx_import_state *state)
 
 const StreamImport *xx_pef_get_stream_import(void)
 {
-    static const StreamImport stream = {
-        .get_number_of_imports = xx_pef_get_number_of_imports,
-        .create_imports_reading = xx_pef_create_imports_reading,
-        .get_current_import = xx_pef_get_current_import,
-        .import_move_to_next = xx_pef_import_move_to_next,
-        .free_imports_reading = xx_pef_free_imports_reading
-    };
+    static const StreamImport stream = {.get_number_of_imports = xx_pef_get_number_of_imports,
+                                        .create_imports_reading = xx_pef_create_imports_reading,
+                                        .get_current_import = xx_pef_get_current_import,
+                                        .import_move_to_next = xx_pef_import_move_to_next,
+                                        .free_imports_reading = xx_pef_free_imports_reading};
     return &stream;
 }

@@ -146,9 +146,11 @@ static __forceinline long xx_features_load_acquire(void)
 #elif defined(__GNUC__) || defined(__clang__)
 static int g_features_state = 0;
 #define XX_FEATURES_LOAD() __atomic_load_n(&g_features_state, __ATOMIC_ACQUIRE)
-#define XX_FEATURES_CLAIM() \
-    __extension__({ int expected_ = 0; __atomic_compare_exchange_n(&g_features_state, &expected_, 1, false, \
-                                                                    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE); })
+#define XX_FEATURES_CLAIM()                                                                                       \
+    __extension__({                                                                                               \
+        int expected_ = 0;                                                                                        \
+        __atomic_compare_exchange_n(&g_features_state, &expected_, 1, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE); \
+    })
 #define XX_FEATURES_DONE() __atomic_store_n(&g_features_state, 2, __ATOMIC_RELEASE)
 #else
 static int g_features_state = 0; /* no atomics: single-threaded first use */

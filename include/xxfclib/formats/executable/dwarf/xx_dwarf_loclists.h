@@ -96,25 +96,17 @@ typedef enum xx_dwarf_loclists_selection_e {
 } xx_dwarf_loclists_selection;
 
 XXFC_API bool xx_dwarf_loclists_section_init(xx_dwarf_loclists_section *section, const void *data, size_t size, bool big_endian);
-XXFC_API bool xx_dwarf_loclists_read_contribution(const xx_dwarf_loclists_section *section, size_t header_offset,
-                                                   xx_dwarf_loclists_contribution *contribution);
-XXFC_API bool xx_dwarf_loclists_find_contribution_by_base(const xx_dwarf_loclists_section *section, size_t offsets_offset,
-                                                           xx_dwarf_loclists_contribution *contribution);
-XXFC_API bool xx_dwarf_loclists_find_contribution_containing(const xx_dwarf_loclists_section *section, size_t list_offset,
-                                                              xx_dwarf_loclists_contribution *contribution);
-XXFC_API bool xx_dwarf_loclists_resolve_index(const xx_dwarf_loclists_section *section,
-                                               const xx_dwarf_loclists_contribution *contribution,
-                                               uint64_t index, size_t *list_offset);
+XXFC_API bool xx_dwarf_loclists_read_contribution(const xx_dwarf_loclists_section *section, size_t header_offset, xx_dwarf_loclists_contribution *contribution);
+XXFC_API bool xx_dwarf_loclists_find_contribution_by_base(const xx_dwarf_loclists_section *section, size_t offsets_offset, xx_dwarf_loclists_contribution *contribution);
+XXFC_API bool xx_dwarf_loclists_find_contribution_containing(const xx_dwarf_loclists_section *section, size_t list_offset, xx_dwarf_loclists_contribution *contribution);
+XXFC_API bool xx_dwarf_loclists_resolve_index(const xx_dwarf_loclists_section *section, const xx_dwarf_loclists_contribution *contribution, uint64_t index,
+                                              size_t *list_offset);
 XXFC_API bool xx_dwarf_loclists_cursor_init(xx_dwarf_loclists_cursor *cursor, const xx_dwarf_loclists_section *section,
-                                             const xx_dwarf_loclists_contribution *contribution, size_t list_offset,
-                                             uint64_t initial_base, xx_dwarf_loclists_address_resolver resolve_address,
-                                             void *resolve_user);
-XXFC_API xx_dwarf_loclists_result xx_dwarf_loclists_cursor_next(xx_dwarf_loclists_cursor *cursor,
-                                                                xx_dwarf_loclists_entry *entry);
-XXFC_API xx_dwarf_loclists_result xx_dwarf_loclists_select_expression(const xx_dwarf_loclists_cursor *cursor,
-                                                                       uint64_t scope_start, uint64_t scope_end,
-                                                                       xx_dwarf_loclists_selection selection,
-                                                                       xx_dwarf_loclists_entry *entry);
+                                            const xx_dwarf_loclists_contribution *contribution, size_t list_offset, uint64_t initial_base,
+                                            xx_dwarf_loclists_address_resolver resolve_address, void *resolve_user);
+XXFC_API xx_dwarf_loclists_result xx_dwarf_loclists_cursor_next(xx_dwarf_loclists_cursor *cursor, xx_dwarf_loclists_entry *entry);
+XXFC_API xx_dwarf_loclists_result xx_dwarf_loclists_select_expression(const xx_dwarf_loclists_cursor *cursor, uint64_t scope_start, uint64_t scope_end,
+                                                                      xx_dwarf_loclists_selection selection, xx_dwarf_loclists_entry *entry);
 
 /** Legacy .debug_loc entry encodings exposed by the bounded cursor. */
 typedef enum xx_dwarf_loc_entry_kind_e {
@@ -143,8 +135,8 @@ typedef struct xx_dwarf_loc_cursor_s {
     bool finished;
 } xx_dwarf_loc_cursor;
 
-XXFC_API bool xx_dwarf_loc_cursor_init(xx_dwarf_loc_cursor *cursor, const xx_dwarf_loclists_section *section,
-                                        size_t list_offset, uint8_t address_size, uint64_t initial_base);
+XXFC_API bool xx_dwarf_loc_cursor_init(xx_dwarf_loc_cursor *cursor, const xx_dwarf_loclists_section *section, size_t list_offset, uint8_t address_size,
+                                       uint64_t initial_base);
 XXFC_API xx_dwarf_loclists_result xx_dwarf_loc_cursor_next(xx_dwarf_loc_cursor *cursor, xx_dwarf_loc_entry *entry);
 
 #ifdef __cplusplus

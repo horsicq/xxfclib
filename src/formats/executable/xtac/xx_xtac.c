@@ -33,10 +33,8 @@ static bool xtac_span(uint64_t offset, uint64_t size, uint64_t total)
 
 static bool xtac_read(const Abstractformat *format, uint64_t relative, void *output, size_t size)
 {
-    return format && format->device && output && format->base_address >= 0 &&
-           relative <= (uint64_t)(INT64_MAX - format->base_address) &&
-           size <= (uint64_t)INT64_MAX - relative &&
-           xx_io_read_at(format->device, format->base_address + (int64_t)relative, output, size);
+    return format && format->device && output && format->base_address >= 0 && relative <= (uint64_t)(INT64_MAX - format->base_address) &&
+           size <= (uint64_t)INT64_MAX - relative && xx_io_read_at(format->device, format->base_address + (int64_t)relative, output, size);
 }
 
 static bool xtac_reserve(void **items, uint32_t *capacity, uint32_t wanted, size_t item_size)
@@ -103,16 +101,14 @@ static bool xtac_read_header(const Abstractformat *format, uint64_t available, x
 static bool xtac_validate_header(const xx_xtac_header *header, uint64_t available)
 {
     uint64_t pairs_size;
-    if (!header || header->magic != XTAC_MAGIC || header->address_pair_count > XX_XTAC_MAX_ADDRESS_PAIRS ||
-        header->module_name_size > XX_XTAC_MAX_NAME_BYTES || header->nt_path_size > XX_XTAC_MAX_NAME_BYTES ||
-        (header->module_name_size & 1U) != 0U || (header->nt_path_size & 1U) != 0U) return false;
+    if (!header || header->magic != XTAC_MAGIC || header->address_pair_count > XX_XTAC_MAX_ADDRESS_PAIRS || header->module_name_size > XX_XTAC_MAX_NAME_BYTES ||
+        header->nt_path_size > XX_XTAC_MAX_NAME_BYTES || (header->module_name_size & 1U) != 0U || (header->nt_path_size & 1U) != 0U)
+        return false;
     pairs_size = (uint64_t)header->address_pair_count * 8U;
-    if (!xtac_span(header->address_pairs_offset, pairs_size, available) ||
-        !xtac_span(header->module_name_offset, header->module_name_size, available) ||
-        !xtac_span(header->nt_path_offset, header->nt_path_size, available) ||
-        header->head_block_stub_offset > available || header->tail_block_stub_offset > available ||
-        header->linked_list_head_offset > available || header->linked_list_tail_offset > available ||
-        header->block_stub_code_size > UINT32_MAX - 8U) return false;
+    if (!xtac_span(header->address_pairs_offset, pairs_size, available) || !xtac_span(header->module_name_offset, header->module_name_size, available) ||
+        !xtac_span(header->nt_path_offset, header->nt_path_size, available) || header->head_block_stub_offset > available || header->tail_block_stub_offset > available ||
+        header->linked_list_head_offset > available || header->linked_list_tail_offset > available || header->block_stub_code_size > UINT32_MAX - 8U)
+        return false;
     if (header->head_block_stub_offset && !xtac_span(header->head_block_stub_offset, 16U, available)) return false;
     if (header->linked_list_head_offset && !xtac_span(header->linked_list_head_offset, 4U, available)) return false;
     return true;
@@ -220,8 +216,7 @@ static bool xtac_load_block_stubs(xx_xtac *reader, uint64_t available)
         uint8_t bytes[16];
         xx_xtac_block_stub *stub;
         uint32_t previous;
-        if (count >= XX_XTAC_MAX_BLOCK_STUBS || !xtac_span(pointer, sizeof(bytes), available) ||
-            !xtac_read(&reader->format, pointer, bytes, sizeof(bytes))) return false;
+        if (count >= XX_XTAC_MAX_BLOCK_STUBS || !xtac_span(pointer, sizeof(bytes), available) || !xtac_read(&reader->format, pointer, bytes, sizeof(bytes))) return false;
         for (previous = 0U; previous < count; ++previous) {
             if (reader->block_stubs[previous].entry_offset == pointer) return false;
         }
@@ -231,8 +226,7 @@ static bool xtac_load_block_stubs(xx_xtac *reader, uint64_t available)
         stub->next_entry_offset = xx_data_get_u32(bytes, sizeof(bytes), 8U, false);
         stub->padding = xx_data_get_u32(bytes, sizeof(bytes), 12U, false);
         stub->entry_offset = pointer;
-        if (stub->magic != XTAC_BLCK_MAGIC || stub->padding != 0U ||
-            (stub->next_entry_offset && !xtac_span(stub->next_entry_offset, 16U, available))) return false;
+        if (stub->magic != XTAC_BLCK_MAGIC || stub->padding != 0U || (stub->next_entry_offset && !xtac_span(stub->next_entry_offset, 16U, available))) return false;
         pointer = stub->next_entry_offset;
     }
     reader->block_stub_count = count;
@@ -261,7 +255,8 @@ static bool xtac_load_linked_entries(xx_xtac *reader, uint64_t available)
         if (((value >> 28U) & 1U) != 0U) read_size += 4U;
         if (((value >> 28U) & 2U) != 0U) read_size += 4U;
         if (!xtac_span(pointer, read_size, available) || !xtac_read(&reader->format, pointer, bytes, read_size) ||
-            !xtac_reserve((void **)&reader->linked_entries, &capacity, reader->linked_entry_count + 1U, sizeof(*reader->linked_entries))) return false;
+            !xtac_reserve((void **)&reader->linked_entries, &capacity, reader->linked_entry_count + 1U, sizeof(*reader->linked_entries)))
+            return false;
         entry = &reader->linked_entries[reader->linked_entry_count++];
         xx_mem_zero(entry, sizeof(*entry));
         entry->meta_and_offset = value;
@@ -286,8 +281,8 @@ static bool xtac_load_linked_entries(xx_xtac *reader, uint64_t available)
         pointer += step * 4U;
         if (pointer >= available || (reader->header.address_pairs_offset && pointer >= reader->header.address_pairs_offset)) return false;
     }
-    return terminated && (!reader->header.linked_list_tail_offset ||
-                          reader->linked_entries[reader->linked_entry_count - 1U].entry_offset == reader->header.linked_list_tail_offset);
+    return terminated &&
+           (!reader->header.linked_list_tail_offset || reader->linked_entries[reader->linked_entry_count - 1U].entry_offset == reader->header.linked_list_tail_offset);
 }
 
 static bool xtac_build_sections(xx_xtac *reader, uint64_t available)
@@ -343,8 +338,7 @@ static bool xtac_build_symbols(xx_xtac *reader)
 {
     uint32_t index;
     uint32_t count = 0U;
-    reader->symbols = reader->address_pair_count ?
-        (xx_xtac_symbol *)xx_mem_calloc(reader->address_pair_count, sizeof(*reader->symbols)) : NULL;
+    reader->symbols = reader->address_pair_count ? (xx_xtac_symbol *)xx_mem_calloc(reader->address_pair_count, sizeof(*reader->symbols)) : NULL;
     if (reader->address_pair_count && !reader->symbols) return false;
     for (index = 0U; index < reader->address_pair_count; ++index) {
         const xx_xtac_address_pair *pair = &reader->address_pairs[index];
@@ -371,8 +365,8 @@ static bool xtac_parse(xx_xtac *reader, uint64_t available, xx_pd_struct *pd)
     reader->module_name = xtac_read_utf16le(&reader->format, reader->header.module_name_offset, reader->header.module_name_size);
     reader->nt_path = xtac_read_utf16le(&reader->format, reader->header.nt_path_offset, reader->header.nt_path_size);
     if (!reader->module_name || !reader->nt_path) return xtac_fail(pd, XXFC_ERR_INVALID_ARG, "Invalid XTAC UTF-16 metadata");
-    if (xtac_stopped(pd) || !xtac_load_block_stubs(reader, available) || !xtac_load_linked_entries(reader, available) ||
-        !xtac_build_sections(reader, available) || !xtac_build_symbols(reader))
+    if (xtac_stopped(pd) || !xtac_load_block_stubs(reader, available) || !xtac_load_linked_entries(reader, available) || !xtac_build_sections(reader, available) ||
+        !xtac_build_symbols(reader))
         return xtac_fail(pd, XXFC_ERR_INVALID_ARG, "Invalid or oversized XTAC structural table");
     return true;
 }
@@ -474,8 +468,7 @@ bool xx_xtac_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, x
 {
     xx_xtac *reader = (xx_xtac *)format;
     uint32_t index;
-    if (!reader || !output || xtac_stopped(pd) ||
-        (!format->base_info_handled && !xx_xtac_handle_base_info(format, pd))) return false;
+    if (!reader || !output || xtac_stopped(pd) || (!format->base_info_handled && !xx_xtac_handle_base_info(format, pd))) return false;
     if (mode == XX_MEMORY_MAP_MODE_UNKNOWN) mode = XX_MEMORY_MAP_MODE_SECTIONS;
     if (mode != XX_MEMORY_MAP_MODE_SECTIONS) return false;
     output->binary_offset = format->base_address;
@@ -493,9 +486,9 @@ bool xx_xtac_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, x
     for (index = 0U; index < reader->section_count; ++index) {
         const xx_xtac_section *section = &reader->sections[index];
         if (!section->virtual_size) continue;
-        if (!xx_memory_map_add_part(output, format->base_address + section->file_offset, section->virtual_size,
-                                    section->address, section->virtual_size, XX_FILE_PART_SECTION,
-                                    (int32_t)index, section->name, false)) return false;
+        if (!xx_memory_map_add_part(output, format->base_address + section->file_offset, section->virtual_size, section->address, section->virtual_size,
+                                    XX_FILE_PART_SECTION, (int32_t)index, section->name, false))
+            return false;
     }
     return xx_memory_map_finalize(output);
 }
@@ -561,6 +554,5 @@ const xx_xtac_entry *xx_xtac_get_entry(xx_xtac *reader, xx_pd_struct *pd)
 {
     return XTAC_READY(reader, pd) && reader->has_entry ? &reader->entry : NULL;
 }
-
 
 #undef XTAC_READY

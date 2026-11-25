@@ -10,8 +10,7 @@
 /* Resolve the native selector namespace. A NULL name means automatic format
  * selection; raw requests a single uncompressed file if no stream reader
  * handles the input. Returns false for selectors outside this namespace. */
-bool xfu_native_reader_resolve(const char *selection, const char **name,
-                               bool *raw);
+bool xfu_native_reader_resolve(const char *selection, const char **name, bool *raw);
 
 /* Return an outer compression/envelope type for a raw view. UNKNOWN means
  * the caller should use xfu_native_raw_read instead. */
@@ -52,35 +51,22 @@ typedef enum xfu_native_inner_status {
  * is RAM-backed and charged to that scope's byte limit. NOT_ARCHIVE does
  * not mean the stream was verified: its own reader does that. Decode
  * failures never silently fall back to a raw stream reader. */
-xfu_native_inner_status xfu_native_open_inner(const char *archive_path,
-                                               xx_file_type_t filter_type,
-                                               xx_pd_struct *pd,
-                                               xx_io_device **inner);
+xfu_native_inner_status xfu_native_open_inner(const char *archive_path, xx_file_type_t filter_type, xx_pd_struct *pd, xx_io_device **inner);
 /* Same decoding for a borrowed device; the caller retains ownership of the
  * source and closes a returned inner device. */
-xfu_native_inner_status xfu_native_open_inner_device(xx_io_device *source,
-                                                      xx_file_type_t filter_type,
-                                                      xx_pd_struct *pd,
-                                                      xx_io_device **inner);
+xfu_native_inner_status xfu_native_open_inner_device(xx_io_device *source, xx_file_type_t filter_type, xx_pd_struct *pd, xx_io_device **inner);
 /* The same two, giving with TOO_LARGE the type the layer starts as (an
  * archive or filter type; for text, what its start cut at the last line
  * break is) in *layer_type (optional), else UNKNOWN. */
-xfu_native_inner_status xfu_native_open_inner_ex(const char *archive_path,
-                                                  xx_file_type_t filter_type,
-                                                  xx_pd_struct *pd,
-                                                  xx_io_device **inner,
-                                                  xx_file_type_t *layer_type);
-xfu_native_inner_status xfu_native_open_inner_device_ex(xx_io_device *source,
-                                                         xx_file_type_t filter_type,
-                                                         xx_pd_struct *pd,
-                                                         xx_io_device **inner,
-                                                         xx_file_type_t *layer_type);
+xfu_native_inner_status xfu_native_open_inner_ex(const char *archive_path, xx_file_type_t filter_type, xx_pd_struct *pd, xx_io_device **inner,
+                                                 xx_file_type_t *layer_type);
+xfu_native_inner_status xfu_native_open_inner_device_ex(xx_io_device *source, xx_file_type_t filter_type, xx_pd_struct *pd, xx_io_device **inner,
+                                                        xx_file_type_t *layer_type);
 
 /* Whether a stream that starts like `type` is whole as far as its headers
  * tell but too large for its reader, which decodes it in memory: zstd and
  * LZ4 take at most *limit (1 GiB). Then it is no damaged stream. */
-bool xfu_native_stream_over_limit(xx_io_device *device, xx_file_type_t type,
-                                  uint64_t *limit);
+bool xfu_native_stream_over_limit(xx_io_device *device, xx_file_type_t type, uint64_t *limit);
 
 typedef enum xfu_native_envelope_status {
     XFU_NATIVE_ENVELOPE_DECODE_ERROR = -1,
@@ -105,32 +91,19 @@ typedef enum xfu_native_envelope_status {
  * a temporary device) and an allocated safe member name. Caller closes the
  * device and frees the name. The decoded device obeys the same memory
  * policy and layer limit as xfu_native_open_inner. */
-xfu_native_envelope_status xfu_native_base64_open(const char *archive_path,
-                                                   xx_pd_struct *pd,
-                                                   xx_io_device **decoded,
-                                                   char **raw_name);
-xfu_native_envelope_status xfu_native_base64_open_device(xx_io_device *source,
-                                                          xx_pd_struct *pd,
-                                                          xx_io_device **decoded,
-                                                          char **raw_name);
+xfu_native_envelope_status xfu_native_base64_open(const char *archive_path, xx_pd_struct *pd, xx_io_device **decoded, char **raw_name);
+xfu_native_envelope_status xfu_native_base64_open_device(xx_io_device *source, xx_pd_struct *pd, xx_io_device **decoded, char **raw_name);
 
 /* Decode a single complete uuencoded block with the same ownership and
  * status rules; its first line must be "begin <octal mode> <name>".
  * Multiple valid blocks remain a member archive for the ordinary UUE
  * reader, so this returns NOT_FOUND for them. */
-xfu_native_envelope_status xfu_native_uue_open(const char *archive_path,
-                                                xx_pd_struct *pd,
-                                                xx_io_device **decoded,
-                                                char **raw_name);
-xfu_native_envelope_status xfu_native_uue_open_device(xx_io_device *source,
-                                                       xx_pd_struct *pd,
-                                                       xx_io_device **decoded,
-                                                       char **raw_name);
+xfu_native_envelope_status xfu_native_uue_open(const char *archive_path, xx_pd_struct *pd, xx_io_device **decoded, char **raw_name);
+xfu_native_envelope_status xfu_native_uue_open_device(xx_io_device *source, xx_pd_struct *pd, xx_io_device **decoded, char **raw_name);
 
 /* Read an otherwise unrecognized input as one raw file. The core should give
  * recognized compressed streams to their format readers first. */
-int xfu_native_raw_read(const xfu_request *request, const char *unpack_to,
-                        xx_pd_struct *pd);
+int xfu_native_raw_read(const xfu_request *request, const char *unpack_to, xx_pd_struct *pd);
 
 /* Read exactly zero bytes as an archive with zero members. */
 int xfu_native_empty_read(const xfu_request *request, xx_pd_struct *pd);
@@ -139,8 +112,6 @@ int xfu_native_empty_read(const xfu_request *request, xx_pd_struct *pd);
  * is the Base64 or uuencode envelope that a RAW payload of the openers above
  * came from, wherever that envelope sits (or the archive's own envelope when
  * the archive file is one), so frontends offer extraction; otherwise BINARY. */
-int xfu_native_raw_device_read(const xfu_request *request,
-                               const char *unpack_to, xx_pd_struct *pd,
-                               xx_io_device *input, const char *name);
+int xfu_native_raw_device_read(const xfu_request *request, const char *unpack_to, xx_pd_struct *pd, xx_io_device *input, const char *name);
 
 #endif

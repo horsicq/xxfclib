@@ -29,8 +29,7 @@ typedef struct xx_ico_make_image {
 XXFC_API bool xx_ico_make_dib(xx_buf_t *out, uint32_t size, uint32_t argb);
 
 /** Appends a complete .ico file (ICONDIR, entries, DIB payloads in order). */
-XXFC_API bool xx_ico_make_file(xx_buf_t *out, const xx_ico_make_image *images,
-                               size_t count);
+XXFC_API bool xx_ico_make_file(xx_buf_t *out, const xx_ico_make_image *images, size_t count);
 
 #ifdef __cplusplus
 }

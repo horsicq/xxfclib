@@ -58,7 +58,8 @@ typedef enum xx_spc_link_kind {
     XX_SPC_LINK_NONE = 0,
     XX_SPC_LINK_URL,     /**< [0] IMPLICIT IA5String. */
     XX_SPC_LINK_MONIKER, /**< [1] IMPLICIT SpcSerializedObject: raw bytes only, not decoded further. */
-    XX_SPC_LINK_FILE     /**< [2] EXPLICIT SpcString: raw bytes are that inner SpcString's own TLV; re-parse with a second xx_authenticode_parse_spc_string-style read if ever needed. */
+    XX_SPC_LINK_FILE /**< [2] EXPLICIT SpcString: raw bytes are that inner SpcString's own TLV; re-parse with a second xx_authenticode_parse_spc_string-style read if ever
+                        needed. */
 } xx_spc_link_kind;
 
 typedef struct xx_spc_link {

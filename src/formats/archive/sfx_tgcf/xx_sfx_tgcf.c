@@ -161,16 +161,27 @@ bool xx_sfx_tgcf_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
 
 /* Return an authenticated physical carrier component, never decoded member bytes.
  * Callback identity is checked before accessing the concrete reader object. */
-bool xx_sfx_tgcf_get_payload_span(Abstractformat *f,int64_t *offset,int64_t *size,xx_pd_struct *pd)
+bool xx_sfx_tgcf_get_payload_span(Abstractformat *f, int64_t *offset, int64_t *size, xx_pd_struct *pd)
 {
-    pm_stream *s;bool ok=false;int64_t at=0,z=0,available;
-    if(!f||!offset||!size||f->check_is_valid!=xx_sfx_tgcf_check_is_valid||f->handle_base_info!=xx_sfx_tgcf_handle_base_info||
-       f->create_archive_records_reading!=tgcf_records||f->get_current_archive_record!=tgcf_current||
-       f->archive_record_move_to_next!=tgcf_next||f->free_archive_records_reading!=tgcf_free_records||carrier_stop(pd))return false;
-    available=pm_available(f);s=pm_open(f,pd);if(!s)return false;
-    if(s->count==1&&!s->items[0].memory&&s->items[0].offset>=f->base_address&&s->items[0].size>0){
-        at=s->items[0].offset-f->base_address;z=s->items[0].size;
-        ok=at<=available&&z<=available-at&&!carrier_stop(pd);
+    pm_stream *s;
+    bool ok = false;
+    int64_t at = 0, z = 0, available;
+    if (!f || !offset || !size || f->check_is_valid != xx_sfx_tgcf_check_is_valid || f->handle_base_info != xx_sfx_tgcf_handle_base_info ||
+        f->create_archive_records_reading != tgcf_records || f->get_current_archive_record != tgcf_current || f->archive_record_move_to_next != tgcf_next ||
+        f->free_archive_records_reading != tgcf_free_records || carrier_stop(pd))
+        return false;
+    available = pm_available(f);
+    s = pm_open(f, pd);
+    if (!s) return false;
+    if (s->count == 1 && !s->items[0].memory && s->items[0].offset >= f->base_address && s->items[0].size > 0) {
+        at = s->items[0].offset - f->base_address;
+        z = s->items[0].size;
+        ok = at <= available && z <= available - at && !carrier_stop(pd);
     }
-    pm_free_stream(s);if(ok){*offset=f->base_address+at;*size=z;}return ok;
+    pm_free_stream(s);
+    if (ok) {
+        *offset = f->base_address + at;
+        *size = z;
+    }
+    return ok;
 }

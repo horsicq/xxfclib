@@ -154,8 +154,8 @@ static JSProgram *program_cache_find(JSProgramCache *pCache, const void *pData, 
 {
     JSProgram *pProgram = pCache->pBuckets[nHash % JS_PROGRAM_CACHE_BUCKETS];
     while (pProgram) {
-        if (pProgram->nHash == nHash && pProgram->nDataSize == nSize && pProgram->bBytecode == bBytecode &&
-            !xx_rt_strcmp(pProgram->pName, pName) && (!nSize || !xx_rt_memcmp(pProgram->pData, pData, nSize))) {
+        if (pProgram->nHash == nHash && pProgram->nDataSize == nSize && pProgram->bBytecode == bBytecode && !xx_rt_strcmp(pProgram->pName, pName) &&
+            (!nSize || !xx_rt_memcmp(pProgram->pData, pData, nSize))) {
             program_cache_touch(pCache, pProgram);
             return program_ref(pProgram);
         }
@@ -235,8 +235,6 @@ static JSProgram *program_load(JSCtx *pCtx, const void *pData, size_t nSize, con
     xx_mutex_unlock(pCache->pMutex);
     return pProgram;
 }
-
-
 
 JSCtx *js_new(void)
 {
@@ -363,7 +361,10 @@ static void program_pin(JSCtx *pCtx, JSProgram *pProgram)
     if (pCtx->nProgramPinsCapacity) {
         nSlot = program_pin_slot(pProgram, pCtx->nProgramPinsCapacity);
         while (pCtx->ppProgramPins[nSlot]) {
-            if (pCtx->ppProgramPins[nSlot] == pProgram) { program_unref(pProgram); return; }
+            if (pCtx->ppProgramPins[nSlot] == pProgram) {
+                program_unref(pProgram);
+                return;
+            }
             nSlot = (nSlot + 1) & (pCtx->nProgramPinsCapacity - 1);
         }
     }
@@ -438,7 +439,10 @@ int js_eval(JSCtx *pCtx, const char *pSource, const char *pName, JSVal *pResult)
     }
     program_pin(pCtx, pProgram);
     value = js_run_program(pCtx, pProgram->pRoot, pCtx->pGlobalScope, jsval_obj(jsobj_ref(pCtx->pGlobal)));
-    if (pCtx->bException || pCtx->bDebugAborted) { js_release(pCtx, value); return 0; }
+    if (pCtx->bException || pCtx->bDebugAborted) {
+        js_release(pCtx, value);
+        return 0;
+    }
     if (pResult) *pResult = value;
     else js_release(pCtx, value);
     return 1;

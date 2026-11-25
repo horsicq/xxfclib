@@ -45,10 +45,7 @@ XXFC_API size_t xx_base64_encoded_size(size_t length, bool pad);
  * @param out_length Optional receiving slot for the number of characters written.
  * @return false on NULL arguments, an unrepresentable length, or an undersized out.
  */
-XXFC_API bool xx_base64_encode_buffer(const uint8_t *in, size_t length,
-                                      const char alphabet[64], bool pad,
-                                      char *out, size_t out_size,
-                                      size_t *out_length);
+XXFC_API bool xx_base64_encode_buffer(const uint8_t *in, size_t length, const char alphabet[64], bool pad, char *out, size_t out_size, size_t *out_length);
 
 /**
  * @brief Strictly decode an unpadded base64 buffer.
@@ -66,10 +63,7 @@ XXFC_API bool xx_base64_encode_buffer(const uint8_t *in, size_t length,
  * @return false on NULL arguments, invalid characters, invalid tail bits or a
  *         length of 1 mod 4.
  */
-XXFC_API bool xx_base64_decode_buffer(const char *in, size_t length,
-                                      const char alphabet[64],
-                                      uint8_t *out, size_t out_capacity,
-                                      size_t *out_length);
+XXFC_API bool xx_base64_decode_buffer(const char *in, size_t length, const char alphabet[64], uint8_t *out, size_t out_capacity, size_t *out_length);
 
 #ifdef __cplusplus
 }

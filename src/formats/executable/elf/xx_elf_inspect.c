@@ -399,8 +399,7 @@ static int elf_core_register_append(xx_executable_input *pFile, xx_elf_inspectio
             break;
         }
     }
-    pItems = (xx_elf_inspect_core_register *)xx_mem_realloc(
-        pElf->pCoreRegisters, ((size_t)pElf->nCoreRegisterCount + 1U) * sizeof(*pItems));
+    pItems = (xx_elf_inspect_core_register *)xx_mem_realloc(pElf->pCoreRegisters, ((size_t)pElf->nCoreRegisterCount + 1U) * sizeof(*pItems));
     if (!pItems) {
         pFile->failed = true;
         return 0;
@@ -450,10 +449,10 @@ static void elf_parse_core_registers(xx_executable_input *pFile, xx_elf_inspecti
         if ((uint64_t)i > (UINT64_MAX - pElf->nPhoff) / pElf->nPhentsize) continue;
         nHeaderOffset = pElf->nPhoff + (uint64_t)i * pElf->nPhentsize;
         if (nHeaderOffset > (uint64_t)pFile->size || (uint64_t)pElf->nPhentsize > (uint64_t)pFile->size - nHeaderOffset) continue;
-        nSegmentOffset = pElf->bIs64 ? xx_exec_u64(pFile, (int64_t)nHeaderOffset + 8, pElf->bBigEndian != 0)
-                                     : xx_exec_u32(pFile, (int64_t)nHeaderOffset + 4, pElf->bBigEndian != 0);
-        nSegmentSize = pElf->bIs64 ? xx_exec_u64(pFile, (int64_t)nHeaderOffset + 32, pElf->bBigEndian != 0)
-                                   : xx_exec_u32(pFile, (int64_t)nHeaderOffset + 16, pElf->bBigEndian != 0);
+        nSegmentOffset =
+            pElf->bIs64 ? xx_exec_u64(pFile, (int64_t)nHeaderOffset + 8, pElf->bBigEndian != 0) : xx_exec_u32(pFile, (int64_t)nHeaderOffset + 4, pElf->bBigEndian != 0);
+        nSegmentSize =
+            pElf->bIs64 ? xx_exec_u64(pFile, (int64_t)nHeaderOffset + 32, pElf->bBigEndian != 0) : xx_exec_u32(pFile, (int64_t)nHeaderOffset + 16, pElf->bBigEndian != 0);
         if (nSegmentOffset > (uint64_t)pFile->size || nSegmentSize > (uint64_t)pFile->size - nSegmentOffset) continue;
         bHaveThread = 0;
         nSegmentEnd = nSegmentOffset + nSegmentSize;

@@ -101,7 +101,6 @@ typedef struct arcfs_name_set_s {
     uint32_t capacity;
 } arcfs_name_set;
 
-
 #include "xxfclib/global/xx_global.h"
 static size_t gb_arcfs_capacity(void)
 {

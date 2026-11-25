@@ -1266,8 +1266,7 @@ static bool xx_pma_set_record(xx_archive_record *record, const xx_pma_member *me
            /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
            xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (member->timestamp >> 16) & 0xFFFFU) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->timestamp & 0xFFFFU) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
 static bool xx_pma_copy_options(xx_list_s *target, const xx_list_s *options)

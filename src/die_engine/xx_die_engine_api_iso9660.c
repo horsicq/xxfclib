@@ -17,10 +17,7 @@ static char *native_iso_identifier(xx_io_device *file, int64_t offset, size_t si
 }
 
 static const ApiEntry g_iso9660_api_table[] = {
-    {"getApplicationIdentifier", A_getApplicationIdentifier, 0},
-    {"getDataPreparerIdentifier", A_getDataPreparerIdentifier, 0},
-    {NULL, A_NONE, 0}
-};
+    {"getApplicationIdentifier", A_getApplicationIdentifier, 0}, {"getDataPreparerIdentifier", A_getDataPreparerIdentifier, 0}, {NULL, A_NONE, 0}};
 
 void die_engine_api_register_iso9660(JSCtx *pCtx, JSVal object)
 {
@@ -31,15 +28,10 @@ bool die_engine_api_dispatch_iso9660(DieEngine *pEngine, JSCtx *pCtx, ApiId id, 
     xx_io_device *pFile = pEngine->device;
 
     switch (id) {
-        case A_getApplicationIdentifier:
-            *pResult = native_str_take(pCtx, native_iso_identifier(pFile, 574, 128));
-            return true;
-        case A_getDataPreparerIdentifier:
-            *pResult = native_str_take(pCtx, native_iso_identifier(pFile, 446, 128));
-            return true;
+        case A_getApplicationIdentifier: *pResult = native_str_take(pCtx, native_iso_identifier(pFile, 574, 128)); return true;
+        case A_getDataPreparerIdentifier: *pResult = native_str_take(pCtx, native_iso_identifier(pFile, 446, 128)); return true;
 
-        default:
-            break;
+        default: break;
     }
 
     return false;

@@ -127,7 +127,8 @@ static bool xx_rarx50_cancelled(xx_pd_struct *progress)
 #else
 #define XX_FORCE_INLINE static inline
 #define XX_NOINLINE static
-#define XX_RARX50_BSWAP32(w) ((((uint32_t)(w) & 0xff000000u) >> 24) | (((uint32_t)(w) & 0x00ff0000u) >> 8) | (((uint32_t)(w) & 0x0000ff00u) << 8) | (((uint32_t)(w) & 0x000000ffu) << 24))
+#define XX_RARX50_BSWAP32(w) \
+    ((((uint32_t)(w) & 0xff000000u) >> 24) | (((uint32_t)(w) & 0x00ff0000u) >> 8) | (((uint32_t)(w) & 0x0000ff00u) << 8) | (((uint32_t)(w) & 0x000000ffu) << 24))
 #endif
 
 static void xx_rarx50_refill_slow(xx_rarx50_bits *bits)
@@ -493,18 +494,19 @@ static xx_rarx_status_t xx_rarx50_append_filter(xx_rarx50_filter **filters, size
     return XX_RARX_STATUS_OK;
 }
 
-static const uint8_t xx_rarx50_length_bits[44] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9
-};
-static const uint32_t xx_rarx50_length_base[44] = {
-    2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 22, 26, 30, 34, 42, 50, 58, 66, 82, 98, 114, 130, 162, 194, 226, 258, 322, 386, 450, 514, 642, 770, 898, 1026, 1282, 1538, 1794, 2050, 2562, 3074, 3586
-};
-static const uint8_t xx_rarx50_dist_bits[64] = {
-    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27, 27, 28, 28, 29, 29, 30, 30
-};
+static const uint8_t xx_rarx50_length_bits[44] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4,
+                                                  4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9};
+static const uint32_t xx_rarx50_length_base[44] = {2,  3,   4,   5,   6,   7,   8,   9,   10,  12,  14,  16,  18,  22,  26,   30,   34,   42,   50,   58,   66,   82,
+                                                   98, 114, 130, 162, 194, 226, 258, 322, 386, 450, 514, 642, 770, 898, 1026, 1282, 1538, 1794, 2050, 2562, 3074, 3586};
+static const uint8_t xx_rarx50_dist_bits[64] = {0,  0,  0,  0,  1,  1,  2,  2,  3,  3,  4,  4,  5,  5,  6,  6,  7,  7,  8,  8,  9,  9,
+                                                10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20,
+                                                21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27, 27, 28, 28, 29, 29, 30, 30};
 static const uint32_t xx_rarx50_dist_base[64] = {
-    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 32769, 49153, 65537, 98305, 131073, 196609, 262145, 393217, 524289, 786433, 1048577, 1572865, 2097153, 3145729, 4194305, 6291457, 8388609, 12582913, 16777217, 25165825, 33554433, 50331649, 67108865, 100663297, 134217729, 201326593, 268435457, 402653185, 536870913, 805306369, 1073741825, 1610612737, 2147483649, 3221225473
-};
+    1,        2,         3,         4,         5,         7,         9,         13,        17,         25,         33,         49,        65,
+    97,       129,       193,       257,       385,       513,       769,       1025,      1537,       2049,       3073,       4097,      6145,
+    8193,     12289,     16385,     24577,     32769,     49153,     65537,     98305,     131073,     196609,     262145,     393217,    524289,
+    786433,   1048577,   1572865,   2097153,   3145729,   4194305,   6291457,   8388609,   12582913,   16777217,   25165825,   33554433,  50331649,
+    67108865, 100663297, 134217729, 201326593, 268435457, 402653185, 536870913, 805306369, 1073741825, 1610612737, 2147483649, 3221225473};
 
 XX_FORCE_INLINE xx_rarx_status_t xx_rarx50_length_from_slot(unsigned slot, xx_rarx50_bits *bits, size_t *length)
 {
@@ -520,7 +522,8 @@ XX_FORCE_INLINE xx_rarx_status_t xx_rarx50_length_from_slot(unsigned slot, xx_ra
     return XX_RARX_STATUS_OK;
 }
 
-XX_FORCE_INLINE xx_rarx_status_t xx_rarx50_distance_from_slot(unsigned slot, const xx_rarx50_huffman *align_table, bool align_mode, xx_rarx50_bits *bits, size_t *distance)
+XX_FORCE_INLINE xx_rarx_status_t xx_rarx50_distance_from_slot(unsigned slot, const xx_rarx50_huffman *align_table, bool align_mode, xx_rarx50_bits *bits,
+                                                              size_t *distance)
 {
     if (slot >= XX_RARX50_DISTANCE_SYMBOLS) return XX_RARX_STATUS_CORRUPT;
     unsigned bit_count = xx_rarx50_dist_bits[slot];
@@ -1048,20 +1051,9 @@ void xx_rarx50_set_chunk_callback(xx_rarx50_state *state, xx_rarx_chunk_cb cb, v
     state->stream_pos = 0;
 }
 
-XX_NOINLINE xx_rarx_status_t xx_rarx50_decode_block(
-    const xx_rarx50_state *state,
-    uint8_t *destination,
-    size_t *p_dest_pos,
-    size_t destination_size,
-    size_t window_size,
-    xx_rarx50_bits *bits,
-    xx_rarx50_filter **p_filters,
-    size_t *p_filter_count,
-    size_t *p_dist0,
-    size_t *p_dist1,
-    size_t *p_dist2,
-    size_t *p_dist3,
-    size_t *p_last_len)
+XX_NOINLINE xx_rarx_status_t xx_rarx50_decode_block(const xx_rarx50_state *state, uint8_t *destination, size_t *p_dest_pos, size_t destination_size, size_t window_size,
+                                                    xx_rarx50_bits *bits, xx_rarx50_filter **p_filters, size_t *p_filter_count, size_t *p_dist0, size_t *p_dist1,
+                                                    size_t *p_dist2, size_t *p_dist3, size_t *p_last_len)
 {
     uint8_t *dst = destination + *p_dest_pos;
     const uint8_t *const dst_end = destination + destination_size;
@@ -1085,63 +1077,76 @@ XX_NOINLINE xx_rarx_status_t xx_rarx50_decode_block(
     const uint8_t *const bit_src_end = bits->src_end;
     xx_rarx_status_t status = XX_RARX_STATUS_OK;
 
-#define XX_RARX50_CONSUME_FAST(count) do { \
-    unsigned _cnt = (unsigned)(count); \
-    bit_buf <<= _cnt; \
-    bits_left -= (int)_cnt; \
-    if (bits_left < 32) { \
-        uint32_t _w = xx_mem_load32(bit_src); \
-        _w = XX_RARX50_BSWAP32(_w); \
-        bit_buf |= ((uint64_t)_w) << (32 - bits_left); \
-        bit_src += 4; \
-        bits_left += 32; \
-    } \
-} while (0)
-
-#define XX_RARX50_SYNC_BITS() do { \
-    bit_pos = anchor_bit_pos + ((size_t)(bit_src - anchor_src) * 8u) + (size_t)(anchor_bits_left - bits_left); \
-    bits->buf = bit_buf; bits->bits_left = bits_left; bits->bit_position = bit_pos; bits->src = bit_src; \
-} while (0)
-
-#define XX_RARX50_RESYNC_BITS() do { \
-    bit_buf = bits->buf; bits_left = bits->bits_left; bit_pos = bits->bit_position; bit_src = bits->src; \
-    anchor_src = bit_src; anchor_bits_left = bits_left; anchor_bit_pos = bit_pos; \
-} while (0)
-
-#define XX_RARX50_CONSUME_SAFE(count) do { \
-    unsigned _cnt = (unsigned)(count); \
-    bit_buf <<= _cnt; \
-    bits_left -= (int)_cnt; \
-    bit_pos += _cnt; \
-    if (bits_left < 32) { \
-        if (bit_src + 4 <= bit_src_end) { \
-            uint32_t _w = xx_mem_load32(bit_src); \
-            _w = XX_RARX50_BSWAP32(_w); \
+#define XX_RARX50_CONSUME_FAST(count)                      \
+    do {                                                   \
+        unsigned _cnt = (unsigned)(count);                 \
+        bit_buf <<= _cnt;                                  \
+        bits_left -= (int)_cnt;                            \
+        if (bits_left < 32) {                              \
+            uint32_t _w = xx_mem_load32(bit_src);          \
+            _w = XX_RARX50_BSWAP32(_w);                    \
             bit_buf |= ((uint64_t)_w) << (32 - bits_left); \
-            bit_src += 4; \
-            bits_left += 32; \
-        } else { \
-            while (bits_left <= 56 && bit_src < bit_src_end) { \
-                bit_buf |= ((uint64_t)*bit_src++) << (56 - bits_left); \
-                bits_left += 8; \
-            } \
-        } \
-    } \
-} while (0)
+            bit_src += 4;                                  \
+            bits_left += 32;                               \
+        }                                                  \
+    } while (0)
 
-#define XX_RARX50_PERFORM_MATCH(dist, len) do { \
-    size_t _distance = (dist); \
-    size_t _length = (len); \
-    if (dst + _length <= dst_end && _distance != 0 && _distance <= (size_t)(dst - destination)) { \
-        xx_rarx50_copy_match_fast_ptr(dst, _distance, _length, dst_end); \
-        dst += _length; \
-    } else { \
-        size_t current_pos = (size_t)(dst - destination); \
-        status = xx_rarx50_copy_match(state, destination, &current_pos, destination_size, window_size, _distance, _length); \
-        if (status != XX_RARX_STATUS_OK) goto done; \
-        dst = destination + current_pos; \
-    } \
-} while (0)
+#define XX_RARX50_SYNC_BITS()                                                                                      \
+    do {                                                                                                           \
+        bit_pos = anchor_bit_pos + ((size_t)(bit_src - anchor_src) * 8u) + (size_t)(anchor_bits_left - bits_left); \
+        bits->buf = bit_buf;                                                                                       \
+        bits->bits_left = bits_left;                                                                               \
+        bits->bit_position = bit_pos;                                                                              \
+        bits->src = bit_src;                                                                                       \
+    } while (0)
+
+#define XX_RARX50_RESYNC_BITS()       \
+    do {                              \
+        bit_buf = bits->buf;          \
+        bits_left = bits->bits_left;  \
+        bit_pos = bits->bit_position; \
+        bit_src = bits->src;          \
+        anchor_src = bit_src;         \
+        anchor_bits_left = bits_left; \
+        anchor_bit_pos = bit_pos;     \
+    } while (0)
+
+#define XX_RARX50_CONSUME_SAFE(count)                                      \
+    do {                                                                   \
+        unsigned _cnt = (unsigned)(count);                                 \
+        bit_buf <<= _cnt;                                                  \
+        bits_left -= (int)_cnt;                                            \
+        bit_pos += _cnt;                                                   \
+        if (bits_left < 32) {                                              \
+            if (bit_src + 4 <= bit_src_end) {                              \
+                uint32_t _w = xx_mem_load32(bit_src);                      \
+                _w = XX_RARX50_BSWAP32(_w);                                \
+                bit_buf |= ((uint64_t)_w) << (32 - bits_left);             \
+                bit_src += 4;                                              \
+                bits_left += 32;                                           \
+            } else {                                                       \
+                while (bits_left <= 56 && bit_src < bit_src_end) {         \
+                    bit_buf |= ((uint64_t)*bit_src++) << (56 - bits_left); \
+                    bits_left += 8;                                        \
+                }                                                          \
+            }                                                              \
+        }                                                                  \
+    } while (0)
+
+#define XX_RARX50_PERFORM_MATCH(dist, len)                                                                                      \
+    do {                                                                                                                        \
+        size_t _distance = (dist);                                                                                              \
+        size_t _length = (len);                                                                                                 \
+        if (dst + _length <= dst_end && _distance != 0 && _distance <= (size_t)(dst - destination)) {                           \
+            xx_rarx50_copy_match_fast_ptr(dst, _distance, _length, dst_end);                                                    \
+            dst += _length;                                                                                                     \
+        } else {                                                                                                                \
+            size_t current_pos = (size_t)(dst - destination);                                                                   \
+            status = xx_rarx50_copy_match(state, destination, &current_pos, destination_size, window_size, _distance, _length); \
+            if (status != XX_RARX_STATUS_OK) goto done;                                                                         \
+            dst = destination + current_pos;                                                                                    \
+        }                                                                                                                       \
+    } while (0)
 
     const uint8_t *const fast_src_end = (bit_src_end >= bit_src + 16u) ? (bit_src_end - 16u) : bit_src;
     const uint8_t *const fast_dst_end = (dst_end >= destination + 32u) ? (dst_end - 32u) : destination;
@@ -1183,11 +1188,17 @@ XX_NOINLINE xx_rarx_status_t xx_rarx50_decode_block(
             if (symbol == 258u) {
                 distance = dist0;
             } else if (symbol == 259u) {
-                distance = dist1; dist1 = dist0;
+                distance = dist1;
+                dist1 = dist0;
             } else if (symbol == 260u) {
-                distance = dist2; dist2 = dist1; dist1 = dist0;
+                distance = dist2;
+                dist2 = dist1;
+                dist1 = dist0;
             } else {
-                distance = dist3; dist3 = dist2; dist2 = dist1; dist1 = dist0;
+                distance = dist3;
+                dist3 = dist2;
+                dist2 = dist1;
+                dist1 = dist0;
             }
             dist0 = distance;
             if (distance == 0) {
@@ -1302,10 +1313,16 @@ XX_NOINLINE xx_rarx_status_t xx_rarx50_decode_block(
             symbol = entry >> 4;
             XX_RARX50_CONSUME_SAFE(hlen);
         } else {
-            bits->buf = bit_buf; bits->bits_left = bits_left; bits->bit_position = bit_pos; bits->src = bit_src;
+            bits->buf = bit_buf;
+            bits->bits_left = bits_left;
+            bits->bit_position = bit_pos;
+            bits->src = bit_src;
             status = xx_rarx50_decode_huffman_slow(&state->main_table, bits, &symbol);
             if (status != XX_RARX_STATUS_OK) goto done;
-            bit_buf = bits->buf; bits_left = bits->bits_left; bit_pos = bits->bit_position; bit_src = bits->src;
+            bit_buf = bits->buf;
+            bits_left = bits->bits_left;
+            bit_pos = bits->bit_position;
+            bit_src = bits->src;
         }
         if (symbol < 256u) {
             if (dst >= dst_end) {
@@ -1315,10 +1332,16 @@ XX_NOINLINE xx_rarx_status_t xx_rarx50_decode_block(
             *dst++ = (uint8_t)symbol;
             continue;
         } else if (symbol == 256u) {
-            bits->buf = bit_buf; bits->bits_left = bits_left; bits->bit_position = bit_pos; bits->src = bit_src;
+            bits->buf = bit_buf;
+            bits->bits_left = bits_left;
+            bits->bit_position = bit_pos;
+            bits->src = bit_src;
             status = xx_rarx50_append_filter(p_filters, p_filter_count, (size_t)(dst - destination), destination_size, bits);
             if (status != XX_RARX_STATUS_OK) goto done;
-            bit_buf = bits->buf; bits_left = bits->bits_left; bit_pos = bits->bit_position; bit_src = bits->src;
+            bit_buf = bits->buf;
+            bits_left = bits->bits_left;
+            bit_pos = bits->bit_position;
+            bit_src = bits->src;
         } else if (symbol == 257u) {
             if (last_len != 0) {
                 XX_RARX50_PERFORM_MATCH(dist0, last_len);
@@ -1330,11 +1353,17 @@ XX_NOINLINE xx_rarx_status_t xx_rarx50_decode_block(
             if (symbol == 258u) {
                 distance = dist0;
             } else if (symbol == 259u) {
-                distance = dist1; dist1 = dist0;
+                distance = dist1;
+                dist1 = dist0;
             } else if (symbol == 260u) {
-                distance = dist2; dist2 = dist1; dist1 = dist0;
+                distance = dist2;
+                dist2 = dist1;
+                dist1 = dist0;
             } else {
-                distance = dist3; dist3 = dist2; dist2 = dist1; dist1 = dist0;
+                distance = dist3;
+                dist3 = dist2;
+                dist2 = dist1;
+                dist1 = dist0;
             }
             dist0 = distance;
             if (distance == 0) {
@@ -1348,10 +1377,16 @@ XX_NOINLINE xx_rarx_status_t xx_rarx50_decode_block(
                 length_slot = entry >> 4;
                 XX_RARX50_CONSUME_SAFE(hlen);
             } else {
-                bits->buf = bit_buf; bits->bits_left = bits_left; bits->bit_position = bit_pos; bits->src = bit_src;
+                bits->buf = bit_buf;
+                bits->bits_left = bits_left;
+                bits->bit_position = bit_pos;
+                bits->src = bit_src;
                 status = xx_rarx50_decode_huffman_slow(&state->length_table, bits, &length_slot);
                 if (status != XX_RARX_STATUS_OK) goto done;
-                bit_buf = bits->buf; bits_left = bits->bits_left; bit_pos = bits->bit_position; bit_src = bits->src;
+                bit_buf = bits->buf;
+                bits_left = bits->bits_left;
+                bit_pos = bits->bit_position;
+                bit_src = bits->src;
             }
             if (length_slot < 8u) {
                 length = (size_t)length_slot + 2u;
@@ -1384,10 +1419,16 @@ XX_NOINLINE xx_rarx_status_t xx_rarx50_decode_block(
                 distance_slot = entry >> 4;
                 XX_RARX50_CONSUME_SAFE(hlen);
             } else {
-                bits->buf = bit_buf; bits->bits_left = bits_left; bits->bit_position = bit_pos; bits->src = bit_src;
+                bits->buf = bit_buf;
+                bits->bits_left = bits_left;
+                bits->bit_position = bit_pos;
+                bits->src = bit_src;
                 status = xx_rarx50_decode_huffman_slow(&state->distance_table, bits, &distance_slot);
                 if (status != XX_RARX_STATUS_OK) goto done;
-                bit_buf = bits->buf; bits_left = bits->bits_left; bit_pos = bits->bit_position; bit_src = bits->src;
+                bit_buf = bits->buf;
+                bits_left = bits->bits_left;
+                bit_pos = bits->bit_position;
+                bit_src = bits->src;
             }
             if (distance_slot < 4u) {
                 distance = (size_t)distance_slot + 1u;
@@ -1410,10 +1451,16 @@ XX_NOINLINE xx_rarx_status_t xx_rarx50_decode_block(
                         low = entry >> 4;
                         XX_RARX50_CONSUME_SAFE(hlen);
                     } else {
-                        bits->buf = bit_buf; bits->bits_left = bits_left; bits->bit_position = bit_pos; bits->src = bit_src;
+                        bits->buf = bit_buf;
+                        bits->bits_left = bits_left;
+                        bits->bit_position = bit_pos;
+                        bits->src = bit_src;
                         status = xx_rarx50_decode_huffman_slow(&state->align_table, bits, &low);
                         if (status != XX_RARX_STATUS_OK) goto done;
-                        bit_buf = bits->buf; bits_left = bits->bits_left; bit_pos = bits->bit_position; bit_src = bits->src;
+                        bit_buf = bits->buf;
+                        bits_left = bits->bits_left;
+                        bit_pos = bits->bit_position;
+                        bit_src = bits->src;
                     }
                     extra = (high << 4) | (uint32_t)low;
                 } else {
@@ -1561,9 +1608,8 @@ xx_rarx_status_t xx_rarx50_decode(xx_rarx50_state *state, const uint8_t *source,
             goto cleanup;
         }
 
-        status = xx_rarx50_decode_block(state, destination, &destination_position, destination_size, window_size,
-                                         &bits, &filters, &filter_count,
-                                         &dist0, &dist1, &dist2, &dist3, &last_len);
+        status = xx_rarx50_decode_block(state, destination, &destination_position, destination_size, window_size, &bits, &filters, &filter_count, &dist0, &dist1, &dist2,
+                                        &dist3, &last_len);
         if (status != XX_RARX_STATUS_OK) goto cleanup;
         if (filter_count == 0 && state->chunk_cb && destination_position > state->stream_pos) {
             state->chunk_cb(state->chunk_user_data, destination + state->stream_pos, destination_position - state->stream_pos);

@@ -114,7 +114,6 @@ static bool ebk_zlib_header_ok(const uint8_t *header)
 /* Windows-1252 0x80..0x9F.  The five undefined bytes keep their C1 code
  * point, which the name check refuses. */
 
-
 static size_t ebk_put_utf8(char *out, uint8_t c)
 {
     uint32_t code = (c >= 0x80U && c < 0xA0U) ? xx_codepage_decode_byte(xx_codepage_by_number(1252), (unsigned char)(c), c) : c;
@@ -868,7 +867,8 @@ static bool ebk_set_record(Abstractformat *format, uint32_t variant, xx_archive_
         !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, variant == EBK_VARIANT_SHOW_FOOTER ? 0U : EBK_METHOD_DEFLATE) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
-    if (variant == XX_SFX_EBOOK_VARIANT_EBOOK_CREATOR || variant == EBK_VARIANT_SHOW_FOOTER) return xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->raw_size);
+    if (variant == XX_SFX_EBOOK_VARIANT_EBOOK_CREATOR || variant == EBK_VARIANT_SHOW_FOOTER)
+        return xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, member->raw_size);
     /* SBook Builder keeps no unpacked size; the chunks give it only when
      * they are inflated. */
     return xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_stamp & 0xFFFFU) &&

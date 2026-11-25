@@ -338,8 +338,7 @@ static xx_mva_stream *xx_mva_parse_single(Abstractformat *self, xx_pd_struct *pd
              * header and the stream; its u16 at +6 is its own size and the
              * packed size does not count it. */
             uint8_t tag[XX_MVA_VOLUME_TAG_SIZE];
-            if (xx_mva_range_within(span, data_offset, (int64_t)XX_MVA_VOLUME_TAG_SIZE) &&
-                xx_mva_read_at(self, self->base_address + data_offset, tag, sizeof(tag)) &&
+            if (xx_mva_range_within(span, data_offset, (int64_t)XX_MVA_VOLUME_TAG_SIZE) && xx_mva_read_at(self, self->base_address + data_offset, tag, sizeof(tag)) &&
                 tag[0] == 'm' && tag[1] == 'f' && tag[2] == 'v' && tag[3] == 'l') {
                 int64_t skip = (int64_t)xx_data_get_u16(tag + 6, 2, 0, false);
                 if (skip < (int64_t)XX_MVA_VOLUME_TAG_SIZE) skip = (int64_t)XX_MVA_VOLUME_TAG_SIZE;
@@ -519,7 +518,10 @@ static bool xx_mva_decode(Abstractformat *self, const xx_mva_member *member, uin
 static bool xx_mva_decode_member(Abstractformat *self, xx_mva_stream *stream, const xx_mva_member *member, uint8_t **out, size_t *size, xx_pd_struct *pd)
 {
     Abstractformat logical = *self;
-    if (stream->volumes) { logical.device = stream->volumes; logical.base_address = 0; }
+    if (stream->volumes) {
+        logical.device = stream->volumes;
+        logical.base_address = 0;
+    }
     return xx_mva_decode(&logical, member, out, size, pd);
 }
 

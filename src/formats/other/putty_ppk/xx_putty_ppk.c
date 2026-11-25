@@ -88,8 +88,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
         BLOB_NEED(xx_sha1_memory("putty-private-key-file-mac-key", 30, key));
         keyn = 20;
     }
-    BLOB_NEED(security_hmac(&b, version == 3, key, keyn, macdata, (size_t)size, digest) &&
-              !xx_rt_memcmp(want, digest, version == 3 ? 32 : 20));
+    BLOB_NEED(security_hmac(&b, version == 3, key, keyn, macdata, (size_t)size, digest) && !xx_rt_memcmp(want, digest, version == 3 ? 32 : 20));
     BLOB_NEED(blob_add(f, s, &b, "comment", comment, commentn) && protocol_mem(f, s, "public-key-blob", &pub, pubn) &&
               protocol_mem(f, s, "private-key-blob", &priv, privn) && blob_add(f, s, &b, "verified-private-mac", p, n));
     s->size = (int64_t)b.n;

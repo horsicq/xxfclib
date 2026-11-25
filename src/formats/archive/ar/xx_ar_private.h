@@ -18,7 +18,7 @@
 #include <string.h>
 #include <wchar.h>
 
-#define XX_AR_PARSE_MEMBERS 1U       /* member table with resolved names */
+#define XX_AR_PARSE_MEMBERS 1U /* member table with resolved names */
 
 typedef enum xx_ar_kind_e {
     XX_AR_KIND_PLAIN = 0,

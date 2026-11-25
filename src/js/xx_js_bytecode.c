@@ -328,7 +328,9 @@ static JSNode *deserialize_node(BcReader *r)
     pNode = js_node_new((JSNodeType)type, (int)line);
     pNode->op = (JSOp)op;
     if (type > N_DEBUGGER || (r->nVersion < 3 && type > N_EXPRSTMT) || op > OP_ASSIGN) {
-        js_free_node(pNode); r->bError = 1; return NULL;
+        js_free_node(pNode);
+        r->bError = 1;
+        return NULL;
     }
 
     if (!bc_read(r, &flags, sizeof(flags))) {
@@ -337,7 +339,10 @@ static JSNode *deserialize_node(BcReader *r)
     }
 
     if (r->nVersion >= 3) {
-        if (!bc_read(r, &column, sizeof(column))) { js_free_node(pNode); return NULL; }
+        if (!bc_read(r, &column, sizeof(column))) {
+            js_free_node(pNode);
+            return NULL;
+        }
         pNode->nColumn = column > 0 ? (int)column : 0;
     }
     if (flags & BC_FLAG_NUM) {
@@ -433,7 +438,11 @@ static int bc_valid_tree(const JSNode *pNode, int nDepth)
     if (nDepth > JS_BC_MAX_DEPTH) return 0;
 
     switch (pNode->type) {
-        case N_IDENT: case N_VARDECL: case N_MEMBER: case N_PROP: case N_LABELED:
+        case N_IDENT:
+        case N_VARDECL:
+        case N_MEMBER:
+        case N_PROP:
+        case N_LABELED:
             if (!pNode->pStr) return 0;
             break;
         case N_FUNCTION:
@@ -443,7 +452,10 @@ static int bc_valid_tree(const JSNode *pNode, int nDepth)
                 if (!pParam || pParam->type != N_IDENT || !pParam->pStr) return 0;
             }
             break;
-        case N_CALL: case N_UNARY: case N_UPDATE: case N_BINARY:
+        case N_CALL:
+        case N_UNARY:
+        case N_UPDATE:
+        case N_BINARY:
             if (!pNode->a) return 0;
             break;
         case N_ASSIGN:
@@ -465,8 +477,7 @@ static int bc_valid_tree(const JSNode *pNode, int nDepth)
         if (listType != N_PROGRAM && (!pChild || pChild->type != listType)) return 0;
         if (!bc_valid_tree(pChild, nDepth + 1)) return 0;
     }
-    return bc_valid_tree(pNode->a, nDepth + 1) && bc_valid_tree(pNode->b, nDepth + 1) &&
-           bc_valid_tree(pNode->c, nDepth + 1) && bc_valid_tree(pNode->d, nDepth + 1);
+    return bc_valid_tree(pNode->a, nDepth + 1) && bc_valid_tree(pNode->b, nDepth + 1) && bc_valid_tree(pNode->c, nDepth + 1) && bc_valid_tree(pNode->d, nDepth + 1);
 }
 
 /* Decode without retaining any context state; the caller owns the AST. */

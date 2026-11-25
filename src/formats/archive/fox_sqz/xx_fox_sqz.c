@@ -116,8 +116,8 @@ static void fox_sqz_fox_xor(uint8_t *p, size_t n, const uint8_t *key, size_t key
 }
 /* Both layouts frame compressed bodies with signed block sizes. The older
  * 44/34-byte layout has no evidence of a preinitialized DCL dictionary. */
-static bool fox_sqz_blocks(uint8_t *packed, size_t packed_size, uint8_t *plain, size_t plain_size,
-                           unsigned method, const uint8_t *key, size_t keysize, bool zero_history, xx_pd_struct *pd)
+static bool fox_sqz_blocks(uint8_t *packed, size_t packed_size, uint8_t *plain, size_t plain_size, unsigned method, const uint8_t *key, size_t keysize, bool zero_history,
+                           xx_pd_struct *pd)
 {
     size_t in = 0, out = 0;
     if (method != 1U && method != 4U) return false;
@@ -166,8 +166,7 @@ static bool fox_sqz_legacy(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     int64_t at = 44, size = pm_available(f);
     const xx_var *limit = xx_format_resolve_extra_parameter(f, NULL, XX_META_ID_OPT_MAX_MEMBER_SIZE);
     uint64_t max_member = limit ? xx_var_get_u64(limit) : UINT64_MAX;
-    if (!pm_read(f, 0, h, sizeof(h)) || xx_mem_compare(h, "FOXSQZ COMPRESSED FILE\0\x1a", 24) || h[24] ||
-        fox_sqz_u16(h + 32) != 4U) return false;
+    if (!pm_read(f, 0, h, sizeof(h)) || xx_mem_compare(h, "FOXSQZ COMPRESSED FILE\0\x1a", 24) || h[24] || fox_sqz_u16(h + 32) != 4U) return false;
     count = fox_sqz_u16(h + 30);
     last = fox_sqz_u32(h + 40);
     if (!count || size < 80 || count > (uint64_t)(size - 44) / 36U || last < 44U || last > (uint64_t)(size - 36)) return false;
@@ -178,27 +177,27 @@ static bool fox_sqz_legacy(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
         size_t n;
         char name[13];
         int64_t start = at;
-        if ((pd && xx_pd_is_stopped(pd)) || (index + 1U == count ? start != last : start >= last) ||
-            !fox_sqz_take(f, &at, 34U, h) || fox_sqz_u16(h) != 0xfeU || h[32] != 2U || h[33] != 2U) return false;
+        if ((pd && xx_pd_is_stopped(pd)) || (index + 1U == count ? start != last : start >= last) || !fox_sqz_take(f, &at, 34U, h) || fox_sqz_u16(h) != 0xfeU ||
+            h[32] != 2U || h[33] != 2U)
+            return false;
         packed_size = fox_sqz_u32(h + 3);
         plain_size = fox_sqz_u32(h + 7);
         crc = fox_sqz_u16(h + 11);
         /* Fixed DOS leaf names must terminate in their 13-byte field. */
         for (n = 0; n < sizeof(name) && h[19U + n]; ++n) {
             unsigned c = h[19U + n];
-            if (c < 32U || c > 126U || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' ||
-                c == '"' || c == '|' || c == '?' || c == '*') return false;
+            if (c < 32U || c > 126U || c == '/' || c == '\\' || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') return false;
             name[n] = (char)c;
         }
         if (!n || n == sizeof(name) || h[19U + n - 1U] == '.' || h[19U + n - 1U] == ' ') return false;
         name[n] = 0;
         if (packed_size < 2U || packed_size > (uint64_t)(size - at) || plain_size > max_member ||
-            !fox_sqz_room(f, s, (uint64_t)packed_size + (plain_size ? plain_size : 1U) + 32768U, true)) return false;
+            !fox_sqz_room(f, s, (uint64_t)packed_size + (plain_size ? plain_size : 1U) + 32768U, true))
+            return false;
         start = at;
         packed = (uint8_t *)xx_mem_alloc(packed_size);
         plain = (uint8_t *)xx_mem_alloc(plain_size ? plain_size : 1U);
-        if (!packed || !plain || !fox_sqz_take(f, &at, packed_size, packed) ||
-            !fox_sqz_blocks(packed, packed_size, plain, plain_size, 4U, NULL, 0, false, pd) ||
+        if (!packed || !plain || !fox_sqz_take(f, &at, packed_size, packed) || !fox_sqz_blocks(packed, packed_size, plain, plain_size, 4U, NULL, 0, false, pd) ||
             xx_crc16(XX_CRC_TYPE_CRC16_ARC, plain, plain_size) != crc) {
             xx_mem_free(packed);
             xx_mem_free(plain);

@@ -18,15 +18,10 @@ extern "C" {
  * callers needing cancellation should search bounded, overlapping ranges.
  * Dispatch respects xxfclib's SSE2/AVX2 runtime feature switches.
  */
-XXFC_API size_t xx_literal_nocase_find(const uint8_t *data, size_t size,
-                                      size_t start, const uint8_t *needle,
-                                      size_t length);
+XXFC_API size_t xx_literal_nocase_find(const uint8_t *data, size_t size, size_t start, const uint8_t *needle, size_t length);
 
 /** Portable reference implementation with the same contract. */
-XXFC_API size_t xx_literal_nocase_find_scalar(const uint8_t *data, size_t size,
-                                             size_t start,
-                                             const uint8_t *needle,
-                                             size_t length);
+XXFC_API size_t xx_literal_nocase_find_scalar(const uint8_t *data, size_t size, size_t start, const uint8_t *needle, size_t length);
 
 #ifdef __cplusplus
 }

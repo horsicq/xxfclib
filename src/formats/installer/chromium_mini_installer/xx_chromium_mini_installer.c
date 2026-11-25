@@ -30,10 +30,10 @@
 #define CM_MAX_UNPACKED (INT64_C(8) * 1024 * 1024 * 1024)
 
 typedef struct cm_bundle {
-    xx_io_device *store; /* the decoded .lzma payload */
-    xx_io_device *view;  /* BCJ2-decoded tar of a Brave payload */
-    xx_tar *tar;         /* the nested reader as created: Brave's tar ... */
-    xx_7zip *archive;    /* ... or Chromium's 7-Zip archive */
+    xx_io_device *store;    /* the decoded .lzma payload */
+    xx_io_device *view;     /* BCJ2-decoded tar of a Brave payload */
+    xx_tar *tar;            /* the nested reader as created: Brave's tar ... */
+    xx_7zip *archive;       /* ... or Chromium's 7-Zip archive */
     Abstractformat *nested; /* the same reader as a format */
 } cm_bundle;
 typedef struct cm_cursor {
@@ -95,7 +95,8 @@ static bool cm_candidate(Abstractformat *f, pm_stream *s, int64_t at, uint32_t b
     bool brave;
     if (carrier_stop(pd)) return false;
     if (!cm_lzma_header(f, at, bytes, props, &unpacked)) return true; /* some other LZMA resource */
-    if (!xx_lzma_unpack_device_to_memory(f->device, f->base_address + at + CM_LZMA_HEADER, (int64_t)bytes - CM_LZMA_HEADER, props, 5U, CM_PROBE, head, sizeof(head), &n, pd) ||
+    if (!xx_lzma_unpack_device_to_memory(f->device, f->base_address + at + CM_LZMA_HEADER, (int64_t)bytes - CM_LZMA_HEADER, props, 5U, CM_PROBE, head, sizeof(head), &n,
+                                         pd) ||
         n != CM_PROBE || !cm_payload_kind(head, n, &brave))
         return !carrier_stop(pd);
     if (s->count) return true; /* one payload per installer */
@@ -255,31 +256,29 @@ bool xx_chromium_mini_installer_check_is_valid(Abstractformat *f, xx_pd_struct *
 }
 /* ---- BCJ2 streaming decoder for Brave payloads ---- */
 
-#define CM_BCJ2_MAIN_BUF  65536U
-#define CM_BCJ2_AUX_BUF   16384U
-#define CM_BCJ2_OUT_BUF   65536U
+#define CM_BCJ2_MAIN_BUF 65536U
+#define CM_BCJ2_AUX_BUF 16384U
+#define CM_BCJ2_OUT_BUF 65536U
 
 typedef struct cm_bcj2_stream {
     xx_io_device *device;
-    int64_t offset;     /* next absolute read offset in device */
-    int64_t end;        /* absolute end offset (exclusive) */
+    int64_t offset; /* next absolute read offset in device */
+    int64_t end;    /* absolute end offset (exclusive) */
     uint8_t *buf;
     size_t capacity;
-    size_t fill;        /* valid bytes in buf */
-    size_t pos;         /* current read position in buf */
+    size_t fill; /* valid bytes in buf */
+    size_t pos;  /* current read position in buf */
 } cm_bcj2_stream;
 
-static void cm_bcj2_stream_init(cm_bcj2_stream *s, xx_io_device *dev,
-                                int64_t start, int64_t size,
-                                uint8_t *buf, size_t capacity)
+static void cm_bcj2_stream_init(cm_bcj2_stream *s, xx_io_device *dev, int64_t start, int64_t size, uint8_t *buf, size_t capacity)
 {
-    s->device   = dev;
-    s->offset   = start;
-    s->end      = start + size;
-    s->buf      = buf;
+    s->device = dev;
+    s->offset = start;
+    s->end = start + size;
+    s->buf = buf;
     s->capacity = capacity;
-    s->fill     = 0;
-    s->pos      = 0;
+    s->fill = 0;
+    s->pos = 0;
 }
 
 /* Return the next byte, refilling through xx_io_read_at when the local
@@ -290,10 +289,8 @@ static int cm_bcj2_next(cm_bcj2_stream *s)
         int64_t remaining = s->end - s->offset;
         size_t to_read;
         if (remaining <= 0) return -1;
-        to_read = (int64_t)s->capacity <= remaining
-                      ? s->capacity : (size_t)remaining;
-        if (!xx_io_read_at(s->device, s->offset, s->buf, to_read))
-            return -1;
+        to_read = (int64_t)s->capacity <= remaining ? s->capacity : (size_t)remaining;
+        if (!xx_io_read_at(s->device, s->offset, s->buf, to_read)) return -1;
         s->offset += (int64_t)to_read;
         s->fill = to_read;
         s->pos = 0;
@@ -315,11 +312,7 @@ static int64_t cm_bcj2_remaining(const cm_bcj2_stream *s)
  * back to back in the order main/call/jump/rc) and write the reconstructed
  * output to out.  The algorithm is identical to fead_bcj2_decode but operates
  * on devices through small per-stream buffers instead of flat memory. */
-static bool cm_bcj2_decode(xx_io_device *store,
-                           const uint32_t sizes[4],
-                           int64_t expected,
-                           xx_io_device *out,
-                           xx_pd_struct *pd)
+static bool cm_bcj2_decode(xx_io_device *store, const uint32_t sizes[4], int64_t expected, xx_io_device *out, xx_pd_struct *pd)
 {
     cm_bcj2_stream main_s, call_s, jump_s, rc_s;
     uint8_t *main_buf = NULL, *call_buf = NULL;
@@ -332,32 +325,25 @@ static bool cm_bcj2_decode(xx_io_device *store,
     int b, i;
     bool ok = false;
 
-    if ((sizes[1] & 3U) || (sizes[2] & 3U) || sizes[3] < 5 ||
-        carrier_stop(pd))
-        return false;
+    if ((sizes[1] & 3U) || (sizes[2] & 3U) || sizes[3] < 5 || carrier_stop(pd)) return false;
 
     /* Heap buffers (five allocations, ~176 KiB total) */
     main_buf = (uint8_t *)xx_mem_calloc(1, CM_BCJ2_MAIN_BUF);
     call_buf = (uint8_t *)xx_mem_calloc(1, CM_BCJ2_AUX_BUF);
     jump_buf = (uint8_t *)xx_mem_calloc(1, CM_BCJ2_AUX_BUF);
-    rc_buf   = (uint8_t *)xx_mem_calloc(1, CM_BCJ2_AUX_BUF);
-    out_buf  = (uint8_t *)xx_mem_calloc(1, CM_BCJ2_OUT_BUF);
-    if (!main_buf || !call_buf || !jump_buf || !rc_buf || !out_buf)
-        goto done;
+    rc_buf = (uint8_t *)xx_mem_calloc(1, CM_BCJ2_AUX_BUF);
+    out_buf = (uint8_t *)xx_mem_calloc(1, CM_BCJ2_OUT_BUF);
+    if (!main_buf || !call_buf || !jump_buf || !rc_buf || !out_buf) goto done;
 
     /* Streams start at offset 20, back to back: main, call, jump, rc */
     base = (int64_t)CM_TABLE;
-    cm_bcj2_stream_init(&main_s, store, base, (int64_t)sizes[0],
-                        main_buf, CM_BCJ2_MAIN_BUF);
+    cm_bcj2_stream_init(&main_s, store, base, (int64_t)sizes[0], main_buf, CM_BCJ2_MAIN_BUF);
     base += (int64_t)sizes[0];
-    cm_bcj2_stream_init(&call_s, store, base, (int64_t)sizes[1],
-                        call_buf, CM_BCJ2_AUX_BUF);
+    cm_bcj2_stream_init(&call_s, store, base, (int64_t)sizes[1], call_buf, CM_BCJ2_AUX_BUF);
     base += (int64_t)sizes[1];
-    cm_bcj2_stream_init(&jump_s, store, base, (int64_t)sizes[2],
-                        jump_buf, CM_BCJ2_AUX_BUF);
+    cm_bcj2_stream_init(&jump_s, store, base, (int64_t)sizes[2], jump_buf, CM_BCJ2_AUX_BUF);
     base += (int64_t)sizes[2];
-    cm_bcj2_stream_init(&rc_s,  store, base, (int64_t)sizes[3],
-                        rc_buf, CM_BCJ2_AUX_BUF);
+    cm_bcj2_stream_init(&rc_s, store, base, (int64_t)sizes[3], rc_buf, CM_BCJ2_AUX_BUF);
 
     /* Initialise the range coder: one zero byte then four code bytes */
     for (i = 0; i < 258; ++i) probabilities[i] = 1024;
@@ -378,8 +364,7 @@ static bool cm_bcj2_decode(xx_io_device *store,
         /* Cancellation check every 64 KiB of main input */
         if (main_consumed >= checkpoint) {
             if (carrier_stop(pd)) goto done;
-            checkpoint = main_consumed > INT64_MAX - 65536
-                             ? INT64_MAX : main_consumed + 65536;
+            checkpoint = main_consumed > INT64_MAX - 65536 ? INT64_MAX : main_consumed + 65536;
         }
 
         b = cm_bcj2_next(&main_s);
@@ -387,8 +372,7 @@ static bool cm_bcj2_decode(xx_io_device *store,
         opcode = (uint8_t)b;
         ++main_consumed;
 
-        branch = opcode == 0xE8U || opcode == 0xE9U ||
-                 (previous == 0x0FU && (opcode & 0xF0U) == 0x80U);
+        branch = opcode == 0xE8U || opcode == 0xE9U || (previous == 0x0FU && (opcode & 0xF0U) == 0x80U);
 
         if (produced >= expected) goto done;
 
@@ -397,8 +381,7 @@ static bool cm_bcj2_decode(xx_io_device *store,
         ++produced;
         ++ip;
         if (out_pos >= CM_BCJ2_OUT_BUF) {
-            if (xx_io_write(out, out_buf, out_pos) != (ssize_t)out_pos)
-                goto done;
+            if (xx_io_write(out, out_buf, out_pos) != (ssize_t)out_pos) goto done;
             out_pos = 0;
         }
 
@@ -406,12 +389,9 @@ static bool cm_bcj2_decode(xx_io_device *store,
             uint16_t *prob;
             uint32_t bound;
 
-            if (opcode == 0xE8U)
-                prob = &probabilities[2U + previous];
-            else if (opcode == 0xE9U)
-                prob = &probabilities[1U];
-            else
-                prob = &probabilities[0U];
+            if (opcode == 0xE8U) prob = &probabilities[2U + previous];
+            else if (opcode == 0xE9U) prob = &probabilities[1U];
+            else prob = &probabilities[0U];
 
             /* Range normalisation */
             if (range < (UINT32_C(1) << 24)) {
@@ -433,14 +413,12 @@ static bool cm_bcj2_decode(xx_io_device *store,
                 int j;
 
                 range -= bound;
-                code  -= bound;
+                code -= bound;
                 *prob = (uint16_t)(*prob - (*prob >> 5));
 
                 target = (opcode == 0xE8U) ? &call_s : &jump_s;
 
-                if (cm_bcj2_remaining(target) < 4 ||
-                    expected - produced < 4)
-                    goto done;
+                if (cm_bcj2_remaining(target) < 4 || expected - produced < 4) goto done;
 
                 /* Four bytes, stored big-endian in the target stream */
                 for (j = 0; j < 4; ++j) {
@@ -453,10 +431,7 @@ static bool cm_bcj2_decode(xx_io_device *store,
 
                 /* Emit four bytes little-endian */
                 if (out_pos + 4 > CM_BCJ2_OUT_BUF) {
-                    if (out_pos > 0 &&
-                        xx_io_write(out, out_buf, out_pos) !=
-                            (ssize_t)out_pos)
-                        goto done;
+                    if (out_pos > 0 && xx_io_write(out, out_buf, out_pos) != (ssize_t)out_pos) goto done;
                     out_pos = 0;
                 }
                 out_buf[out_pos++] = (uint8_t)value;
@@ -467,9 +442,7 @@ static bool cm_bcj2_decode(xx_io_device *store,
                 previous = (uint8_t)(value >> 24);
 
                 if (out_pos >= CM_BCJ2_OUT_BUF) {
-                    if (xx_io_write(out, out_buf, out_pos) !=
-                            (ssize_t)out_pos)
-                        goto done;
+                    if (xx_io_write(out, out_buf, out_pos) != (ssize_t)out_pos) goto done;
                     out_pos = 0;
                 }
                 continue;
@@ -481,15 +454,10 @@ static bool cm_bcj2_decode(xx_io_device *store,
 
     /* Flush remaining output */
     if (out_pos > 0) {
-        if (xx_io_write(out, out_buf, out_pos) != (ssize_t)out_pos)
-            goto done;
+        if (xx_io_write(out, out_buf, out_pos) != (ssize_t)out_pos) goto done;
     }
 
-    ok = produced == expected &&
-         cm_bcj2_exhausted(&call_s) &&
-         cm_bcj2_exhausted(&jump_s) &&
-         code == 0 &&
-         !carrier_stop(pd);
+    ok = produced == expected && cm_bcj2_exhausted(&call_s) && cm_bcj2_exhausted(&jump_s) && code == 0 && !carrier_stop(pd);
 
 done:
     xx_mem_free(out_buf);
@@ -520,7 +488,8 @@ bool xx_chromium_mini_installer_handle_base_info(Abstractformat *f, xx_pd_struct
     bundle = (cm_bundle *)xx_mem_calloc(1, sizeof(*bundle));
     if (!bundle) goto done;
     bundle->store = xx_io_temp_open();
-    if (!bundle->store || !xx_lzma_unpack_device(f->device, f->base_address + at + CM_LZMA_HEADER, bytes - CM_LZMA_HEADER, props, 5U, unpacked, bundle->store, pd)) goto done;
+    if (!bundle->store || !xx_lzma_unpack_device(f->device, f->base_address + at + CM_LZMA_HEADER, bytes - CM_LZMA_HEADER, props, 5U, unpacked, bundle->store, pd))
+        goto done;
     decoded = xx_io_total_size(bundle->store);
     if (decoded != unpacked || !xx_io_read_at(bundle->store, 0, head, sizeof(head)) || !cm_payload_kind(head, sizeof(head), &brave)) goto done;
     if (brave) {
@@ -534,17 +503,11 @@ bool xx_chromium_mini_installer_handle_base_info(Abstractformat *f, xx_pd_struct
         expected = (int64_t)xx_data_get_u32(head, 4, 0, false);
         /* Invariants: tar == main+call+jump; header+all streams == decoded;
          * call and jump are multiples of 4; rc has at least 5 bytes. */
-        if (expected <= 512 || expected > CM_MAX_UNPACKED ||
-            expected != (int64_t)sizes[0] + sizes[1] + sizes[2] ||
-            (sizes[1] & 3U) || (sizes[2] & 3U) || sizes[3] < 5 ||
-            (int64_t)CM_TABLE + sizes[0] + sizes[1] + sizes[2] +
-                sizes[3] != decoded)
+        if (expected <= 512 || expected > CM_MAX_UNPACKED || expected != (int64_t)sizes[0] + sizes[1] + sizes[2] || (sizes[1] & 3U) || (sizes[2] & 3U) || sizes[3] < 5 ||
+            (int64_t)CM_TABLE + sizes[0] + sizes[1] + sizes[2] + sizes[3] != decoded)
             goto done;
         bundle->view = xx_io_temp_open();
-        if (!bundle->view ||
-            !cm_bcj2_decode(bundle->store, sizes, expected,
-                            bundle->view, pd))
-            goto done;
+        if (!bundle->view || !cm_bcj2_decode(bundle->store, sizes, expected, bundle->view, pd)) goto done;
         /* The decoded tar is now the only source; the .lzma payload can go. */
         xx_io_close(bundle->store);
         bundle->store = NULL;
@@ -558,8 +521,8 @@ bool xx_chromium_mini_installer_handle_base_info(Abstractformat *f, xx_pd_struct
         bundle->archive = archive;
         bundle->nested = xx_7zip_to_format(archive);
     }
-    if (!bundle->nested->check_is_valid || !bundle->nested->check_is_valid(bundle->nested, pd) || carrier_stop(pd) ||
-        !bundle->nested->handle_base_info || !bundle->nested->handle_base_info(bundle->nested, pd) || !bundle->nested->number_of_archive_records)
+    if (!bundle->nested->check_is_valid || !bundle->nested->check_is_valid(bundle->nested, pd) || carrier_stop(pd) || !bundle->nested->handle_base_info ||
+        !bundle->nested->handle_base_info(bundle->nested, pd) || !bundle->nested->number_of_archive_records)
         goto done;
     f->format_size = s->size;
     f->number_of_archive_records = bundle->nested->number_of_archive_records;

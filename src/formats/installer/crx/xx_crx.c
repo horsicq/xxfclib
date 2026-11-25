@@ -144,8 +144,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
         if (count != zip->number_of_records) goto done;
     }
     if (version == 2U) {
-        if (!pm_add(f, s, "crx-public-key.der", 16, key_size) ||
-            !pm_add(f, s, "crx-signature.bin", 16 + (int64_t)key_size, signature_size)) goto done;
+        if (!pm_add(f, s, "crx-public-key.der", 16, key_size) || !pm_add(f, s, "crx-signature.bin", 16 + (int64_t)key_size, signature_size)) goto done;
     } else if (!pm_add(f, s, "crx-header.protobuf", 12, size)) goto done;
     if (!pm_add(f, s, "extension.zip", at, length)) goto done;
     s->size = at + length;

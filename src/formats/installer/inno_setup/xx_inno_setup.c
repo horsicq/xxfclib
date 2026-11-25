@@ -110,12 +110,12 @@ enum {
 enum {
     INNO_T_NONE = 0,
     INNO_T_VX_DATA_FIRST, /*1.10y data before runtime, metadata through TotalSize */
-    INNO_T_VX32,  /* legacy IS1 Win32 compact table */
-    INNO_T_VX,    /* 1.09: table inside the loader's DATA section */
-    INNO_T_EOF40, /* 1.11: table in the last 40 bytes */
-    INNO_T_PTR,   /* 1.2.10 .. 5.1.4: pointer at 0x30 */
-    INNO_T_REV1,  /* 5.1.5 .. 6.4.x: RCDATA 11111, 32-bit fields */
-    INNO_T_REV2   /* 6.5 and later: RCDATA 11111, 64-bit fields */
+    INNO_T_VX32,          /* legacy IS1 Win32 compact table */
+    INNO_T_VX,            /* 1.09: table inside the loader's DATA section */
+    INNO_T_EOF40,         /* 1.11: table in the last 40 bytes */
+    INNO_T_PTR,           /* 1.2.10 .. 5.1.4: pointer at 0x30 */
+    INNO_T_REV1,          /* 5.1.5 .. 6.4.x: RCDATA 11111, 32-bit fields */
+    INNO_T_REV2           /* 6.5 and later: RCDATA 11111, 64-bit fields */
 };
 
 static const uint8_t g_inno_tag_new[6] = {0xCD, 0xE6, 0xD7, 0x7B, 0x0B, 0x2A};
@@ -125,9 +125,9 @@ typedef struct inno_ver_s {
     bool unicode;
     bool isx;
     bool win16;
-    bool skype; /* exact5.0.4skp header extension */
+    bool skype;                /* exact5.0.4skp header extension */
     bool ansi512_extra_string; /* measured alternate28-string5.1.2 root */
-    uint8_t short_id; /* 109 or 111 for the 8-byte legacy IDs, else 0 */
+    uint8_t short_id;          /* 109 or 111 for the 8-byte legacy IDs, else 0 */
     uint32_t id_size;
     char text[72];
 } inno_ver;
@@ -639,7 +639,8 @@ static bool inno_dotted(const char *s, size_t n, size_t *pos, uint32_t parts[4],
  * other 1.2.x IDs are not inferred. */
 static bool inno_early12(uint32_t v)
 {
-    return v == IV(1, 12, 9, 0) || v == IV(1, 1, 2, 25) || v == IV(1, 12, 4, 0) || v == IV(1, 12, 8, 0) || v == IV(1, 12, 5, 0) || v == IV(1, 2, 0, 0) || v == IV(1, 1, 2, 0) || v == IV(1, 2, 2, 0) || v == IV(1, 2, 5, 0) || v == IV(1, 2, 6, 0);
+    return v == IV(1, 12, 9, 0) || v == IV(1, 1, 2, 25) || v == IV(1, 12, 4, 0) || v == IV(1, 12, 8, 0) || v == IV(1, 12, 5, 0) || v == IV(1, 2, 0, 0) ||
+           v == IV(1, 1, 2, 0) || v == IV(1, 2, 2, 0) || v == IV(1, 2, 5, 0) || v == IV(1, 2, 6, 0);
 }
 
 static bool inno_parse_version_id(const uint8_t *id, size_t avail, inno_ver *out)
@@ -749,7 +750,8 @@ static bool inno_parse_version_id(const uint8_t *id, size_t avail, inno_ver *out
     }
     /* Early 1.2.x Win32 uses the same CRC-framed setup blocks and 41-byte
      * locations as 1.2.10, with an older [Files] record layout. */
-    if (avail >= 12U && (xx_rt_memcmp(id, "i1.2.6---32\x1a", 12U) == 0 || xx_rt_memcmp(id, "i1.2.2---32\x1a", 12U) == 0 || xx_rt_memcmp(id, "i1.2.5---32\x1a", 12U) == 0 || xx_rt_memcmp(id, "i1.2.0---32\x1a", 12U) == 0)) {
+    if (avail >= 12U && (xx_rt_memcmp(id, "i1.2.6---32\x1a", 12U) == 0 || xx_rt_memcmp(id, "i1.2.2---32\x1a", 12U) == 0 ||
+                         xx_rt_memcmp(id, "i1.2.5---32\x1a", 12U) == 0 || xx_rt_memcmp(id, "i1.2.0---32\x1a", 12U) == 0)) {
         out->v = IV(1, 2, (uint32_t)(id[5] - '0'), 0);
         out->id_size = 12U;
         xx_rt_memcpy(out->text, id + 1U, 10U);
@@ -1091,8 +1093,8 @@ static bool inno_table_resource(xx_io_device *d, int64_t base, int64_t size, con
 /* Compact Vx tables predate TotalSize and ExeUncompressedSize. */
 static bool inno_table_vx32(const uint8_t *t, int64_t at, int64_t size, inno_table *out)
 {
-    uint64_t exe = xx_data_get_u32(t + 12, 4, 0, false), packed = xx_data_get_u32(t + 16, 4, 0, false),
-             hdr = xx_data_get_u32(t + 24, 4, 0, false), data = xx_data_get_u32(t + 28, 4, 0, false);
+    uint64_t exe = xx_data_get_u32(t + 12, 4, 0, false), packed = xx_data_get_u32(t + 16, 4, 0, false), hdr = xx_data_get_u32(t + 24, 4, 0, false),
+             data = xx_data_get_u32(t + 28, 4, 0, false);
     if (!exe || !packed || at < 0 || (uint64_t)at + 32U > exe || exe + packed != hdr || hdr + 6U > data || data >= (uint64_t)size) return false;
     xx_mem_zero(out, sizeof(*out));
     out->kind = INNO_T_VX32;
@@ -1147,8 +1149,8 @@ static bool inno_table_ne(xx_io_device *d, int64_t base, int64_t size, const uin
     shift = xx_data_get_u16(h + 50, 2, 0, false);
     if (!ds || !count || ds > count || count > 512U || tab < 64U || shift > 15U) return false;
     end = (uint64_t)ne + tab + (uint64_t)count * 8U;
-    if (end > (uint64_t)size || !inno_read_at(d, base + ne + tab + (int64_t)(ds - 1U) * 8, entry, sizeof(entry)) ||
-        !(xx_data_get_u16(entry + 4, 2, 0, false) & 1U)) return false;
+    if (end > (uint64_t)size || !inno_read_at(d, base + ne + tab + (int64_t)(ds - 1U) * 8, entry, sizeof(entry)) || !(xx_data_get_u16(entry + 4, 2, 0, false) & 1U))
+        return false;
     sector = xx_data_get_u16(entry, 2, 0, false);
     length = xx_data_get_u16(entry + 2, 2, 0, false);
     if (!length) length = 65536U;
@@ -1175,16 +1177,15 @@ static bool inno_table_112y_footer(xx_io_device *d, int64_t base, int64_t size, 
     uint8_t t[44], id[8];
     uint32_t exe, packed, raw, hdr, data;
     int64_t at = size - 44;
-    if (size < 108 || !inno_read_at(d, base + at, t, sizeof(t)) || !inno_tag_is(t, "02") ||
-        xx_data_get_u32(t + 12, 4, 0, false) != (uint64_t)size) return false;
+    if (size < 108 || !inno_read_at(d, base + at, t, sizeof(t)) || !inno_tag_is(t, "02") || xx_data_get_u32(t + 12, 4, 0, false) != (uint64_t)size) return false;
     exe = xx_data_get_u32(t + 16, 4, 0, false);
     packed = xx_data_get_u32(t + 20, 4, 0, false);
     raw = xx_data_get_u32(t + 24, 4, 0, false);
     hdr = xx_data_get_u32(t + 36, 4, 0, false);
     data = xx_data_get_u32(t + 40, 4, 0, false);
-    if (!exe || !packed || !raw || data < 64U || (uint64_t)data + 12U >= exe || (uint64_t)exe + packed > hdr ||
-        (uint64_t)hdr + sizeof(id) > (uint64_t)at || !inno_read_at(d, base + hdr, id, sizeof(id)) ||
-        xx_rt_memcmp(id, "i112y32\x1a", sizeof(id))) return false;
+    if (!exe || !packed || !raw || data < 64U || (uint64_t)data + 12U >= exe || (uint64_t)exe + packed > hdr || (uint64_t)hdr + sizeof(id) > (uint64_t)at ||
+        !inno_read_at(d, base + hdr, id, sizeof(id)) || xx_rt_memcmp(id, "i112y32\x1a", sizeof(id)))
+        return false;
     xx_mem_zero(out, sizeof(*out));
     out->kind = INNO_T_PTR;
     out->loader = 2;
@@ -1254,9 +1255,9 @@ static bool inno_probe(Abstractformat *f, inno_table *table, inno_ver *ver, int6
     avail = size - table->header_offset;
     if (avail > 64) avail = 64;
     if (!inno_read_at(f->device, f->base_address + table->header_offset, id, (size_t)avail) || !inno_parse_version_id(id, (size_t)avail, ver)) return false;
-    if (ver->win16 && table->kind != INNO_T_PTR && !(table->kind == INNO_T_EOF40 && ver->short_id == 111U) &&
-        !(table->kind == INNO_T_VX && ver->short_id == 108U) &&
-        !(table->kind == INNO_T_VX_DATA_FIRST && ver->short_id == 110U)) return false;
+    if (ver->win16 && table->kind != INNO_T_PTR && !(table->kind == INNO_T_EOF40 && ver->short_id == 111U) && !(table->kind == INNO_T_VX && ver->short_id == 108U) &&
+        !(table->kind == INNO_T_VX_DATA_FIRST && ver->short_id == 110U))
+        return false;
     if (!inno_generation_ok(table, ver)) return false;
     if (size_out) *size_out = size;
     return true;
@@ -1548,8 +1549,9 @@ static bool inno_hdr_pre5(icur *c, const inno_ver *ver, inno_hdr *h)
     h->loc_count = h->counts[prefix + 2];
     if (!ic_skip(c, wvr + 4U) || (v >= IV(1, 3, 3, 0) && !ic_skip(c, 4U)) || !ic_skip(c, 4U) || (v >= IV(2, 0, 0, 0) && !ic_skip(c, 4U)) ||
         !ic_skip(c, v >= IV(4, 2, 0, 0) ? 16U : 4U) || (v >= IV(4, 2, 2, 0) && !ic_skip(c, 8U)) || !ic_skip(c, v >= IV(4, 0, 0, 0) ? 12U : 4U) ||
-        ((v >= IV(2, 0, 0, 0) || isx_pre2) && !ic_skip(c, 1U)) || !ic_skip(c, 1U) || ((v >= IV(2, 0, 0, 0) || isx_pre2) && !ic_skip(c, 1U)) || (v >= IV(1, 3, 6, 0) && !ic_skip(c, 1U)) ||
-        (v >= IV(3, 0, 0, 0) && v < IV(3, 0, 3, 0) && !ic_skip(c, 1U)) || (v >= IV(3, 0, 4, 0) && !ic_skip(c, 1U)) || (v >= IV(4, 0, 10, 0) && !ic_skip(c, 2U)))
+        ((v >= IV(2, 0, 0, 0) || isx_pre2) && !ic_skip(c, 1U)) || !ic_skip(c, 1U) || ((v >= IV(2, 0, 0, 0) || isx_pre2) && !ic_skip(c, 1U)) ||
+        (v >= IV(1, 3, 6, 0) && !ic_skip(c, 1U)) || (v >= IV(3, 0, 0, 0) && v < IV(3, 0, 3, 0) && !ic_skip(c, 1U)) || (v >= IV(3, 0, 4, 0) && !ic_skip(c, 1U)) ||
+        (v >= IV(4, 0, 10, 0) && !ic_skip(c, 2U)))
         return false;
     if (v >= IV(4, 1, 5, 0)) {
         comp_at = c->o;
@@ -1762,7 +1764,13 @@ static bool inno_files_pre5(icur *c, const inno_ver *ver, const inno_hdr *h, boo
 /* 1.2.10 (native 16- or 32-bit compiler): Longint-sized records. */
 static bool inno_hdr_1210(icur *c, const inno_ver *ver, inno_hdr *h)
 {
-    uint32_t tail = ver->win16 ? 53U : (ver->v == IV(1, 1, 2, 25) ? 66U : ((ver->v == IV(1, 1, 2, 0) || ver->v == IV(1, 12, 4, 0)) ? 70U : (ver->v == IV(1, 12, 5, 0) ? 72U : ((ver->v == IV(1, 12, 8, 0) || ver->v == IV(1, 12, 9, 0)) ? 76U : 80U)))), width = ver->win16 ? 2U : 4U, i;
+    uint32_t tail = ver->win16 ? 53U
+                               : (ver->v == IV(1, 1, 2, 25)
+                                      ? 66U
+                                      : ((ver->v == IV(1, 1, 2, 0) || ver->v == IV(1, 12, 4, 0))
+                                             ? 70U
+                                             : (ver->v == IV(1, 12, 5, 0) ? 72U : ((ver->v == IV(1, 12, 8, 0) || ver->v == IV(1, 12, 9, 0)) ? 76U : 80U)))),
+             width = ver->win16 ? 2U : 4U, i;
     uint32_t lic, before, after, image;
     size_t tail_at;
     xx_mem_zero(h, sizeof(*h));
@@ -1784,8 +1792,9 @@ static bool inno_hdr_1210(icur *c, const inno_ver *ver, inno_hdr *h)
     h->loc_count = h->counts[2];
     /* The exact1.12x/1.12.4/1.12.5/1.12.8 roots have18/18/20/24 opaque option bytes after counts/text sizes,
      * rather than the later28-byte tail. They do not control raw data decoding. */
-    if (ver->v != IV(1, 1, 2, 0) && ver->v != IV(1, 1, 2, 25) && ver->v != IV(1, 12, 4, 0) && ver->v != IV(1, 12, 5, 0) && ver->v != IV(1, 12, 8, 0) && ver->v != IV(1, 12, 9, 0) && (ver->win16 ? (c->p[tail_at + 52U] & 0xF8U) != 0 :
-        (xx_data_get_u32(c->p + tail_at + 76U, 4, 0, false) & 0xFF800000U) != 0)) return false;
+    if (ver->v != IV(1, 1, 2, 0) && ver->v != IV(1, 1, 2, 25) && ver->v != IV(1, 12, 4, 0) && ver->v != IV(1, 12, 5, 0) && ver->v != IV(1, 12, 8, 0) &&
+        ver->v != IV(1, 12, 9, 0) && (ver->win16 ? (c->p[tail_at + 52U] & 0xF8U) != 0 : (xx_data_get_u32(c->p + tail_at + 76U, 4, 0, false) & 0xFF800000U) != 0))
+        return false;
     if (ver->win16) {
         lic = xx_data_get_u16(c->p + tail_at + 20U, 2, 0, false);
         before = xx_data_get_u16(c->p + tail_at + 22U, 2, 0, false);
@@ -2198,7 +2207,6 @@ fail:
 
 /* ---------------------------------------------------------------------- */
 /* Names                                                                   */
-
 
 static size_t inno_put_utf8(char *o, uint32_t cp)
 {
@@ -2792,7 +2800,8 @@ static bool inno_parse_legacy(Abstractformat *f, inno_ctx *ctx, int64_t size, xx
         if (!ic_strs(&c, 6) || c.n - c.o != (w16 ? (b110y ? 35U : 38U) : (b110y ? 58U : 62U))) goto bad_header;
         ncount = b110y ? 8U : 9U;
         for (i = 0U; i < ncount; ++i) counts[i] = w16 ? xx_data_get_u16(blk.p + c.o + i * width, 2, 0, false) : xx_data_get_u32(blk.p + c.o + i * width, 4, 0, false);
-        for (i = 0U; i < 3U; ++i) infos[i] = w16 ? xx_data_get_u16(blk.p + c.o + (ncount + i) * width, 2, 0, false) : xx_data_get_u32(blk.p + c.o + (ncount + i) * width, 4, 0, false);
+        for (i = 0U; i < 3U; ++i)
+            infos[i] = w16 ? xx_data_get_u16(blk.p + c.o + (ncount + i) * width, 2, 0, false) : xx_data_get_u32(blk.p + c.o + (ncount + i) * width, 4, 0, false);
     }
     ibuf_free(&blk);
     for (i = 0U; i < ncount; ++i) {
@@ -2889,9 +2898,9 @@ static bool inno_parse_legacy(Abstractformat *f, inno_ctx *ctx, int64_t size, xx
             if (!inno_read_legacy_block(f, cur, end, &blk, &consumed, pd)) goto files_fail;
             cur += consumed;
             good = w16 ? (blk.n == 8U && xx_data_get_u16(blk.p, 2, 0, false) == 1U && xx_data_get_u16(blk.p + 2, 2, 0, false) == 1U &&
-                            (int64_t)xx_data_get_u32(blk.p + 4, 4, 0, false) == expected) :
-                         (blk.n == 12U && xx_data_get_u32(blk.p, 4, 0, false) == 1U && xx_data_get_u32(blk.p + 4, 4, 0, false) == 1U &&
-                            (int64_t)xx_data_get_u32(blk.p + 8, 4, 0, false) == expected);
+                          (int64_t)xx_data_get_u32(blk.p + 4, 4, 0, false) == expected)
+                       : (blk.n == 12U && xx_data_get_u32(blk.p, 4, 0, false) == 1U && xx_data_get_u32(blk.p + 4, 4, 0, false) == 1U &&
+                          (int64_t)xx_data_get_u32(blk.p + 8, 4, 0, false) == expected);
             ibuf_free(&blk);
             if (!good || expected > data_end - t->data_offset - 4 || l->chunk_size > data_end - t->data_offset - expected - 4 ||
                 !inno_read_at(f->device, f->base_address + t->data_offset + expected, magic, 4U) || xx_rt_memcmp(magic, "zlb\x1a", 4U) != 0)
@@ -2956,9 +2965,10 @@ static bool inno_zero_slice_locs_fit(const inno_table *table, const inno_loc *lo
     limit = (uint64_t)(table->exe_offset - table->data_offset);
     for (i = 0U; i < count; ++i) {
         const inno_loc *l = &locs[i];
-        if (l->first_slice || l->last_slice || l->sub_offset || l->chunk_offset < 0 || (uint64_t)l->chunk_offset != next ||
-            l->chunk_size <= 0 || l->encrypted || l->filter != INNO_F_NONE || l->hash_kind != INNO_H_ADLER32 || l->compression != INNO_C_ZLIB ||
-            next > limit || limit - next < 4U || (uint64_t)l->chunk_size > limit - next - 4U) return false;
+        if (l->first_slice || l->last_slice || l->sub_offset || l->chunk_offset < 0 || (uint64_t)l->chunk_offset != next || l->chunk_size <= 0 || l->encrypted ||
+            l->filter != INNO_F_NONE || l->hash_kind != INNO_H_ADLER32 || l->compression != INNO_C_ZLIB || next > limit || limit - next < 4U ||
+            (uint64_t)l->chunk_size > limit - next - 4U)
+            return false;
         next += 4U + (uint64_t)l->chunk_size;
     }
     return next == limit;
@@ -2966,16 +2976,16 @@ static bool inno_zero_slice_locs_fit(const inno_table *table, const inno_loc *lo
 
 /* Two version candidates can be indistinguishable when changed action arrays
  * are empty. Keep the first only when every published field agrees. */
-static bool inno_candidates_equal(const inno_loc *a, uint32_t an, const inno_rawlist *ap,
-                                  const inno_loc *b, uint32_t bn, const inno_rawlist *bp)
+static bool inno_candidates_equal(const inno_loc *a, uint32_t an, const inno_rawlist *ap, const inno_loc *b, uint32_t bn, const inno_rawlist *bp)
 {
     uint32_t i;
     if (an != bn || ap->count != bp->count) return false;
     for (i = 0U; i < an; ++i) {
-        if (a[i].first_slice != b[i].first_slice || a[i].last_slice != b[i].last_slice || a[i].chunk_offset != b[i].chunk_offset ||
-            a[i].sub_offset != b[i].sub_offset || a[i].size != b[i].size || a[i].chunk_size != b[i].chunk_size || a[i].filetime != b[i].filetime ||
-            a[i].hash_kind != b[i].hash_kind || a[i].compression != b[i].compression || a[i].filter != b[i].filter || a[i].encrypted != b[i].encrypted ||
-            xx_rt_memcmp(a[i].checksum, b[i].checksum, sizeof(a[i].checksum))) return false;
+        if (a[i].first_slice != b[i].first_slice || a[i].last_slice != b[i].last_slice || a[i].chunk_offset != b[i].chunk_offset || a[i].sub_offset != b[i].sub_offset ||
+            a[i].size != b[i].size || a[i].chunk_size != b[i].chunk_size || a[i].filetime != b[i].filetime || a[i].hash_kind != b[i].hash_kind ||
+            a[i].compression != b[i].compression || a[i].filter != b[i].filter || a[i].encrypted != b[i].encrypted ||
+            xx_rt_memcmp(a[i].checksum, b[i].checksum, sizeof(a[i].checksum)))
+            return false;
     }
     for (i = 0U; i < ap->count; ++i) {
         const inno_raw *x = &ap->items[i], *y = &bp->items[i];
@@ -3026,7 +3036,8 @@ static bool inno_parse(Abstractformat *f, inno_ctx *ctx, xx_pd_struct *pd)
             uint8_t idsk[12];
             uint32_t slice_size;
             if (ctx->table.data_offset > size - 12 || !inno_read_at(f->device, f->base_address + ctx->table.data_offset, idsk, 12U) ||
-                xx_rt_memcmp(idsk, ctx->ver.win16 ? "idska16\x1a" : "idska32\x1a", 8U) != 0 || ctx->table.exe_offset <= ctx->table.data_offset) goto done;
+                xx_rt_memcmp(idsk, ctx->ver.win16 ? "idska16\x1a" : "idska32\x1a", 8U) != 0 || ctx->table.exe_offset <= ctx->table.data_offset)
+                goto done;
             slice_size = xx_data_get_u32(idsk + 8, 4, 0, false);
             if (inno_early12(ctx->ver.v)) {
                 if (slice_size != 0U) goto done;

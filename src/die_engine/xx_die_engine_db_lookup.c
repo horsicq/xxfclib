@@ -56,9 +56,7 @@ int db_signature_has_tag(const DBSignature *pSignature, const char *pTag)
     return db_signature_has_tag_span(pSignature, pTag, nTagSize);
 }
 
-int db_signature_matches_tag_filters(const DBSignature *pSignature,
-                                     const char *pIncludeTags,
-                                     const char *pExcludeTags)
+int db_signature_matches_tag_filters(const DBSignature *pSignature, const char *pIncludeTags, const char *pExcludeTags)
 {
     const char *pCursor;
     const char *pTag;
@@ -102,8 +100,7 @@ static void db_used_tags_free(db_used_tag *pTags, size_t nCount)
     xx_rt_free(pTags);
 }
 
-static int db_collect_used_tags(db_used_tag **ppTags, size_t *pCount,
-                                size_t *pCapacity, const char *pText)
+static int db_collect_used_tags(db_used_tag **ppTags, size_t *pCount, size_t *pCapacity, const char *pText)
 {
     const char *pCursor = pText;
 
@@ -121,8 +118,7 @@ static int db_collect_used_tags(db_used_tag **ppTags, size_t *pCount,
         if (!nSize) continue;
 
         for (i = 0; i < *pCount; ++i) {
-            if (db_ascii_span_equal((*ppTags)[i].pText, (*ppTags)[i].nSize,
-                                    pStart, nSize)) break;
+            if (db_ascii_span_equal((*ppTags)[i].pText, (*ppTags)[i].nSize, pStart, nSize)) break;
         }
         if (i != *pCount) continue;
 
@@ -136,8 +132,7 @@ static int db_collect_used_tags(db_used_tag **ppTags, size_t *pCount,
                 nNewCapacity = 16U;
             }
             if (nNewCapacity > SIZE_MAX / sizeof(**ppTags)) return 0;
-            pNewTags = (db_used_tag *)xx_rt_realloc(
-                *ppTags, nNewCapacity * sizeof(**ppTags));
+            pNewTags = (db_used_tag *)xx_rt_realloc(*ppTags, nNewCapacity * sizeof(**ppTags));
             if (!pNewTags) return 0;
             *ppTags = pNewTags;
             *pCapacity = nNewCapacity;
@@ -165,8 +160,7 @@ char *db_get_used_tags(const DBase *pDb)
 
     if (pDb && pDb->pRecords && pDb->nCount > 0) {
         for (i = 0; i < (size_t)pDb->nCount; ++i) {
-            if (!db_collect_used_tags(&pTags, &nCount, &nCapacity,
-                                      pDb->pRecords[i].pTags)) {
+            if (!db_collect_used_tags(&pTags, &nCount, &nCapacity, pDb->pRecords[i].pTags)) {
                 db_used_tags_free(pTags, nCount);
                 return NULL;
             }
@@ -178,8 +172,7 @@ char *db_get_used_tags(const DBase *pDb)
     }
     for (i = 0; i < nCount; ++i) {
         size_t nSeparatorSize = i ? 1U : 0U;
-        if (nResultSize > SIZE_MAX - nSeparatorSize ||
-            pTags[i].nSize > SIZE_MAX - nResultSize - nSeparatorSize) {
+        if (nResultSize > SIZE_MAX - nSeparatorSize || pTags[i].nSize > SIZE_MAX - nResultSize - nSeparatorSize) {
             db_used_tags_free(pTags, nCount);
             return NULL;
         }
@@ -204,7 +197,6 @@ char *db_get_used_tags(const DBase *pDb)
     db_used_tags_free(pTags, nCount);
     return pResult;
 }
-
 
 int db_count_for_type(DBase *pDb, XFileType fileType)
 {

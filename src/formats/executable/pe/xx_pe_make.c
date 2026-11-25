@@ -42,8 +42,8 @@ static size_t pe_align(size_t value, size_t alignment)
     return (value + alignment - 1U) / alignment * alignment;
 }
 
-static void pe_section(xx_buf_t *out, size_t header, size_t index, const char *name, uint32_t virtual_size, uint32_t rva,
-                       uint32_t raw_size, uint32_t raw_pointer, uint32_t characteristics)
+static void pe_section(xx_buf_t *out, size_t header, size_t index, const char *name, uint32_t virtual_size, uint32_t rva, uint32_t raw_size, uint32_t raw_pointer,
+                       uint32_t characteristics)
 {
     size_t at = header + index * 40U;
     memcpy(out->data + at, name, strlen(name));
@@ -101,13 +101,10 @@ bool xx_pe_make_image(xx_buf_t *out, const xx_pe_make_options *options)
         rsrc_raw_size = (uint32_t)pe_align(options->resources_size, PE_MAKE_FILE_ALIGNMENT);
         ++sections;
     }
-    reloc_rva = has_resources ? XX_PE_MAKE_RESOURCE_RVA + (uint32_t)pe_align(options->resources_size, PE_MAKE_SECTION_ALIGNMENT)
-                              : XX_PE_MAKE_RESOURCE_RVA;
+    reloc_rva = has_resources ? XX_PE_MAKE_RESOURCE_RVA + (uint32_t)pe_align(options->resources_size, PE_MAKE_SECTION_ALIGNMENT) : XX_PE_MAKE_RESOURCE_RVA;
     if (options->reloc_after_resources) ++sections;
     /* Compact headers end exactly at the section table. */
-    headers_size = options->compact_headers
-                       ? (uint32_t)pe_align(PE_MAKE_SECTIONS + 40U * (size_t)sections, PE_MAKE_FILE_ALIGNMENT)
-                       : 0x400U;
+    headers_size = options->compact_headers ? (uint32_t)pe_align(PE_MAKE_SECTIONS + 40U * (size_t)sections, PE_MAKE_FILE_ALIGNMENT) : 0x400U;
     text_raw = headers_size;
     rsrc_raw = text_raw + PE_MAKE_FILE_ALIGNMENT;
     reloc_raw = rsrc_raw + rsrc_raw_size;
@@ -135,7 +132,7 @@ bool xx_pe_make_image(xx_buf_t *out, const xx_pe_make_options *options)
     pe_put_u16(out, optional + 40U, 6U); /* OS version */
     pe_put_u16(out, optional + 48U, 6U); /* subsystem version */
     pe_put_u32(out, optional + 60U, headers_size);
-    pe_put_u16(out, optional + 68U, 3U);       /* console */
+    pe_put_u16(out, optional + 68U, 3U);      /* console */
     pe_put_u16(out, optional + 70U, 0x8160U); /* NX, dynamic base, high entropy, TS aware */
     pe_put_u32(out, optional + 72U, 0x100000U);
     pe_put_u32(out, optional + 80U, 0x1000U);
@@ -143,11 +140,9 @@ bool xx_pe_make_image(xx_buf_t *out, const xx_pe_make_options *options)
     pe_put_u32(out, optional + 96U, 0x1000U);
     pe_put_u32(out, optional + 108U, 16U);
 
-    pe_section(out, base + PE_MAKE_SECTIONS, index++, ".text", 0x10U, PE_MAKE_TEXT_RVA, PE_MAKE_FILE_ALIGNMENT, text_raw,
-               0x60000020U);
+    pe_section(out, base + PE_MAKE_SECTIONS, index++, ".text", 0x10U, PE_MAKE_TEXT_RVA, PE_MAKE_FILE_ALIGNMENT, text_raw, 0x60000020U);
     if (has_resources) {
-        pe_section(out, base + PE_MAKE_SECTIONS, index++, ".rsrc", (uint32_t)options->resources_size, XX_PE_MAKE_RESOURCE_RVA,
-                   rsrc_raw_size, rsrc_raw, 0x40000040U);
+        pe_section(out, base + PE_MAKE_SECTIONS, index++, ".rsrc", (uint32_t)options->resources_size, XX_PE_MAKE_RESOURCE_RVA, rsrc_raw_size, rsrc_raw, 0x40000040U);
         pe_directory(out, base, 2U, XX_PE_MAKE_RESOURCE_RVA, (uint32_t)options->resources_size);
         image_end = reloc_rva;
     }
@@ -161,9 +156,7 @@ bool xx_pe_make_image(xx_buf_t *out, const xx_pe_make_options *options)
     /* .text: a single ret. */
     if (!pe_zeros(out, PE_MAKE_FILE_ALIGNMENT)) return false;
     ((unsigned char *)out->data)[base + text_raw] = 0xC3U;
-    if (has_resources &&
-        (!xx_buf_append(out, options->resources, options->resources_size) || !pe_zeros(out, rsrc_raw_size - options->resources_size)))
-        return false;
+    if (has_resources && (!xx_buf_append(out, options->resources, options->resources_size) || !pe_zeros(out, rsrc_raw_size - options->resources_size))) return false;
     if (options->reloc_after_resources) {
         /* One empty base-relocation block for the .text page. */
         size_t at = out->size;
@@ -176,14 +169,10 @@ bool xx_pe_make_image(xx_buf_t *out, const xx_pe_make_options *options)
         size_t offset;
         if (!pe_zeros(out, pe_align(out->size - base, 8U) - (out->size - base))) return false;
         offset = out->size - base;
-        if (offset > UINT32_MAX || options->certificate_size > UINT32_MAX ||
-            !xx_buf_append(out, options->certificate, options->certificate_size))
-            return false;
+        if (offset > UINT32_MAX || options->certificate_size > UINT32_MAX || !xx_buf_append(out, options->certificate, options->certificate_size)) return false;
         pe_directory(out, base, 4U, (uint32_t)offset, (uint32_t)options->certificate_size);
     }
     if (!xx_buf_ok(out)) return false;
-    if (options->checksum)
-        pe_put_u32(out, optional + 64U,
-                   xx_pe_checksum((const uint8_t *)out->data + base, out->size - base, PE_MAKE_OPTIONAL_OFFSET + 64U));
+    if (options->checksum) pe_put_u32(out, optional + 64U, xx_pe_checksum((const uint8_t *)out->data + base, out->size - base, PE_MAKE_OPTIONAL_OFFSET + 64U));
     return true;
 }

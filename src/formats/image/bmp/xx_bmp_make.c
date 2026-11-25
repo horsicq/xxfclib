@@ -30,9 +30,8 @@ bool xx_bmp_make_dib(xx_buf_t *out, uint32_t width, uint32_t height, uint32_t rg
     uint32_t index;
     if (!out || !width || !height || width > XX_BMP_MAKE_MAX_DIMENSION || height > XX_BMP_MAKE_MAX_DIMENSION) return false;
     stride = bmp_stride(width);
-    if (!bmp_u32(out, 40U) || !bmp_u32(out, width) || !bmp_u32(out, height) || !bmp_u16(out, 1U) || !bmp_u16(out, 24U) ||
-        !bmp_u32(out, 0U) || !bmp_u32(out, stride * height) || !bmp_u32(out, 0U) || !bmp_u32(out, 0U) || !bmp_u32(out, 0U) ||
-        !bmp_u32(out, 0U))
+    if (!bmp_u32(out, 40U) || !bmp_u32(out, width) || !bmp_u32(out, height) || !bmp_u16(out, 1U) || !bmp_u16(out, 24U) || !bmp_u32(out, 0U) ||
+        !bmp_u32(out, stride * height) || !bmp_u32(out, 0U) || !bmp_u32(out, 0U) || !bmp_u32(out, 0U) || !bmp_u32(out, 0U))
         return false;
     for (row = 0U; row < height; ++row) {
         for (index = 0U; index < width; ++index)
@@ -49,6 +48,5 @@ bool xx_bmp_make_file(xx_buf_t *out, uint32_t width, uint32_t height, uint32_t r
     if (!out || !width || !height || width > XX_BMP_MAKE_MAX_DIMENSION || height > XX_BMP_MAKE_MAX_DIMENSION) return false;
     dib_size = 40U + bmp_stride(width) * height;
     /* BITMAPFILEHEADER: pixels follow the 14 + 40 header bytes directly. */
-    return xx_buf_append(out, "BM", 2U) && bmp_u32(out, 14U + dib_size) && bmp_u32(out, 0U) && bmp_u32(out, 54U) &&
-           xx_bmp_make_dib(out, width, height, rgb);
+    return xx_buf_append(out, "BM", 2U) && bmp_u32(out, 14U + dib_size) && bmp_u32(out, 0U) && bmp_u32(out, 54U) && xx_bmp_make_dib(out, width, height, rgb);
 }

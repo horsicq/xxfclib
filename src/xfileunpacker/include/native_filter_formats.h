@@ -12,9 +12,6 @@
 bool xfu_native_filter_can_encode(const char *name);
 /* stream_name: the member's base name for formats that record one (uuencode,
  * Base64, lzop); NULL writes the unnamed "payload" of a filtered archive. */
-bool xfu_native_filter_encode(const xfu_request *request, const char *name,
-                              const char *stream_name,
-                              xx_io_device *input, xx_io_device *output,
-                              xx_pd_struct *pd);
+bool xfu_native_filter_encode(const xfu_request *request, const char *name, const char *stream_name, xx_io_device *input, xx_io_device *output, xx_pd_struct *pd);
 
 #endif

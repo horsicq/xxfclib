@@ -52,9 +52,7 @@ static bool gns1_range(uint64_t limit, uint64_t offset, uint64_t size)
 
 static bool gns1_read(const Abstractformat *format, uint64_t available, uint64_t offset, void *buffer, size_t size)
 {
-    if (!format || !buffer || !size || !gns1_range(available, offset, (uint64_t)size) ||
-        offset > (uint64_t)(INT64_MAX - format->base_address))
-        return false;
+    if (!format || !buffer || !size || !gns1_range(available, offset, (uint64_t)size) || offset > (uint64_t)(INT64_MAX - format->base_address)) return false;
     return xx_io_read_at(format->device, format->base_address + (int64_t)offset, buffer, size);
 }
 
@@ -67,8 +65,7 @@ static xx_gns1_region gns1_region(uint32_t address)
 
 static uint64_t gns1_translate_address(uint32_t address)
 {
-    if (gns1_region(address & UINT32_C(0xff000000)) == XX_GNS1_REGION_A)
-        return (uint64_t)XX_GNS1_INTERNAL_BASE + (uint64_t)(address & GNS1_ADDRESS_MASK);
+    if (gns1_region(address & UINT32_C(0xff000000)) == XX_GNS1_REGION_A) return (uint64_t)XX_GNS1_INTERNAL_BASE + (uint64_t)(address & GNS1_ADDRESS_MASK);
     return address;
 }
 
@@ -92,8 +89,7 @@ static bool gns1_zero_filled(const Abstractformat *format, uint64_t available, u
     return true;
 }
 
-static bool gns1_read_segment(const Abstractformat *format, const gns1_parsed *parsed, uint64_t table_offset,
-                              uint32_t *size, uint32_t *address, uint32_t *image_offset)
+static bool gns1_read_segment(const Abstractformat *format, const gns1_parsed *parsed, uint64_t table_offset, uint32_t *size, uint32_t *address, uint32_t *image_offset)
 {
     uint8_t bytes[XX_GNS1_SEGMENT_ENTRY_SIZE];
     uint64_t relative;
@@ -109,8 +105,8 @@ static bool gns1_read_segment(const Abstractformat *format, const gns1_parsed *p
 static bool gns1_valid_segment(uint32_t size, uint32_t address, uint32_t offset, uint64_t image_size, uint64_t data_start)
 {
     xx_gns1_region region = gns1_region(address);
-    return size != 0U && !gns1_is_erased(size, address, offset) && region != XX_GNS1_REGION_UNKNOWN &&
-           (uint64_t)offset >= data_start && gns1_range(image_size, offset, size);
+    return size != 0U && !gns1_is_erased(size, address, offset) && region != XX_GNS1_REGION_UNKNOWN && (uint64_t)offset >= data_start &&
+           gns1_range(image_size, offset, size);
 }
 
 static bool gns1_parse_segment_table(const Abstractformat *format, gns1_parsed *parsed, xx_pd_struct *pd)
@@ -123,13 +119,11 @@ static bool gns1_parse_segment_table(const Abstractformat *format, gns1_parsed *
     uint32_t count = 0U;
     bool terminated = false;
 
-    if (!format || !parsed || parsed->image_size < XX_GNS1_MIN_FILE_SIZE ||
-        !gns1_range(parsed->available, parsed->base_offset, parsed->image_size) ||
+    if (!format || !parsed || parsed->image_size < XX_GNS1_MIN_FILE_SIZE || !gns1_range(parsed->available, parsed->base_offset, parsed->image_size) ||
         !gns1_read_segment(format, parsed, 0U, &first_size, &first_address, &first_offset))
         return false;
     data_start = first_offset;
-    if ((first_address & GNS1_ADDRESS_MASK) != 0U || gns1_region(first_address) == XX_GNS1_REGION_UNKNOWN ||
-        data_start < XX_GNS1_MIN_DATA_OFFSET ||
+    if ((first_address & GNS1_ADDRESS_MASK) != 0U || gns1_region(first_address) == XX_GNS1_REGION_UNKNOWN || data_start < XX_GNS1_MIN_DATA_OFFSET ||
         !gns1_valid_segment(first_size, first_address, first_offset, parsed->image_size, data_start))
         return false;
 
@@ -143,9 +137,7 @@ static bool gns1_parse_segment_table(const Abstractformat *format, gns1_parsed *
 
         if (xx_pd_is_stopped(pd)) return false;
         if (data_start - table_offset < XX_GNS1_SEGMENT_ENTRY_SIZE) {
-            if (!gns1_zero_filled(format, parsed->available, parsed->base_offset + table_offset,
-                                  parsed->base_offset + data_start, pd))
-                return false;
+            if (!gns1_zero_filled(format, parsed->available, parsed->base_offset + table_offset, parsed->base_offset + data_start, pd)) return false;
             table_offset = data_start;
             terminated = true;
             break;
@@ -161,14 +153,11 @@ static bool gns1_parse_segment_table(const Abstractformat *format, gns1_parsed *
             terminated = true;
             break;
         }
-        if (count >= XX_GNS1_MAX_SEGMENTS ||
-            !gns1_valid_segment(size, address, image_offset, parsed->image_size, data_start))
-            return false;
+        if (count >= XX_GNS1_MAX_SEGMENTS || !gns1_valid_segment(size, address, image_offset, parsed->image_size, data_start)) return false;
         type = (address & GNS1_ADDRESS_MASK) == 0U ? XX_GNS1_SEGMENT_TEXT : XX_GNS1_SEGMENT_DATA;
         region = gns1_region(address);
         if (parsed->segments) {
-            if (count >= parsed->segment_capacity ||
-                parsed->base_offset > UINT64_MAX - image_offset ||
+            if (count >= parsed->segment_capacity || parsed->base_offset > UINT64_MAX - image_offset ||
                 parsed->base_offset + image_offset > (uint64_t)(INT64_MAX - format->base_address))
                 return false;
             segment = &parsed->segments[count];
@@ -178,16 +167,13 @@ static bool gns1_parse_segment_table(const Abstractformat *format, gns1_parsed *
             segment->image_offset = image_offset;
             segment->offset = format->base_address + (int64_t)(parsed->base_offset + image_offset);
             segment->address = gns1_translate_address(address);
-            segment->permissions = XX_GNS1_PERMISSION_READ |
-                                   (type == XX_GNS1_SEGMENT_TEXT ? XX_GNS1_PERMISSION_EXECUTE : XX_GNS1_PERMISSION_WRITE);
+            segment->permissions = XX_GNS1_PERMISSION_READ | (type == XX_GNS1_SEGMENT_TEXT ? XX_GNS1_PERMISSION_EXECUTE : XX_GNS1_PERMISSION_WRITE);
             segment->type = type;
             segment->region = region;
         }
         ++count;
     }
-    if (!terminated || count == 0U ||
-        !gns1_zero_filled(format, parsed->available, parsed->base_offset + table_offset,
-                          parsed->base_offset + data_start, pd))
+    if (!terminated || count == 0U || !gns1_zero_filled(format, parsed->available, parsed->base_offset + table_offset, parsed->base_offset + data_start, pd))
         return false;
     parsed->segment_count = count;
     parsed->table_size = data_start;
@@ -211,9 +197,7 @@ static bool gns1_parse_ftab(const Abstractformat *format, gns1_parsed *parsed, x
     reserved = xx_data_get_u32(bytes, sizeof(bytes), 4U, false);
     if (count == 0U || count > XX_GNS1_FTAB_MAX_ENTRIES || reserved != 0U) return false;
     table_size = (uint64_t)count * XX_GNS1_FTAB_ENTRY_SIZE;
-    if (!gns1_range(parsed->available, XX_GNS1_FTAB_ENTRY_OFFSET, table_size) ||
-        (parsed->ftab_entries && count > parsed->ftab_entry_capacity))
-        return false;
+    if (!gns1_range(parsed->available, XX_GNS1_FTAB_ENTRY_OFFSET, table_size) || (parsed->ftab_entries && count > parsed->ftab_entry_capacity)) return false;
 
     for (index = 0U; index < count; ++index) {
         uint64_t offset = XX_GNS1_FTAB_ENTRY_OFFSET + (uint64_t)index * XX_GNS1_FTAB_ENTRY_SIZE;
@@ -299,9 +283,9 @@ static bool gns1_load(const Abstractformat *format, gns1_parsed *result, xx_pd_s
         }
         xx_mem_zero(filled.ftab_entries, (size_t)layout.ftab_entry_count * sizeof(*filled.ftab_entries));
     }
-    if (!gns1_parse_layout(format, &filled, pd) || filled.segment_count != layout.segment_count ||
-        filled.ftab_entry_count != layout.ftab_entry_count || filled.base_offset != layout.base_offset ||
-        filled.image_size != layout.image_size || filled.table_size != layout.table_size || filled.is_ftab != layout.is_ftab) {
+    if (!gns1_parse_layout(format, &filled, pd) || filled.segment_count != layout.segment_count || filled.ftab_entry_count != layout.ftab_entry_count ||
+        filled.base_offset != layout.base_offset || filled.image_size != layout.image_size || filled.table_size != layout.table_size ||
+        filled.is_ftab != layout.is_ftab) {
         gns1_free_parsed(&filled);
         return false;
     }
@@ -449,9 +433,7 @@ bool xx_gns1_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, x
     xx_gns1 *reader = (xx_gns1 *)format;
     uint32_t index;
     bool okay;
-    if (!reader || !output || xx_pd_is_stopped(pd) ||
-        (!format->base_info_handled && !xx_gns1_handle_base_info(format, pd)))
-        return false;
+    if (!reader || !output || xx_pd_is_stopped(pd) || (!format->base_info_handled && !xx_gns1_handle_base_info(format, pd))) return false;
     if (mode == XX_MEMORY_MAP_MODE_UNKNOWN) mode = XX_MEMORY_MAP_MODE_SECTIONS;
     if (mode != XX_MEMORY_MAP_MODE_SECTIONS && mode != XX_MEMORY_MAP_MODE_SEGMENTS) return false;
     output->binary_offset = format->base_address;
@@ -468,24 +450,23 @@ bool xx_gns1_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, x
     output->is_image = true;
     if (reader->is_ftab) {
         uint64_t entries_size = (uint64_t)reader->ftab_entry_count * XX_GNS1_FTAB_ENTRY_SIZE;
-        if (!xx_memory_map_add_part(output, format->base_address, XX_GNS1_FTAB_HEADER_SIZE, 0U,
-                                    XX_GNS1_FTAB_HEADER_SIZE, XX_FILE_PART_HEADER, 0, "ftab_header", false) ||
+        if (!xx_memory_map_add_part(output, format->base_address, XX_GNS1_FTAB_HEADER_SIZE, 0U, XX_GNS1_FTAB_HEADER_SIZE, XX_FILE_PART_HEADER, 0, "ftab_header", false) ||
             entries_size > INT64_MAX ||
-            !xx_memory_map_add_part(output, format->base_address + XX_GNS1_FTAB_ENTRY_OFFSET, (int64_t)entries_size,
-                                    XX_GNS1_FTAB_ENTRY_OFFSET, (int64_t)entries_size, XX_FILE_PART_TABLE, 1, "ftab_entries", false))
+            !xx_memory_map_add_part(output, format->base_address + XX_GNS1_FTAB_ENTRY_OFFSET, (int64_t)entries_size, XX_GNS1_FTAB_ENTRY_OFFSET, (int64_t)entries_size,
+                                    XX_FILE_PART_TABLE, 1, "ftab_entries", false))
             return false;
         for (index = 0U; index < reader->ftab_entry_count; ++index) {
             const xx_gns1_ftab_entry *entry = &reader->ftab_entries[index];
             char name[32];
             gns1_ftab_name(entry, name);
-            if (!xx_memory_map_add_part(output, format->base_address + entry->image_offset, entry->size,
-                                        entry->image_offset, entry->size, XX_FILE_PART_SECTION, (int32_t)index + 2, name, false))
+            if (!xx_memory_map_add_part(output, format->base_address + entry->image_offset, entry->size, entry->image_offset, entry->size, XX_FILE_PART_SECTION,
+                                        (int32_t)index + 2, name, false))
                 return false;
         }
     }
     if (reader->base_offset > (uint64_t)(INT64_MAX - format->base_address) || reader->table_size > INT64_MAX ||
-        !xx_memory_map_add_part(output, format->base_address + (int64_t)reader->base_offset, (int64_t)reader->table_size,
-                                reader->base_offset, (int64_t)reader->table_size, XX_FILE_PART_TABLE, 0, "gns1_segments", false))
+        !xx_memory_map_add_part(output, format->base_address + (int64_t)reader->base_offset, (int64_t)reader->table_size, reader->base_offset,
+                                (int64_t)reader->table_size, XX_FILE_PART_TABLE, 0, "gns1_segments", false))
         return false;
     for (index = 0U; index < reader->segment_count; ++index) {
         const xx_gns1_segment *segment = &reader->segments[index];
@@ -494,8 +475,7 @@ bool xx_gns1_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, x
         char name[64];
         (void)xx_rt_snprintf(name, sizeof(name), "%s_%s_%u", region, type, index);
         if (!xx_memory_map_add_part(output, segment->offset, segment->size, segment->address, segment->size,
-                                    mode == XX_MEMORY_MAP_MODE_SECTIONS ? XX_FILE_PART_SECTION : XX_FILE_PART_SEGMENT,
-                                    (int32_t)index + 1, name, false))
+                                    mode == XX_MEMORY_MAP_MODE_SECTIONS ? XX_FILE_PART_SECTION : XX_FILE_PART_SEGMENT, (int32_t)index + 1, name, false))
             return false;
     }
     okay = xx_memory_map_finalize(output);

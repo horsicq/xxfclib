@@ -57,8 +57,7 @@ XXFC_API void xx_history_destroy(xx_history *history);
  * undo, redo and push_applied until commit or abort. It preserves the current
  * redo branch, labels and counts, and performs no replay callback.
  */
-XXFC_API xx_history_status xx_history_prepare(xx_history *history,
-    const xx_history_command *command, xx_history_entry **entry);
+XXFC_API xx_history_status xx_history_prepare(xx_history *history, const xx_history_command *command, xx_history_entry **entry);
 
 /** Publish the prepared entry after the initial external change succeeds.
  * This operation allocates nothing and never invokes undo/redo. It discards
@@ -67,22 +66,19 @@ XXFC_API xx_history_status xx_history_prepare(xx_history *history,
  * entry handle is consumed; do not reuse it. A valid commit cannot fail unless
  * called reentrantly during a callback/disposer.
  */
-XXFC_API xx_history_status xx_history_commit(xx_history *history,
-    xx_history_entry *entry);
+XXFC_API xx_history_status xx_history_commit(xx_history *history, xx_history_entry *entry);
 
 /** Discard a prepared command when the initial change was not applied or was
  * rolled back. Its disposer is called once. The redo branch is preserved.
  * The entry handle is consumed on success.
  */
-XXFC_API xx_history_status xx_history_abort(xx_history *history,
-    xx_history_entry *entry);
+XXFC_API xx_history_status xx_history_abort(xx_history *history, xx_history_entry *entry);
 
 /** Convenience for an already-applied command: prepare followed by commit.
  * On failure before preparation the caller still owns command.data. For
  * changes needing guaranteed history storage, use prepare BEFORE applying.
  */
-XXFC_API xx_history_status xx_history_push_applied(xx_history *history,
-    const xx_history_command *command);
+XXFC_API xx_history_status xx_history_push_applied(xx_history *history, const xx_history_command *command);
 
 /** Replay exactly one command. A nonzero callback result returns APPLY_FAILED
  * and leaves the history cursor/counts unchanged. Reentrant mutation of the

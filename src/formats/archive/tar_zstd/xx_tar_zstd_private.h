@@ -14,11 +14,7 @@
 #include <limits.h>
 #include "xxfclib/data/xx_data.h"
 
-xx_tar_common *xx_tar_zstd_common(xx_tar_zstd *tar_zstd,
-                                         bool create);
-bool xx_tar_zstd_decode(Abstractformat *outer,
-                               xx_io_device *destination,
-                               int64_t *compressed_size,
-                               xx_pd_struct *pd);
+xx_tar_common *xx_tar_zstd_common(xx_tar_zstd *tar_zstd, bool create);
+bool xx_tar_zstd_decode(Abstractformat *outer, xx_io_device *destination, int64_t *compressed_size, xx_pd_struct *pd);
 
 #endif

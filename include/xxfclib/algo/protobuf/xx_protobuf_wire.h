@@ -54,8 +54,7 @@ extern "C" {
 /* Canonical 64-bit varint, rust-protobuf 3.7.2 semantics: at most 10 bytes,
  * and the tenth byte may only be 0 or 1. On failure *at is left past every
  * byte that was consumed, exactly like the loops this replaces. */
-static inline bool xx_protobuf_wire_varint(const uint8_t *data, size_t size,
-                                           size_t *at, uint64_t *value)
+static inline bool xx_protobuf_wire_varint(const uint8_t *data, size_t size, size_t *at, uint64_t *value)
 {
     uint64_t result = 0;
     for (unsigned shift = 0; shift < 70; shift += 7) {
@@ -81,8 +80,7 @@ static inline bool xx_protobuf_wire_varint(const uint8_t *data, size_t size,
 
 /* 32-bit length varint, rust-protobuf 3.7.2 semantics: at most 5 bytes, and
  * the fifth byte may only carry bits 0..3. */
-static inline bool xx_protobuf_wire_varint32(const uint8_t *data, size_t size,
-                                             size_t *at, uint64_t *value)
+static inline bool xx_protobuf_wire_varint32(const uint8_t *data, size_t size, size_t *at, uint64_t *value)
 {
     uint64_t result = 0;
     for (unsigned i = 0; i < 5; ++i) {
@@ -109,59 +107,46 @@ static inline bool xx_protobuf_wire_varint32(const uint8_t *data, size_t size,
 /* Lenient field skip used by the vt module-data walker: wire types 0, 1, 2,
  * 3 and 5, recursion past depth 64 fails, tags are not validated, and any
  * END_GROUP wire type ends a group. */
-static inline bool xx_protobuf_wire_skip_field_vt(const uint8_t *data,
-                                                  size_t size, size_t *at,
-                                                  unsigned wire,
-                                                  unsigned depth)
+static inline bool xx_protobuf_wire_skip_field_vt(const uint8_t *data, size_t size, size_t *at, unsigned wire, unsigned depth)
 {
     uint64_t n;
     if (depth > 64) return false;
     switch (wire) {
-    case 0:
-        return xx_protobuf_wire_varint(data, size, at, &n);
-    case 1:
-        if (size - *at < 8) return false;
-        *at += 8;
-        return true;
-    case 2:
-        if (!xx_protobuf_wire_varint(data, size, at, &n) || n > size - *at)
+        case 0: return xx_protobuf_wire_varint(data, size, at, &n);
+        case 1:
+            if (size - *at < 8) return false;
+            *at += 8;
+            return true;
+        case 2:
+            if (!xx_protobuf_wire_varint(data, size, at, &n) || n > size - *at) return false;
+            *at += (size_t)n;
+            return true;
+        case 3:
+            while (*at < size) {
+                if (!xx_protobuf_wire_varint(data, size, at, &n)) return false;
+                if ((n & 7) == 4) return true;
+                if (!xx_protobuf_wire_skip_field_vt(data, size, at, (unsigned)(n & 7), depth + 1)) return false;
+            }
             return false;
-        *at += (size_t)n;
-        return true;
-    case 3:
-        while (*at < size) {
-            if (!xx_protobuf_wire_varint(data, size, at, &n)) return false;
-            if ((n & 7) == 4) return true;
-            if (!xx_protobuf_wire_skip_field_vt(data, size, at,
-                                                (unsigned)(n & 7), depth + 1))
-                return false;
-        }
-        return false;
-    case 4:
-        return true;
-    case 5:
-        if (size - *at < 4) return false;
-        *at += 4;
-        return true;
-    default:
-        return false;
+        case 4: return true;
+        case 5:
+            if (size - *at < 4) return false;
+            *at += 4;
+            return true;
+        default: return false;
     }
 }
 
 /* Validated field skip used by the CRX reader: rejects field number 0 and
  * field numbers above 0x1fffffff, recursion past depth 500 fails, and any
  * END_GROUP wire type ends a group. */
-static inline bool xx_protobuf_wire_skip_field_crx(const uint8_t *data,
-                                                   size_t size, size_t *at,
-                                                   unsigned depth)
+static inline bool xx_protobuf_wire_skip_field_crx(const uint8_t *data, size_t size, size_t *at, unsigned depth)
 {
     if (depth > 500) return false;
     while (*at < size) {
         uint64_t tag, value;
         unsigned wire;
-        if (!xx_protobuf_wire_varint(data, size, at, &tag) ||
-            (tag >> 3) == 0 || (tag >> 3) > 0x1fffffffU)
-            return false;
+        if (!xx_protobuf_wire_varint(data, size, at, &tag) || (tag >> 3) == 0 || (tag >> 3) > 0x1fffffffU) return false;
         wire = (unsigned)(tag & 7);
         if (wire == 4) return true;
         if (wire == 0) {
@@ -171,13 +156,10 @@ static inline bool xx_protobuf_wire_skip_field_crx(const uint8_t *data,
             if (width > size - *at) return false;
             *at += width;
         } else if (wire == 2) {
-            if (!xx_protobuf_wire_varint(data, size, at, &value) ||
-                value > size - *at)
-                return false;
+            if (!xx_protobuf_wire_varint(data, size, at, &value) || value > size - *at) return false;
             *at += (size_t)value;
         } else if (wire == 3) {
-            if (!xx_protobuf_wire_skip_field_crx(data, size, at, depth + 1))
-                return false;
+            if (!xx_protobuf_wire_skip_field_crx(data, size, at, depth + 1)) return false;
         } else {
             return false;
         }
@@ -188,44 +170,33 @@ static inline bool xx_protobuf_wire_skip_field_crx(const uint8_t *data,
 /* Field skip used by the ZIP module-output cache: wire type 4 ends a group
  * only when its field number matches the group's, recursion at depth 64 or
  * deeper fails, tags are not validated. */
-static inline bool xx_protobuf_wire_skip_field_zip(const uint8_t *data,
-                                                   size_t size, size_t *at,
-                                                   uint64_t field,
-                                                   unsigned wire,
-                                                   unsigned depth)
+static inline bool xx_protobuf_wire_skip_field_zip(const uint8_t *data, size_t size, size_t *at, uint64_t field, unsigned wire, unsigned depth)
 {
     uint64_t value;
     switch (wire) {
-    case 0:
-        return xx_protobuf_wire_varint(data, size, at, &value);
-    case 1:
-        if (size - *at < 8) return false;
-        *at += 8;
-        return true;
-    case 2:
-        if (!xx_protobuf_wire_varint(data, size, at, &value) ||
-            value > size - *at)
+        case 0: return xx_protobuf_wire_varint(data, size, at, &value);
+        case 1:
+            if (size - *at < 8) return false;
+            *at += 8;
+            return true;
+        case 2:
+            if (!xx_protobuf_wire_varint(data, size, at, &value) || value > size - *at) return false;
+            *at += (size_t)value;
+            return true;
+        case 3:
+            if (depth >= 64) return false;
+            while (*at < size) {
+                uint64_t key;
+                if (!xx_protobuf_wire_varint(data, size, at, &key)) return false;
+                if ((key & 7) == 4) return (key >> 3) == field;
+                if (!xx_protobuf_wire_skip_field_zip(data, size, at, key >> 3, (unsigned)(key & 7), depth + 1)) return false;
+            }
             return false;
-        *at += (size_t)value;
-        return true;
-    case 3:
-        if (depth >= 64) return false;
-        while (*at < size) {
-            uint64_t key;
-            if (!xx_protobuf_wire_varint(data, size, at, &key)) return false;
-            if ((key & 7) == 4) return (key >> 3) == field;
-            if (!xx_protobuf_wire_skip_field_zip(data, size, at, key >> 3,
-                                                 (unsigned)(key & 7),
-                                                 depth + 1))
-                return false;
-        }
-        return false;
-    case 5:
-        if (size - *at < 4) return false;
-        *at += 4;
-        return true;
-    default:
-        return false;
+        case 5:
+            if (size - *at < 4) return false;
+            *at += 4;
+            return true;
+        default: return false;
     }
 }
 
@@ -247,61 +218,46 @@ typedef enum {
  * the buffer limit ("Truncated message"), validates tags inside groups,
  * recursion past depth 500 is "Recursion limit exceeded", wire type 4 is
  * "Unexpected wire type". */
-static inline xx_protobuf_wire_skip_code xx_protobuf_wire_skip_field_checked(
-    const uint8_t *data, size_t size, size_t *at, unsigned wire,
-    unsigned depth, uint64_t logical_size)
+static inline xx_protobuf_wire_skip_code xx_protobuf_wire_skip_field_checked(const uint8_t *data, size_t size, size_t *at, unsigned wire, unsigned depth,
+                                                                             uint64_t logical_size)
 {
     uint64_t n;
     size_t start = *at;
     if (depth > 500) return XX_PROTOBUF_WIRE_SKIP_RECURSION_LIMIT;
     switch (wire) {
-    case 0:
-        if (xx_protobuf_wire_varint(data, size, at, &n))
+        case 0:
+            if (xx_protobuf_wire_varint(data, size, at, &n)) return XX_PROTOBUF_WIRE_SKIP_OK;
+            return *at == size && *at - start < 10 ? XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF : XX_PROTOBUF_WIRE_SKIP_INCORRECT_VARINT;
+        case 1:
+            if (size - *at < 8) return XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF;
+            *at += 8;
             return XX_PROTOBUF_WIRE_SKIP_OK;
-        return *at == size && *at - start < 10
-                   ? XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF
-                   : XX_PROTOBUF_WIRE_SKIP_INCORRECT_VARINT;
-    case 1:
-        if (size - *at < 8) return XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF;
-        *at += 8;
-        return XX_PROTOBUF_WIRE_SKIP_OK;
-    case 2:
-        if (!xx_protobuf_wire_varint(data, size, at, &n))
-            return *at == size && *at - start < 10
-                       ? XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF
-                       : XX_PROTOBUF_WIRE_SKIP_INCORRECT_VARINT;
-        if (n > logical_size - *at) return XX_PROTOBUF_WIRE_SKIP_TRUNCATED_MESSAGE;
-        if (n > size - *at) return XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF;
-        *at += (size_t)n;
-        return XX_PROTOBUF_WIRE_SKIP_OK;
-    case 3:
-        while (*at < size) {
-            start = *at;
+        case 2:
             if (!xx_protobuf_wire_varint(data, size, at, &n))
-                return *at == size && *at - start < 10
-                           ? XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF
-                           : XX_PROTOBUF_WIRE_SKIP_INCORRECT_VARINT;
-            if (!(n >> 3) || n >> 3 > 0x1fffffffU || (n & 7) > 5)
-                return XX_PROTOBUF_WIRE_SKIP_INCORRECT_TAG;
-            if ((n & 7) == 4) return XX_PROTOBUF_WIRE_SKIP_OK;
-            {
-                xx_protobuf_wire_skip_code result =
-                    xx_protobuf_wire_skip_field_checked(data, size, at,
-                                                        (unsigned)(n & 7),
-                                                        depth + 1,
-                                                        logical_size);
-                if (result != XX_PROTOBUF_WIRE_SKIP_OK) return result;
+                return *at == size && *at - start < 10 ? XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF : XX_PROTOBUF_WIRE_SKIP_INCORRECT_VARINT;
+            if (n > logical_size - *at) return XX_PROTOBUF_WIRE_SKIP_TRUNCATED_MESSAGE;
+            if (n > size - *at) return XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF;
+            *at += (size_t)n;
+            return XX_PROTOBUF_WIRE_SKIP_OK;
+        case 3:
+            while (*at < size) {
+                start = *at;
+                if (!xx_protobuf_wire_varint(data, size, at, &n))
+                    return *at == size && *at - start < 10 ? XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF : XX_PROTOBUF_WIRE_SKIP_INCORRECT_VARINT;
+                if (!(n >> 3) || n >> 3 > 0x1fffffffU || (n & 7) > 5) return XX_PROTOBUF_WIRE_SKIP_INCORRECT_TAG;
+                if ((n & 7) == 4) return XX_PROTOBUF_WIRE_SKIP_OK;
+                {
+                    xx_protobuf_wire_skip_code result = xx_protobuf_wire_skip_field_checked(data, size, at, (unsigned)(n & 7), depth + 1, logical_size);
+                    if (result != XX_PROTOBUF_WIRE_SKIP_OK) return result;
+                }
             }
-        }
-        return XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF;
-    case 4:
-        return XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_WIRE;
-    case 5:
-        if (size - *at < 4) return XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF;
-        *at += 4;
-        return XX_PROTOBUF_WIRE_SKIP_OK;
-    default:
-        return XX_PROTOBUF_WIRE_SKIP_INCORRECT_TAG;
+            return XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF;
+        case 4: return XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_WIRE;
+        case 5:
+            if (size - *at < 4) return XX_PROTOBUF_WIRE_SKIP_UNEXPECTED_EOF;
+            *at += 4;
+            return XX_PROTOBUF_WIRE_SKIP_OK;
+        default: return XX_PROTOBUF_WIRE_SKIP_INCORRECT_TAG;
     }
 }
 

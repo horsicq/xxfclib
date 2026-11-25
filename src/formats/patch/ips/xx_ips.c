@@ -137,18 +137,14 @@ xx_ips_patch *xx_ips_parse_buffer(const uint8_t *data, size_t size, char *error,
 
     if (type == XX_IPS_TYPE_IPS) {
         while (cursor + 3 <= size) {
-            uint32_t offset = ((uint32_t)data[cursor] << 16) |
-                              ((uint32_t)data[cursor + 1] << 8) |
-                              (uint32_t)data[cursor + 2];
+            uint32_t offset = ((uint32_t)data[cursor] << 16) | ((uint32_t)data[cursor + 1] << 8) | (uint32_t)data[cursor + 2];
             cursor += 3;
 
             if (offset == 0x454F46U) { /* "EOF" */
                 trailer_found = true;
                 size_t remain = size - cursor;
                 if (remain == 3) {
-                    uint32_t trunc = ((uint32_t)data[cursor] << 16) |
-                                     ((uint32_t)data[cursor + 1] << 8) |
-                                     (uint32_t)data[cursor + 2];
+                    uint32_t trunc = ((uint32_t)data[cursor] << 16) | ((uint32_t)data[cursor + 1] << 8) | (uint32_t)data[cursor + 2];
                     cursor += 3;
                     xx_ips_patch_set_truncation(patch, trunc);
                 } else if (remain != 0) {
@@ -201,20 +197,14 @@ xx_ips_patch *xx_ips_parse_buffer(const uint8_t *data, size_t size, char *error,
     } else {
         /* IPS32 */
         while (cursor + 4 <= size) {
-            uint32_t offset = ((uint32_t)data[cursor] << 24) |
-                              ((uint32_t)data[cursor + 1] << 16) |
-                              ((uint32_t)data[cursor + 2] << 8) |
-                              (uint32_t)data[cursor + 3];
+            uint32_t offset = ((uint32_t)data[cursor] << 24) | ((uint32_t)data[cursor + 1] << 16) | ((uint32_t)data[cursor + 2] << 8) | (uint32_t)data[cursor + 3];
             cursor += 4;
 
             if (offset == 0x45454F46U) { /* "EEOF" */
                 trailer_found = true;
                 size_t remain = size - cursor;
                 if (remain == 4) {
-                    uint32_t trunc = ((uint32_t)data[cursor] << 24) |
-                                     ((uint32_t)data[cursor + 1] << 16) |
-                                     ((uint32_t)data[cursor + 2] << 8) |
-                                     (uint32_t)data[cursor + 3];
+                    uint32_t trunc = ((uint32_t)data[cursor] << 24) | ((uint32_t)data[cursor + 1] << 16) | ((uint32_t)data[cursor + 2] << 8) | (uint32_t)data[cursor + 3];
                     cursor += 4;
                     xx_ips_patch_set_truncation(patch, trunc);
                 } else if (remain != 0) {
@@ -299,8 +289,7 @@ xx_ips_patch *xx_ips_parse_device(xx_io_device *dev, int64_t base_offset, xx_pd_
         return NULL;
     }
 
-    if (xx_io_seek64(dev, base_offset, SEEK_SET) != 0 ||
-        xx_io_read(dev, buf, (size_t)size64) != (ssize_t)size64) {
+    if (xx_io_seek64(dev, base_offset, SEEK_SET) != 0 || xx_io_read(dev, buf, (size_t)size64) != (ssize_t)size64) {
         set_err(error, error_cap, "Failed to read patch file from device");
         xx_mem_free(buf);
         return NULL;
@@ -622,9 +611,7 @@ bool xx_ips_write_device(const xx_ips_patch *patch, xx_io_device *dest, xx_pd_st
     return true;
 }
 
-xx_ips_patch *xx_ips_create_from_buffers(const uint8_t *orig, size_t orig_size,
-                                         const uint8_t *mod, size_t mod_size,
-                                         bool force_ips32, char *error, size_t error_cap)
+xx_ips_patch *xx_ips_create_from_buffers(const uint8_t *orig, size_t orig_size, const uint8_t *mod, size_t mod_size, bool force_ips32, char *error, size_t error_cap)
 {
     if ((orig_size > 0 && !orig) || (mod_size > 0 && !mod)) {
         set_err(error, error_cap, "Invalid NULL pointer for non-empty buffer");
@@ -651,8 +638,7 @@ xx_ips_patch *xx_ips_create_from_buffers(const uint8_t *orig, size_t orig_size,
         while (pos < mod_size) {
             if (pos < orig_size && orig[pos] == mod[pos]) {
                 size_t match_len = 0;
-                while (pos + match_len < mod_size && pos + match_len < orig_size &&
-                       orig[pos + match_len] == mod[pos + match_len]) {
+                while (pos + match_len < mod_size && pos + match_len < orig_size && orig[pos + match_len] == mod[pos + match_len]) {
                     ++match_len;
                 }
                 if (match_len >= 8) {
@@ -810,9 +796,7 @@ xx_ips_patch *xx_ips_create_from_buffers(const uint8_t *orig, size_t orig_size,
     return patch;
 }
 
-xx_ips_patch *xx_ips_create_from_devices(xx_io_device *orig, xx_io_device *mod,
-                                         bool force_ips32, xx_pd_struct *pd,
-                                         char *error, size_t error_cap)
+xx_ips_patch *xx_ips_create_from_devices(xx_io_device *orig, xx_io_device *mod, bool force_ips32, xx_pd_struct *pd, char *error, size_t error_cap)
 {
     (void)pd;
     if (!orig || !mod) {
@@ -828,25 +812,21 @@ xx_ips_patch *xx_ips_create_from_devices(xx_io_device *orig, xx_io_device *mod,
     uint8_t *orig_buf = (orig_sz > 0) ? (uint8_t *)xx_mem_alloc((size_t)orig_sz) : NULL;
     uint8_t *mod_buf = (mod_sz > 0) ? (uint8_t *)xx_mem_alloc((size_t)mod_sz) : NULL;
 
-    if (orig_sz > 0 && (!orig_buf || xx_io_seek64(orig, 0, SEEK_SET) != 0 ||
-        xx_io_read(orig, orig_buf, (size_t)orig_sz) != (ssize_t)orig_sz)) {
+    if (orig_sz > 0 && (!orig_buf || xx_io_seek64(orig, 0, SEEK_SET) != 0 || xx_io_read(orig, orig_buf, (size_t)orig_sz) != (ssize_t)orig_sz)) {
         if (orig_buf) xx_mem_free(orig_buf);
         if (mod_buf) xx_mem_free(mod_buf);
         set_err(error, error_cap, "Failed to read original device");
         return NULL;
     }
 
-    if (mod_sz > 0 && (!mod_buf || xx_io_seek64(mod, 0, SEEK_SET) != 0 ||
-        xx_io_read(mod, mod_buf, (size_t)mod_sz) != (ssize_t)mod_sz)) {
+    if (mod_sz > 0 && (!mod_buf || xx_io_seek64(mod, 0, SEEK_SET) != 0 || xx_io_read(mod, mod_buf, (size_t)mod_sz) != (ssize_t)mod_sz)) {
         if (orig_buf) xx_mem_free(orig_buf);
         if (mod_buf) xx_mem_free(mod_buf);
         set_err(error, error_cap, "Failed to read modified device");
         return NULL;
     }
 
-    xx_ips_patch *p = xx_ips_create_from_buffers(orig_buf, (size_t)orig_sz,
-                                                 mod_buf, (size_t)mod_sz,
-                                                 force_ips32, error, error_cap);
+    xx_ips_patch *p = xx_ips_create_from_buffers(orig_buf, (size_t)orig_sz, mod_buf, (size_t)mod_sz, force_ips32, error, error_cap);
     if (orig_buf) xx_mem_free(orig_buf);
     if (mod_buf) xx_mem_free(mod_buf);
     return p;

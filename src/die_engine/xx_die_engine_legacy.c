@@ -31,8 +31,7 @@ static void die_engine_legacy_error(xx_scan_result *result, const char *message)
 /* The deprecated entry points retain their historical automatic Binary/COM
  * pass policy. This scans one bounded input only; child traversal remains in
  * src/scan and uses the versioned typed-region op. */
-static xx_scan_result *die_engine_legacy_region(xx_scan_engine *engine, xx_io_device *device,
-                                                const xx_scan_options *options, xx_pd_struct *pd)
+static xx_scan_result *die_engine_legacy_region(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd)
 {
     xx_io_device *view;
     xx_scan_result *result;
@@ -44,8 +43,7 @@ static xx_scan_result *die_engine_legacy_region(xx_scan_engine *engine, xx_io_de
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "DIE does not support first-wrapper-only scans");
         return NULL;
     }
-    if (total < 0 || options->offset < 0 || options->size < -1 ||
-        (options->size >= 0 && options->offset > INT64_MAX - options->size)) return NULL;
+    if (total < 0 || options->offset < 0 || options->size < -1 || (options->size >= 0 && options->offset > INT64_MAX - options->size)) return NULL;
     size = options->size < 0 ? total - options->offset : options->size;
     if (options->offset > total || size < 0 || size > total - options->offset) return NULL;
     view = xx_io_sub_open_ro(device, options->offset, size);
@@ -117,8 +115,7 @@ int die_engine_scan_file_type(const char *file_name, DBase *database, xx_scan_op
     return die_engine_scan_file_type_pd(file_name, database, options, file_type, result, NULL);
 }
 
-int die_engine_scan_file_type_pd(const char *file_name, DBase *database, xx_scan_options *options, XFileType file_type, xx_scan_result *result,
-                                 xx_pd_struct *progress)
+int die_engine_scan_file_type_pd(const char *file_name, DBase *database, xx_scan_options *options, XFileType file_type, xx_scan_result *result, xx_pd_struct *progress)
 {
     xx_scan_options local;
     xx_io_device *device;

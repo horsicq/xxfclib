@@ -6,8 +6,7 @@
 #include "xxfclib/formats/executable/pe/xx_pe.h"
 #include "xxfclib/formats/executable/dotnet/xx_dotnet.h"
 
-xx_file_type_t xx_scan_type_detect_pe(xx_io_device *device, const uint8_t head[64], size_t head_size, int64_t size,
-                                      bool *managed, xx_pd_struct *pd)
+xx_file_type_t xx_scan_type_detect_pe(xx_io_device *device, const uint8_t head[64], size_t head_size, int64_t size, bool *managed, xx_pd_struct *pd)
 {
     uint32_t offset;
     uint8_t signature[26];

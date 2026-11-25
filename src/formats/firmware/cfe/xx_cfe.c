@@ -84,7 +84,8 @@ static bool xx_cfe_parse_flash(Abstractformat *self, xx_cfe_parsed *parsed, int6
     if (span < 64 || !xx_cfe_read_at(self->device, self->base_address, h, sizeof(h)) || xx_rt_memcmp(h, "CFE1", 4)) return false;
     size = xx_cfe_be32(h + 8);
     if (!size || (uint64_t)size > (uint64_t)span - 64) return false;
-    for (unsigned i = 16; i < 48; ++i) if (!h[i]) terminated = true;
+    for (unsigned i = 16; i < 48; ++i)
+        if (!h[i]) terminated = true;
     if (!terminated) return false; /* Original writer and board-name comparison require ASCIIZ. */
     while (done < size) {
         size_t n = (uint64_t)size - done > sizeof(block) ? sizeof(block) : (size_t)((uint64_t)size - done);

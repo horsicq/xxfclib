@@ -6,10 +6,7 @@
 
 #include "xx_die_engine_api_internal.h"
 
-static const ApiEntry g_jar_api_table[] = {
-    {"getManifestRecord", A_getManifestRecord, 1},
-    {NULL, A_NONE, 0}
-};
+static const ApiEntry g_jar_api_table[] = {{"getManifestRecord", A_getManifestRecord, 1}, {NULL, A_NONE, 0}};
 
 void die_engine_api_register_jar(JSCtx *pCtx, JSVal object)
 {
@@ -28,8 +25,7 @@ bool die_engine_api_dispatch_jar(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int 
             return true;
         }
 
-        default:
-            break;
+        default: break;
     }
 
     return false;

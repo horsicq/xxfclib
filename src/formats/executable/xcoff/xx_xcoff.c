@@ -18,16 +18,14 @@ static bool xcoff_stopped(xx_pd_struct *pd)
 
 static bool xcoff_magic_is_supported(uint16_t magic)
 {
-    return magic == UINT16_C(0x0198) || magic == UINT16_C(0x019d) || magic == UINT16_C(0x019f) ||
-           magic == UINT16_C(0x01d8) || magic == UINT16_C(0x01dd) || magic == UINT16_C(0x01df);
+    return magic == UINT16_C(0x0198) || magic == UINT16_C(0x019d) || magic == UINT16_C(0x019f) || magic == UINT16_C(0x01d8) || magic == UINT16_C(0x01dd) ||
+           magic == UINT16_C(0x01df);
 }
 
 static bool xcoff_read_relative(const Abstractformat *format, uint64_t available, uint64_t offset, void *buffer, size_t size)
 {
-    return format && format->device && format->base_address >= 0 && offset <= available &&
-           (uint64_t)size <= available - offset && offset <= (uint64_t)INT64_MAX &&
-           format->base_address <= INT64_MAX - (int64_t)offset &&
-           xx_io_read_at(format->device, format->base_address + (int64_t)offset, buffer, size);
+    return format && format->device && format->base_address >= 0 && offset <= available && (uint64_t)size <= available - offset && offset <= (uint64_t)INT64_MAX &&
+           format->base_address <= INT64_MAX - (int64_t)offset && xx_io_read_at(format->device, format->base_address + (int64_t)offset, buffer, size);
 }
 
 static void xcoff_copy_fixed_name(char *destination, size_t capacity, const uint8_t *source, size_t source_size)
@@ -41,17 +39,16 @@ static void xcoff_copy_fixed_name(char *destination, size_t capacity, const uint
     destination[length] = '\0';
 }
 
-static bool xcoff_load_long_name(const Abstractformat *format, uint64_t available, uint64_t loader_offset,
-                                 uint32_t loader_size, const xx_xcoff_loader_header *header,
+static bool xcoff_load_long_name(const Abstractformat *format, uint64_t available, uint64_t loader_offset, uint32_t loader_size, const xx_xcoff_loader_header *header,
                                  uint32_t string_offset, char destination[256])
 {
     uint64_t relative;
     uint32_t remaining;
     uint8_t byte;
     size_t length = 0U;
-    if (!header || string_offset >= header->string_table_length ||
-        header->string_table_offset > loader_size ||
-        header->string_table_length > loader_size - header->string_table_offset) return false;
+    if (!header || string_offset >= header->string_table_length || header->string_table_offset > loader_size ||
+        header->string_table_length > loader_size - header->string_table_offset)
+        return false;
     remaining = header->string_table_length - string_offset;
     relative = loader_offset + header->string_table_offset + string_offset;
     while (remaining--) {
@@ -66,10 +63,8 @@ static bool xcoff_load_long_name(const Abstractformat *format, uint64_t availabl
     return false;
 }
 
-static bool xcoff_parse_loader_symbol(const Abstractformat *format, uint64_t available,
-                                      uint64_t loader_offset, uint32_t loader_size,
-                                      const xx_xcoff_loader_header *loader_header, uint32_t index,
-                                      xx_xcoff_loader_symbol *symbol)
+static bool xcoff_parse_loader_symbol(const Abstractformat *format, uint64_t available, uint64_t loader_offset, uint32_t loader_size,
+                                      const xx_xcoff_loader_header *loader_header, uint32_t index, xx_xcoff_loader_symbol *symbol)
 {
     uint8_t bytes[XX_XCOFF_LOADER_SYMBOL_SIZE];
     uint64_t offset = loader_offset + XX_XCOFF_LOADER_HEADER_SIZE + (uint64_t)index * XX_XCOFF_LOADER_SYMBOL_SIZE;
@@ -79,8 +74,7 @@ static bool xcoff_parse_loader_symbol(const Abstractformat *format, uint64_t ava
     symbol->has_inline_name = !external_name;
     if (external_name) {
         uint32_t string_offset = xx_data_get_u32(bytes, sizeof(bytes), 4U, true);
-        if (string_offset && !xcoff_load_long_name(format, available, loader_offset, loader_size,
-                                                    loader_header, string_offset, symbol->name)) return false;
+        if (string_offset && !xcoff_load_long_name(format, available, loader_offset, loader_size, loader_header, string_offset, symbol->name)) return false;
     } else {
         xcoff_copy_fixed_name(symbol->name, sizeof(symbol->name), bytes, 8U);
     }
@@ -105,8 +99,9 @@ static bool xcoff_resolve_entry(xx_xcoff *reader, uint64_t available)
         uint8_t entry_bytes[4];
         uint32_t entry;
         if (strcmp(symbol->name, "__start") != 0) continue;
-        if (!symbol->section_number || symbol->section_number > reader->section_count ||
-            !reader->header.text_section || reader->header.text_section > reader->section_count) return false;
+        if (!symbol->section_number || symbol->section_number > reader->section_count || !reader->header.text_section ||
+            reader->header.text_section > reader->section_count)
+            return false;
         pointer_section = &reader->sections[symbol->section_number - 1U];
         text_section = &reader->sections[reader->header.text_section - 1U];
         if (symbol->value < pointer_section->virtual_address) return false;
@@ -115,8 +110,7 @@ static bool xcoff_resolve_entry(xx_xcoff *reader, uint64_t available)
         file_offset = (uint64_t)pointer_section->file_offset + delta;
         if (!xcoff_read_relative(&reader->format, available, file_offset, entry_bytes, sizeof(entry_bytes))) return false;
         entry = xx_data_get_u32(entry_bytes, sizeof(entry_bytes), 0U, true);
-        if (entry < text_section->virtual_address ||
-            (uint64_t)entry - text_section->virtual_address >= text_section->size) return false;
+        if (entry < text_section->virtual_address || (uint64_t)entry - text_section->virtual_address >= text_section->size) return false;
         reader->entry_point = entry;
         reader->has_entry_point = true;
         return true;
@@ -179,13 +173,11 @@ bool xx_xcoff_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
     uint64_t available;
     uint16_t sections;
     (void)pd;
-    if (!self || !self->device || self->base_address < 0 ||
-        (total = xx_io_total_size(self->device)) < self->base_address) return false;
+    if (!self || !self->device || self->base_address < 0 || (total = xx_io_total_size(self->device)) < self->base_address) return false;
     available = (uint64_t)(total - self->base_address);
     if (!xcoff_read_relative(self, available, 0U, bytes, sizeof(bytes))) return false;
     sections = xx_data_get_u16(bytes, sizeof(bytes), 2U, true);
-    return xcoff_magic_is_supported(xx_data_get_u16(bytes, sizeof(bytes), 0U, true)) &&
-           sections && sections <= XX_XCOFF_MAX_SECTIONS &&
+    return xcoff_magic_is_supported(xx_data_get_u16(bytes, sizeof(bytes), 0U, true)) && sections && sections <= XX_XCOFF_MAX_SECTIONS &&
            xx_data_get_u16(bytes, sizeof(bytes), 16U, true) == XX_XCOFF_OPTIONAL_HEADER_SIZE;
 }
 
@@ -221,9 +213,9 @@ bool xx_xcoff_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
     reader->header.symbol_count = xx_data_get_u32(fixed, sizeof(fixed), 12U, true);
     reader->header.optional_header_size = xx_data_get_u16(fixed, sizeof(fixed), 16U, true);
     reader->header.flags = xx_data_get_u16(fixed, sizeof(fixed), 18U, true);
-    if (!xcoff_magic_is_supported(reader->header.magic) || !reader->header.section_count ||
-        reader->header.section_count > XX_XCOFF_MAX_SECTIONS ||
-        reader->header.optional_header_size != XX_XCOFF_OPTIONAL_HEADER_SIZE) return false;
+    if (!xcoff_magic_is_supported(reader->header.magic) || !reader->header.section_count || reader->header.section_count > XX_XCOFF_MAX_SECTIONS ||
+        reader->header.optional_header_size != XX_XCOFF_OPTIONAL_HEADER_SIZE)
+        return false;
     reader->header.optional_magic = xx_data_get_u16(fixed, sizeof(fixed), 20U, true);
     reader->header.version_stamp = xx_data_get_u16(fixed, sizeof(fixed), 22U, true);
     reader->header.text_size = xx_data_get_u32(fixed, sizeof(fixed), 24U, true);
@@ -261,18 +253,19 @@ bool xx_xcoff_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
         section->flags = xx_data_get_u32(section_bytes, sizeof(section_bytes), 36U, true);
         section->type = (xx_xcoff_section_type)(section->flags & UINT32_C(0xffff));
         if (section->type == XX_XCOFF_SECTION_TEXT) section->permissions = XX_XCOFF_PERMISSION_READ | XX_XCOFF_PERMISSION_EXECUTE;
-        else if (section->type == XX_XCOFF_SECTION_DATA || section->type == XX_XCOFF_SECTION_BSS ||
-                 section->type == XX_XCOFF_SECTION_THREAD_DATA || section->type == XX_XCOFF_SECTION_THREAD_BSS)
+        else if (section->type == XX_XCOFF_SECTION_DATA || section->type == XX_XCOFF_SECTION_BSS || section->type == XX_XCOFF_SECTION_THREAD_DATA ||
+                 section->type == XX_XCOFF_SECTION_THREAD_BSS)
             section->permissions = XX_XCOFF_PERMISSION_READ | XX_XCOFF_PERMISSION_WRITE;
         if (section->type != XX_XCOFF_SECTION_BSS && section->type != XX_XCOFF_SECTION_THREAD_BSS &&
-            ((uint64_t)section->file_offset > available || (uint64_t)section->size > available - section->file_offset)) goto cleanup;
+            ((uint64_t)section->file_offset > available || (uint64_t)section->size > available - section->file_offset))
+            goto cleanup;
     }
 
     if (!reader->header.loader_section || reader->header.loader_section > reader->header.section_count) goto cleanup;
     loader_offset = sections[reader->header.loader_section - 1U].file_offset;
-    if (sections[reader->header.loader_section - 1U].type != XX_XCOFF_SECTION_LOADER ||
-        sections[reader->header.loader_section - 1U].size < XX_XCOFF_LOADER_HEADER_SIZE ||
-        !xcoff_read_relative(self, available, loader_offset, loader_bytes, sizeof(loader_bytes))) goto cleanup;
+    if (sections[reader->header.loader_section - 1U].type != XX_XCOFF_SECTION_LOADER || sections[reader->header.loader_section - 1U].size < XX_XCOFF_LOADER_HEADER_SIZE ||
+        !xcoff_read_relative(self, available, loader_offset, loader_bytes, sizeof(loader_bytes)))
+        goto cleanup;
     reader->loader_header.version = xx_data_get_u32(loader_bytes, sizeof(loader_bytes), 0U, true);
     reader->loader_header.symbol_count = xx_data_get_u32(loader_bytes, sizeof(loader_bytes), 4U, true);
     reader->loader_header.relocation_count = xx_data_get_u32(loader_bytes, sizeof(loader_bytes), 8U, true);
@@ -282,12 +275,12 @@ bool xx_xcoff_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
     reader->loader_header.string_table_length = xx_data_get_u32(loader_bytes, sizeof(loader_bytes), 24U, true);
     reader->loader_header.string_table_offset = xx_data_get_u32(loader_bytes, sizeof(loader_bytes), 28U, true);
     if (reader->loader_header.version != 1U || reader->loader_header.symbol_count > XX_XCOFF_MAX_LOADER_SYMBOLS ||
-        (uint64_t)reader->loader_header.symbol_count * XX_XCOFF_LOADER_SYMBOL_SIZE >
-            sections[reader->header.loader_section - 1U].size - XX_XCOFF_LOADER_HEADER_SIZE ||
+        (uint64_t)reader->loader_header.symbol_count * XX_XCOFF_LOADER_SYMBOL_SIZE > sections[reader->header.loader_section - 1U].size - XX_XCOFF_LOADER_HEADER_SIZE ||
         reader->loader_header.import_file_offset > sections[reader->header.loader_section - 1U].size ||
         reader->loader_header.import_string_length > sections[reader->header.loader_section - 1U].size - reader->loader_header.import_file_offset ||
         reader->loader_header.string_table_offset > sections[reader->header.loader_section - 1U].size ||
-        reader->loader_header.string_table_length > sections[reader->header.loader_section - 1U].size - reader->loader_header.string_table_offset) goto cleanup;
+        reader->loader_header.string_table_length > sections[reader->header.loader_section - 1U].size - reader->loader_header.string_table_offset)
+        goto cleanup;
 
     if (reader->loader_header.symbol_count) {
         loader_symbols = (xx_xcoff_loader_symbol *)xx_mem_alloc((size_t)reader->loader_header.symbol_count * sizeof(*loader_symbols));
@@ -298,9 +291,9 @@ bool xx_xcoff_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
     }
     for (index = 0U; index < reader->loader_header.symbol_count; ++index) {
         xx_xcoff_loader_symbol *symbol = &loader_symbols[index];
-        if (xcoff_stopped(pd) || !xcoff_parse_loader_symbol(self, available, loader_offset,
-                                                            sections[reader->header.loader_section - 1U].size,
-                                                            &reader->loader_header, index, symbol)) goto cleanup;
+        if (xcoff_stopped(pd) ||
+            !xcoff_parse_loader_symbol(self, available, loader_offset, sections[reader->header.loader_section - 1U].size, &reader->loader_header, index, symbol))
+            goto cleanup;
         if ((symbol->type_flags & UINT8_C(0xf8)) == UINT8_C(0x40) && symbol->has_inline_name && symbol->name[0]) {
             xx_xcoff_import *import_record = &imports[import_count++];
             xcoff_copy_fixed_name(import_record->name, sizeof(import_record->name), (const uint8_t *)symbol->name, 8U);
@@ -369,19 +362,16 @@ const xx_xcoff_section *xx_xcoff_get_section(xx_xcoff *reader, uint32_t index, x
 bool xx_xcoff_read_section(xx_xcoff *reader, uint32_t index, uint32_t offset, void *buffer, size_t size, xx_pd_struct *pd)
 {
     const xx_xcoff_section *section = xx_xcoff_get_section(reader, index, pd);
-    if (!section || section->type == XX_XCOFF_SECTION_BSS || section->type == XX_XCOFF_SECTION_THREAD_BSS ||
-        offset > section->size || size > section->size - offset || xcoff_stopped(pd)) return false;
+    if (!section || section->type == XX_XCOFF_SECTION_BSS || section->type == XX_XCOFF_SECTION_THREAD_BSS || offset > section->size || size > section->size - offset ||
+        xcoff_stopped(pd))
+        return false;
     if (!size) return true;
-    return buffer && xx_io_read_at(reader->format.device,
-                                   reader->format.base_address + (int64_t)section->file_offset + (int64_t)offset,
-                                   buffer,
-                                   size);
+    return buffer && xx_io_read_at(reader->format.device, reader->format.base_address + (int64_t)section->file_offset + (int64_t)offset, buffer, size);
 }
 
 const xx_xcoff_loader_header *xx_xcoff_get_loader_header(xx_xcoff *reader, xx_pd_struct *pd)
 {
-    return reader && (reader->format.base_info_handled || xx_xcoff_handle_base_info(&reader->format, pd)) && reader->has_loader
-               ? &reader->loader_header : NULL;
+    return reader && (reader->format.base_info_handled || xx_xcoff_handle_base_info(&reader->format, pd)) && reader->has_loader ? &reader->loader_header : NULL;
 }
 
 uint32_t xx_xcoff_get_number_of_loader_symbols(xx_xcoff *reader, xx_pd_struct *pd)
@@ -409,7 +399,8 @@ bool xx_xcoff_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx
     xx_xcoff *reader = (xx_xcoff *)self;
     uint32_t index;
     if (!reader || !output || (mode != XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_SECTIONS) ||
-        (!self->base_info_handled && !xx_xcoff_handle_base_info(self, pd))) return false;
+        (!self->base_info_handled && !xx_xcoff_handle_base_info(self, pd)))
+        return false;
     output->binary_offset = self->base_address;
     output->binary_size = self->format_size;
     output->module_address = 0U;
@@ -428,9 +419,9 @@ bool xx_xcoff_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx
         char name[32];
         int written = snprintf(name, sizeof(name), "%s-%u", section->name, index);
         if (written < 0 || (size_t)written >= sizeof(name) || xcoff_stopped(pd) ||
-            !xx_memory_map_add_part(output, self->base_address + section->file_offset, section->size,
-                                    section->virtual_address, section->size, XX_FILE_PART_SECTION,
-                                    (int32_t)index, name, false)) return false;
+            !xx_memory_map_add_part(output, self->base_address + section->file_offset, section->size, section->virtual_address, section->size, XX_FILE_PART_SECTION,
+                                    (int32_t)index, name, false))
+            return false;
     }
     return !xcoff_stopped(pd) && xx_memory_map_finalize(output);
 }

@@ -48,20 +48,51 @@ typedef enum xx_nchash_type_e {
 
 /* --- Streaming Contexts --- */
 
-typedef struct xx_nchash_fnv1_32_ctx { uint32_t state; } xx_nchash_fnv1_32_ctx;
-typedef struct xx_nchash_fnv1a_32_ctx { uint32_t state; } xx_nchash_fnv1a_32_ctx;
-typedef struct xx_nchash_fnv1_64_ctx { uint64_t state; } xx_nchash_fnv1_64_ctx;
-typedef struct xx_nchash_fnv1a_64_ctx { uint64_t state; } xx_nchash_fnv1a_64_ctx;
-typedef struct xx_nchash_djb2_ctx { uint32_t state; } xx_nchash_djb2_ctx;
-typedef struct xx_nchash_sdbm_ctx { uint32_t state; } xx_nchash_sdbm_ctx;
-typedef struct xx_nchash_elf_ctx { uint32_t state; } xx_nchash_elf_ctx;
-typedef struct xx_nchash_pjw_ctx { uint32_t state; } xx_nchash_pjw_ctx;
-typedef struct xx_nchash_bkdr_ctx { uint32_t state; } xx_nchash_bkdr_ctx;
-typedef struct xx_nchash_ap_ctx { uint32_t state; size_t index; } xx_nchash_ap_ctx;
-typedef struct xx_nchash_dek_ctx { uint32_t state; size_t length; } xx_nchash_dek_ctx;
-typedef struct xx_nchash_js_ctx { uint32_t state; } xx_nchash_js_ctx;
-typedef struct xx_nchash_rs_ctx { uint32_t state; uint32_t a; } xx_nchash_rs_ctx;
-typedef struct xx_nchash_oat_ctx { uint32_t state; } xx_nchash_oat_ctx;
+typedef struct xx_nchash_fnv1_32_ctx {
+    uint32_t state;
+} xx_nchash_fnv1_32_ctx;
+typedef struct xx_nchash_fnv1a_32_ctx {
+    uint32_t state;
+} xx_nchash_fnv1a_32_ctx;
+typedef struct xx_nchash_fnv1_64_ctx {
+    uint64_t state;
+} xx_nchash_fnv1_64_ctx;
+typedef struct xx_nchash_fnv1a_64_ctx {
+    uint64_t state;
+} xx_nchash_fnv1a_64_ctx;
+typedef struct xx_nchash_djb2_ctx {
+    uint32_t state;
+} xx_nchash_djb2_ctx;
+typedef struct xx_nchash_sdbm_ctx {
+    uint32_t state;
+} xx_nchash_sdbm_ctx;
+typedef struct xx_nchash_elf_ctx {
+    uint32_t state;
+} xx_nchash_elf_ctx;
+typedef struct xx_nchash_pjw_ctx {
+    uint32_t state;
+} xx_nchash_pjw_ctx;
+typedef struct xx_nchash_bkdr_ctx {
+    uint32_t state;
+} xx_nchash_bkdr_ctx;
+typedef struct xx_nchash_ap_ctx {
+    uint32_t state;
+    size_t index;
+} xx_nchash_ap_ctx;
+typedef struct xx_nchash_dek_ctx {
+    uint32_t state;
+    size_t length;
+} xx_nchash_dek_ctx;
+typedef struct xx_nchash_js_ctx {
+    uint32_t state;
+} xx_nchash_js_ctx;
+typedef struct xx_nchash_rs_ctx {
+    uint32_t state;
+    uint32_t a;
+} xx_nchash_rs_ctx;
+typedef struct xx_nchash_oat_ctx {
+    uint32_t state;
+} xx_nchash_oat_ctx;
 
 typedef struct xx_nchash_murmur3_32_ctx {
     uint32_t h;
@@ -180,10 +211,8 @@ XXFC_API bool xx_nchash_blake2b_512(const void *data, size_t size, uint8_t diges
 XXFC_API bool xx_nchash_blake2s_256(const void *data, size_t size, uint8_t digest[32]);
 
 /* Device helper */
-XXFC_API bool xx_nchash_device(xx_io_device *device, int64_t offset, int64_t size,
-                               xx_nchash_type_t type, const uint8_t *key_or_null,
-                               uint64_t seed, void *digest, size_t digest_size,
-                               xx_pd_struct *pd);
+XXFC_API bool xx_nchash_device(xx_io_device *device, int64_t offset, int64_t size, xx_nchash_type_t type, const uint8_t *key_or_null, uint64_t seed, void *digest,
+                               size_t digest_size, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

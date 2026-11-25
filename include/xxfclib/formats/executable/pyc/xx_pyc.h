@@ -99,8 +99,7 @@ XXFC_API int64_t xx_pyc_get_entry_point(xx_pyc *pyc, xx_pd_struct *pd);
  * code object. decode_bytes uses address as the first byte's PYC-relative
  * address and does not retain the supplied buffer. */
 XXFC_API bool xx_pyc_decode_instruction(xx_pyc *pyc, uint64_t code_index, uint32_t code_offset, xx_pyc_instruction *output, xx_pd_struct *pd);
-XXFC_API bool xx_pyc_decode_bytes(xx_pyc *pyc, uint64_t code_index, uint64_t address, const uint8_t *data, size_t size,
-                                  xx_pyc_instruction *output, xx_pd_struct *pd);
+XXFC_API bool xx_pyc_decode_bytes(xx_pyc *pyc, uint64_t code_index, uint64_t address, const uint8_t *data, size_t size, xx_pyc_instruction *output, xx_pd_struct *pd);
 XXFC_API bool xx_pyc_check_is_valid(Abstractformat *format, xx_pd_struct *pd);
 XXFC_API bool xx_pyc_handle_base_info(Abstractformat *format, xx_pd_struct *pd);
 XXFC_API int64_t xx_pyc_get_format_size(Abstractformat *format, xx_pd_struct *pd);

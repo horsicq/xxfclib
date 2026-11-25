@@ -21,8 +21,7 @@ static bool dmp64_stopped(xx_pd_struct *pd)
 static bool dmp64_magic(const Abstractformat *format)
 {
     uint8_t magic[8];
-    return format && format->device && format->base_address >= 0 &&
-           xx_io_read_at(format->device, format->base_address, magic, sizeof(magic)) &&
+    return format && format->device && format->base_address >= 0 && xx_io_read_at(format->device, format->base_address, magic, sizeof(magic)) &&
            memcmp(magic, "PAGEDU64", 8U) == 0;
 }
 
@@ -103,8 +102,9 @@ bool xx_windows_dmp64_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
     if (!reader || !self->device || self->base_address < 0 || dmp64_stopped(pd)) return false;
     if (self->base_info_handled) return self->is_valid;
     total = xx_io_total_size(self->device);
-    if (total < self->base_address || (available = (uint64_t)(total - self->base_address)) < XX_DMP64_HEADER_SIZE + XX_DMP64_BITMAP_HEADER_SIZE ||
-        !dmp64_magic(self) || !xx_io_read_at(self->device, self->base_address, fixed, sizeof(fixed))) return false;
+    if (total < self->base_address || (available = (uint64_t)(total - self->base_address)) < XX_DMP64_HEADER_SIZE + XX_DMP64_BITMAP_HEADER_SIZE || !dmp64_magic(self) ||
+        !xx_io_read_at(self->device, self->base_address, fixed, sizeof(fixed)))
+        return false;
 
     header = &reader->header;
     header->major_version = xx_data_get_u32(fixed, sizeof(fixed), 0x08U, false);
@@ -123,11 +123,11 @@ bool xx_windows_dmp64_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
     header->secondary_data_state = xx_data_get_u32(fixed, sizeof(fixed), 0x103cU, false);
     header->product_type = xx_data_get_u32(fixed, sizeof(fixed), 0x1040U, false);
     header->suite_mask = xx_data_get_u32(fixed, sizeof(fixed), 0x1044U, false);
-    if (header->machine_image_type != UINT32_C(0x8664) ||
-        (header->dump_type != XX_DMP64_DUMP_TYPE_BITMAP_FULL && header->dump_type != XX_DMP64_DUMP_TYPE_BITMAP_KERNEL)) return false;
+    if (header->machine_image_type != UINT32_C(0x8664) || (header->dump_type != XX_DMP64_DUMP_TYPE_BITMAP_FULL && header->dump_type != XX_DMP64_DUMP_TYPE_BITMAP_KERNEL))
+        return false;
 
-    if (!xx_io_read_at(self->device, self->base_address + XX_DMP64_HEADER_SIZE, bitmap_fixed, sizeof(bitmap_fixed)) ||
-        memcmp(bitmap_fixed, "SDMPDUMP", 8U) != 0) return false;
+    if (!xx_io_read_at(self->device, self->base_address + XX_DMP64_HEADER_SIZE, bitmap_fixed, sizeof(bitmap_fixed)) || memcmp(bitmap_fixed, "SDMPDUMP", 8U) != 0)
+        return false;
     bitmap_header = &reader->bitmap_header;
     bitmap_header->first_page_offset = xx_data_get_u64(bitmap_fixed, sizeof(bitmap_fixed), 0x20U, false);
     bitmap_header->present_page_count = xx_data_get_u64(bitmap_fixed, sizeof(bitmap_fixed), 0x28U, false);
@@ -135,12 +135,12 @@ bool xx_windows_dmp64_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
     if (!bitmap_header->addressable_page_count || bitmap_header->addressable_page_count > UINT64_MAX - 7U) return false;
     bitmap_header->bitmap_size = (bitmap_header->addressable_page_count + 7U) / 8U;
     if (!bitmap_header->bitmap_size || bitmap_header->bitmap_size > XX_DMP64_MAX_BITMAP_SIZE ||
-        bitmap_header->present_page_count > bitmap_header->addressable_page_count ||
-        bitmap_header->present_page_count > XX_DMP64_MAX_PAGE_RECORDS ||
+        bitmap_header->present_page_count > bitmap_header->addressable_page_count || bitmap_header->present_page_count > XX_DMP64_MAX_PAGE_RECORDS ||
         bitmap_header->first_page_offset < bitmap_offset || bitmap_header->bitmap_size > bitmap_header->first_page_offset - bitmap_offset ||
         bitmap_header->first_page_offset > available || bitmap_header->present_page_count > (available - bitmap_header->first_page_offset) / XX_DMP64_PAGE_SIZE ||
         bitmap_header->first_page_offset + bitmap_header->present_page_count * XX_DMP64_PAGE_SIZE != available ||
-        (header->required_dump_space && header->required_dump_space != available)) return false;
+        (header->required_dump_space && header->required_dump_space != available))
+        return false;
 
     bitmap = (uint8_t *)xx_mem_alloc((size_t)bitmap_header->bitmap_size);
     if (!bitmap || !xx_io_read_at(self->device, self->base_address + (int64_t)bitmap_offset, bitmap, (size_t)bitmap_header->bitmap_size)) goto cleanup;
@@ -246,7 +246,8 @@ bool xx_windows_dmp64_get_memory_map(Abstractformat *self, xx_memory_map_mode_t 
     xx_windows_dmp64 *reader = (xx_windows_dmp64 *)self;
     uint64_t index;
     if (!reader || !output || (mode != XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_SECTIONS) ||
-        (!self->base_info_handled && !xx_windows_dmp64_handle_base_info(self, pd))) return false;
+        (!self->base_info_handled && !xx_windows_dmp64_handle_base_info(self, pd)))
+        return false;
     output->binary_offset = self->base_address;
     output->binary_size = self->format_size;
     output->module_address = 0U;
@@ -259,14 +260,15 @@ bool xx_windows_dmp64_get_memory_map(Abstractformat *self, xx_memory_map_mode_t 
     output->arch = self->arch;
     output->mode = XX_MEMORY_MAP_MODE_SECTIONS;
     output->is_image = true;
-    if (!xx_memory_map_add_part(output, self->base_address, (int64_t)reader->bitmap_header.first_page_offset,
-                                XX_INVALID_ADDRESS, 0, XX_FILE_PART_HEADER, 0, "DMP64 headers and bitmap", false) ||
-        !xx_memory_map_reserve(output, (size_t)reader->number_of_pages + 1U)) return false;
+    if (!xx_memory_map_add_part(output, self->base_address, (int64_t)reader->bitmap_header.first_page_offset, XX_INVALID_ADDRESS, 0, XX_FILE_PART_HEADER, 0,
+                                "DMP64 headers and bitmap", false) ||
+        !xx_memory_map_reserve(output, (size_t)reader->number_of_pages + 1U))
+        return false;
     for (index = 0U; index < reader->number_of_pages; ++index) {
         if ((index & UINT64_C(0xfff)) == 0U && dmp64_stopped(pd)) return false;
-        if (!xx_memory_map_add_part(output, reader->pages[index].file_offset, XX_DMP64_PAGE_SIZE,
-                                    reader->pages[index].address, XX_DMP64_PAGE_SIZE, XX_FILE_PART_SECTION,
-                                    index <= INT32_MAX ? (int32_t)index + 1 : -1, "Memory_Section", false)) return false;
+        if (!xx_memory_map_add_part(output, reader->pages[index].file_offset, XX_DMP64_PAGE_SIZE, reader->pages[index].address, XX_DMP64_PAGE_SIZE, XX_FILE_PART_SECTION,
+                                    index <= INT32_MAX ? (int32_t)index + 1 : -1, "Memory_Section", false))
+            return false;
     }
     return !dmp64_stopped(pd) && xx_memory_map_finalize(output);
 }

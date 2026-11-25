@@ -147,12 +147,10 @@ static bool xx_zlib_decode_stream(Abstractformat *self, xx_io_device *destinatio
             if (input && xx_zlib_read_exact_at(self->device, self->base_address, input, probe_limit) && xx_zlib_header_is_valid(input, probe_limit)) {
                 sink.write = xx_zlib_buffer_write;
                 sink.priv = &output;
-                if (xx_deflate_unpack_memory_to_device_ex(input + 2U, probe_limit - 2U, &sink, &raw_size, false, pd) &&
-                    !output.failed && raw_size <= probe_limit - 6U) {
+                if (xx_deflate_unpack_memory_to_device_ex(input + 2U, probe_limit - 2U, &sink, &raw_size, false, pd) && !output.failed && raw_size <= probe_limit - 6U) {
                     trailer_offset = 2U + raw_size;
                     expected_adler = xx_data_get_u32(input + trailer_offset, 4, 0, true);
-                    if (xx_adler32(output.data, output.size) == expected_adler &&
-                        (!destination || xx_zlib_write_all(destination, output.data, output.size, pd))) {
+                    if (xx_adler32(output.data, output.size) == expected_adler && (!destination || xx_zlib_write_all(destination, output.data, output.size, pd))) {
                         *uncompressed_size = (uint64_t)output.size;
                         *stream_size = (int64_t)(trailer_offset + 4U);
                         *adler32 = expected_adler;
@@ -180,11 +178,9 @@ static bool xx_zlib_decode_stream(Abstractformat *self, xx_io_device *destinatio
                 sink.priv = &output;
                 if (xx_zlib_read_exact_at(self->device, self->base_address, header, 2U) && xx_zlib_header_is_valid(header, (size_t)input_size) &&
                     xx_deflate_unpack_device_flags(self->device, self->base_address + 2, input_size - 2, &sink, false, 0U, NULL, 0U, &consumed, 0U, pd) &&
-                    !output.failed && consumed > 0 && consumed <= input_size - 6 &&
-                    xx_zlib_read_exact_at(self->device, self->base_address + 2 + consumed, trailer, 4U)) {
+                    !output.failed && consumed > 0 && consumed <= input_size - 6 && xx_zlib_read_exact_at(self->device, self->base_address + 2 + consumed, trailer, 4U)) {
                     expected_adler = xx_data_get_u32(trailer, 4, 0, true);
-                    if (xx_adler32(output.data, output.size) == expected_adler &&
-                        (!destination || xx_zlib_write_all(destination, output.data, output.size, pd))) {
+                    if (xx_adler32(output.data, output.size) == expected_adler && (!destination || xx_zlib_write_all(destination, output.data, output.size, pd))) {
                         *uncompressed_size = (uint64_t)output.size;
                         *stream_size = 2 + consumed + 4;
                         *adler32 = expected_adler;

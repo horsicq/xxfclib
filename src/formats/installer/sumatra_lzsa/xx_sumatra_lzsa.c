@@ -108,7 +108,8 @@ static bool lz_read_all(Abstractformat *f, pm_member *m, xx_io_device *device, x
         uint8_t props[5];
         decoded = xx_io_temp_open();
         if (!decoded || m->packed_size <= 6 || !xx_io_read_at(f->device, m->offset + 1, props, sizeof(props))) goto done;
-        if (!xx_lzma_unpack_device(f->device, m->offset + 6, m->packed_size - 6, props, sizeof(props), ctx->size, decoded, pd) || xx_io_total_size(decoded) != ctx->size) goto done;
+        if (!xx_lzma_unpack_device(f->device, m->offset + 6, m->packed_size - 6, props, sizeof(props), ctx->size, decoded, pd) || xx_io_total_size(decoded) != ctx->size)
+            goto done;
         ok = lz_copy(decoded, 0, ctx->size, out, ctx->method == LZ_METHOD_LZMA_X86, &crc, pd);
     }
     ok = ok && crc == ctx->crc;

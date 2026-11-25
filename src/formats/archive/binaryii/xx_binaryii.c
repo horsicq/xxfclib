@@ -401,7 +401,8 @@ static bool b2_set_record(xx_archive_record *record, const b2_member *member)
     return xx_archive_record_set_original_name(record, member->name) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->stored_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->stored_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, b2_unix_time(member->modified)) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, b2_unix_time(member->modified)) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->access) && xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->file_type) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_EXTERNAL_ATTRS, member->aux_type) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->folder);

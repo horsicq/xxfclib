@@ -127,7 +127,6 @@ static char dbk_upper(char c)
     return (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : c;
 }
 
-
 /* One CP437 byte as UTF-8.  Control bytes are passed through so the safety
  * check sees them. */
 static size_t dbk_put(uint8_t ch, char *out)

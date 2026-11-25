@@ -110,7 +110,6 @@ typedef struct isd_stream_s {
 /* Windows-1252 0x80..0x9F.  0 marks a byte the code page leaves undefined;
  * those decode to '_'.  0xA0..0xFF are the Latin-1 code points. */
 
-
 #include "xxfclib/global/xx_global.h"
 static size_t gb_installshield_developer_capacity(void)
 {

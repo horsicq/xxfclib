@@ -17,8 +17,6 @@ uint64_t xx_le_get_number_of_imports(Abstractformat *format, xx_pd_struct *pd)
 
 const StreamImport *xx_le_get_stream_import(void)
 {
-    static const StreamImport stream = {
-        .get_number_of_imports = xx_le_get_number_of_imports
-    };
+    static const StreamImport stream = {.get_number_of_imports = xx_le_get_number_of_imports};
     return &stream;
 }

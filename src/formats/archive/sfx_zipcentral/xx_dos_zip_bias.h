@@ -20,12 +20,12 @@ static int sfx_dos_zip_bias_ensure(xx_sfx_zipcentral *r, xx_pd_struct *pd)
     image = ((int64_t)pages - 1) * 512 + (last ? last : 512);
     extension = xx_data_get_u32(h + 60, 4, 0, false);
     if (extension >= 64 && extension < (uint64_t)size - 4 && pm_read(f, extension, magic, 4) &&
-        (!xx_rt_memcmp(magic, "PE\0\0", 4) || !xx_rt_memcmp(magic, "NE", 2) ||
-         !xx_rt_memcmp(magic, "LE", 2) || !xx_rt_memcmp(magic, "LX", 2))) return 0;
+        (!xx_rt_memcmp(magic, "PE\0\0", 4) || !xx_rt_memcmp(magic, "NE", 2) || !xx_rt_memcmp(magic, "LE", 2) || !xx_rt_memcmp(magic, "LX", 2)))
+        return 0;
     eocd = size - 22;
-    if (!pm_read(f, eocd, end, sizeof(end)) || xx_rt_memcmp(end, "PK\5\6", 4) ||
-        xx_data_get_u16(end + 4, 2, 0, false) || xx_data_get_u16(end + 6, 2, 0, false) ||
-        xx_data_get_u16(end + 20, 2, 0, false)) return 0;
+    if (!pm_read(f, eocd, end, sizeof(end)) || xx_rt_memcmp(end, "PK\5\6", 4) || xx_data_get_u16(end + 4, 2, 0, false) || xx_data_get_u16(end + 6, 2, 0, false) ||
+        xx_data_get_u16(end + 20, 2, 0, false))
+        return 0;
     count = xx_data_get_u16(end + 10, 2, 0, false);
     bytes = xx_data_get_u32(end + 12, 4, 0, false);
     stored = xx_data_get_u32(end + 16, 4, 0, false);
@@ -41,10 +41,10 @@ static int sfx_dos_zip_bias_ensure(xx_sfx_zipcentral *r, xx_pd_struct *pd)
     xx_zip_init(&r->inner, &view->device, 0);
     r->inner.allow_leading_data = true;
     initialized = true;
-    if (!sfx_carrier_absolute_directory(&r->inner.format, low - bias, stored, eocd - bias, count, &first, &legacy, name, pd) ||
-        first != low - bias || legacy >= 0 || !xx_zip_handle_base_info(&r->inner.format, pd) ||
-        r->inner.format.format_size != size - bias || r->inner.format.number_of_archive_records != count ||
-        r->inner.cd_offset != stored || r->inner.eocd_offset != eocd - bias || r->inner.directory_damaged) goto done;
+    if (!sfx_carrier_absolute_directory(&r->inner.format, low - bias, stored, eocd - bias, count, &first, &legacy, name, pd) || first != low - bias || legacy >= 0 ||
+        !xx_zip_handle_base_info(&r->inner.format, pd) || r->inner.format.format_size != size - bias || r->inner.format.number_of_archive_records != count ||
+        r->inner.cd_offset != stored || r->inner.eocd_offset != eocd - bias || r->inner.directory_damaged)
+        goto done;
     r->relative_view = view;
     view = NULL;
     r->inner_ready = true;

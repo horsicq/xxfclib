@@ -27,7 +27,8 @@ static bool xx_lha_legacy_bit(const uint8_t *input, size_t input_size, size_t *b
     return true;
 }
 
-static bool xx_lha_legacy_decode_native_with_padding(uint32_t method, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, xx_pd_struct *pd, bool allow_one_zero_padding)
+static bool xx_lha_legacy_decode_native_with_padding(uint32_t method, const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, xx_pd_struct *pd,
+                                                     bool allow_one_zero_padding)
 {
     uint8_t history[4096];
     size_t source = 0U, destination = 0U, bit_position = 0U;

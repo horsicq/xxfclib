@@ -31,8 +31,7 @@ typedef struct {
 #include "xx_string_casefold_data.inc"
 #include "xx_string_casefold_props.inc"
 
-static bool xx_string_in_ranges(uint32_t scalar, const uint32_t *ranges,
-                                      size_t length)
+static bool xx_string_in_ranges(uint32_t scalar, const uint32_t *ranges, size_t length)
 {
     size_t first = 0, last = length / 2;
     while (first < last) {
@@ -48,16 +47,12 @@ static bool xx_string_in_ranges(uint32_t scalar, const uint32_t *ranges,
 
 static bool xx_string_is_cased(uint32_t scalar)
 {
-    return xx_string_in_ranges(scalar, xx_string_cased_ranges,
-                                     sizeof(xx_string_cased_ranges) /
-                                     sizeof(xx_string_cased_ranges[0]));
+    return xx_string_in_ranges(scalar, xx_string_cased_ranges, sizeof(xx_string_cased_ranges) / sizeof(xx_string_cased_ranges[0]));
 }
 
 static bool xx_string_is_case_ignorable(uint32_t scalar)
 {
-    return xx_string_in_ranges(scalar, xx_string_case_ignorable_ranges,
-                                     sizeof(xx_string_case_ignorable_ranges) /
-                                     sizeof(xx_string_case_ignorable_ranges[0]));
+    return xx_string_in_ranges(scalar, xx_string_case_ignorable_ranges, sizeof(xx_string_case_ignorable_ranges) / sizeof(xx_string_case_ignorable_ranges[0]));
 }
 
 static uint32_t xx_string_lower_scalar(uint32_t scalar)
@@ -69,37 +64,39 @@ static uint32_t xx_string_lower_scalar(uint32_t scalar)
         if (xx_string_lower_mappings[middle].source < scalar) first = middle + 1;
         else last = middle;
     }
-    return first < sizeof(xx_string_lower_mappings) /
-                   sizeof(xx_string_lower_mappings[0]) &&
-           xx_string_lower_mappings[first].source == scalar ?
-           xx_string_lower_mappings[first].lower : scalar;
+    return first < sizeof(xx_string_lower_mappings) / sizeof(xx_string_lower_mappings[0]) && xx_string_lower_mappings[first].source == scalar
+               ? xx_string_lower_mappings[first].lower
+               : scalar;
 }
 
 /* Decode one scalar with Rust String::from_utf8_lossy's error consumption:
  * a malformed prefix becomes one replacement character. */
-static size_t xx_string_decode_utf8_lossy(const uint8_t *bytes, size_t length,
-                                        uint32_t *scalar)
+static size_t xx_string_decode_utf8_lossy(const uint8_t *bytes, size_t length, uint32_t *scalar)
 {
     uint8_t lead = bytes[0];
     unsigned width;
     uint32_t value;
-    if (lead < 0x80) { *scalar = lead; return 1; }
+    if (lead < 0x80) {
+        *scalar = lead;
+        return 1;
+    }
     if (lead >= 0xc2 && lead <= 0xdf) {
-        width = 2; value = lead & 0x1fu;
+        width = 2;
+        value = lead & 0x1fu;
     } else if (lead >= 0xe0 && lead <= 0xef) {
-        width = 3; value = lead & 0x0fu;
+        width = 3;
+        value = lead & 0x0fu;
     } else if (lead >= 0xf0 && lead <= 0xf4) {
-        width = 4; value = lead & 0x07u;
+        width = 4;
+        value = lead & 0x07u;
     } else {
         *scalar = 0xfffdu;
         return 1;
     }
     for (unsigned i = 1; i < width; ++i) {
         if (i >= length || bytes[i] < 0x80 || bytes[i] > 0xbf ||
-            (i == 1 && ((lead == 0xe0 && bytes[i] < 0xa0) ||
-                        (lead == 0xed && bytes[i] > 0x9f) ||
-                        (lead == 0xf0 && bytes[i] < 0x90) ||
-                        (lead == 0xf4 && bytes[i] > 0x8f)))) {
+            (i == 1 &&
+             ((lead == 0xe0 && bytes[i] < 0xa0) || (lead == 0xed && bytes[i] > 0x9f) || (lead == 0xf0 && bytes[i] < 0x90) || (lead == 0xf4 && bytes[i] > 0x8f)))) {
             *scalar = 0xfffdu;
             return i;
         }
@@ -109,22 +106,18 @@ static size_t xx_string_decode_utf8_lossy(const uint8_t *bytes, size_t length,
     return width;
 }
 
-XXFC_API bool xx_string_utf8_lossy(const uint8_t *bytes, size_t length, char *out,
-                        size_t capacity, size_t *written)
+XXFC_API bool xx_string_utf8_lossy(const uint8_t *bytes, size_t length, char *out, size_t capacity, size_t *written)
 {
     static const char replacement[] = "\xef\xbf\xbd";
     size_t used = 0;
     if (!written || (!bytes && length)) return false;
     for (size_t i = 0; i < length;) {
         uint32_t scalar;
-        size_t input_width = xx_string_decode_utf8_lossy(bytes + i,
-                                                       length - i, &scalar);
+        size_t input_width = xx_string_decode_utf8_lossy(bytes + i, length - i, &scalar);
         size_t output_width = scalar == 0xfffdu ? 3 : input_width;
         if (output_width > SIZE_MAX - used) return false;
         if (out && output_width <= capacity && used <= capacity - output_width)
-            memcpy(out + used,
-                   scalar == 0xfffdu ? replacement : (const char *)(bytes + i),
-                   output_width);
+            memcpy(out + used, scalar == 0xfffdu ? replacement : (const char *)(bytes + i), output_width);
         used += output_width;
         i += input_width;
     }
@@ -160,20 +153,21 @@ static size_t xx_string_encode_utf8(char *out, uint32_t scalar)
 
 /* Rust str::to_lowercase applies Unicode 17 scalar mappings and the Final
  * Sigma context rule. The input first receives from_utf8_lossy decoding. */
-XXFC_API bool xx_string_to_lower_alloc(const uint8_t *bytes, size_t length,
-                               char **out, size_t *out_length)
+XXFC_API bool xx_string_to_lower_alloc(const uint8_t *bytes, size_t length, char **out, size_t *out_length)
 {
     uint32_t *scalars;
     char *lower;
     size_t count = 0, used = 0;
-    if (length > SIZE_MAX / sizeof(uint32_t) ||
-        length > (SIZE_MAX - 1) / 3) return false;
+    if (length > SIZE_MAX / sizeof(uint32_t) || length > (SIZE_MAX - 1) / 3) return false;
     scalars = (uint32_t *)malloc((length ? length : 1) * sizeof(uint32_t));
     lower = (char *)malloc(length * 3 + 1);
-    if (!scalars || !lower) { free(scalars); free(lower); return false; }
+    if (!scalars || !lower) {
+        free(scalars);
+        free(lower);
+        return false;
+    }
     for (size_t i = 0; i < length;) {
-        i += xx_string_decode_utf8_lossy(bytes + i, length - i,
-                                       &scalars[count++]);
+        i += xx_string_decode_utf8_lossy(bytes + i, length - i, &scalars[count++]);
     }
     for (size_t i = 0; i < count; ++i) {
         uint32_t scalar = scalars[i];
@@ -210,16 +204,11 @@ XXFC_API bool xx_string_to_lower_alloc(const uint8_t *bytes, size_t length,
 
 static bool xx_string_is_whitespace(uint32_t scalar)
 {
-    return (scalar >= 9u && scalar <= 13u) || scalar == 0x20u ||
-           scalar == 0x85u || scalar == 0xa0u || scalar == 0x1680u ||
-           (scalar >= 0x2000u && scalar <= 0x200au) ||
-           scalar == 0x2028u || scalar == 0x2029u ||
-           scalar == 0x202fu || scalar == 0x205fu || scalar == 0x3000u;
+    return (scalar >= 9u && scalar <= 13u) || scalar == 0x20u || scalar == 0x85u || scalar == 0xa0u || scalar == 0x1680u || (scalar >= 0x2000u && scalar <= 0x200au) ||
+           scalar == 0x2028u || scalar == 0x2029u || scalar == 0x202fu || scalar == 0x205fu || scalar == 0x3000u;
 }
 
-XXFC_API bool xx_string_trim_whitespace_alloc(const uint8_t *bytes,
-                                              size_t length, char **out,
-                                              size_t *out_length)
+XXFC_API bool xx_string_trim_whitespace_alloc(const uint8_t *bytes, size_t length, char **out, size_t *out_length)
 {
     size_t first = SIZE_MAX, last = 0;
     char *copy;
@@ -228,8 +217,7 @@ XXFC_API bool xx_string_trim_whitespace_alloc(const uint8_t *bytes,
     *out_length = 0;
     for (size_t i = 0; i < length;) {
         uint32_t scalar;
-        size_t width = xx_string_decode_utf8_lossy(bytes + i, length - i,
-                                                   &scalar);
+        size_t width = xx_string_decode_utf8_lossy(bytes + i, length - i, &scalar);
         if (!xx_string_is_whitespace(scalar)) {
             if (first == SIZE_MAX) first = i;
             last = i + width;
@@ -260,8 +248,7 @@ static size_t xx_string_encode_lower(char *out, uint32_t scalar)
     return xx_string_encode_utf8(out, xx_string_lower_scalar(scalar));
 }
 
-XXFC_API bool xx_string_to_lower_stream(const uint8_t *bytes, size_t length,
-                                        xx_string_sink_fn sink, void *opaque)
+XXFC_API bool xx_string_to_lower_stream(const uint8_t *bytes, size_t length, xx_string_sink_fn sink, void *opaque)
 {
     char buffer[256];
     size_t used = 0, ascii = 0;
@@ -275,8 +262,7 @@ XXFC_API bool xx_string_to_lower_stream(const uint8_t *bytes, size_t length,
             return true;
         }
         for (size_t offset = 0; offset < length;) {
-            size_t n = length - offset < sizeof(buffer) ?
-                       length - offset : sizeof(buffer);
+            size_t n = length - offset < sizeof(buffer) ? length - offset : sizeof(buffer);
             for (size_t i = 0; i < n; ++i) {
                 uint8_t ch = bytes[offset + i];
                 buffer[i] = (char)(ch >= 'A' && ch <= 'Z' ? ch + 32 : ch);
@@ -290,8 +276,7 @@ XXFC_API bool xx_string_to_lower_stream(const uint8_t *bytes, size_t length,
      * the casing of the last scalar that is not Case_Ignorable. */
     for (size_t at = 0; at < length;) {
         uint32_t scalar;
-        size_t next = at + xx_string_decode_utf8_lossy(bytes + at,
-                                                       length - at, &scalar);
+        size_t next = at + xx_string_decode_utf8_lossy(bytes + at, length - at, &scalar);
         if (used > sizeof(buffer) - 4) {
             sink(opaque, buffer, used);
             used = 0;
@@ -300,43 +285,38 @@ XXFC_API bool xx_string_to_lower_stream(const uint8_t *bytes, size_t length,
             bool after = false;
             for (size_t j = next; j < length;) {
                 uint32_t following;
-                j += xx_string_decode_utf8_lossy(bytes + j, length - j,
-                                                 &following);
+                j += xx_string_decode_utf8_lossy(bytes + j, length - j, &following);
                 if (xx_string_is_case_ignorable(following)) continue;
                 after = xx_string_is_cased(following);
                 break;
             }
-            used += xx_string_encode_utf8(buffer + used,
-                preceding_cased && !after ? 0x03c2u : 0x03c3u);
+            used += xx_string_encode_utf8(buffer + used, preceding_cased && !after ? 0x03c2u : 0x03c3u);
         } else {
             used += xx_string_encode_lower(buffer + used, scalar);
         }
-        if (!xx_string_is_case_ignorable(scalar))
-            preceding_cased = xx_string_is_cased(scalar);
+        if (!xx_string_is_case_ignorable(scalar)) preceding_cased = xx_string_is_cased(scalar);
         at = next;
     }
     if (used) sink(opaque, buffer, used);
     return true;
 }
 
-XXFC_API bool xx_string_trim_lower_alloc(const uint8_t *bytes, size_t length,
-                                         bool final_sigma, char **out,
-                                         size_t *out_length)
+XXFC_API bool xx_string_trim_lower_alloc(const uint8_t *bytes, size_t length, bool final_sigma, char **out, size_t *out_length)
 {
     uint32_t *scalars;
     char *lower;
     size_t count = 0, first = 0, last, used = 0;
-    if (!out || !out_length || (!bytes && length) ||
-        length > SIZE_MAX / sizeof(uint32_t) ||
-        length > (SIZE_MAX - 1) / 3) return false;
+    if (!out || !out_length || (!bytes && length) || length > SIZE_MAX / sizeof(uint32_t) || length > (SIZE_MAX - 1) / 3) return false;
     *out = NULL;
     *out_length = 0;
     scalars = (uint32_t *)malloc((length ? length : 1) * sizeof(uint32_t));
     lower = (char *)malloc(length * 3 + 1);
-    if (!scalars || !lower) { free(scalars); free(lower); return false; }
-    for (size_t i = 0; i < length;)
-        i += xx_string_decode_utf8_lossy(bytes + i, length - i,
-                                         &scalars[count++]);
+    if (!scalars || !lower) {
+        free(scalars);
+        free(lower);
+        return false;
+    }
+    for (size_t i = 0; i < length;) i += xx_string_decode_utf8_lossy(bytes + i, length - i, &scalars[count++]);
     last = count;
     while (first < last && xx_string_is_whitespace(scalars[first])) ++first;
     while (last > first && xx_string_is_whitespace(scalars[last - 1])) --last;
@@ -355,8 +335,7 @@ XXFC_API bool xx_string_trim_lower_alloc(const uint8_t *bytes, size_t length,
                 after = xx_string_is_cased(scalars[j]);
                 break;
             }
-            used += xx_string_encode_utf8(lower + used,
-                                          before && !after ? 0x03c2u : 0x03c3u);
+            used += xx_string_encode_utf8(lower + used, before && !after ? 0x03c2u : 0x03c3u);
         } else {
             used += xx_string_encode_lower(lower + used, scalar);
         }
@@ -378,26 +357,22 @@ XXFC_API size_t xx_string_lower_mapping_count(void)
     return sizeof(xx_string_lower_mappings) / sizeof(xx_string_lower_mappings[0]);
 }
 
-XXFC_API bool xx_string_lower_mapping_at(size_t index, uint32_t *source,
-                                         uint32_t *lower)
+XXFC_API bool xx_string_lower_mapping_at(size_t index, uint32_t *source, uint32_t *lower)
 {
-    if (!source || !lower || index >= xx_string_lower_mapping_count())
-        return false;
+    if (!source || !lower || index >= xx_string_lower_mapping_count()) return false;
     *source = xx_string_lower_mappings[index].source;
     *lower = xx_string_lower_mappings[index].lower;
     return true;
 }
 
-XXFC_API size_t xx_string_scalar_lower_variants(uint32_t scalar,
-                                                uint32_t variants[4])
+XXFC_API size_t xx_string_scalar_lower_variants(uint32_t scalar, uint32_t variants[4])
 {
     uint32_t lower = xx_string_lower_scalar(scalar);
     size_t count = 1;
     if (!variants) return 0;
     variants[0] = lower;
     for (size_t i = 0; i < xx_string_lower_mapping_count(); ++i) {
-        if (xx_string_lower_mappings[i].lower == lower &&
-            xx_string_lower_mappings[i].source != lower) {
+        if (xx_string_lower_mappings[i].lower == lower && xx_string_lower_mappings[i].source != lower) {
             if (count == 4) return 0;
             variants[count++] = xx_string_lower_mappings[i].source;
         }

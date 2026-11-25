@@ -32,19 +32,40 @@ typedef struct expr_parser {
     xx_translation *catalog;
     int failed, depth;
 } expr_parser;
-enum { OP_NUMBER = 256, OP_N, OP_EQ, OP_NE, OP_LE, OP_GE, OP_AND, OP_OR };
+enum {
+    OP_NUMBER = 256,
+    OP_N,
+    OP_EQ,
+    OP_NE,
+    OP_LE,
+    OP_GE,
+    OP_AND,
+    OP_OR
+};
 
-static int space(char c) { return c == ' ' || c == '\t' || c == '\r'; }
-static void skip(expr_parser *p) { while (space(*p->p)) ++p->p; }
+static int space(char c)
+{
+    return c == ' ' || c == '\t' || c == '\r';
+}
+static void skip(expr_parser *p)
+{
+    while (space(*p->p)) ++p->p;
+}
 static int node(expr_parser *p, int op, int a, int b, int c, uint64_t value)
 {
     int i = p->catalog->node_count;
-    if (i == MAX_NODES) { p->failed = 1; return 0; }
+    if (i == MAX_NODES) {
+        p->failed = 1;
+        return 0;
+    }
     {
         int height = a >= 0 ? p->catalog->nodes[a].height + 1 : 1;
         if (b >= 0 && p->catalog->nodes[b].height >= height) height = p->catalog->nodes[b].height + 1;
         if (c >= 0 && p->catalog->nodes[c].height >= height) height = p->catalog->nodes[c].height + 1;
-        if (height > MAX_DEPTH) { p->failed = 1; return 0; }
+        if (height > MAX_DEPTH) {
+            p->failed = 1;
+            return 0;
+        }
         p->catalog->nodes[i].height = height;
     }
     p->catalog->nodes[i].op = op;
@@ -60,7 +81,11 @@ static int primary(expr_parser *p)
 {
     int result = 0;
     skip(p);
-    if (++p->depth > MAX_DEPTH) { p->failed = 1; --p->depth; return 0; }
+    if (++p->depth > MAX_DEPTH) {
+        p->failed = 1;
+        --p->depth;
+        return 0;
+    }
     if (*p->p == '(') {
         ++p->p;
         result = conditional(p);
@@ -90,18 +115,46 @@ static int operator_at(expr_parser *p, int *length, int *precedence)
 {
     char a, b;
     skip(p);
-    a = p->p[0]; b = a ? p->p[1] : 0;
+    a = p->p[0];
+    b = a ? p->p[1] : 0;
     *length = 2;
-    if (a == '|' && b == '|') { *precedence = 1; return OP_OR; }
-    if (a == '&' && b == '&') { *precedence = 2; return OP_AND; }
-    if (a == '=' && b == '=') { *precedence = 3; return OP_EQ; }
-    if (a == '!' && b == '=') { *precedence = 3; return OP_NE; }
-    if (a == '<' && b == '=') { *precedence = 4; return OP_LE; }
-    if (a == '>' && b == '=') { *precedence = 4; return OP_GE; }
+    if (a == '|' && b == '|') {
+        *precedence = 1;
+        return OP_OR;
+    }
+    if (a == '&' && b == '&') {
+        *precedence = 2;
+        return OP_AND;
+    }
+    if (a == '=' && b == '=') {
+        *precedence = 3;
+        return OP_EQ;
+    }
+    if (a == '!' && b == '=') {
+        *precedence = 3;
+        return OP_NE;
+    }
+    if (a == '<' && b == '=') {
+        *precedence = 4;
+        return OP_LE;
+    }
+    if (a == '>' && b == '=') {
+        *precedence = 4;
+        return OP_GE;
+    }
     *length = 1;
-    if (a == '<' || a == '>') { *precedence = 4; return a; }
-    if (a == '+' || a == '-') { *precedence = 5; return a; }
-    if (a == '*' || a == '/' || a == '%') { *precedence = 6; return a; }
+    if (a == '<' || a == '>') {
+        *precedence = 4;
+        return a;
+    }
+    if (a == '+' || a == '-') {
+        *precedence = 5;
+        return a;
+    }
+    if (a == '*' || a == '/' || a == '%') {
+        *precedence = 6;
+        return a;
+    }
     *precedence = 0;
     return 0;
 }
@@ -120,7 +173,11 @@ static int binary(expr_parser *p, int minimum)
 static int conditional(expr_parser *p)
 {
     int a, b, c;
-    if (++p->depth > MAX_DEPTH) { p->failed = 1; --p->depth; return 0; }
+    if (++p->depth > MAX_DEPTH) {
+        p->failed = 1;
+        --p->depth;
+        return 0;
+    }
     a = binary(p, 1);
     skip(p);
     if (!p->failed && *p->p == '?') {
@@ -135,12 +192,14 @@ static int conditional(expr_parser *p)
     --p->depth;
     return a;
 }
-static uint64_t evaluate(const xx_translation *catalog, int i, uint64_t n,
-    int depth, int *valid)
+static uint64_t evaluate(const xx_translation *catalog, int i, uint64_t n, int depth, int *valid)
 {
     const expression *e;
     uint64_t a, b;
-    if (depth > MAX_DEPTH || i < 0 || i >= catalog->node_count) { *valid = 0; return 0; }
+    if (depth > MAX_DEPTH || i < 0 || i >= catalog->node_count) {
+        *valid = 0;
+        return 0;
+    }
     e = &catalog->nodes[i];
     if (e->op == OP_NUMBER) return e->value;
     if (e->op == OP_N) return n;
@@ -152,20 +211,30 @@ static uint64_t evaluate(const xx_translation *catalog, int i, uint64_t n,
     if (e->b < 0) return e->op == '!' ? !a : e->op == '-' ? (uint64_t)0 - a : a;
     b = evaluate(catalog, e->b, n, depth + 1, valid);
     switch (e->op) {
-    case '+': return a + b;
-    case '-': return a - b;
-    case '*': return a * b;
-    case '/': if (!b) { *valid = 0; return 0; } return a / b;
-    case '%': if (!b) { *valid = 0; return 0; } return a % b;
-    case '<': return a < b;
-    case '>': return a > b;
-    case OP_LE: return a <= b;
-    case OP_GE: return a >= b;
-    case OP_EQ: return a == b;
-    case OP_NE: return a != b;
-    case OP_AND: return !!b;
-    case OP_OR: return !!b;
-    default: *valid = 0; return 0;
+        case '+': return a + b;
+        case '-': return a - b;
+        case '*': return a * b;
+        case '/':
+            if (!b) {
+                *valid = 0;
+                return 0;
+            }
+            return a / b;
+        case '%':
+            if (!b) {
+                *valid = 0;
+                return 0;
+            }
+            return a % b;
+        case '<': return a < b;
+        case '>': return a > b;
+        case OP_LE: return a <= b;
+        case OP_GE: return a >= b;
+        case OP_EQ: return a == b;
+        case OP_NE: return a != b;
+        case OP_AND: return !!b;
+        case OP_OR: return !!b;
+        default: *valid = 0; return 0;
     }
 }
 static int equal(const char *a, const char *b)
@@ -176,7 +245,8 @@ static uint64_t hash(const char *context, const char *id)
 {
     uint64_t h = UINT64_C(14695981039346656037);
     const unsigned char *p;
-    if (context) for (p = (const unsigned char *)context; *p; ++p) h = (h ^ *p) * UINT64_C(1099511628211);
+    if (context)
+        for (p = (const unsigned char *)context; *p; ++p) h = (h ^ *p) * UINT64_C(1099511628211);
     h = (h ^ (context ? 1u : 0u)) * UINT64_C(1099511628211);
     for (p = (const unsigned char *)id; *p; ++p) h = (h ^ *p) * UINT64_C(1099511628211);
     return h;
@@ -192,7 +262,9 @@ static entry *find(const xx_translation *catalog, const char *context, const cha
 static void free_entry(entry *e)
 {
     unsigned int i;
-    xx_mem_free(e->context); xx_mem_free(e->id); xx_mem_free(e->plural);
+    xx_mem_free(e->context);
+    xx_mem_free(e->id);
+    xx_mem_free(e->plural);
     for (i = 0; i < MAX_FORMS; ++i) xx_mem_free(e->forms[i]);
     xx_rt_memset(e, 0, sizeof(*e));
 }
@@ -202,7 +274,12 @@ void xx_translation_destroy(xx_translation *catalog)
     if (!catalog) return;
     for (i = 0; i < catalog->capacity; ++i) {
         entry *e = catalog->buckets[i];
-        while (e) { entry *next = e->next; free_entry(e); xx_mem_free(e); e = next; }
+        while (e) {
+            entry *next = e->next;
+            free_entry(e);
+            xx_mem_free(e);
+            e = next;
+        }
     }
     xx_mem_free(catalog->buckets);
     xx_mem_free(catalog);
@@ -212,20 +289,39 @@ static int utf8(const char *text)
     const unsigned char *p = (const unsigned char *)text;
     while (*p) {
         unsigned int cp, min, count;
-        if (*p < 0x80) { ++p; continue; }
-        if (*p >= 0xc2 && *p <= 0xdf) { cp = *p++ & 31; min = 0x80; count = 1; }
-        else if (*p >= 0xe0 && *p <= 0xef) { cp = *p++ & 15; min = 0x800; count = 2; }
-        else if (*p >= 0xf0 && *p <= 0xf4) { cp = *p++ & 7; min = 0x10000; count = 3; }
-        else return 0;
-        while (count--) { if ((*p & 0xc0) != 0x80) return 0; cp = (cp << 6) | (*p++ & 63); }
+        if (*p < 0x80) {
+            ++p;
+            continue;
+        }
+        if (*p >= 0xc2 && *p <= 0xdf) {
+            cp = *p++ & 31;
+            min = 0x80;
+            count = 1;
+        } else if (*p >= 0xe0 && *p <= 0xef) {
+            cp = *p++ & 15;
+            min = 0x800;
+            count = 2;
+        } else if (*p >= 0xf0 && *p <= 0xf4) {
+            cp = *p++ & 7;
+            min = 0x10000;
+            count = 3;
+        } else return 0;
+        while (count--) {
+            if ((*p & 0xc0) != 0x80) return 0;
+            cp = (cp << 6) | (*p++ & 63);
+        }
         if (cp < min || cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff)) return 0;
     }
     return 1;
 }
-static char lower(char c) { return c >= 'A' && c <= 'Z' ? (char)(c + 'a' - 'A') : c; }
+static char lower(char c)
+{
+    return c >= 'A' && c <= 'Z' ? (char)(c + 'a' - 'A') : c;
+}
 static int prefix(const char *p, const char *s)
 {
-    while (*s) if (lower(*p++) != lower(*s++)) return 0;
+    while (*s)
+        if (lower(*p++) != lower(*s++)) return 0;
     return 1;
 }
 static xx_translation_status header(xx_translation *catalog, const char *text)
@@ -243,9 +339,7 @@ static xx_translation_status header(xx_translation *catalog, const char *text)
                     start = q;
                     while (*q && *q != '\n' && *q != '"' && *q != ';' && !space(*q)) ++q;
                     length = (size_t)(q - start);
-                    if (!((length == 5 && prefix(start, "UTF-8")) ||
-                          (length == 5 && prefix(start, "ASCII")) ||
-                          (length == 8 && prefix(start, "US-ASCII"))))
+                    if (!((length == 5 && prefix(start, "UTF-8")) || (length == 5 && prefix(start, "ASCII")) || (length == 8 && prefix(start, "US-ASCII"))))
                         return XX_TRANSLATION_UNSUPPORTED_CHARSET;
                     break;
                 }
@@ -257,7 +351,8 @@ static xx_translation_status header(xx_translation *catalog, const char *text)
             const char *q = p + 13;
             while (space(*q)) ++q;
             if (!prefix(q, "nplurals")) return XX_TRANSLATION_INVALID_PO;
-            q += 8; while (space(*q)) ++q;
+            q += 8;
+            while (space(*q)) ++q;
             if (*q++ != '=') return XX_TRANSLATION_INVALID_PO;
             while (space(*q)) ++q;
             if (*q < '0' || *q > '9') return XX_TRANSLATION_INVALID_PO;
@@ -269,9 +364,12 @@ static xx_translation_status header(xx_translation *catalog, const char *text)
             if (!forms || *q++ != ';') return XX_TRANSLATION_INVALID_PO;
             while (space(*q)) ++q;
             if (!prefix(q, "plural")) return XX_TRANSLATION_INVALID_PO;
-            q += 6; while (space(*q)) ++q;
+            q += 6;
+            while (space(*q)) ++q;
             if (*q++ != '=') return XX_TRANSLATION_INVALID_PO;
-            parser.p = q; parser.catalog = catalog; parser.failed = parser.depth = 0;
+            parser.p = q;
+            parser.catalog = catalog;
+            parser.failed = parser.depth = 0;
             catalog->node_count = 0;
             catalog->root = conditional(&parser);
             skip(&parser);
@@ -296,8 +394,7 @@ static xx_translation_status publish(xx_translation *catalog, entry *current)
         return XX_TRANSLATION_OK;
     }
     if (!current->seen || (current->plural ? !current->indexed : current->indexed)) return XX_TRANSLATION_INVALID_PO;
-    if (!utf8(current->id) || (current->context && !utf8(current->context)) ||
-        (current->plural && !utf8(current->plural))) return XX_TRANSLATION_INVALID_PO;
+    if (!utf8(current->id) || (current->context && !utf8(current->context)) || (current->plural && !utf8(current->plural))) return XX_TRANSLATION_INVALID_PO;
     for (i = 0; i < MAX_FORMS; ++i)
         if (current->forms[i] && !utf8(current->forms[i])) return XX_TRANSLATION_INVALID_PO;
     if (find(catalog, current->context, current->id)) return XX_TRANSLATION_INVALID_PO;
@@ -318,16 +415,21 @@ static xx_translation_status publish(xx_translation *catalog, entry *current)
             while (e) {
                 entry *next = e->next;
                 slot = (size_t)hash(e->context, e->id) & (capacity - 1);
-                e->next = buckets[slot]; buckets[slot] = e; e = next;
+                e->next = buckets[slot];
+                buckets[slot] = e;
+                e = next;
             }
         }
-        xx_mem_free(catalog->buckets); catalog->buckets = buckets; catalog->capacity = capacity;
+        xx_mem_free(catalog->buckets);
+        catalog->buckets = buckets;
+        catalog->capacity = capacity;
     }
     e = (entry *)xx_mem_alloc(sizeof(*e));
     if (!e) return XX_TRANSLATION_OUT_OF_MEMORY;
     *e = *current;
     slot = (size_t)hash(e->context, e->id) & (catalog->capacity - 1);
-    e->next = catalog->buckets[slot]; catalog->buckets[slot] = e;
+    e->next = catalog->buckets[slot];
+    catalog->buckets[slot] = e;
     ++catalog->count;
     xx_rt_memset(current, 0, sizeof(*current));
     return XX_TRANSLATION_OK;
@@ -350,7 +452,8 @@ static xx_translation_status quoted(char **field, size_t *length, size_t *capaci
         if (grown < needed) grown = needed;
         buffer = (char *)xx_mem_realloc(*field, grown);
         if (!buffer) return XX_TRANSLATION_OUT_OF_MEMORY;
-        *field = buffer; *capacity = grown;
+        *field = buffer;
+        *capacity = grown;
     }
     buffer = *field;
     while (p < end && *p != '"') {
@@ -359,23 +462,37 @@ static xx_translation_status quoted(char **field, size_t *length, size_t *capaci
             if (p == end) return XX_TRANSLATION_INVALID_PO;
             c = (unsigned char)*p++;
             switch (c) {
-            case 'a': c = 7; break; case 'b': c = 8; break; case 'f': c = 12; break;
-            case 'n': c = 10; break; case 'r': c = 13; break; case 't': c = 9; break;
-            case 'v': c = 11; break; case '\\': case '"': case '?': case '\'': break;
-            case 'x': {
-                unsigned int digits = 0; c = 0;
-                while (p < end && hex(*p) >= 0) {
-                    if (c > 15) return XX_TRANSLATION_INVALID_PO;
-                    c = c * 16 + (unsigned int)hex(*p++); ++digits;
+                case 'a': c = 7; break;
+                case 'b': c = 8; break;
+                case 'f': c = 12; break;
+                case 'n': c = 10; break;
+                case 'r': c = 13; break;
+                case 't': c = 9; break;
+                case 'v': c = 11; break;
+                case '\\':
+                case '"':
+                case '?':
+                case '\'': break;
+                case 'x': {
+                    unsigned int digits = 0;
+                    c = 0;
+                    while (p < end && hex(*p) >= 0) {
+                        if (c > 15) return XX_TRANSLATION_INVALID_PO;
+                        c = c * 16 + (unsigned int)hex(*p++);
+                        ++digits;
+                    }
+                    if (!digits) return XX_TRANSLATION_INVALID_PO;
+                    break;
                 }
-                if (!digits) return XX_TRANSLATION_INVALID_PO;
-                break;
-            }
-            default:
-                if (c >= '0' && c <= '7') {
-                    int digits = 1; c -= '0';
-                    while (digits < 3 && p < end && *p >= '0' && *p <= '7') { c = c * 8 + (unsigned int)(*p++ - '0'); ++digits; }
-                } else return XX_TRANSLATION_INVALID_PO;
+                default:
+                    if (c >= '0' && c <= '7') {
+                        int digits = 1;
+                        c -= '0';
+                        while (digits < 3 && p < end && *p >= '0' && *p <= '7') {
+                            c = c * 8 + (unsigned int)(*p++ - '0');
+                            ++digits;
+                        }
+                    } else return XX_TRANSLATION_INVALID_PO;
             }
         }
         if (!c || c > 255) return XX_TRANSLATION_INVALID_PO;
@@ -384,19 +501,21 @@ static xx_translation_status quoted(char **field, size_t *length, size_t *capaci
     if (p == end || *p++ != '"') return XX_TRANSLATION_INVALID_PO;
     while (p < end && space(*p)) ++p;
     if (p != end) return XX_TRANSLATION_INVALID_PO;
-    buffer[at] = 0; *length = at;
+    buffer[at] = 0;
+    *length = at;
     return XX_TRANSLATION_OK;
 }
 static int keyword(const char **p, const char *end, const char *word)
 {
     const char *q = *p;
-    while (*word) { if (q == end || *q++ != *word++) return 0; }
+    while (*word) {
+        if (q == end || *q++ != *word++) return 0;
+    }
     if (q < end && !space(*q) && *q != '[') return 0;
     *p = q;
     return 1;
 }
-xx_translation_status xx_translation_load_po(const void *data, size_t size,
-    xx_translation **out, size_t *error_line)
+xx_translation_status xx_translation_load_po(const void *data, size_t size, xx_translation **out, size_t *error_line)
 {
     xx_translation *catalog;
     entry current = {0};
@@ -417,7 +536,13 @@ xx_translation_status xx_translation_load_po(const void *data, size_t size,
     if (size >= 3 && (unsigned char)p[0] == 0xef && (unsigned char)p[1] == 0xbb && (unsigned char)p[2] == 0xbf) p += 3;
     while (p < end) {
         const char *start = p, *stop, *q;
-        while (p < end && *p != '\n') { if (!*p) { status = XX_TRANSLATION_INVALID_PO; goto failed; } ++p; }
+        while (p < end && *p != '\n') {
+            if (!*p) {
+                status = XX_TRANSLATION_INVALID_PO;
+                goto failed;
+            }
+            ++p;
+        }
         stop = p;
         if (p < end) ++p;
         while (start < stop && space(*start)) ++start;
@@ -425,7 +550,10 @@ xx_translation_status xx_translation_load_po(const void *data, size_t size,
         if (start == stop || *start == '#') {
             if (current.seen || start == stop) {
                 status = publish(catalog, &current);
-                if (status != XX_TRANSLATION_OK) { line = current.line ? current.line : line; goto failed; }
+                if (status != XX_TRANSLATION_OK) {
+                    line = current.line ? current.line : line;
+                    goto failed;
+                }
                 field = NULL;
             }
             if (stop - start >= 2 && start[0] == '#' && start[1] == ',') {
@@ -439,11 +567,19 @@ xx_translation_status xx_translation_load_po(const void *data, size_t size,
                 }
             }
         } else if (*start == '"') {
-            if (!field) { status = XX_TRANSLATION_INVALID_PO; goto failed; }
+            if (!field) {
+                status = XX_TRANSLATION_INVALID_PO;
+                goto failed;
+            }
             status = quoted(field, &length, &capacity, start, stop);
             if (status != XX_TRANSLATION_OK) goto failed;
         } else {
-            enum { CONTEXT, ID, PLURAL, FORM } kind;
+            enum {
+                CONTEXT,
+                ID,
+                PLURAL,
+                FORM
+            } kind;
             unsigned int index = 0;
             int indexed = 0;
             q = start;
@@ -453,30 +589,60 @@ xx_translation_status xx_translation_load_po(const void *data, size_t size,
             else if (keyword(&q, stop, "msgstr")) {
                 kind = FORM;
                 if (q < stop && *q == '[') {
-                    indexed = 1; ++q;
-                    if (q == stop || *q < '0' || *q > '9') { status = XX_TRANSLATION_INVALID_PO; goto failed; }
+                    indexed = 1;
+                    ++q;
+                    if (q == stop || *q < '0' || *q > '9') {
+                        status = XX_TRANSLATION_INVALID_PO;
+                        goto failed;
+                    }
                     while (q < stop && *q >= '0' && *q <= '9') {
                         index = index * 10 + (unsigned int)(*q++ - '0');
-                        if (index >= MAX_FORMS) { status = XX_TRANSLATION_INVALID_PO; goto failed; }
+                        if (index >= MAX_FORMS) {
+                            status = XX_TRANSLATION_INVALID_PO;
+                            goto failed;
+                        }
                     }
-                    if (q == stop || *q++ != ']') { status = XX_TRANSLATION_INVALID_PO; goto failed; }
+                    if (q == stop || *q++ != ']') {
+                        status = XX_TRANSLATION_INVALID_PO;
+                        goto failed;
+                    }
                 }
-            } else { status = XX_TRANSLATION_INVALID_PO; goto failed; }
+            } else {
+                status = XX_TRANSLATION_INVALID_PO;
+                goto failed;
+            }
             if ((kind == CONTEXT || kind == ID) && current.seen) {
                 status = publish(catalog, &current);
-                if (status != XX_TRANSLATION_OK) { line = current.line ? current.line : line; goto failed; }
+                if (status != XX_TRANSLATION_OK) {
+                    line = current.line ? current.line : line;
+                    goto failed;
+                }
             }
             if (kind == CONTEXT) {
-                if (current.context || current.id) { status = XX_TRANSLATION_INVALID_PO; goto failed; }
-                field = &current.context; current.line = line;
+                if (current.context || current.id) {
+                    status = XX_TRANSLATION_INVALID_PO;
+                    goto failed;
+                }
+                field = &current.context;
+                current.line = line;
             } else if (kind == ID) {
-                if (current.id) { status = XX_TRANSLATION_INVALID_PO; goto failed; }
-                field = &current.id; if (!current.context) current.line = line;
+                if (current.id) {
+                    status = XX_TRANSLATION_INVALID_PO;
+                    goto failed;
+                }
+                field = &current.id;
+                if (!current.context) current.line = line;
             } else if (kind == PLURAL) {
-                if (!current.id || current.plural || current.seen) { status = XX_TRANSLATION_INVALID_PO; goto failed; }
+                if (!current.id || current.plural || current.seen) {
+                    status = XX_TRANSLATION_INVALID_PO;
+                    goto failed;
+                }
                 field = &current.plural;
             } else {
-                if (!current.id || current.forms[index] || indexed != (current.plural != NULL)) { status = XX_TRANSLATION_INVALID_PO; goto failed; }
+                if (!current.id || current.forms[index] || indexed != (current.plural != NULL)) {
+                    status = XX_TRANSLATION_INVALID_PO;
+                    goto failed;
+                }
                 current.seen |= 1u << index;
                 current.indexed = indexed;
                 field = &current.forms[index];
@@ -489,12 +655,19 @@ xx_translation_status xx_translation_load_po(const void *data, size_t size,
         ++line;
     }
     status = publish(catalog, &current);
-    if (status != XX_TRANSLATION_OK) { line = current.line ? current.line : line; goto failed; }
+    if (status != XX_TRANSLATION_OK) {
+        line = current.line ? current.line : line;
+        goto failed;
+    }
     /* Validate plural shape after all entries, including headers placed last. */
     for (i = 0; i < catalog->capacity; ++i) {
         entry *e;
         for (e = catalog->buckets[i]; e; e = e->next)
-            if (e->plural && e->seen != (1u << catalog->nplurals) - 1u) { line = e->line; status = XX_TRANSLATION_INVALID_PO; goto failed; }
+            if (e->plural && e->seen != (1u << catalog->nplurals) - 1u) {
+                line = e->line;
+                status = XX_TRANSLATION_INVALID_PO;
+                goto failed;
+            }
     }
     *out = catalog;
     return XX_TRANSLATION_OK;
@@ -516,8 +689,7 @@ const char *xx_translation_gettext(const xx_translation *catalog, const char *ms
 {
     return xx_translation_pgettext(catalog, NULL, msgid);
 }
-const char *xx_translation_npgettext(const xx_translation *catalog, const char *context,
-    const char *singular, const char *plural, uint64_t n)
+const char *xx_translation_npgettext(const xx_translation *catalog, const char *context, const char *singular, const char *plural, uint64_t n)
 {
     entry *e;
     uint64_t index = n != 1;
@@ -526,12 +698,10 @@ const char *xx_translation_npgettext(const xx_translation *catalog, const char *
     if (!singular) return fallback ? fallback : "";
     e = find(catalog, context, singular);
     if (catalog && catalog->root >= 0) index = evaluate(catalog, catalog->root, n, 0, &valid);
-    if (e && e->plural && !e->fuzzy && valid && index < catalog->nplurals &&
-        e->forms[index] && e->forms[index][0]) return e->forms[index];
+    if (e && e->plural && !e->fuzzy && valid && index < catalog->nplurals && e->forms[index] && e->forms[index][0]) return e->forms[index];
     return fallback ? fallback : "";
 }
-const char *xx_translation_ngettext(const xx_translation *catalog,
-    const char *singular, const char *plural, uint64_t n)
+const char *xx_translation_ngettext(const xx_translation *catalog, const char *singular, const char *plural, uint64_t n)
 {
     return xx_translation_npgettext(catalog, NULL, singular, plural, n);
 }

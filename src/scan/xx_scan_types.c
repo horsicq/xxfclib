@@ -5,7 +5,6 @@
 #include "xx_scan_types_internal.h"
 #include "xxfclib/memory/xx_memory.h"
 
-
 typedef struct xx_scan_type_window {
     xx_io_device view;
     xx_io_device *source;
@@ -67,8 +66,6 @@ static int64_t xx_scan_window_tell(xx_io_device *view)
     return window ? window->position : -1;
 }
 
-
-
 static size_t xx_scan_read_head(xx_io_device *device, uint8_t head[64])
 {
     size_t done = 0;
@@ -80,8 +77,6 @@ static size_t xx_scan_read_head(xx_io_device *device, uint8_t head[64])
     }
     return done;
 }
-
-
 
 /* Keep this focused detector independent of the full format dispatcher. */
 static xx_file_type_t xx_scan_parent_type(xx_file_type_t type)
@@ -139,7 +134,6 @@ oom:
     return NULL;
 }
 
-
 static xx_list_t *xx_scan_detect_type_window(xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd)
 {
     uint8_t head[64] = {0};
@@ -189,11 +183,9 @@ static xx_list_t *xx_scan_detect_type_window(xx_io_device *device, const xx_scan
     if (xx_scan_type_is_iso9660(device, size)) return xx_scan_type_list(XX_FILE_TYPE_ISO9660, pd);
     type = xx_scan_type_detect_pyc(head, head_size);
     if (type != XX_FILE_TYPE_UNKNOWN) return xx_scan_type_list(type, pd);
-    if (size > 0 && size <= XX_SCAN_COM_MAX_SIZE && options && xx_scan_has_com_suffix(options->file_name, true))
-        return xx_scan_type_list(XX_FILE_TYPE_COM, pd);
+    if (size > 0 && size <= XX_SCAN_COM_MAX_SIZE && options && xx_scan_has_com_suffix(options->file_name, true)) return xx_scan_type_list(XX_FILE_TYPE_COM, pd);
     return xx_scan_type_list(XX_FILE_TYPE_BINARY, pd);
 }
-
 
 xx_list_t *xx_scan_detect_type(xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd)
 {
@@ -241,4 +233,3 @@ xx_list_t *xx_scan_get_file_types(xx_scan_engine *engine, xx_io_device *device, 
     (void)engine;
     return xx_scan_detect_type(device, options, pd);
 }
-

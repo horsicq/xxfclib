@@ -119,17 +119,20 @@ static void RangeDec_Decode(CPpmd8 *p, ppmd8_range_dec *rd, uint32_t start, uint
     }
 }
 
-bool ppmd8_sqx_decode(CPpmd8 *p, bool *ready, const uint8_t *src, size_t packed_size,
-                      uint8_t *dst, size_t raw_size, xx_pd_struct *pd)
+bool ppmd8_sqx_decode(CPpmd8 *p, bool *ready, const uint8_t *src, size_t packed_size, uint8_t *dst, size_t raw_size, xx_pd_struct *pd)
 {
     ppmd8_range_dec rd;
-    unsigned params[3] = {0,0,0};
-    static const unsigned widths[3] = {1,8,10};
+    unsigned params[3] = {0, 0, 0};
+    static const unsigned widths[3] = {1, 8, 10};
     size_t i;
     if (!p || !ready || !src || !dst || packed_size < 4U || (pd && xx_pd_is_stopped(pd))) return false;
     xx_rt_memset(&rd, 0, sizeof(rd));
-    rd.sqx = true; rd.mem = src; rd.mem_size = packed_size;
-    p->Low = 0; p->Range = UINT32_MAX; p->Code = 0;
+    rd.sqx = true;
+    rd.mem = src;
+    rd.mem_size = packed_size;
+    p->Low = 0;
+    p->Range = UINT32_MAX;
+    p->Code = 0;
     for (i = 0; i < 4U; ++i) p->Code = (p->Code << 8) | ppmd8_rd_byte(&rd);
     for (i = 0; i < 3U; ++i) {
         unsigned j;

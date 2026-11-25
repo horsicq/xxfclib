@@ -47,12 +47,9 @@ XXFC_API void xx_dex_yx_destroy(xx_dex_yx_result *result);
    false when absent, while `is_dex` and repeated-field lengths are defined
    even for arbitrary non-DEX input. */
 XXFC_API bool xx_dex_yx_numeric_field_supported(const char *path);
-XXFC_API bool xx_dex_yx_numeric_field(const xx_dex_yx_result *result,
-                                      const char *path, uint64_t *value);
+XXFC_API bool xx_dex_yx_numeric_field(const xx_dex_yx_result *result, const char *path, uint64_t *value);
 XXFC_API bool xx_dex_yx_string_field_supported(const char *path);
-XXFC_API bool xx_dex_yx_string_field(const xx_dex_yx_result *result,
-                                     const char *path, const uint8_t **bytes,
-                                     size_t *length);
+XXFC_API bool xx_dex_yx_string_field(const xx_dex_yx_result *result, const char *path, const uint8_t **bytes, size_t *length);
 XXFC_API bool xx_dex_yx_constant(const char *name, uint64_t *value);
 
 /* Collection names: strings, types, protos, fields, methods, class_defs,
@@ -61,54 +58,28 @@ XXFC_API bool xx_dex_yx_constant(const char *name, uint64_t *value);
    YARA-X exposes map_list.items.len() == 1 when map_list is absent, although
    all fields of that placeholder item are undefined. */
 XXFC_API bool xx_dex_yx_collection_supported(const char *collection);
-XXFC_API bool xx_dex_yx_collection_count(const xx_dex_yx_result *result,
-                                         const char *collection,
-                                         uint64_t *count);
-XXFC_API bool xx_dex_yx_indexed_numeric_field_supported(const char *collection,
-                                                        const char *member);
-XXFC_API bool xx_dex_yx_indexed_numeric_field(const xx_dex_yx_result *result,
-                                              const char *collection,
-                                              uint64_t index,
-                                              const char *member,
-                                              uint64_t *value);
-XXFC_API bool xx_dex_yx_indexed_string_field_supported(const char *collection,
-                                                       const char *member);
-XXFC_API bool xx_dex_yx_indexed_string_field(const xx_dex_yx_result *result,
-                                             const char *collection,
-                                             uint64_t index,
-                                             const char *member,
-                                             const uint8_t **bytes,
+XXFC_API bool xx_dex_yx_collection_count(const xx_dex_yx_result *result, const char *collection, uint64_t *count);
+XXFC_API bool xx_dex_yx_indexed_numeric_field_supported(const char *collection, const char *member);
+XXFC_API bool xx_dex_yx_indexed_numeric_field(const xx_dex_yx_result *result, const char *collection, uint64_t index, const char *member, uint64_t *value);
+XXFC_API bool xx_dex_yx_indexed_string_field_supported(const char *collection, const char *member);
+XXFC_API bool xx_dex_yx_indexed_string_field(const xx_dex_yx_result *result, const char *collection, uint64_t index, const char *member, const uint8_t **bytes,
                                              size_t *length);
 
 /* Nested arrays are `protos[i].parameters[j]` and
   `methods[i].proto.parameters[j]`. The nested member is `parameters` or
   `proto.parameters`, respectively. */
-XXFC_API bool xx_dex_yx_nested_collection_count(const xx_dex_yx_result *result,
-                                                const char *collection,
-                                                uint64_t index,
-                                                const char *nested,
-                                                uint64_t *count);
-XXFC_API bool xx_dex_yx_nested_indexed_string(
-    const xx_dex_yx_result *result, const char *collection, uint64_t index,
-    const char *nested, uint64_t nested_index, const uint8_t **bytes,
-    size_t *length);
+XXFC_API bool xx_dex_yx_nested_collection_count(const xx_dex_yx_result *result, const char *collection, uint64_t index, const char *nested, uint64_t *count);
+XXFC_API bool xx_dex_yx_nested_indexed_string(const xx_dex_yx_result *result, const char *collection, uint64_t index, const char *nested, uint64_t nested_index,
+                                              const uint8_t **bytes, size_t *length);
 
 /* Exported module functions. Predicates are defined as false for non-DEX
    input. checksum/signature are undefined on non-DEX input. The SHA-1 digest
    and header signature are lowercase hexadecimal strings. */
-XXFC_API bool xx_dex_yx_contains_string(const xx_dex_yx_result *result,
-                                        const uint8_t *bytes, size_t length,
-                                        bool *found);
-XXFC_API bool xx_dex_yx_contains_method(const xx_dex_yx_result *result,
-                                        const uint8_t *bytes, size_t length,
-                                        bool *found);
-XXFC_API bool xx_dex_yx_contains_class(const xx_dex_yx_result *result,
-                                       const uint8_t *bytes, size_t length,
-                                       bool *found);
-XXFC_API bool xx_dex_yx_checksum(const xx_dex_yx_result *result,
-                                 uint64_t *value);
-XXFC_API bool xx_dex_yx_signature(const xx_dex_yx_result *result,
-                                  char out[41]);
+XXFC_API bool xx_dex_yx_contains_string(const xx_dex_yx_result *result, const uint8_t *bytes, size_t length, bool *found);
+XXFC_API bool xx_dex_yx_contains_method(const xx_dex_yx_result *result, const uint8_t *bytes, size_t length, bool *found);
+XXFC_API bool xx_dex_yx_contains_class(const xx_dex_yx_result *result, const uint8_t *bytes, size_t length, bool *found);
+XXFC_API bool xx_dex_yx_checksum(const xx_dex_yx_result *result, uint64_t *value);
+XXFC_API bool xx_dex_yx_signature(const xx_dex_yx_result *result, char out[41]);
 
 #ifdef __cplusplus
 }

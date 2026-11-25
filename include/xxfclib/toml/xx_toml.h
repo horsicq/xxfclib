@@ -43,8 +43,13 @@ extern "C" {
  */
 
 typedef enum xx_toml_kind {
-    XX_TOML_TABLE, XX_TOML_ARRAY, XX_TOML_STRING, XX_TOML_INTEGER,
-    XX_TOML_FLOAT, XX_TOML_BOOLEAN, XX_TOML_DATETIME
+    XX_TOML_TABLE,
+    XX_TOML_ARRAY,
+    XX_TOML_STRING,
+    XX_TOML_INTEGER,
+    XX_TOML_FLOAT,
+    XX_TOML_BOOLEAN,
+    XX_TOML_DATETIME
 } xx_toml_kind;
 typedef struct xx_toml_value xx_toml_value;
 struct xx_toml_value {
@@ -68,13 +73,11 @@ typedef struct xx_toml_error {
 } xx_toml_error;
 /* Input remains owned by the caller. The returned tree owns all its strings.
  * Offsets refer to the original input, including a leading UTF-8 BOM. */
-XXFC_API xx_toml_value *xx_toml_parse(const char *source, size_t length,
-                                      xx_toml_error *error);
+XXFC_API xx_toml_value *xx_toml_parse(const char *source, size_t length, xx_toml_error *error);
 /* Release the diagnostic message after an unsuccessful parse. */
 XXFC_API void xx_toml_error_clear(xx_toml_error *error);
 XXFC_API void xx_toml_free(xx_toml_value *value);
-XXFC_API const xx_toml_value *xx_toml_get(const xx_toml_value *table,
-                                          const char *key);
+XXFC_API const xx_toml_value *xx_toml_get(const xx_toml_value *table, const char *key);
 
 #ifdef __cplusplus
 }

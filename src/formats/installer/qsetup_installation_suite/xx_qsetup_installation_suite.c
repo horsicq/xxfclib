@@ -374,7 +374,6 @@ static bool qs_is_device(const uint8_t *name, size_t length)
 /* Windows-1252 for 0x80..0x9F; 0 marks the five unassigned bytes.  The
  * remaining high bytes are the same code points as Latin-1. */
 
-
 static uint32_t qs_code_point(uint8_t c)
 {
     if (c < 0x80U || c >= 0xA0U) return c;

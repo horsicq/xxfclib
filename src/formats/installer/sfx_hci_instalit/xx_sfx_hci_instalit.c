@@ -949,8 +949,8 @@ static bool sh_pe_exefiles(Abstractformat *self, int64_t image_size, sh_layout *
     bool result = false;
     if (image_size < 64 || !sh_read_at(self->device, self->base_address, dos, sizeof(dos)) || dos[0] != 'M' || dos[1] != 'Z') return false;
     pe_offset = xx_data_get_u32(dos + 60U, 4, 0, false);
-    if (!sh_within(image_size, pe_offset, 24) || !sh_read_at(self->device, self->base_address + pe_offset, sig, sizeof(sig)) ||
-        xx_rt_memcmp(sig, "PE\0\0", sizeof(sig))) return false;
+    if (!sh_within(image_size, pe_offset, 24) || !sh_read_at(self->device, self->base_address + pe_offset, sig, sizeof(sig)) || xx_rt_memcmp(sig, "PE\0\0", sizeof(sig)))
+        return false;
     xx_pe_init(&pe, self->device, self->base_address);
     state = pe_resource_stream_create(&pe.format, pd);
     if (!state) goto done;
@@ -965,13 +965,17 @@ static bool sh_pe_exefiles(Abstractformat *self, int64_t image_size, sh_layout *
         if (!resource->type_name || !sh_is_exefile(resource->type_name)) goto next;
         offset = resource->offset - self->base_address;
         if (resource->size < 10 || resource->size > SH_MAX_PACKED + 8 || !sh_within(image_size, offset, resource->size) ||
-            !sh_read_at(self->device, resource->offset, head, sizeof(head))) goto next;
+            !sh_read_at(self->device, resource->offset, head, sizeof(head)))
+            goto next;
         raw = head[0] == 'M' && head[1] == 'Z';
         packed = xx_data_get_u32(head + 4U, 4, 0, false);
         dcl = !raw && head[8] <= 1U && head[9] >= 4U && head[9] <= 6U && packed >= 3U && (int64_t)packed <= resource->size - 8;
         if (!raw && !dcl) goto next;
         if (++found > SH_MAX_EXEFILES) goto done;
-        if (!layout) { result = true; goto done; }
+        if (!layout) {
+            result = true;
+            goto done;
+        }
         {
             sh_entry *entry = sh_layout_add(layout);
             if (!entry) goto done;
@@ -984,7 +988,10 @@ static bool sh_pe_exefiles(Abstractformat *self, int64_t image_size, sh_layout *
             entry->unpacked_size = raw ? resource->size : 0;
             entry->kind = raw ? SH_ENTRY_EXEFILE_RAW : SH_ENTRY_EXEFILE_DCL;
             entry->method = raw ? 0U : SH_METHOD_DCL;
-            if (!raw) { entry->crc = xx_data_get_u32(head, 4, 0, false); entry->crc_kind = SH_CRC_32; }
+            if (!raw) {
+                entry->crc = xx_data_get_u32(head, 4, 0, false);
+                entry->crc_kind = SH_CRC_32;
+            }
             ++layout->exefile_count;
         }
     next:
@@ -1254,8 +1261,7 @@ static bool sh_parse(Abstractformat *self, sh_layout *layout, bool full, xx_pd_s
                 /* Win32 Shadow's0xE0 catalog method is DCL; the NE/data-volume
                  * generation retains its original0xE0 LZW interpretation. */
                 for (index = 0U; index < layout->count; ++index)
-                    if (layout->entries[index].kind == SH_ENTRY_MEMBER && layout->entries[index].method == SH_METHOD_LZW)
-                        layout->entries[index].method = SH_METHOD_DCL;
+                    if (layout->entries[index].kind == SH_ENTRY_MEMBER && layout->entries[index].method == SH_METHOD_LZW) layout->entries[index].method = SH_METHOD_DCL;
             }
         }
     }

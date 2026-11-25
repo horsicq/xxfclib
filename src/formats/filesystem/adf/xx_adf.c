@@ -193,8 +193,8 @@ typedef struct adf_frame_s {
     uint32_t block;  /**< Directory (or root) header block. */
     uint32_t member; /**< Its member index; ADF_NO_PARENT for the root. */
     uint32_t table[ADF_HT_SIZE];
-    uint32_t slot; /**< Next hash slot to start. */
-    uint32_t next; /**< Next entry on the current chain, 0 if none. */
+    uint32_t slot;  /**< Next hash slot to start. */
+    uint32_t next;  /**< Next entry on the current chain, 0 if none. */
     uint32_t prior; /**< Entry whose chain field gave @c next, 0 for a table slot. */
 } adf_frame;
 
@@ -1188,7 +1188,8 @@ static uint32_t adf_hunk_size(const uint8_t *data, size_t limit, uint32_t *sizes
                     if (!adf_be32(data, limit, at, &length)) return 0U;
                     at += 4U;
                     if (length == 0U) break;
-                    if (!adf_be32(data, limit, at, &target) || target >= count || length > sizes[index] / 4U || !adf_room(limit, at + 4U, (uint64_t)length * 4U)) return 0U;
+                    if (!adf_be32(data, limit, at, &target) || target >= count || length > sizes[index] / 4U || !adf_room(limit, at + 4U, (uint64_t)length * 4U))
+                        return 0U;
                     at += 4U;
                     for (entry = 0U; entry < length; ++entry) {
                         (void)adf_be32(data, limit, at + (size_t)entry * 4U, &value);
@@ -1249,10 +1250,10 @@ typedef struct adf_iff_type_s {
     const char *extension;
 } adf_iff_type;
 
-static const adf_iff_type adf_iff_types[] = {
-    {"ILBM", "picture", ".iff"}, {"PBM ", "picture", ".iff"}, {"ACBM", "picture", ".iff"}, {"DEEP", "picture", ".iff"}, {"RGBN", "picture", ".iff"},
-    {"RGB8", "picture", ".iff"}, {"ANIM", "anim", ".anim"},   {"8SVX", "sound", ".8svx"},  {"16SV", "sound", ".8svx"},  {"MAUD", "sound", ".maud"},
-    {"AIFF", "sound", ".aiff"},  {"AIFC", "sound", ".aiff"},  {"SMUS", "score", ".smus"},  {"FTXT", "text", ".iff"}};
+static const adf_iff_type adf_iff_types[] = {{"ILBM", "picture", ".iff"}, {"PBM ", "picture", ".iff"}, {"ACBM", "picture", ".iff"}, {"DEEP", "picture", ".iff"},
+                                             {"RGBN", "picture", ".iff"}, {"RGB8", "picture", ".iff"}, {"ANIM", "anim", ".anim"},   {"8SVX", "sound", ".8svx"},
+                                             {"16SV", "sound", ".8svx"},  {"MAUD", "sound", ".maud"},  {"AIFF", "sound", ".aiff"},  {"AIFC", "sound", ".aiff"},
+                                             {"SMUS", "score", ".smus"},  {"FTXT", "text", ".iff"}};
 
 /* Byte size of the IFF file at @p data, 0 when it is not one.  @p type is
  * its table entry; @p name / @p name_size the first NAME chunk, if any. */
@@ -1466,7 +1467,8 @@ static bool adf_carve(Abstractformat *format, adf_stream *stream, adf_names *nam
         unsigned crunch = ADFC_NONE;
         uint8_t byte = image[at];
         if (byte == 0U) {
-            if (at >= next_hunk && image[at + 1U] == 0U && image[at + 2U] == 3U && image[at + 3U] == 0xF3U && (length = adf_hunk_size(image + at, limit - at, hunks)) != 0U) {
+            if (at >= next_hunk && image[at + 1U] == 0U && image[at + 2U] == 3U && image[at + 3U] == 0xF3U &&
+                (length = adf_hunk_size(image + at, limit - at, hunks)) != 0U) {
                 start = (uint32_t)at;
                 next_hunk = at + length;
                 name_size = adf_carve_offset_name(raw, "program", start);
@@ -1838,8 +1840,8 @@ static bool adf_copy_chain(const adf_volume *volume, uint32_t header, uint64_t e
         if (++sequence > volume->blocks || !adf_pointer_ok(volume, pointer) || pointer == volume->root || pointer == header || !adf_read_block(volume, pointer, data))
             return false;
         size = xx_data_get_u32(data + 12U, 4, 0, true);
-        if (xx_data_get_u32(data, 4, 0, true) != ADF_T_DATA || xx_data_get_u32(data + 4U, 4, 0, true) != header ||
-            xx_data_get_u32(data + 8U, 4, 0, true) != sequence || size == 0U || size > ADF_OFS_PAYLOAD || (uint64_t)size > remaining || !adf_checksum_ok(data))
+        if (xx_data_get_u32(data, 4, 0, true) != ADF_T_DATA || xx_data_get_u32(data + 4U, 4, 0, true) != header || xx_data_get_u32(data + 8U, 4, 0, true) != sequence ||
+            size == 0U || size > ADF_OFS_PAYLOAD || (uint64_t)size > remaining || !adf_checksum_ok(data))
             return false;
         if (!adf_sink_put(sink, data + ADF_OFS_HEADER, (size_t)size)) return false;
         remaining -= size;
@@ -1877,7 +1879,8 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header, uint64_t ex
 static bool adf_orphan_ok(const uint8_t *block, uint32_t number, uint32_t secondary)
 {
     return xx_data_get_u32(block + ADF_OFF_TYPE, 4, 0, true) == ADF_T_HEADER && xx_data_get_u32(block + ADF_OFF_KEY, 4, 0, true) == number &&
-           xx_data_get_u32(block + ADF_OFF_SEC_TYPE, 4, 0, true) == secondary && block[ADF_OFF_NAME] != 0U && block[ADF_OFF_NAME] <= ADF_NAME_MAX && adf_checksum_ok(block);
+           xx_data_get_u32(block + ADF_OFF_SEC_TYPE, 4, 0, true) == secondary && block[ADF_OFF_NAME] != 0U && block[ADF_OFF_NAME] <= ADF_NAME_MAX &&
+           adf_checksum_ok(block);
 }
 
 /* List the files of a floppy whose root block is gone but whose file header
@@ -1901,7 +1904,7 @@ static bool adf_scavenge(Abstractformat *format, adf_stream *stream, adf_names *
     uint8_t boot[4], block[ADF_BSIZE];
     adf_volume volume;
     adf_sink sink;
-    uint8_t *state = NULL;   /* per block: 1 sound file header, 2 directory header */
+    uint8_t *state = NULL;  /* per block: 1 sound file header, 2 directory header */
     uint32_t *owner = NULL; /* per directory block: its member index */
     uint32_t number, files = 0U, rounds;
     uint64_t verified = 0U;
@@ -2133,7 +2136,8 @@ static bool adf_set_record(xx_archive_record *record, const adf_stream *stream, 
     named = xx_archive_record_set_original_name(record, name);
     xx_mem_free(name);
     if (!named || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, stored) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, size) || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->crunch) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, size) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->crunch) ||
         !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->protect) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, folder))
         return false;

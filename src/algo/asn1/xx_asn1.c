@@ -128,8 +128,7 @@ static bool parse_tlv_internal(const uint8_t *data, size_t size, unsigned depth,
     if (!read_length(data + id_used, size - id_used, &content_len, &indefinite, &len_used, &nm)) return false;
     if (indefinite && !constructed) return false; /* X.690 8.1.3.2 */
     /* End-of-Contents has precisely the two-octet encoding 00 00. */
-    if (!opaque_any && cls == XX_ASN1_CLASS_UNIVERSAL && tag == 0U &&
-        (constructed || indefinite || content_len != 0U || id_used != 1U || len_used != 1U)) return false;
+    if (!opaque_any && cls == XX_ASN1_CLASS_UNIVERSAL && tag == 0U && (constructed || indefinite || content_len != 0U || id_used != 1U || len_used != 1U)) return false;
 
     header_size = id_used + len_used;
     content = data + header_size;
@@ -371,9 +370,9 @@ bool xx_asn1_read_bit_string_primitive(const xx_asn1_tlv *tlv, unsigned *out_unu
 /* Shared flattening for BIT STRING / OCTET STRING, primitive or BER-constructed. */
 static bool flatten_string(const xx_asn1_tlv *tlv, uint32_t expected_tag, unsigned depth, uint8_t *out, size_t cap, size_t *out_size, unsigned *out_unused_bits)
 {
-    if (!tlv || depth > XX_ASN1_MAX_DEPTH || (!out && cap != 0U) ||
-        (!tlv->content && tlv->content_size != 0U) ||
-        tlv->tag_class != XX_ASN1_CLASS_UNIVERSAL || tlv->tag != expected_tag) return false;
+    if (!tlv || depth > XX_ASN1_MAX_DEPTH || (!out && cap != 0U) || (!tlv->content && tlv->content_size != 0U) || tlv->tag_class != XX_ASN1_CLASS_UNIVERSAL ||
+        tlv->tag != expected_tag)
+        return false;
 
     if (!tlv->constructed) {
         if (expected_tag == (uint32_t)XX_ASN1_TAG_BIT_STRING) {
@@ -533,7 +532,8 @@ bool xx_asn1_read_time(const xx_asn1_tlv *tlv, int64_t *out)
     if (is_generalized && i < n && s[i] == '.') {
         if (!has_seconds) return false; /* A minute fraction is not a seconds fraction. */
         size_t fraction_start;
-        ++i; fraction_start = i;
+        ++i;
+        fraction_start = i;
         while (i < n && s[i] >= '0' && s[i] <= '9') ++i;
         if (i - fraction_start > 3U) return false; /* asn1-rs 0.7.2 milliseconds */
     }
@@ -573,21 +573,19 @@ bool xx_asn1_read_time(const xx_asn1_tlv *tlv, int64_t *out)
 bool xx_asn1_is_string_tag(uint32_t tag)
 {
     switch (tag) {
-    case (uint32_t)XX_ASN1_TAG_UTF8_STRING:
-    case (uint32_t)XX_ASN1_TAG_NUMERIC_STRING:
-    case (uint32_t)XX_ASN1_TAG_PRINTABLE_STRING:
-    case (uint32_t)XX_ASN1_TAG_T61_STRING:
-    case (uint32_t)XX_ASN1_TAG_VIDEOTEX_STRING:
-    case (uint32_t)XX_ASN1_TAG_IA5_STRING:
-    case (uint32_t)XX_ASN1_TAG_GRAPHIC_STRING:
-    case (uint32_t)XX_ASN1_TAG_VISIBLE_STRING:
-    case (uint32_t)XX_ASN1_TAG_GENERAL_STRING:
-    case (uint32_t)XX_ASN1_TAG_UNIVERSAL_STRING:
-    case (uint32_t)XX_ASN1_TAG_CHARACTER_STRING:
-    case (uint32_t)XX_ASN1_TAG_BMP_STRING:
-        return true;
-    default:
-        return false;
+        case (uint32_t)XX_ASN1_TAG_UTF8_STRING:
+        case (uint32_t)XX_ASN1_TAG_NUMERIC_STRING:
+        case (uint32_t)XX_ASN1_TAG_PRINTABLE_STRING:
+        case (uint32_t)XX_ASN1_TAG_T61_STRING:
+        case (uint32_t)XX_ASN1_TAG_VIDEOTEX_STRING:
+        case (uint32_t)XX_ASN1_TAG_IA5_STRING:
+        case (uint32_t)XX_ASN1_TAG_GRAPHIC_STRING:
+        case (uint32_t)XX_ASN1_TAG_VISIBLE_STRING:
+        case (uint32_t)XX_ASN1_TAG_GENERAL_STRING:
+        case (uint32_t)XX_ASN1_TAG_UNIVERSAL_STRING:
+        case (uint32_t)XX_ASN1_TAG_CHARACTER_STRING:
+        case (uint32_t)XX_ASN1_TAG_BMP_STRING: return true;
+        default: return false;
     }
 }
 
@@ -595,31 +593,31 @@ const char *xx_asn1_tag_name(xx_asn1_class tag_class, uint32_t tag)
 {
     if (tag_class != XX_ASN1_CLASS_UNIVERSAL) return "CONTEXT/APPLICATION/PRIVATE";
     switch (tag) {
-    case (uint32_t)XX_ASN1_TAG_EOC: return "EOC";
-    case (uint32_t)XX_ASN1_TAG_BOOLEAN: return "BOOLEAN";
-    case (uint32_t)XX_ASN1_TAG_INTEGER: return "INTEGER";
-    case (uint32_t)XX_ASN1_TAG_BIT_STRING: return "BIT STRING";
-    case (uint32_t)XX_ASN1_TAG_OCTET_STRING: return "OCTET STRING";
-    case (uint32_t)XX_ASN1_TAG_NULL: return "NULL";
-    case (uint32_t)XX_ASN1_TAG_OID: return "OBJECT IDENTIFIER";
-    case (uint32_t)XX_ASN1_TAG_ENUMERATED: return "ENUMERATED";
-    case (uint32_t)XX_ASN1_TAG_UTF8_STRING: return "UTF8String";
-    case (uint32_t)XX_ASN1_TAG_SEQUENCE: return "SEQUENCE";
-    case (uint32_t)XX_ASN1_TAG_SET: return "SET";
-    case (uint32_t)XX_ASN1_TAG_PRINTABLE_STRING: return "PrintableString";
-    case (uint32_t)XX_ASN1_TAG_T61_STRING: return "T61String";
-    case (uint32_t)XX_ASN1_TAG_IA5_STRING: return "IA5String";
-    case (uint32_t)XX_ASN1_TAG_UTCTIME: return "UTCTime";
-    case (uint32_t)XX_ASN1_TAG_GENERALIZEDTIME: return "GeneralizedTime";
-    case (uint32_t)XX_ASN1_TAG_BMP_STRING: return "BMPString";
-    default: return "UNKNOWN";
+        case (uint32_t)XX_ASN1_TAG_EOC: return "EOC";
+        case (uint32_t)XX_ASN1_TAG_BOOLEAN: return "BOOLEAN";
+        case (uint32_t)XX_ASN1_TAG_INTEGER: return "INTEGER";
+        case (uint32_t)XX_ASN1_TAG_BIT_STRING: return "BIT STRING";
+        case (uint32_t)XX_ASN1_TAG_OCTET_STRING: return "OCTET STRING";
+        case (uint32_t)XX_ASN1_TAG_NULL: return "NULL";
+        case (uint32_t)XX_ASN1_TAG_OID: return "OBJECT IDENTIFIER";
+        case (uint32_t)XX_ASN1_TAG_ENUMERATED: return "ENUMERATED";
+        case (uint32_t)XX_ASN1_TAG_UTF8_STRING: return "UTF8String";
+        case (uint32_t)XX_ASN1_TAG_SEQUENCE: return "SEQUENCE";
+        case (uint32_t)XX_ASN1_TAG_SET: return "SET";
+        case (uint32_t)XX_ASN1_TAG_PRINTABLE_STRING: return "PrintableString";
+        case (uint32_t)XX_ASN1_TAG_T61_STRING: return "T61String";
+        case (uint32_t)XX_ASN1_TAG_IA5_STRING: return "IA5String";
+        case (uint32_t)XX_ASN1_TAG_UTCTIME: return "UTCTime";
+        case (uint32_t)XX_ASN1_TAG_GENERALIZEDTIME: return "GeneralizedTime";
+        case (uint32_t)XX_ASN1_TAG_BMP_STRING: return "BMPString";
+        default: return "UNKNOWN";
     }
 }
 
 bool xx_asn1_read_string_primitive(const xx_asn1_tlv *tlv, uint32_t *out_tag, const uint8_t **out_bytes, size_t *out_size)
 {
-    if (!tlv || tlv->constructed || tlv->tag_class != XX_ASN1_CLASS_UNIVERSAL ||
-        !xx_asn1_is_string_tag(tlv->tag) || (!tlv->content && tlv->content_size != 0U)) return false;
+    if (!tlv || tlv->constructed || tlv->tag_class != XX_ASN1_CLASS_UNIVERSAL || !xx_asn1_is_string_tag(tlv->tag) || (!tlv->content && tlv->content_size != 0U))
+        return false;
     if (out_tag) *out_tag = tlv->tag;
     if (out_bytes) *out_bytes = tlv->content;
     if (out_size) *out_size = tlv->content_size;

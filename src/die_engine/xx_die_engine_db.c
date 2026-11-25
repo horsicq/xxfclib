@@ -106,11 +106,9 @@ static char *db_normalize_metadata_tags(const char *pText, size_t nSize)
     return pResult;
 }
 
-static int db_metadata_matches(const DBSignatureMetadata *pMetadata,
-                               XFileType fileType, const char *pName, size_t nNameSize)
+static int db_metadata_matches(const DBSignatureMetadata *pMetadata, XFileType fileType, const char *pName, size_t nNameSize)
 {
-    return pMetadata && pMetadata->fileType == fileType && pMetadata->pName &&
-           db_ascii_span_equal(pMetadata->pName, xx_rt_strlen(pMetadata->pName), pName, nNameSize);
+    return pMetadata && pMetadata->fileType == fileType && pMetadata->pName && db_ascii_span_equal(pMetadata->pName, xx_rt_strlen(pMetadata->pName), pName, nNameSize);
 }
 
 static unsigned int db_metadata_kind_mask(DBKind kind)
@@ -132,9 +130,7 @@ static void db_apply_metadata_entry(DBase *pDb, const DBSignatureMetadata *pMeta
         DBSignature *pRecord = &pDb->pRecords[i];
         if ((unsigned int)pRecord->databaseType > (unsigned int)DB_CUSTOM) continue;
         if ((pMetadata->databaseKinds & (1U << (unsigned int)pRecord->databaseType)) == 0U) continue;
-        if (!db_metadata_matches(pMetadata, pRecord->fileType,
-                                 pRecord->pName ? pRecord->pName : "",
-                                 pRecord->pName ? xx_rt_strlen(pRecord->pName) : 0U)) continue;
+        if (!db_metadata_matches(pMetadata, pRecord->fileType, pRecord->pName ? pRecord->pName : "", pRecord->pName ? xx_rt_strlen(pRecord->pName) : 0U)) continue;
         cd_free(pRecord->pTags);
         pRecord->pTags = cd_strdup(pMetadata->pTags ? pMetadata->pTags : "");
     }
@@ -149,25 +145,21 @@ static void db_apply_stored_metadata(DBase *pDb, int nFirstRecord)
     }
 }
 
-static DBSignatureMetadata *db_store_metadata(DBase *pDb, XFileType fileType,
-                                               const char *pName, size_t nNameSize,
-                                               char *pNormalizedTags, unsigned int databaseKinds)
+static DBSignatureMetadata *db_store_metadata(DBase *pDb, XFileType fileType, const char *pName, size_t nNameSize, char *pNormalizedTags, unsigned int databaseKinds)
 {
     DBSignatureMetadata *pMetadata;
     int i;
     if (!pDb || !pName || !nNameSize || !pNormalizedTags) return NULL;
     for (i = 0; i < pDb->nMetadataCount; ++i) {
         pMetadata = &pDb->pMetadata[i];
-        if (pMetadata->databaseKinds != databaseKinds ||
-            !db_metadata_matches(pMetadata, fileType, pName, nNameSize)) continue;
+        if (pMetadata->databaseKinds != databaseKinds || !db_metadata_matches(pMetadata, fileType, pName, nNameSize)) continue;
         cd_free(pMetadata->pTags);
         pMetadata->pTags = pNormalizedTags;
         return pMetadata;
     }
     if (pDb->nMetadataCount == pDb->nMetadataCapacity) {
         int nNewCapacity = pDb->nMetadataCapacity ? pDb->nMetadataCapacity * 2 : 64;
-        pDb->pMetadata = (DBSignatureMetadata *)cd_realloc(
-            pDb->pMetadata, (size_t)nNewCapacity * sizeof(*pDb->pMetadata));
+        pDb->pMetadata = (DBSignatureMetadata *)cd_realloc(pDb->pMetadata, (size_t)nNewCapacity * sizeof(*pDb->pMetadata));
         pDb->nMetadataCapacity = nNewCapacity;
     }
     pMetadata = &pDb->pMetadata[pDb->nMetadataCount++];
@@ -180,8 +172,7 @@ static DBSignatureMetadata *db_store_metadata(DBase *pDb, XFileType fileType,
     return pMetadata;
 }
 
-static void db_apply_metadata_text(DBase *pDb, DBKind metadataKind, XFileType fileType,
-                                   const char *pText, size_t nTextSize)
+static void db_apply_metadata_text(DBase *pDb, DBKind metadataKind, XFileType fileType, const char *pText, size_t nTextSize)
 {
     size_t nPosition = 0;
     if (!pDb || !pText) return;
@@ -205,8 +196,8 @@ static void db_apply_metadata_text(DBase *pDb, DBKind metadataKind, XFileType fi
         while (nLineStart < nLineEnd && db_is_tag_space(pText[nLineStart])) ++nLineStart;
         while (nLineEnd > nLineStart && db_is_tag_space(pText[nLineEnd - 1])) --nLineEnd;
         if (nLineStart == nLineEnd) continue;
-        if (nLineStart == 0 && nLineEnd - nLineStart >= 3 &&
-            (unsigned char)pText[0] == 0xefU && (unsigned char)pText[1] == 0xbbU && (unsigned char)pText[2] == 0xbfU) nLineStart += 3;
+        if (nLineStart == 0 && nLineEnd - nLineStart >= 3 && (unsigned char)pText[0] == 0xefU && (unsigned char)pText[1] == 0xbbU && (unsigned char)pText[2] == 0xbfU)
+            nLineStart += 3;
 
         for (i = nLineStart; i < nLineEnd; ++i) {
             if (pText[i] == '#') nHash = (size_t)i;
@@ -217,8 +208,7 @@ static void db_apply_metadata_text(DBase *pDb, DBKind metadataKind, XFileType fi
         if (!nNameSize) continue;
         /* PE metadata is recursive. Its DOTNET/foo.sg names correspond to
          * records loaded from db/PE/DOTNET with the CLI-assembly type. */
-        if (fileType == XFT_PE && nNameSize > 7U &&
-            db_ascii_span_equal(pName, 7U, "DOTNET/", 7U)) {
+        if (fileType == XFT_PE && nNameSize > 7U && db_ascii_span_equal(pName, 7U, "DOTNET/", 7U)) {
             recordFileType = XFT_CLI_ASSEMBLY;
             pName += 7U;
             nNameSize -= 7U;
@@ -229,8 +219,7 @@ static void db_apply_metadata_text(DBase *pDb, DBKind metadataKind, XFileType fi
             db_trim_span(&pTags, &nTagsSize);
         }
         pNormalized = db_normalize_metadata_tags(pTags ? pTags : "", nTagsSize);
-        pMetadata = db_store_metadata(pDb, recordFileType, pName, nNameSize, pNormalized,
-                                      db_metadata_kind_mask(metadataKind));
+        pMetadata = db_store_metadata(pDb, recordFileType, pName, nNameSize, pNormalized, db_metadata_kind_mask(metadataKind));
         if (pMetadata) db_apply_metadata_entry(pDb, pMetadata, 0);
         else cd_free(pNormalized);
     }
@@ -307,8 +296,7 @@ static void db_sort_loaded_records(DBase *pDb, int nBefore, DBKind kind)
         while (hole > nBefore) {
             DBSignature *previous = &pDb->pRecords[hole - 1];
             int previousOrder = previous->fileType == value.fileType ? order : db_directory_order(previous->fileType);
-            if (previousOrder < order ||
-                (previousOrder == order && cd_stricmp_ascii(previous->pName, value.pName) <= 0)) break;
+            if (previousOrder < order || (previousOrder == order && cd_stricmp_ascii(previous->pName, value.pName) <= 0)) break;
             pDb->pRecords[hole] = *previous;
             --hole;
         }
@@ -855,16 +843,13 @@ static int db_create_tar_internal(const char *pDbPath, const char *pTarPath, int
                             size_t nBcSize = 0;
                             void *pBc = js_compile_to_bytecode(pJs, pText, pEntry->name, &nBcSize);
                             if (pBc && nBcSize > 0) {
-                                bResult = tar_write_header(pTar, sRelPath, nBcSize) &&
-                                          tar_write_data(pTar, pBc, nBcSize);
+                                bResult = tar_write_header(pTar, sRelPath, nBcSize) && tar_write_data(pTar, pBc, nBcSize);
                                 xx_rt_free(pBc);
                             } else {
-                                bResult = tar_write_header(pTar, sRelPath, (size_t)nFileSize) &&
-                                          tar_write_data(pTar, pText, (size_t)nFileSize);
+                                bResult = tar_write_header(pTar, sRelPath, (size_t)nFileSize) && tar_write_data(pTar, pText, (size_t)nFileSize);
                             }
                         } else {
-                            bResult = tar_write_header(pTar, sRelPath, (size_t)nFileSize) &&
-                                      tar_write_data(pTar, pText, (size_t)nFileSize);
+                            bResult = tar_write_header(pTar, sRelPath, (size_t)nFileSize) && tar_write_data(pTar, pText, (size_t)nFileSize);
                         }
 
                         cd_free(pText);
@@ -1087,8 +1072,7 @@ int db_load_tar(DBase *pDb, const char *pTarPath, DBKind kind)
         if (!bReadError && pDb->nCount > nBefore) {
             db_apply_stored_metadata(pDb, nBefore);
             for (i = 0; i < nMetadataCount; ++i) {
-                db_apply_metadata_text(pDb, kind, pMetadata[i].fileType,
-                                       pMetadata[i].pText, pMetadata[i].nSize);
+                db_apply_metadata_text(pDb, kind, pMetadata[i].fileType, pMetadata[i].pText, pMetadata[i].nSize);
             }
         }
         for (i = 0; i < nMetadataCount; ++i) {

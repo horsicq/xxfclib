@@ -48,15 +48,12 @@ static int xx_parallel_helper(void *arg)
     return 0;
 }
 
-uint32_t xx_parallel_for(size_t count, uint32_t thread_count, size_t stack_size,
-                         xx_parallel_fn fn, void *context)
+uint32_t xx_parallel_for(size_t count, uint32_t thread_count, size_t stack_size, xx_parallel_fn fn, void *context)
 {
     return xx_parallel_for_ex(count, thread_count, stack_size, fn, NULL, context);
 }
 
-uint32_t xx_parallel_for_ex(size_t count, uint32_t thread_count, size_t stack_size,
-                            xx_parallel_fn fn, void (*helper_done)(void *context),
-                            void *context)
+uint32_t xx_parallel_for_ex(size_t count, uint32_t thread_count, size_t stack_size, xx_parallel_fn fn, void (*helper_done)(void *context), void *context)
 {
     xx_parallel_state_t state;
     xx_thread_t **helpers = NULL;

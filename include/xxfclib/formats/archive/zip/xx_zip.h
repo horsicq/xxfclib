@@ -60,15 +60,15 @@ typedef xx_zip_encryption_method_t xx_zip_encryption_method;
  * @brief Identifiers for ZIP-specific binary data structures (used with xx_data_struct.id).
  */
 typedef enum xx_zip_data_struct_id_e {
-    XX_ZIP_DS_UNKNOWN = 0,                           /**< Unknown / unassigned */
-    XX_ZIP_DS_LOCAL_FILE_HEADER,                     /**< Local file header (per-entry) */
-    XX_ZIP_DS_DATA,                                  /**< Compressed/stored record payload data (per-entry, raw data) */
-    XX_ZIP_DS_DATA_DESCRIPTOR,                       /**< Optional post-data descriptor (per-entry) */
-    XX_ZIP_DS_CENTRAL_DIRECTORY_HEADER,              /**< Central directory file header (per-entry) */
-    XX_ZIP_DS_END_OF_CENTRAL_DIRECTORY,              /**< End of Central Directory record (EOCD) */
-    XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY,        /**< ZIP64 End of Central Directory record */
+    XX_ZIP_DS_UNKNOWN = 0,                            /**< Unknown / unassigned */
+    XX_ZIP_DS_LOCAL_FILE_HEADER,                      /**< Local file header (per-entry) */
+    XX_ZIP_DS_DATA,                                   /**< Compressed/stored record payload data (per-entry, raw data) */
+    XX_ZIP_DS_DATA_DESCRIPTOR,                        /**< Optional post-data descriptor (per-entry) */
+    XX_ZIP_DS_CENTRAL_DIRECTORY_HEADER,               /**< Central directory file header (per-entry) */
+    XX_ZIP_DS_END_OF_CENTRAL_DIRECTORY,               /**< End of Central Directory record (EOCD) */
+    XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY,         /**< ZIP64 End of Central Directory record */
     XX_ZIP_DS_ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR, /**< ZIP64 End of Central Directory locator */
-    XX_ZIP_DS_EXTRA_FIELD                            /**< Generic extra-field ID/size/data record */
+    XX_ZIP_DS_EXTRA_FIELD                             /**< Generic extra-field ID/size/data record */
 } xx_zip_data_struct_id_t;
 
 /**
@@ -95,10 +95,10 @@ struct xx_zip {
     /** Set by the archive opener before validation: the ZIP may follow other
      * data (a self-extractor stub, a script), found from its end records. */
     bool allow_leading_data;
-    int64_t lhdr_cache_offset;  /**< Cached local file header block start offset */
-    size_t lhdr_cache_size;     /**< Cached local file header block byte count */
-    uint8_t *lhdr_cache;        /**< Owned dynamic buffer for read-ahead local header caching */
-    uint8_t *cd_cache;          /**< Cached entire central directory block buffer */
+    int64_t lhdr_cache_offset; /**< Cached local file header block start offset */
+    size_t lhdr_cache_size;    /**< Cached local file header block byte count */
+    uint8_t *lhdr_cache;       /**< Owned dynamic buffer for read-ahead local header caching */
+    uint8_t *cd_cache;         /**< Cached entire central directory block buffer */
     /** Traditional ZipCrypto key-state recovery for legacy self-extractors that
      * store no in-file password. When enabled and a member is encrypted with no
      * working password, a dictionary of known key-states is tried; the confirmed
@@ -239,26 +239,78 @@ static inline const Abstractformat *xx_zip_to_format_const(const xx_zip *zip)
 }
 
 /* XZip user-facing compatibility aliases */
-static inline void XZip_init(xx_zip *zip, xx_io_device *dev, int64_t base) { xx_zip_init(zip, dev, base); }
-static inline xx_zip *XZip_create(xx_io_device *dev, int64_t base) { return xx_zip_create(dev, base); }
-static inline void XZip_free(xx_zip *zip) { xx_zip_free(zip); }
-static inline void XZip_destroy(xx_zip *zip) { xx_zip_destroy(zip); }
-static inline bool XZip_check_is_valid(xx_zip *zip, xx_pd_struct *pd) { return xx_zip_check_is_valid(xx_zip_to_format(zip), pd); }
-static inline bool XZip_is_valid(xx_zip *zip, xx_pd_struct *pd) { return xx_zip_check_is_valid(xx_zip_to_format(zip), pd); }
-static inline bool XZip_handle_base_info(xx_zip *zip, xx_pd_struct *pd) { return xx_zip_handle_base_info(xx_zip_to_format(zip), pd); }
-static inline bool XZip_is_zip64(const xx_zip *zip) { return xx_zip_is_zip64(zip); }
-static inline uint64_t XZip_get_number_of_records(const xx_zip *zip) { return xx_zip_get_number_of_records(zip); }
-static inline int64_t XZip_get_cd_offset(const xx_zip *zip) { return xx_zip_get_cd_offset(zip); }
-static inline int64_t XZip_get_cd_size(const xx_zip *zip) { return xx_zip_get_cd_size(zip); }
-static inline int64_t XZip_get_eocd_offset(const xx_zip *zip) { return xx_zip_get_eocd_offset(zip); }
-static inline const char *XZip_get_comment(const xx_zip *zip) { return xx_zip_get_comment(zip); }
-static inline xx_archive_record_state *XZip_create_archive_records_reading(xx_zip *zip, const xx_list_s *options, xx_pd_struct *pd) { return xx_zip_create_archive_records_reading(xx_zip_to_format(zip), options, pd); }
-static inline const xx_archive_record *XZip_get_current_archive_record(xx_zip *zip, xx_archive_record_state *state) { return xx_zip_get_current_archive_record(xx_zip_to_format(zip), state); }
-static inline bool XZip_unpack_current_archive_record(xx_zip *zip, xx_archive_record_state *state, xx_pd_struct *pd) { return xx_zip_unpack_current_archive_record(xx_zip_to_format(zip), state, pd); }
-static inline bool XZip_archive_record_move_to_next(xx_zip *zip, xx_archive_record_state *state, xx_pd_struct *pd) { return xx_zip_archive_record_move_to_next(xx_zip_to_format(zip), state, pd); }
-static inline void XZip_free_archive_records_reading(xx_zip *zip, xx_archive_record_state *state) { xx_zip_free_archive_records_reading(xx_zip_to_format(zip), state); }
-
-
+static inline void XZip_init(xx_zip *zip, xx_io_device *dev, int64_t base)
+{
+    xx_zip_init(zip, dev, base);
+}
+static inline xx_zip *XZip_create(xx_io_device *dev, int64_t base)
+{
+    return xx_zip_create(dev, base);
+}
+static inline void XZip_free(xx_zip *zip)
+{
+    xx_zip_free(zip);
+}
+static inline void XZip_destroy(xx_zip *zip)
+{
+    xx_zip_destroy(zip);
+}
+static inline bool XZip_check_is_valid(xx_zip *zip, xx_pd_struct *pd)
+{
+    return xx_zip_check_is_valid(xx_zip_to_format(zip), pd);
+}
+static inline bool XZip_is_valid(xx_zip *zip, xx_pd_struct *pd)
+{
+    return xx_zip_check_is_valid(xx_zip_to_format(zip), pd);
+}
+static inline bool XZip_handle_base_info(xx_zip *zip, xx_pd_struct *pd)
+{
+    return xx_zip_handle_base_info(xx_zip_to_format(zip), pd);
+}
+static inline bool XZip_is_zip64(const xx_zip *zip)
+{
+    return xx_zip_is_zip64(zip);
+}
+static inline uint64_t XZip_get_number_of_records(const xx_zip *zip)
+{
+    return xx_zip_get_number_of_records(zip);
+}
+static inline int64_t XZip_get_cd_offset(const xx_zip *zip)
+{
+    return xx_zip_get_cd_offset(zip);
+}
+static inline int64_t XZip_get_cd_size(const xx_zip *zip)
+{
+    return xx_zip_get_cd_size(zip);
+}
+static inline int64_t XZip_get_eocd_offset(const xx_zip *zip)
+{
+    return xx_zip_get_eocd_offset(zip);
+}
+static inline const char *XZip_get_comment(const xx_zip *zip)
+{
+    return xx_zip_get_comment(zip);
+}
+static inline xx_archive_record_state *XZip_create_archive_records_reading(xx_zip *zip, const xx_list_s *options, xx_pd_struct *pd)
+{
+    return xx_zip_create_archive_records_reading(xx_zip_to_format(zip), options, pd);
+}
+static inline const xx_archive_record *XZip_get_current_archive_record(xx_zip *zip, xx_archive_record_state *state)
+{
+    return xx_zip_get_current_archive_record(xx_zip_to_format(zip), state);
+}
+static inline bool XZip_unpack_current_archive_record(xx_zip *zip, xx_archive_record_state *state, xx_pd_struct *pd)
+{
+    return xx_zip_unpack_current_archive_record(xx_zip_to_format(zip), state, pd);
+}
+static inline bool XZip_archive_record_move_to_next(xx_zip *zip, xx_archive_record_state *state, xx_pd_struct *pd)
+{
+    return xx_zip_archive_record_move_to_next(xx_zip_to_format(zip), state, pd);
+}
+static inline void XZip_free_archive_records_reading(xx_zip *zip, xx_archive_record_state *state)
+{
+    xx_zip_free_archive_records_reading(xx_zip_to_format(zip), state);
+}
 
 #ifdef __cplusplus
 }

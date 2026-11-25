@@ -37,8 +37,7 @@ typedef void (*xx_parallel_fn)(size_t index, void *context);
  * that took part (1 when the loop ran on the calling thread alone, 0 for an
  * empty loop or a NULL fn).
  */
-XXFC_API uint32_t xx_parallel_for(size_t count, uint32_t thread_count, size_t stack_size,
-                                  xx_parallel_fn fn, void *context);
+XXFC_API uint32_t xx_parallel_for(size_t count, uint32_t thread_count, size_t stack_size, xx_parallel_fn fn, void *context);
 
 /**
  * As xx_parallel_for. When helper_done is not NULL, every helper thread calls
@@ -46,9 +45,7 @@ XXFC_API uint32_t xx_parallel_for(size_t count, uint32_t thread_count, size_t st
  * its thread-local state is still alive; the calling thread does not. Calls
  * of helper_done on different helpers may run at the same time.
  */
-XXFC_API uint32_t xx_parallel_for_ex(size_t count, uint32_t thread_count, size_t stack_size,
-                                     xx_parallel_fn fn, void (*helper_done)(void *context),
-                                     void *context);
+XXFC_API uint32_t xx_parallel_for_ex(size_t count, uint32_t thread_count, size_t stack_size, xx_parallel_fn fn, void (*helper_done)(void *context), void *context);
 
 #ifdef __cplusplus
 }

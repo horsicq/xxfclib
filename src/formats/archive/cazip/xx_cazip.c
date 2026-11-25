@@ -377,9 +377,7 @@ static xx_cazip_stream *xx_cazip_parse_classic(Abstractformat *self, int64_t spa
      * a literal mode outside 0/1 or a dictionary exponent outside 4..6 is not
      * a stream this reader can speak for. */
     if (header[header_size + XX_CAZIP_DCL_LITERAL_OFFSET] > 1U) return NULL;
-    if (header[header_size + XX_CAZIP_DCL_DICT_OFFSET] < XX_CAZIP_DCL_DICT_MIN ||
-        header[header_size + XX_CAZIP_DCL_DICT_OFFSET] > XX_CAZIP_DCL_DICT_MAX)
-        return NULL;
+    if (header[header_size + XX_CAZIP_DCL_DICT_OFFSET] < XX_CAZIP_DCL_DICT_MIN || header[header_size + XX_CAZIP_DCL_DICT_OFFSET] > XX_CAZIP_DCL_DICT_MAX) return NULL;
 
     stream = (xx_cazip_stream *)xx_mem_calloc(1U, sizeof(*stream));
     if (!stream) return NULL;

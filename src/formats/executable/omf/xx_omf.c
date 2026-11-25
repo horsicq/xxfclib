@@ -31,11 +31,8 @@ static bool omf_span(uint64_t offset, uint64_t size, uint64_t total)
 
 static bool omf_type_valid(uint8_t type)
 {
-    static const uint8_t types[] = {
-        0x80U, 0x82U, 0x88U, 0x8aU, 0x8bU, 0x8cU, 0x90U, 0x91U, 0x94U, 0x95U,
-        0x96U, 0x98U, 0x99U, 0x9aU, 0x9cU, 0x9dU, 0xa0U, 0xa1U, 0xa2U, 0xa3U,
-        0xb0U, 0xb2U, 0xb3U, 0xb4U, 0xb6U, 0xb7U, 0xb8U, 0xbcU, 0xc2U, 0xc3U,
-        0xc4U, 0xc5U, 0xc6U, 0xc8U, 0xc9U, 0xcaU, 0xccU, 0xceU};
+    static const uint8_t types[] = {0x80U, 0x82U, 0x88U, 0x8aU, 0x8bU, 0x8cU, 0x90U, 0x91U, 0x94U, 0x95U, 0x96U, 0x98U, 0x99U, 0x9aU, 0x9cU, 0x9dU, 0xa0U, 0xa1U, 0xa2U,
+                                    0xa3U, 0xb0U, 0xb2U, 0xb3U, 0xb4U, 0xb6U, 0xb7U, 0xb8U, 0xbcU, 0xc2U, 0xc3U, 0xc4U, 0xc5U, 0xc6U, 0xc8U, 0xc9U, 0xcaU, 0xccU, 0xceU};
     size_t index;
     for (index = 0U; index < sizeof(types); ++index) {
         if (types[index] == type) return true;
@@ -121,8 +118,7 @@ static bool omf_read_record(const Abstractformat *format, uint64_t available, ui
     uint8_t checksum = 0U;
     size_t index;
     if (!format || !format->device || !record || !record_size || !omf_span(relative, sizeof(prefix), available) ||
-        relative > (uint64_t)(INT64_MAX - format->base_address) ||
-        !xx_io_read_at(format->device, format->base_address + (int64_t)relative, prefix, sizeof(prefix))) {
+        relative > (uint64_t)(INT64_MAX - format->base_address) || !xx_io_read_at(format->device, format->base_address + (int64_t)relative, prefix, sizeof(prefix))) {
         return omf_fail(pd, XXFC_ERR_OUT_OF_BOUNDS, "Truncated OMF record header");
     }
     size = xx_data_get_u16(prefix, sizeof(prefix), 1U, false);
@@ -177,7 +173,8 @@ static bool omf_append_lname(xx_omf *reader, size_t *capacity, const uint8_t *by
 {
     char *name = NULL;
     if (!reader || !capacity || reader->logical_name_count >= OMF_MAX_ITEMS ||
-        !omf_reserve((void **)&reader->logical_names, capacity, (size_t)reader->logical_name_count + 1U, sizeof(*reader->logical_names))) return false;
+        !omf_reserve((void **)&reader->logical_names, capacity, (size_t)reader->logical_name_count + 1U, sizeof(*reader->logical_names)))
+        return false;
     if (size) {
         name = (char *)xx_mem_alloc(size + 1U);
         if (!name) return false;
@@ -217,7 +214,8 @@ static bool omf_parse_segdef(xx_omf *reader, size_t *capacity, uint8_t type, con
         cursor += 2U;
     }
     if (!omf_index(payload, payload_size, &cursor, &name_index) ||
-        !omf_reserve((void **)&reader->segments, capacity, (size_t)reader->segment_count + 1U, sizeof(*reader->segments))) return false;
+        !omf_reserve((void **)&reader->segments, capacity, (size_t)reader->segment_count + 1U, sizeof(*reader->segments)))
+        return false;
     if (reader->segment_count) {
         const xx_omf_segment *previous = &reader->segments[reader->segment_count - 1U];
         if (previous->address > UINT64_MAX - previous->declared_size) return false;
@@ -257,12 +255,10 @@ static bool omf_parse_pubdef(xx_omf *reader, size_t *capacity, uint8_t type, con
         uint16_t type_index;
         uint32_t value;
         if ((size_t)name_size > payload_size - cursor) return false;
-        if ((bits == 32U && payload_size - cursor - name_size < 4U) ||
-            (bits == 16U && payload_size - cursor - name_size < 2U)) return false;
-        value = bits == 32U ? xx_data_get_u32(payload, payload_size, cursor + name_size, false)
-                            : xx_data_get_u16(payload, payload_size, cursor + name_size, false);
-        if (reader->symbol_count >= OMF_MAX_ITEMS ||
-            !omf_reserve((void **)&reader->symbols, capacity, (size_t)reader->symbol_count + 1U, sizeof(*reader->symbols))) return false;
+        if ((bits == 32U && payload_size - cursor - name_size < 4U) || (bits == 16U && payload_size - cursor - name_size < 2U)) return false;
+        value = bits == 32U ? xx_data_get_u32(payload, payload_size, cursor + name_size, false) : xx_data_get_u16(payload, payload_size, cursor + name_size, false);
+        if (reader->symbol_count >= OMF_MAX_ITEMS || !omf_reserve((void **)&reader->symbols, capacity, (size_t)reader->symbol_count + 1U, sizeof(*reader->symbols)))
+            return false;
         symbol = &reader->symbols[reader->symbol_count];
         xx_mem_zero(symbol, sizeof(*symbol));
         omf_copy_name(symbol->name, sizeof(symbol->name), payload + cursor, name_size);
@@ -280,8 +276,7 @@ static bool omf_parse_pubdef(xx_omf *reader, size_t *capacity, uint8_t type, con
     return true;
 }
 
-static bool omf_parse_ledata(xx_omf *reader, size_t *capacity, uint8_t type, uint64_t record_relative,
-                             const uint8_t *payload, size_t payload_size)
+static bool omf_parse_ledata(xx_omf *reader, size_t *capacity, uint8_t type, uint64_t record_relative, const uint8_t *payload, size_t payload_size)
 {
     xx_omf_section *section;
     size_t cursor = 0U;
@@ -291,13 +286,12 @@ static bool omf_parse_ledata(xx_omf *reader, size_t *capacity, uint8_t type, uin
     uint64_t absolute;
     if (!omf_index(payload, payload_size, &cursor, &segment_index)) return false;
     if ((bits == 32U && payload_size - cursor < 4U) || (bits == 16U && payload_size - cursor < 2U)) return false;
-    segment_offset = bits == 32U ? xx_data_get_u32(payload, payload_size, cursor, false)
-                                 : xx_data_get_u16(payload, payload_size, cursor, false);
+    segment_offset = bits == 32U ? xx_data_get_u32(payload, payload_size, cursor, false) : xx_data_get_u16(payload, payload_size, cursor, false);
     cursor += bits == 32U ? 4U : 2U;
-    if (payload_size - cursor > UINT32_MAX || reader->section_count >= OMF_MAX_ITEMS ||
-        record_relative > (uint64_t)(INT64_MAX - reader->format.base_address) ||
+    if (payload_size - cursor > UINT32_MAX || reader->section_count >= OMF_MAX_ITEMS || record_relative > (uint64_t)(INT64_MAX - reader->format.base_address) ||
         record_relative > (uint64_t)INT64_MAX - 3U || cursor > (uint64_t)INT64_MAX - record_relative - 3U ||
-        !omf_reserve((void **)&reader->sections, capacity, (size_t)reader->section_count + 1U, sizeof(*reader->sections))) return false;
+        !omf_reserve((void **)&reader->sections, capacity, (size_t)reader->section_count + 1U, sizeof(*reader->sections)))
+        return false;
     absolute = (uint64_t)reader->format.base_address + record_relative + 3U + cursor;
     if (absolute > INT64_MAX) return false;
     section = &reader->sections[reader->section_count];
@@ -516,8 +510,7 @@ bool xx_omf_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx
 {
     xx_omf *reader = (xx_omf *)format;
     uint32_t index;
-    if (!reader || !output || omf_stopped(pd) ||
-        (!format->base_info_handled && !xx_omf_handle_base_info(format, pd))) return false;
+    if (!reader || !output || omf_stopped(pd) || (!format->base_info_handled && !xx_omf_handle_base_info(format, pd))) return false;
     if (mode == XX_MEMORY_MAP_MODE_UNKNOWN) mode = XX_MEMORY_MAP_MODE_SECTIONS;
     if (mode != XX_MEMORY_MAP_MODE_SECTIONS && mode != XX_MEMORY_MAP_MODE_SEGMENTS) return false;
     output->binary_offset = format->base_address;
@@ -534,12 +527,13 @@ bool xx_omf_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx
     output->is_image = true;
     for (index = 0U; index < reader->section_count; ++index) {
         const xx_omf_section *section = &reader->sections[index];
-        if (!xx_memory_map_add_part(output, section->offset, section->size, section->address, section->virtual_size,
-                                    XX_FILE_PART_SECTION, (int32_t)index, section->name, false)) return false;
+        if (!xx_memory_map_add_part(output, section->offset, section->size, section->address, section->virtual_size, XX_FILE_PART_SECTION, (int32_t)index, section->name,
+                                    false))
+            return false;
     }
     if (!reader->section_count && format->format_size > 0 &&
-        !xx_memory_map_add_part(output, format->base_address, format->format_size, XX_INVALID_ADDRESS, format->format_size,
-                                XX_FILE_PART_REGION, 0, "OMF records", false)) return false;
+        !xx_memory_map_add_part(output, format->base_address, format->format_size, XX_INVALID_ADDRESS, format->format_size, XX_FILE_PART_REGION, 0, "OMF records", false))
+        return false;
     return xx_memory_map_finalize(output);
 }
 
@@ -577,4 +571,3 @@ const xx_omf_entry *xx_omf_get_entry(xx_omf *reader, xx_pd_struct *pd)
 {
     return reader && (reader->format.base_info_handled || xx_omf_handle_base_info(&reader->format, pd)) && reader->has_entry ? &reader->entry : NULL;
 }
-

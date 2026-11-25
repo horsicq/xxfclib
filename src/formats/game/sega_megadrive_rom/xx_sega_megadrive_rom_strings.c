@@ -18,8 +18,7 @@
 static bool smd_span(xx_io_device *device, int64_t base, uint64_t size)
 {
     int64_t total;
-    return device && base >= 0 && size <= SMD_MAX_IMAGE_SIZE &&
-           (total = xx_io_size(device)) >= base && size <= (uint64_t)(total - base);
+    return device && base >= 0 && size <= SMD_MAX_IMAGE_SIZE && (total = xx_io_size(device)) >= base && size <= (uint64_t)(total - base);
 }
 
 static bool smd_read_exact(xx_io_device *device, int64_t offset, void *buffer, size_t size)
@@ -46,8 +45,7 @@ bool xx_sega_megadrive_rom_has_compatible_header(xx_io_device *device, int64_t b
     bool result;
     if (!smd_span(device, base_address, image_size) || image_size <= 0x190U) return false;
     saved = xx_io_tell(device);
-    result = smd_read_exact(device, base_address + 0x100, signature, sizeof(signature)) &&
-             xx_rt_memcmp(signature, "SEGA", sizeof(signature)) == 0;
+    result = smd_read_exact(device, base_address + 0x100, signature, sizeof(signature)) && xx_rt_memcmp(signature, "SEGA", sizeof(signature)) == 0;
     if (saved >= 0 && xx_io_seek64(device, saved, XX_RT_SEEK_SET) != 0) result = false;
     return result;
 }
@@ -130,7 +128,7 @@ static bool smd_uppercase_filter(const char *text, size_t length)
 }
 
 bool xx_sega_megadrive_rom_visit_uppercase_strings(xx_io_device *device, int64_t base_address, uint64_t image_size, uint32_t minimum_length,
-                                                    xx_sega_megadrive_rom_string_callback callback, void *user, xx_pd_struct *pd)
+                                                   xx_sega_megadrive_rom_string_callback callback, void *user, xx_pd_struct *pd)
 {
     uint8_t *bytes = NULL;
     char *display = NULL;

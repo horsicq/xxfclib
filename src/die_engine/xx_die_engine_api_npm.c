@@ -6,10 +6,7 @@
 
 #include "xx_die_engine_api_internal.h"
 
-static const ApiEntry g_npm_api_table[] = {
-    {"getPackageJsonRecord", A_getPackageJsonRecord, 1},
-    {NULL, A_NONE, 0}
-};
+static const ApiEntry g_npm_api_table[] = {{"getPackageJsonRecord", A_getPackageJsonRecord, 1}, {NULL, A_NONE, 0}};
 
 void die_engine_api_register_npm(JSCtx *pCtx, JSVal object)
 {
@@ -28,8 +25,7 @@ bool die_engine_api_dispatch_npm(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int 
             return true;
         }
 
-        default:
-            break;
+        default: break;
     }
 
     return false;

@@ -204,8 +204,7 @@ static bool compaqlzh_set_record(xx_archive_record *record, const compaqlzh_memb
            /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
            xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (member->dos_time >> 16) & 0xFFFFU) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_time & 0xFFFFU) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false);
 }
 
 static bool compaqlzh_decode_member(Abstractformat *format, const compaqlzh_member *member, uint8_t **plain, size_t *plain_size)

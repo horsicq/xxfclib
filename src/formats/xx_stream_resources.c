@@ -24,6 +24,5 @@ void xx_resource_record_cleanup(xx_resource_record *r)
 
 #include "xx_stream_runtime_internal.h"
 
-
 XX_STREAM_RUNTIME(resource, resources, StreamResources, xx_format_get_stream_resources)
 #undef XX_STREAM_RUNTIME

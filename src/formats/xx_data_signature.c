@@ -391,8 +391,8 @@ static bool sig_masked_build(const xx_data_signature *signature, int anchor_idx,
                 if (take != (size_t)record->data_size) return false;
                 anchor_end = out->size;
             }
-        } else if (record->kind == XX_DATA_SIG_SKIP || record->kind == XX_DATA_SIG_NOT_NULL || record->kind == XX_DATA_SIG_ANSI ||
-                   record->kind == XX_DATA_SIG_NOT_ANSI || record->kind == XX_DATA_SIG_NOT_ANSI_AND_NULL || record->kind == XX_DATA_SIG_ANSI_NUMBER) {
+        } else if (record->kind == XX_DATA_SIG_SKIP || record->kind == XX_DATA_SIG_NOT_NULL || record->kind == XX_DATA_SIG_ANSI || record->kind == XX_DATA_SIG_NOT_ANSI ||
+                   record->kind == XX_DATA_SIG_NOT_ANSI_AND_NULL || record->kind == XX_DATA_SIG_ANSI_NUMBER) {
             if (record->window < 0) return false;
             if ((uint64_t)record->window > (uint64_t)(SIG_MASKED_MAX - out->size)) break;
             /* Every class consumes a fixed number of bytes. Leave its test
@@ -452,8 +452,8 @@ static int64_t sig_input_find_masked(SigInput *input, int64_t first, int64_t las
          * masked pattern after each set so chunk boundaries lose no match. */
         while (first <= last && !sig_input_stopped(input)) {
             size_t count = (uint64_t)(last - first) + 1U < SIG_CANCEL_CHUNK ? (size_t)(last - first) + 1U : SIG_CANCEL_CHUNK;
-            found = xx_data_find_masked(input->bytes + (size_t)first, count + pattern->size - 1, pattern->value, pattern->mask, pattern->size, pattern->idx1,
-                                       pattern->idx2);
+            found =
+                xx_data_find_masked(input->bytes + (size_t)first, count + pattern->size - 1, pattern->value, pattern->mask, pattern->size, pattern->idx1, pattern->idx2);
             if (sig_input_stopped(input)) return -1;
             if (found >= 0) return first + found;
             first += (int64_t)count;
@@ -587,8 +587,7 @@ static bool sig_dos_load_offset(const xx_data_sig_context *context, int64_t *loa
 {
     const xx_memory_map *map;
 
-    if (!context || !context->context ||
-        (context->address_to_offset != sig_map_address_to_offset && context->address_to_offset != sig_map_address_to_offset_first)) {
+    if (!context || !context->context || (context->address_to_offset != sig_map_address_to_offset && context->address_to_offset != sig_map_address_to_offset_first)) {
         return false;
     }
     map = (const xx_memory_map *)context->context;
@@ -1357,7 +1356,8 @@ static bool sig_any_candidate(SigAny *any, const uint8_t *window, size_t size, i
 #if (defined(__GNUC__) || defined(__clang__))
 __attribute__((target("avx2")))
 #endif
-static bool sig_any_window_avx2(SigAny *any, const uint8_t *window, size_t size, int64_t base)
+static bool
+sig_any_window_avx2(SigAny *any, const uint8_t *window, size_t size, int64_t base)
 {
     __m256i values[256];
     size_t position = 0, i;
@@ -1409,7 +1409,8 @@ static bool sig_any_window_avx2(SigAny *any, const uint8_t *window, size_t size,
 #if (defined(__GNUC__) || defined(__clang__)) && defined(__i386__) && !defined(__SSE2__)
 __attribute__((target("sse2")))
 #endif
-static bool sig_any_window_sse2(SigAny *any, const uint8_t *window, size_t size, int64_t base)
+static bool
+sig_any_window_sse2(SigAny *any, const uint8_t *window, size_t size, int64_t base)
 {
     __m128i values[256];
     size_t position = 0, i;
@@ -1492,8 +1493,7 @@ static bool sig_any_window(SigAny *any, const uint8_t *window, size_t size, int6
     return false;
 }
 
-static bool sig_input_find_any(SigInput *input, int64_t offset, int64_t length, const xx_data_signature *signatures, size_t count,
-                               const xx_data_sig_context *context)
+static bool sig_input_find_any(SigInput *input, int64_t offset, int64_t length, const xx_data_signature *signatures, size_t count, const xx_data_sig_context *context)
 {
     SigAny any;
     size_t i, fast_count = 0;
@@ -1502,7 +1502,8 @@ static bool sig_input_find_any(SigInput *input, int64_t offset, int64_t length, 
     bool result = false, fallback_all = true;
     bool use_avx2 = false, use_sse2 = false, use_neon = false;
     if (sig_input_stopped(input) || !signatures || !count || (!input->bytes && !input->device) || input->size > INT64_MAX || offset < 0 ||
-        (uint64_t)offset >= input->size) return false;
+        (uint64_t)offset >= input->size)
+        return false;
     if (length < 0 || length > (int64_t)input->size - offset) length = (int64_t)input->size - offset;
     if (!length) return false;
     xx_rt_memset(&any, 0, sizeof(any));
@@ -1523,8 +1524,8 @@ static bool sig_input_find_any(SigInput *input, int64_t offset, int64_t length, 
         uint8_t value;
         if (!signature->records || signature->count <= 0) continue;
         record = signature->records;
-        if (record->kind != XX_DATA_SIG_BYTES || !record->data || record->data_size <= 0 || record->data_size > length ||
-            (uint64_t)record->data_size > SIZE_MAX) continue;
+        if (record->kind != XX_DATA_SIG_BYTES || !record->data || record->data_size <= 0 || record->data_size > length || (uint64_t)record->data_size > SIZE_MAX)
+            continue;
         anchor->signature = signature;
         take = record->data_size < SIG_MASKED_MAX ? (size_t)record->data_size : SIG_MASKED_MAX;
         for (j = 0; j < take; ++j) {
@@ -1608,15 +1609,15 @@ done:
     return result && !sig_input_stopped(input);
 }
 
-bool xx_data_signature_find_any(const void *data, size_t data_size, int64_t offset, int64_t length, const xx_data_signature *signatures,
-                                size_t count, const xx_data_sig_context *context, xx_pd_struct *pd)
+bool xx_data_signature_find_any(const void *data, size_t data_size, int64_t offset, int64_t length, const xx_data_signature *signatures, size_t count,
+                                const xx_data_sig_context *context, xx_pd_struct *pd)
 {
     SigInput input = {(const uint8_t *)data, NULL, (uint64_t)data_size, false, 0, NULL, NULL, 0, 0, 0, 0, pd};
     return sig_input_find_any(&input, offset, length, signatures, count, context);
 }
 
-bool xx_io_signature_find_any(xx_io_device *device, int64_t offset, int64_t length, const xx_data_signature *signatures,
-                              size_t count, const xx_data_sig_context *context, xx_pd_struct *pd)
+bool xx_io_signature_find_any(xx_io_device *device, int64_t offset, int64_t length, const xx_data_signature *signatures, size_t count, const xx_data_sig_context *context,
+                              xx_pd_struct *pd)
 {
     SigInput input;
     int64_t previous;
@@ -1635,15 +1636,15 @@ bool xx_io_signature_find_any(xx_io_device *device, int64_t offset, int64_t leng
     return result;
 }
 
-int64_t xx_data_signature_find(const void *data, size_t data_size, int64_t offset, int64_t length, const xx_data_signature *signature,
-                              const xx_data_sig_context *context, xx_pd_struct *pd)
+int64_t xx_data_signature_find(const void *data, size_t data_size, int64_t offset, int64_t length, const xx_data_signature *signature, const xx_data_sig_context *context,
+                               xx_pd_struct *pd)
 {
     SigInput input = {(const uint8_t *)data, NULL, (uint64_t)data_size, false, 0, NULL, NULL, 0, 0, 0, 0, pd};
     return sig_input_find_signature(&input, offset, length, signature, context);
 }
 
-int64_t xx_io_signature_find(xx_io_device *device, int64_t offset, int64_t length, const xx_data_signature *signature,
-                            const xx_data_sig_context *context, xx_pd_struct *pd)
+int64_t xx_io_signature_find(xx_io_device *device, int64_t offset, int64_t length, const xx_data_signature *signature, const xx_data_sig_context *context,
+                             xx_pd_struct *pd)
 {
     SigInput input;
     int64_t result;
@@ -1657,7 +1658,8 @@ int64_t xx_io_signature_find(xx_io_device *device, int64_t offset, int64_t lengt
     if (!length) return -1;
     if (signature->count == 1 && signature->records[0].kind == XX_DATA_SIG_BYTES &&
         (!signature->records[0].data || signature->records[0].data_size <= 0 || signature->records[0].data_size > length ||
-         (uint64_t)signature->records[0].data_size > SIZE_MAX)) return -1;
+         (uint64_t)signature->records[0].data_size > SIZE_MAX))
+        return -1;
     if (input.size <= SIZE_MAX) {
         input.bytes = xx_io_buffer_whole(device, xx_io_buffer_search_access(device, length));
     }

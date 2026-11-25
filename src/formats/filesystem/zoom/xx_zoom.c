@@ -101,8 +101,7 @@ static bool xx_zoom_ready(Abstractformat *self, const xx_zoom_context *context, 
     if (xx_io_tell(self->device) < 0) return false;
     selected = (uint64_t)xx_zoom_selected_size(context);
     charge = XX_ZOOM_READER_OVERHEAD + (uint64_t)context->input_size + selected + XX_ZOOM_CODEC_WORKSPACE;
-    return selected <= xx_zoom_budget(self, options, XX_META_ID_OPT_MAX_MEMBER_SIZE) &&
-           charge <= xx_zoom_budget(self, options, XX_META_ID_OPT_MEMORY_LIMIT);
+    return selected <= xx_zoom_budget(self, options, XX_META_ID_OPT_MAX_MEMBER_SIZE) && charge <= xx_zoom_budget(self, options, XX_META_ID_OPT_MEMORY_LIMIT);
 }
 
 /* --------------------------------------------------------------- parse -- */
@@ -136,9 +135,9 @@ static bool xx_zoom_parse(Abstractformat *self, xx_zoom_context *context, xx_pd_
      * checksum.  It has to fit inside the real file - the codec cannot check
      * that for a caller who hands it a short slice. */
     context->use_header = (xx_data_get_u32(header + 8, 4, 0, true) & 1U) != 0U;
-    if (context->use_header && (header[4] != 0U || header[5] >= 80U ||
-        xx_io_tell(self->device) < 0 || xx_data_get_u32(header + 24, 4, 0, true) != 0U ||
-        xx_data_get_u32(header + 28, 4, 0, true) != 0U || xx_data_get_u32(header + 32, 4, 0, true) != 0U)) return false;
+    if (context->use_header && (header[4] != 0U || header[5] >= 80U || xx_io_tell(self->device) < 0 || xx_data_get_u32(header + 24, 4, 0, true) != 0U ||
+                                xx_data_get_u32(header + 28, 4, 0, true) != 0U || xx_data_get_u32(header + 32, 4, 0, true) != 0U))
+        return false;
     note_size = (int64_t)xx_data_get_u32(header + 0x1c, 4, 0, true);
     chunks_offset = XX_ZOOM_HEADER_SIZE;
     if (note_size != 0) {
@@ -204,15 +203,15 @@ static bool xx_zoom_decode(Abstractformat *self, const xx_zoom_context *context,
         return false;
     }
     produced = xx_zoom_selected_size(context);
-    if (!xx_zoom_ready(self, context, options, pd) || (!context->use_header &&
-        (!xx_zoom_scan_memory(input, input_size, produced, NULL, &written) || written != produced))) {
+    if (!xx_zoom_ready(self, context, options, pd) ||
+        (!context->use_header && (!xx_zoom_scan_memory(input, input_size, produced, NULL, &written) || written != produced))) {
         xx_mem_free(input);
         return false;
     }
     output = (uint8_t *)xx_mem_alloc(produced);
     if (!output || !xx_zoom_ready(self, context, options, pd) ||
-        !(context->labels_record ? xx_zoom_decode_labels_memory(input, input_size, output, produced, &written) :
-                                  xx_zoom_decode_memory(input, input_size, output, produced, &written)) ||
+        !(context->labels_record ? xx_zoom_decode_labels_memory(input, input_size, output, produced, &written)
+                                 : xx_zoom_decode_memory(input, input_size, output, produced, &written)) ||
         written != produced || !xx_zoom_ready(self, context, options, pd)) {
         xx_mem_free(input);
         xx_mem_free(output);
@@ -238,11 +237,14 @@ static bool xx_zoom_recover_prefix(Abstractformat *self, const xx_zoom_context *
         !xx_zoom_ready(self, context, options, pd) || !xx_zoom_read_container(self, context, &input, &input_size)) {
         return false;
     }
-    if (!xx_zoom_ready(self, context, options, pd)) { xx_mem_free(input); return false; }
+    if (!xx_zoom_ready(self, context, options, pd)) {
+        xx_mem_free(input);
+        return false;
+    }
     output = (uint8_t *)xx_mem_alloc(xx_zoom_selected_size(context));
     if (!output ||
-        !(context->labels_record ? xx_zoom_decode_labels_prefix_memory(input, input_size, output, xx_zoom_selected_size(context), &written, &complete) :
-                                  xx_zoom_decode_prefix_memory(input, input_size, output, xx_zoom_selected_size(context), &written, &complete)) ||
+        !(context->labels_record ? xx_zoom_decode_labels_prefix_memory(input, input_size, output, xx_zoom_selected_size(context), &written, &complete)
+                                 : xx_zoom_decode_prefix_memory(input, input_size, output, xx_zoom_selected_size(context), &written, &complete)) ||
         complete || written == 0U || !xx_zoom_ready(self, context, options, pd)) {
         xx_mem_free(input);
         xx_mem_free(output);
@@ -470,7 +472,10 @@ bool xx_zoom_archive_record_move_to_next(Abstractformat *self, xx_archive_record
         xx_zoom_context *context = (xx_zoom_context *)state->internal_state;
         if (context && context->use_header && !context->labels_record) {
             context->labels_record = true;
-            if (!xx_zoom_set_record(&state->current_record, self, context)) { state->has_record = false; return false; }
+            if (!xx_zoom_set_record(&state->current_record, self, context)) {
+                state->has_record = false;
+                return false;
+            }
             state->current_index = 1;
             return true;
         }
@@ -545,7 +550,10 @@ bool xx_zoom_unpack_current_archive_record(Abstractformat *self, xx_archive_reco
         while (result && completed < plain_size) {
             size_t step = plain_size - completed;
             ssize_t sent;
-            if (!xx_zoom_ready(self, context, &state->options, pd)) { result = false; break; }
+            if (!xx_zoom_ready(self, context, &state->options, pd)) {
+                result = false;
+                break;
+            }
             if (step > 65536U) step = 65536U;
             sent = xx_io_write(output, plain + completed, step);
             if (sent <= 0 || (size_t)sent > step) {

@@ -449,30 +449,21 @@ static const xx_data_struct_field_desc xx_pswh_wow_segment32_26100[] = {
 };
 
 static const xx_psw_nt_layout xx_pswh_wow_segment_profiles[] = {
-    {19045, 0x014c, "NT 10.0.19045 WOW64 SEGMENT_HEAP; NTDLL 10.0.19041.2965 exact PDB profile",
-        xx_pswh_wow_segment32_19045, XX_PSW_COUNT(xx_pswh_wow_segment32_19045), XX_PSWH_WOW_SEGMENT32_19045_SIZE},
-    {26100, 0x014c, "NT 10.0.26100 WOW64 SEGMENT_HEAP; NTDLL 10.0.26100.1591 exact PDB profile",
-        xx_pswh_wow_segment32_26100, XX_PSW_COUNT(xx_pswh_wow_segment32_26100), XX_PSWH_WOW_SEGMENT32_26100_SIZE}
-};
+    {19045, 0x014c, "NT 10.0.19045 WOW64 SEGMENT_HEAP; NTDLL 10.0.19041.2965 exact PDB profile", xx_pswh_wow_segment32_19045, XX_PSW_COUNT(xx_pswh_wow_segment32_19045),
+     XX_PSWH_WOW_SEGMENT32_19045_SIZE},
+    {26100, 0x014c, "NT 10.0.26100 WOW64 SEGMENT_HEAP; NTDLL 10.0.26100.1591 exact PDB profile", xx_pswh_wow_segment32_26100, XX_PSW_COUNT(xx_pswh_wow_segment32_26100),
+     XX_PSWH_WOW_SEGMENT32_26100_SIZE}};
 
 static const xx_psw_nt_layout *xx_pswh_wow_segment_profile(const xx_psw_target *target, unsigned width)
 {
     /* GUID bytes use the PE RSDS in-memory little-endian representation. */
-    static const unsigned char guid_19041_2965[16] = {
-        0x43, 0x5e, 0x21, 0x7c, 0x97, 0xaa, 0xff, 0x4f,
-        0x5c, 0x17, 0x3a, 0xb2, 0x9d, 0x5a, 0x5e, 0xfb
-    };
-    static const unsigned char guid_26100_1591[16] = {
-        0xb8, 0x60, 0x91, 0x25, 0xd0, 0x22, 0xac, 0x32,
-        0x48, 0x62, 0x48, 0xba, 0xff, 0xe1, 0x5e, 0x01
-    };
-    if (!target || !target->version_available || target->major != 10 || target->minor != 0 ||
-        width != 4 || target->native_machine != 0x8664 || target->process_machine != 0x014c)
+    static const unsigned char guid_19041_2965[16] = {0x43, 0x5e, 0x21, 0x7c, 0x97, 0xaa, 0xff, 0x4f, 0x5c, 0x17, 0x3a, 0xb2, 0x9d, 0x5a, 0x5e, 0xfb};
+    static const unsigned char guid_26100_1591[16] = {0xb8, 0x60, 0x91, 0x25, 0xd0, 0x22, 0xac, 0x32, 0x48, 0x62, 0x48, 0xba, 0xff, 0xe1, 0x5e, 0x01};
+    if (!target || !target->version_available || target->major != 10 || target->minor != 0 || width != 4 || target->native_machine != 0x8664 ||
+        target->process_machine != 0x014c)
         return NULL;
-    if (target->build == 19045 && xx_pswh_wow_module_matches(target, width, guid_19041_2965, 1))
-        return xx_pswh_wow_segment_profiles;
-    if (target->build == 26100 && xx_pswh_wow_module_matches(target, width, guid_26100_1591, 1))
-        return xx_pswh_wow_segment_profiles + 1;
+    if (target->build == 19045 && xx_pswh_wow_module_matches(target, width, guid_19041_2965, 1)) return xx_pswh_wow_segment_profiles;
+    if (target->build == 26100 && xx_pswh_wow_module_matches(target, width, guid_26100_1591, 1)) return xx_pswh_wow_segment_profiles + 1;
     return NULL;
 }
 

@@ -39,10 +39,10 @@ static const char pi_files_prefix[] = "Files\\";
 typedef struct pi_member {
     uint32_t group;
     uint8_t props[5];
-    int64_t group_at;       /* the blob, relative to the carrier's base */
+    int64_t group_at; /* the blob, relative to the carrier's base */
     int64_t group_packed;
     int64_t group_unpacked;
-    int64_t slice;          /* the file's offset inside the decoded group */
+    int64_t slice; /* the file's offset inside the decoded group */
 } pi_member;
 typedef struct pi_cache {
     uint32_t group;
@@ -207,7 +207,8 @@ static bool pi_parse_resource(Abstractformat *f, pm_stream *s, const rw_leaf_inf
             const char *label;
             if (carrier_stop(pd) || end - at < 4 || !pm_read(f, at, h, 4)) goto fail;
             n = xx_data_get_u32(h, 4, 0, false);
-            if (!n || n > PI_MAX_NAME || end - at < 4 + 2 * (int64_t)n + 14 || !pm_read(f, at + 4, name, 2U * n) || !pm_read(f, at + 4 + 2 * (int64_t)n, h, 14)) goto fail;
+            if (!n || n > PI_MAX_NAME || end - at < 4 + 2 * (int64_t)n + 14 || !pm_read(f, at + 4, name, 2U * n) || !pm_read(f, at + 4 + 2 * (int64_t)n, h, 14))
+                goto fail;
             if (xx_data_get_u16(h, 2, 0, false) != 0) goto fail;
             size = xx_data_get_u32(h + 2, 4, 0, false);
             if (size > unpacked - (uint64_t)slice) goto fail;
@@ -261,7 +262,8 @@ fail:
 static bool pi_visit(Abstractformat *f, pm_stream *s, const rw_leaf_info *leaf, void *context, xx_pd_struct *pd)
 {
     pi_parse *p = (pi_parse *)context;
-    if (p->done || !leaf->type_name || xx_rt_strlen(leaf->type_name) != sizeof(pi_type) - 1U || xx_rt_memcmp(leaf->type_name, pi_type, sizeof(pi_type) - 1U) != 0) return true;
+    if (p->done || !leaf->type_name || xx_rt_strlen(leaf->type_name) != sizeof(pi_type) - 1U || xx_rt_memcmp(leaf->type_name, pi_type, sizeof(pi_type) - 1U) != 0)
+        return true;
     if (!pi_parse_resource(f, s, leaf, pd)) return false;
     p->done = true;
     return true;

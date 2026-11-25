@@ -38,8 +38,7 @@ static bool pef_entry_is_bounded(int32_t section, uint32_t offset, uint16_t sect
     return section >= 0 && (uint32_t)section < section_count && offset < section_sizes[(uint32_t)section];
 }
 
-static bool pef_loader_is_bounded(memory_blob *blob, uint64_t at, uint64_t size, uint16_t section_count, const uint64_t *section_sizes,
-                                  pef_loader_info *info)
+static bool pef_loader_is_bounded(memory_blob *blob, uint64_t at, uint64_t size, uint16_t section_count, const uint64_t *section_sizes, pef_loader_info *info)
 {
     const uint8_t *loader;
     uint64_t libraries, imported_symbols, relocations, relocation_offset;
@@ -143,8 +142,8 @@ static bool pef_outer_header_is_valid(Abstractformat *format, xx_pd_struct *pd)
     architecture = xx_data_get_u32(header + 8, 4, 0, true);
     section_count = xx_data_get_u16(header + 32, 2, 0, true);
     instantiated_count = xx_data_get_u16(header + 34, 2, 0, true);
-    if ((architecture != UINT32_C(0x70777063) && architecture != UINT32_C(0x6d36386b)) || xx_data_get_u32(header + 12, 4, 0, true) > 1U ||
-        !section_count || section_count > PEF_SECTION_LIMIT || instantiated_count > section_count || xx_data_get_u32(header + 36, 4, 0, true))
+    if ((architecture != UINT32_C(0x70777063) && architecture != UINT32_C(0x6d36386b)) || xx_data_get_u32(header + 12, 4, 0, true) > 1U || !section_count ||
+        section_count > PEF_SECTION_LIMIT || instantiated_count > section_count || xx_data_get_u32(header + 36, 4, 0, true))
         goto done;
     table_size = (uint64_t)section_count * PEF_SECTION_HEADER_SIZE;
     if (pm_available(format) < (int64_t)(PEF_HEADER_SIZE + table_size)) goto done;
@@ -325,4 +324,3 @@ bool xx_pef_get_term_point(const xx_pef *reader, uint16_t *section_index, uint32
 {
     return reader && pef_get_entry_tuple(reader, reader->term_section, reader->term_offset, section_index, section_offset);
 }
-

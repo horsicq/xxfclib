@@ -47,7 +47,8 @@ static uint32_t cbm_reverse(uint32_t x, unsigned n)
     }
     return v;
 }
-static bool cbm_decode(ac_blob *b, const uint8_t *in, uint32_t packed, uint8_t *out, uint32_t n, unsigned version, unsigned method, uint32_t *produced, uint32_t *consumed)
+static bool cbm_decode(ac_blob *b, const uint8_t *in, uint32_t packed, uint8_t *out, uint32_t n, unsigned version, unsigned method, uint32_t *produced,
+                       uint32_t *consumed)
 {
     cbm_sink sink;
     ac_bits bits;
@@ -186,8 +187,8 @@ static bool cbm_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
          * to the end of the LZW stream, rounded up to whole 254-byte blocks. */
         one_pass = ver == 2U && method == 5U && !blocks && !n && !expected;
         valid = (ver == 1U || ver == 2U) && method <= (ver == 1U ? 2U : 5U) && name_n && name_n <= 16U && (blocks || one_pass) &&
-            (b->p[at + 9] == 'P' || b->p[at + 9] == 'S' || b->p[at + 9] == 'U' || (ver == 2U && b->p[at + 9] == 'R')) && ac_span(b, at, header) &&
-            ac_name(name, sizeof(name), b->p + at + 11, name_n);
+                (b->p[at + 9] == 'P' || b->p[at + 9] == 'S' || b->p[at + 9] == 'U' || (ver == 2U && b->p[at + 9] == 'R')) && ac_span(b, at, header) &&
+                ac_name(name, sizeof(name), b->p + at + 11, name_n);
         record = blocks * 254U;
         if (valid && !one_pass && (record < header || !ac_span(b, at, record))) valid = false;
         if (!valid) {

@@ -69,9 +69,9 @@ typedef struct xx_scan_options {
     bool heuristic_scan;
     bool aggressive_scan;
     bool recursive_scan;
-    bool overlay_scan; /**< Detect and scan trailing overlays as bounded devices. */
+    bool overlay_scan;   /**< Detect and scan trailing overlays as bounded devices. */
     bool resources_scan; /**< Scan PE and ELF resource payloads as bounded child devices. */
-    bool archives_scan; /**< Scan the members of ZIP-family archives (ZIP, JAR, APK, IPA), as XScanEngine. */
+    bool archives_scan;  /**< Scan the members of ZIP-family archives (ZIP, JAR, APK, IPA), as XScanEngine. */
     bool all_types_scan; /**< Scan applicable parent formats before the preferred type. */
     bool first_wrapper_only;
     bool verbose;
@@ -109,12 +109,12 @@ typedef struct xx_scan_options {
     char *main_database_path;
     char *extra_database_path; /**< Deprecated; still freed, no cdie frontend sets it. */
     char *custom_database_path;
-    xx_scan_part scan_part; /**< Set by the scanner; caller-supplied values are ignored. */
-    const char *resource_type; /**< Borrowed resource type name or decimal ID, otherwise NULL. */
+    xx_scan_part scan_part;     /**< Set by the scanner; caller-supplied values are ignored. */
+    const char *resource_type;  /**< Borrowed resource type name or decimal ID, otherwise NULL. */
     const char *archive_member; /**< Borrowed member name during a synchronous archive child scan. */
-    int64_t archive_offset; /**< Physical member/stream start in the containing input. */
-    int64_t archive_size; /**< Packed extent in the containing input. */
-    bool archive_compressed; /**< Child offsets are relative to decoded data when true. */
+    int64_t archive_offset;     /**< Physical member/stream start in the containing input. */
+    int64_t archive_size;       /**< Packed extent in the containing input. */
+    bool archive_compressed;    /**< Child offsets are relative to decoded data when true. */
     /** Archive limits; zero selects 4 GiB/member, no total limit and
      * 100,000 entries (XScanEngine's own entry limit). XScanEngine has no
      * member size limit, and no ZIP entry without ZIP64 can declare 4 GiB, so
@@ -180,11 +180,11 @@ typedef struct xx_scan_record {
     /** Stable //fmt[...] identifier for bundled Binary/audio.1.sg results.
      * NULL for other scripts and untagged results. Owned by the result. */
     const char *format_id;
-    xx_scan_part scan_part; /**< options.scan_part: input, overlay, resource or archive member. */
+    xx_scan_part scan_part;     /**< options.scan_part: input, overlay, resource or archive member. */
     const char *archive_member; /**< Owned member name; NULL outside archive children. */
-    int64_t archive_offset; /**< Physical packed member/stream start in the containing input. */
-    int64_t archive_size; /**< Physical packed member/stream size. */
-    bool archive_compressed; /**< offset/size describe decoded bytes when true. */
+    int64_t archive_offset;     /**< Physical packed member/stream start in the containing input. */
+    int64_t archive_size;       /**< Physical packed member/stream size. */
+    bool archive_compressed;    /**< offset/size describe decoded bytes when true. */
     /** Optional owned engine-specific source identifier. For DiE this is the
      * database path of the script that produced the record. */
     const char *source_ref;
@@ -221,12 +221,12 @@ typedef struct xx_scan_result xx_scan_result_t;
 
 /** What xx_scan_options.device_callback receives for one scanned device. */
 typedef struct xx_scan_device_event {
-    xx_io_device *device;            /**< Borrowed and open: the device this scan was called with (for an
-                                          overlay or resource child, its xx_io_sub view of the parent's scanned
-                                          device, so xx_io_sub_get_range gives its range there), never the
-                                          scanner's private memory copy. Seek before reading. */
-    const xx_scan_options *options;  /**< Resolved options of this device's scan: scan_id, parent_id, scan_part, file_name, resource_type, archive_member... */
-    const xx_scan_result *result;    /**< This device's result, children's records included. */
+    xx_io_device *device;           /**< Borrowed and open: the device this scan was called with (for an
+                                         overlay or resource child, its xx_io_sub view of the parent's scanned
+                                         device, so xx_io_sub_get_range gives its range there), never the
+                                         scanner's private memory copy. Seek before reading. */
+    const xx_scan_options *options; /**< Resolved options of this device's scan: scan_id, parent_id, scan_part, file_name, resource_type, archive_member... */
+    const xx_scan_result *result;   /**< This device's result, children's records included. */
 } xx_scan_device_event;
 
 /** Release standard result contents and clear the struct; does not free the struct. */
@@ -310,8 +310,7 @@ typedef struct xx_scan_engine_ops {
     void (*destroy)(xx_scan_engine *engine);
     bool (*load_database)(xx_scan_engine *engine, const void *database, xx_pd_struct *pd);
     bool (*supports_type)(const xx_scan_engine *engine, xx_file_type_t file_type);
-    xx_scan_result *(*scan_region)(xx_scan_engine *engine, const xx_scan_region *region,
-                                  const xx_scan_options *options, xx_pd_struct *pd);
+    xx_scan_result *(*scan_region)(xx_scan_engine *engine, const xx_scan_region *region, const xx_scan_options *options, xx_pd_struct *pd);
     bool (*list_signatures)(const xx_scan_engine *engine, xx_scan_catalog *catalog, xx_pd_struct *pd);
     bool (*list_tags)(const xx_scan_engine *engine, xx_scan_catalog *catalog, xx_pd_struct *pd);
 } xx_scan_engine_ops;
@@ -321,8 +320,7 @@ struct xx_scan_engine {
     void *context;
 };
 
-XXFC_API bool xx_scan_engine_init(xx_scan_engine *engine, const xx_scan_engine_ops *ops,
-                                  const void *config, const void *database, xx_pd_struct *pd);
+XXFC_API bool xx_scan_engine_init(xx_scan_engine *engine, const xx_scan_engine_ops *ops, const void *config, const void *database, xx_pd_struct *pd);
 XXFC_API xx_scan_engine_id xx_scan_engine_get_id(const xx_scan_engine *engine);
 XXFC_API const char *xx_scan_engine_get_name(const xx_scan_engine *engine);
 XXFC_API const char *xx_scan_engine_get_display_name(const xx_scan_engine *engine);
@@ -470,8 +468,7 @@ XXFC_API const xx_scan_record *xx_scan_get_record(xx_scan_engine *engine, const 
  * cancellation; destination remains safe to free. pd may be NULL.
  * engine is accepted for source compatibility and may be NULL.
  */
-XXFC_API bool xx_scan_append_result(xx_scan_engine *engine, xx_scan_result *destination, const xx_scan_result *source,
-                                  int64_t source_offset, xx_pd_struct *pd);
+XXFC_API bool xx_scan_append_result(xx_scan_engine *engine, xx_scan_result *destination, const xx_scan_result *source, int64_t source_offset, xx_pd_struct *pd);
 
 /**
  * Release the standard model's contents and its owning allocation. engine is

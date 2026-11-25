@@ -49,13 +49,14 @@ typedef struct xx_pkcs7_encap_content_info {
     char content_type_oid[96];
     const uint8_t *content_type_oid_der;
     size_t content_type_oid_der_size;
-    bool has_content;              /**< eContent is OPTIONAL (a detached signature omits it). */
+    bool has_content; /**< eContent is OPTIONAL (a detached signature omits it). */
     bool content_is_octet_string;
-    const uint8_t *content_tlv;    /**< Raw TLV inside [0], header included, whatever its tag. */
+    const uint8_t *content_tlv; /**< Raw TLV inside [0], header included, whatever its tag. */
     size_t content_tlv_size;
-    const uint8_t *content_data;   /**< Content of that TLV, header excluded: Authenticode hashes this span; RFC 3161 hashes content_tlv. */
+    const uint8_t *content_data; /**< Content of that TLV, header excluded: Authenticode hashes this span; RFC 3161 hashes content_tlv. */
     size_t content_data_size;
-    const uint8_t *octet_string_content; /**< Unwrapped content when content_is_octet_string and it is PRIMITIVE; NULL otherwise (constructed/BER-chunked - re-flatten content_tlv yourself with xx_asn1_read_octet_string_into if that ever matters). */
+    const uint8_t *octet_string_content; /**< Unwrapped content when content_is_octet_string and it is PRIMITIVE; NULL otherwise (constructed/BER-chunked - re-flatten
+                                            content_tlv yourself with xx_asn1_read_octet_string_into if that ever matters). */
     size_t octet_string_content_size;
 } xx_pkcs7_encap_content_info;
 
@@ -66,11 +67,11 @@ typedef enum xx_pkcs7_sid_kind {
 
 typedef struct xx_pkcs7_signer_identifier {
     xx_pkcs7_sid_kind kind;
-    xx_x509_name issuer;                  /**< Valid iff kind == ISSUER_AND_SERIAL. */
+    xx_x509_name issuer; /**< Valid iff kind == ISSUER_AND_SERIAL. */
     const uint8_t *serial;
-    size_t serial_size;                   /**< Valid iff kind == ISSUER_AND_SERIAL. */
+    size_t serial_size; /**< Valid iff kind == ISSUER_AND_SERIAL. */
     const uint8_t *subject_key_id;
-    size_t subject_key_id_size;           /**< Valid iff kind == SUBJECT_KEY_IDENTIFIER. */
+    size_t subject_key_id_size; /**< Valid iff kind == SUBJECT_KEY_IDENTIFIER. */
 } xx_pkcs7_signer_identifier;
 
 /** Attribute ::= SEQUENCE { attrType OID, attrValues SET OF AttributeValue }
@@ -89,10 +90,10 @@ typedef struct xx_pkcs7_signer_info {
     xx_pkcs7_signer_identifier sid;
     xx_x509_algorithm_id digest_algorithm;
     bool has_signed_attrs;
-    const uint8_t *signed_attrs_content;  /**< Content of the [0] IMPLICIT SET (the Attribute elements only, not the [0] header). */
+    const uint8_t *signed_attrs_content; /**< Content of the [0] IMPLICIT SET (the Attribute elements only, not the [0] header). */
     size_t signed_attrs_content_size;
     xx_x509_algorithm_id signature_algorithm;
-    const uint8_t *signature;             /**< OCTET STRING content (zero-copy; assumes the common primitive encoding). */
+    const uint8_t *signature; /**< OCTET STRING content (zero-copy; assumes the common primitive encoding). */
     size_t signature_size;
     bool has_unsigned_attrs;
     const uint8_t *unsigned_attrs_content;
@@ -119,12 +120,12 @@ typedef struct xx_pkcs7_signed_data {
     size_t digest_algorithms_der_size;
     xx_pkcs7_encap_content_info content_info;
     bool has_certificates;
-    const uint8_t *certificates_der;      /**< Content of the [0] IMPLICIT SET OF CertificateChoices. */
+    const uint8_t *certificates_der; /**< Content of the [0] IMPLICIT SET OF CertificateChoices. */
     size_t certificates_der_size;
     bool has_crls;
-    const uint8_t *crls_der;              /**< Content of the [1] IMPLICIT SET, raw only (not in scope beyond presence/bytes). */
+    const uint8_t *crls_der; /**< Content of the [1] IMPLICIT SET, raw only (not in scope beyond presence/bytes). */
     size_t crls_der_size;
-    const uint8_t *signer_infos_der;      /**< Content of the SET OF SignerInfo. */
+    const uint8_t *signer_infos_der; /**< Content of the SET OF SignerInfo. */
     size_t signer_infos_der_size;
 } xx_pkcs7_signed_data;
 

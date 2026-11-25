@@ -459,24 +459,22 @@ double xx_crt_log2(double x)
         xx_crt_log2_ensure_table();
         pCell = &s_xx_crt_log2_table[nIndex];
         p = xx_crt_dd_two_prod(m, pCell->nInverse); /* exact */
-        r = xx_crt_dd_two_sum(p.hi - 1.0, p.lo);   /* p.hi - 1 is exact */
+        r = xx_crt_dd_two_sum(p.hi - 1.0, p.lo);    /* p.hi - 1 is exact */
         y = xx_crt_dd_make(pCell->nLogHi, pCell->nLogLo);
         goto have_table;
     }
     y = xx_crt_dd_make(0.0, 0.0);
-have_table:
-    {
-        /* ln(1 + r) = r - r^2/2 + r^3 (1/3 - r/4 + r^2/5 - ...), |r| < 2^-8 */
-        xx_crt_dd r2 = xx_crt_dd_mul(r, r);
-        xx_crt_dd lnr = xx_crt_dd_add(r, xx_crt_dd_make(-0.5 * r2.hi, -0.5 * r2.lo));
-        double h = r.hi;
-        nTail = h * h * h *
-                (1.0 / 3 - h * (0.25 - h * (0.2 - h * (1.0 / 6 - h * (1.0 / 7 - h * (0.125 - h * (1.0 / 9 - h * (0.1 - h * (1.0 / 11)))))))));
-        lnr = xx_crt_dd_add_d(lnr, nTail);
-        lnr = xx_crt_dd_mul(lnr, xx_crt_dd_make(XX_CRT_INV_LN2_HI, XX_CRT_INV_LN2_LO));
-        y = xx_crt_dd_add(y, lnr);
-        y = xx_crt_dd_add_d(y, (double)k);
-    }
+have_table: {
+    /* ln(1 + r) = r - r^2/2 + r^3 (1/3 - r/4 + r^2/5 - ...), |r| < 2^-8 */
+    xx_crt_dd r2 = xx_crt_dd_mul(r, r);
+    xx_crt_dd lnr = xx_crt_dd_add(r, xx_crt_dd_make(-0.5 * r2.hi, -0.5 * r2.lo));
+    double h = r.hi;
+    nTail = h * h * h * (1.0 / 3 - h * (0.25 - h * (0.2 - h * (1.0 / 6 - h * (1.0 / 7 - h * (0.125 - h * (1.0 / 9 - h * (0.1 - h * (1.0 / 11)))))))));
+    lnr = xx_crt_dd_add_d(lnr, nTail);
+    lnr = xx_crt_dd_mul(lnr, xx_crt_dd_make(XX_CRT_INV_LN2_HI, XX_CRT_INV_LN2_LO));
+    y = xx_crt_dd_add(y, lnr);
+    y = xx_crt_dd_add_d(y, (double)k);
+}
     {
         /* Ziv's rounding test: y.hi is the answer unless the error bound
          * (2^-66 |y|, a margin over the 2^-69 analysis) reaches the

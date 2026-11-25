@@ -41,18 +41,17 @@ typedef struct xx_regex xx_regex;
 XXFC_API xx_regex *xx_regex_compile(const char *pattern, const char *flags, char **error);
 /* Counted pattern may contain NUL bytes. Flags are counted and must contain
  * each of g, i, m at most once; unknown/duplicate flags are syntax errors. */
-XXFC_API xx_regex *xx_regex_compile_n(const char *pattern, size_t pattern_size, const char *flags,
-                                     size_t flags_size, char **error);
+XXFC_API xx_regex *xx_regex_compile_n(const char *pattern, size_t pattern_size, const char *flags, size_t flags_size, char **error);
 /* Optional byte-scanner dialect. Existing compile functions keep their JS
  * byte/Latin-1 behavior. RAW_BYTES gives every subject byte its own position. */
 enum {
-    XX_REGEX_RAW_BYTES = 1u, XX_REGEX_DOTALL = 2u,
+    XX_REGEX_RAW_BYTES = 1u,
+    XX_REGEX_DOTALL = 2u,
     /* Adds scoped/bare inline i/m/s/x options and fixed byte-width lookbehind.
      * Lookbehind requires RAW_BYTES; variable widths are rejected. */
     XX_REGEX_SCANNER_DIALECT = 4u
 };
-XXFC_API xx_regex *xx_regex_compile_n_options(const char *pattern, size_t pattern_size,
-    const char *flags, size_t flags_size, unsigned options, char **error);
+XXFC_API xx_regex *xx_regex_compile_n_options(const char *pattern, size_t pattern_size, const char *flags, size_t flags_size, unsigned options, char **error);
 XXFC_API xx_regex *xx_regex_ref(xx_regex *regex);
 XXFC_API void xx_regex_free(xx_regex *regex);
 XXFC_API int xx_regex_ngroups(const xx_regex *regex);
@@ -74,8 +73,7 @@ XXFC_API bool xx_regex_unicode_property(uint32_t codepoint, unsigned property);
  * match first, then groups; -1 for nonparticipating groups. Returns 1 for a
  * match, 0 for no match/invalid input/budget exhaustion. Text is counted and
  * may contain NUL bytes; text_size must fit INT32_MAX. No shared lastIndex. */
-XXFC_API int xx_regex_exec(const xx_regex *regex, const char *text, size_t text_size,
-                           size_t start, int32_t *caps);
+XXFC_API int xx_regex_exec(const xx_regex *regex, const char *text, size_t text_size, size_t start, int32_t *caps);
 typedef enum xx_regex_exec_status {
     XX_REGEX_EXEC_MATCH = 1,
     XX_REGEX_EXEC_NO_MATCH = 0,
@@ -90,18 +88,19 @@ typedef bool (*xx_regex_abort_fn)(void *user);
  * matcher work and at most 64 KiB native search chunks. It must not modify the
  * subject, expression or captures. On valid inputs all non-match outcomes clear
  * captures to -1. NULL callback retains the legacy native search fast paths. */
-XXFC_API xx_regex_exec_status xx_regex_exec_ex(const xx_regex *regex, const char *text, size_t text_size,
-    size_t start, int32_t *caps, xx_regex_abort_fn should_abort, void *abort_user);
+XXFC_API xx_regex_exec_status xx_regex_exec_ex(const xx_regex *regex, const char *text, size_t text_size, size_t start, int32_t *caps, xx_regex_abort_fn should_abort,
+                                               void *abort_user);
 enum {
-    XX_REGEX_ANCHORED = 1u, XX_REGEX_ENDANCHORED = 2u,
-    XX_REGEX_NOTBOL = 4u, XX_REGEX_NOTEOL = 8u
+    XX_REGEX_ANCHORED = 1u,
+    XX_REGEX_ENDANCHORED = 2u,
+    XX_REGEX_NOTBOL = 4u,
+    XX_REGEX_NOTEOL = 8u
 };
 /* Path control returns 0 to continue, positive to reject the current path and
  * backtrack, or negative to cancel the search. Captures retain byte offsets. */
 typedef int (*xx_regex_path_fn)(void *user, size_t start, size_t position);
-XXFC_API xx_regex_exec_status xx_regex_exec_controlled(const xx_regex *regex,
-    const char *text, size_t text_size, size_t start, int32_t *caps, unsigned options,
-    xx_regex_abort_fn should_abort, void *abort_user, xx_regex_path_fn path, void *path_user);
+XXFC_API xx_regex_exec_status xx_regex_exec_controlled(const xx_regex *regex, const char *text, size_t text_size, size_t start, int32_t *caps, unsigned options,
+                                                       xx_regex_abort_fn should_abort, void *abort_user, xx_regex_path_fn path, void *path_user);
 #ifdef __cplusplus
 }
 #endif

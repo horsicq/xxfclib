@@ -383,8 +383,7 @@ static xx_amigalzx_stream *xx_amigalzx_parse_raw(Abstractformat *self, xx_pd_str
         /* A zero-size record whose name ends in a separator is a directory
          * entry; the trailing separator is dropped and the record marked as a
          * folder rather than refused as an empty path component. */
-        folder = unpacked_size == 0 && packed_size == 0 && name_length > 1 &&
-                 (name_buffer[name_length - 1] == '/' || name_buffer[name_length - 1] == '\\');
+        folder = unpacked_size == 0 && packed_size == 0 && name_length > 1 && (name_buffer[name_length - 1] == '/' || name_buffer[name_length - 1] == '\\');
         normalized = xx_amigalzx_normalize_name(name_buffer, folder ? name_length - 1 : name_length);
         if (normalized <= 0) goto fail;
         name_buffer[normalized] = 0U;
@@ -503,8 +502,8 @@ static xx_amigalzx_stream *xx_amigalzx_parse(Abstractformat *self, xx_pd_struct 
     total = xx_io_total_size(self->device);
     if (total < self->base_address) return NULL;
     span = total - self->base_address;
-    if (span < 42 || span > INT64_C(64) * 1024 * 1024 || !xx_amigalzx_read_at(self, self->base_address, magic, sizeof(magic)) ||
-        xx_rt_memcmp(magic, "LZX", 3U) != 0) return NULL;
+    if (span < 42 || span > INT64_C(64) * 1024 * 1024 || !xx_amigalzx_read_at(self, self->base_address, magic, sizeof(magic)) || xx_rt_memcmp(magic, "LZX", 3U) != 0)
+        return NULL;
     bytes = (uint8_t *)xx_mem_alloc((size_t)span);
     if (!bytes || !xx_amigalzx_read_at(self, self->base_address, bytes, (size_t)span)) goto fail;
     for (input = 0U; input < (size_t)span; ++input) {
@@ -531,8 +530,9 @@ static xx_amigalzx_stream *xx_amigalzx_parse(Abstractformat *self, xx_pd_struct 
         uint32_t crc, stored;
         uint8_t *plain = NULL;
         size_t plain_size = 0U;
-        if (!xx_amigalzx_range_within((int64_t)output, member->header_offset, member->header_size) || member->header_size < 31 ||
-            member->uncompressed_size < 0 || (uint64_t)member->uncompressed_size > (uint64_t)XX_AMIGALZX_MAX_DECODED - decoded_total) goto fail;
+        if (!xx_amigalzx_range_within((int64_t)output, member->header_offset, member->header_size) || member->header_size < 31 || member->uncompressed_size < 0 ||
+            (uint64_t)member->uncompressed_size > (uint64_t)XX_AMIGALZX_MAX_DECODED - decoded_total)
+            goto fail;
         decoded_total += (uint64_t)member->uncompressed_size;
         xx_rt_memcpy(saved, bytes + at + 26U, 4U);
         stored = xx_data_get_u32(saved, 4, 0, false);
@@ -998,7 +998,8 @@ static bool xx_amigalzx_decode(Abstractformat *self, const xx_amigalzx_member *m
         /* parse narrows a stored member to exactly its own bytes, so the two
          * sizes must agree; a disagreement means the narrowing was skipped
          * and the copy below would hand out a neighbour's data. */
-        if (member->compressed_size != member->uncompressed_size || !xx_amigalzx_member_read(self, stream, member->data_offset, buffer, (size_t)member->uncompressed_size)) {
+        if (member->compressed_size != member->uncompressed_size ||
+            !xx_amigalzx_member_read(self, stream, member->data_offset, buffer, (size_t)member->uncompressed_size)) {
             xx_mem_free(buffer);
             return false;
         }
@@ -1306,7 +1307,10 @@ bool xx_amigalzx_unpack_current_archive_record(Abstractformat *self, xx_archive_
     {
         char *relative = xx_archive_output_name(member->name, 28591, 0);
         if (!member->is_folder) XX_ARCHIVE_OUTPUT_RESOLVE(relative, stream->items, stream->count, stream->index, name, 28591, 0);
-        if (!relative) { xx_str_free(converted_path); return false; }
+        if (!relative) {
+            xx_str_free(converted_path);
+            return false;
+        }
         if (base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\') {
             target_path = xx_str_concat3(base_path, "/", relative);
         } else {

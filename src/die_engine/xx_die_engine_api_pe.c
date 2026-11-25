@@ -22,9 +22,7 @@ static const char *section_name(DieEngine *pEngine, int nNumber, char *pBuffer)
     }
 
     /* Check for COFF long section name: starts with '/' followed by decimal offset */
-    if (pEngine->pe.pSections[nNumber].sName[0] == '/' &&
-        pEngine->pe.pSections[nNumber].sName[1] >= '0' &&
-        pEngine->pe.pSections[nNumber].sName[1] <= '9') {
+    if (pEngine->pe.pSections[nNumber].sName[0] == '/' && pEngine->pe.pSections[nNumber].sName[1] >= '0' && pEngine->pe.pSections[nNumber].sName[1] <= '9') {
         int64_t nOffset = (int64_t)pEngine->pe.nPointerToSymbolTable + (int64_t)pEngine->pe.nNumberOfSymbols * 18;
         if (nOffset > 0) {
             uint32_t nStrTableSize = xx_exec_u32(pEngine->pe.pInput, nOffset, false);
@@ -220,102 +218,100 @@ static cd_u64 image_optional_header_value(xx_pe_inspection *pPE, const char *pKe
     return 0;
 }
 
-static const ApiEntry g_pe_api_table[] = {
-    {"getNumberOfSections", A_getNumberOfSections, 0},
-    {"getSectionName", A_getSectionName, 1},
-    {"getSectionVirtualSize", A_getSectionVirtualSize, 1},
-    {"getSectionVirtualAddress", A_getSectionVirtualAddress, 1},
-    {"getSectionFileSize", A_getSectionFileSize, 1},
-    {"getSectionFileOffset", A_getSectionFileOffset, 1},
-    {"getSectionCharacteristics", A_getSectionCharacteristics, 1},
-    {"getNumberOfResources", A_getNumberOfResources, 0},
-    {"isSectionNamePresent", A_isSectionNamePresent, 1},
-    {"isNET", A_isNET, 0},
-    {"isNet", A_isNET, 0},
-    {"isPE32", A_isPE32, 0},
-    {"isPEPlus", A_isPEPlus, 0},
-    {"getGeneralOptions", A_getGeneralOptions, 0},
-    {"getResourceIdByNumber", A_getResourceIdByNumber, 1},
-    {"getResourceNameByNumber", A_getResourceNameByNumber, 1},
-    {"getResourceOffsetByNumber", A_getResourceOffsetByNumber, 1},
-    {"getResourceSizeByNumber", A_getResourceSizeByNumber, 1},
-    {"getResourceTypeByNumber", A_getResourceTypeByNumber, 1},
-    {"isNETStringPresent", A_isNetObjectPresent, 1},
-    {"isNetObjectPresent", A_isNetObjectPresent, 1},
-    {"isNetStringPresent", A_isNetObjectPresent, 1},
-    {"isNETUnicodeStringPresent", A_isNetUStringPresent, 1},
-    {"isNetUStringPresent", A_isNetUStringPresent, 1},
-    {"isNetUnicodeStringPresent", A_isNetUStringPresent, 1},
-    {"isNetGlobalCctorPresent", A_isNetGlobalCctorPresent, 0},
-    {"isNetTypePresent", A_isNetTypePresent, 2},
-    {"isNetMethodPresent", A_isNetMethodPresent, 3},
-    {"getNumberOfNetMethods", A_getNumberOfNetMethods, 0},
-    {"getNetMethodInfo", A_getNetMethodInfo, 1},
-    {"getNetUserString", A_getNetUserString, 1},
-    {"isNetMethodCalledBy", A_isNetMethodCalledBy, 2},
-    {"isNetFieldPresent", A_isNetFieldPresent, 3},
-    {"findSignatureInBlob_NET", A_findSignatureInBlob_NET, 1},
-    {"isSignatureInBlobPresent_NET", A_isSignatureInBlobPresent_NET, 1},
-    {"getNetModuleName", A_getNetModuleName, 0},
-    {"getNetAssemblyName", A_getNetAssemblyName, 0},
-    {"getNetVersion", A_getNETVersion, 0},
-    {"getNumberOfImports", A_getNumberOfImports, 0},
-    {"getImportLibraryName", A_getImportLibraryName, 1},
-    {"isLibraryPresent", A_isLibraryPresent, 2},
-    {"isLibraryFunctionPresent", A_isLibraryFunctionPresent, 2},
-    {"isFunctionPresent", A_isFunctionPresent, 1},
-    {"getImportFunctionName", A_getImportFunctionName, 2},
-    {"getImportSection", A_getImportSection, 0},
-    {"getExportSection", A_getExportSection, 0},
-    {"getResourceSection", A_getResourceSection, 0},
-    {"getEntryPointSection", A_getEntryPointSection, 0},
-    {"getRelocsSection", A_getRelocsSection, 0},
-    {"getTLSSection", A_getTLSSection, 0},
-    {"getMajorLinkerVersion", A_getMajorLinkerVersion, 0},
-    {"getMinorLinkerVersion", A_getMinorLinkerVersion, 0},
-    {"getManifest", A_getManifest, 0},
-    {"getVersionStringInfo", A_getVersionStringInfo, 1},
-    {"getNumberOfImportThunks", A_getNumberOfImportThunks, 1},
-    {"getResourceNameOffset", A_getResourceNameOffset, 1},
-    {"isResourceNamePresent", A_isResourceNamePresent, 1},
-    {"isResourceGroupNamePresent", A_isResourceGroupNamePresent, 1},
-    {"isResourceGroupIdPresent", A_isResourceGroupIdPresent, 1},
-    {"getCompilerVersion", A_getCompilerVersion, 0},
-    {"isConsole", A_isConsole, 0},
-    {"isSignedFile", A_isSignedFile, 0},
-    {"getSectionNameCollision", A_getSectionNameCollision, 2},
-    {"getSectionNumber", A_getSectionNumber, 1},
-    {"isDll", A_isDll, 0},
-    {"isDriver", A_isDriver, 0},
-    {"getNETVersion", A_getNETVersion, 0},
-    {"compareEP_NET", A_compareEP_NET, 2},
-    {"getSizeOfCode", A_getSizeOfCode, 0},
-    {"getSizeOfUninitializedData", A_getSizeOfUninitializedData, 0},
-    {"getPEFileVersion", A_getPEFileVersion, 1},
-    {"getFileVersion", A_getFileVersion, 0},
-    {"getFileVersionMS", A_getFileVersionMS, 0},
-    {"calculateSizeOfHeaders", A_calculateSizeOfHeaders, 0},
-    {"isExportFunctionPresent", A_isExportFunctionPresent, 1},
-    {"getNumberOfExportFunctions", A_getNumberOfExportFunctions, 0},
-    {"getNumberOfExports", A_getNumberOfExportFunctions, 0},
-    {"getExportFunctionName", A_getExportFunctionName, 1},
-    {"getExportNameByNumber", A_getExportFunctionName, 1},
-    {"getNextNamedExportFunctionIndex", A_getNextNamedExportFunctionIndex, 1},
-    {"isExportPresent", A_isExportPresent, 0},
-    {"isTLSPresent", A_isTLSPresent, 0},
-    {"isImportPresent", A_isImportPresent, 0},
-    {"isResourcesPresent", A_isResourcesPresent, 0},
-    {"getImportHash32", A_getImportHash32, 0},
-    {"getImportHash64", A_getImportHash64, 0},
-    {"isImportPositionHashPresent", A_isImportPositionHashPresent, 2},
-    {"getImageFileHeader", A_getImageFileHeader, 1},
-    {"getImageOptionalHeader", A_getImageOptionalHeader, 1},
-    {"getNumberOfDebugDataRecords", A_getNumberOfDebugDataRecords, 0},
-    {"getDebugDataType", A_getDebugDataType, 1},
-    {"getDebugDataOffset", A_getDebugDataOffset, 1},
-    {"getDebugDataSize", A_getDebugDataSize, 1},
-    {NULL, A_NONE, 0}
-};
+static const ApiEntry g_pe_api_table[] = {{"getNumberOfSections", A_getNumberOfSections, 0},
+                                          {"getSectionName", A_getSectionName, 1},
+                                          {"getSectionVirtualSize", A_getSectionVirtualSize, 1},
+                                          {"getSectionVirtualAddress", A_getSectionVirtualAddress, 1},
+                                          {"getSectionFileSize", A_getSectionFileSize, 1},
+                                          {"getSectionFileOffset", A_getSectionFileOffset, 1},
+                                          {"getSectionCharacteristics", A_getSectionCharacteristics, 1},
+                                          {"getNumberOfResources", A_getNumberOfResources, 0},
+                                          {"isSectionNamePresent", A_isSectionNamePresent, 1},
+                                          {"isNET", A_isNET, 0},
+                                          {"isNet", A_isNET, 0},
+                                          {"isPE32", A_isPE32, 0},
+                                          {"isPEPlus", A_isPEPlus, 0},
+                                          {"getGeneralOptions", A_getGeneralOptions, 0},
+                                          {"getResourceIdByNumber", A_getResourceIdByNumber, 1},
+                                          {"getResourceNameByNumber", A_getResourceNameByNumber, 1},
+                                          {"getResourceOffsetByNumber", A_getResourceOffsetByNumber, 1},
+                                          {"getResourceSizeByNumber", A_getResourceSizeByNumber, 1},
+                                          {"getResourceTypeByNumber", A_getResourceTypeByNumber, 1},
+                                          {"isNETStringPresent", A_isNetObjectPresent, 1},
+                                          {"isNetObjectPresent", A_isNetObjectPresent, 1},
+                                          {"isNetStringPresent", A_isNetObjectPresent, 1},
+                                          {"isNETUnicodeStringPresent", A_isNetUStringPresent, 1},
+                                          {"isNetUStringPresent", A_isNetUStringPresent, 1},
+                                          {"isNetUnicodeStringPresent", A_isNetUStringPresent, 1},
+                                          {"isNetGlobalCctorPresent", A_isNetGlobalCctorPresent, 0},
+                                          {"isNetTypePresent", A_isNetTypePresent, 2},
+                                          {"isNetMethodPresent", A_isNetMethodPresent, 3},
+                                          {"getNumberOfNetMethods", A_getNumberOfNetMethods, 0},
+                                          {"getNetMethodInfo", A_getNetMethodInfo, 1},
+                                          {"getNetUserString", A_getNetUserString, 1},
+                                          {"isNetMethodCalledBy", A_isNetMethodCalledBy, 2},
+                                          {"isNetFieldPresent", A_isNetFieldPresent, 3},
+                                          {"findSignatureInBlob_NET", A_findSignatureInBlob_NET, 1},
+                                          {"isSignatureInBlobPresent_NET", A_isSignatureInBlobPresent_NET, 1},
+                                          {"getNetModuleName", A_getNetModuleName, 0},
+                                          {"getNetAssemblyName", A_getNetAssemblyName, 0},
+                                          {"getNetVersion", A_getNETVersion, 0},
+                                          {"getNumberOfImports", A_getNumberOfImports, 0},
+                                          {"getImportLibraryName", A_getImportLibraryName, 1},
+                                          {"isLibraryPresent", A_isLibraryPresent, 2},
+                                          {"isLibraryFunctionPresent", A_isLibraryFunctionPresent, 2},
+                                          {"isFunctionPresent", A_isFunctionPresent, 1},
+                                          {"getImportFunctionName", A_getImportFunctionName, 2},
+                                          {"getImportSection", A_getImportSection, 0},
+                                          {"getExportSection", A_getExportSection, 0},
+                                          {"getResourceSection", A_getResourceSection, 0},
+                                          {"getEntryPointSection", A_getEntryPointSection, 0},
+                                          {"getRelocsSection", A_getRelocsSection, 0},
+                                          {"getTLSSection", A_getTLSSection, 0},
+                                          {"getMajorLinkerVersion", A_getMajorLinkerVersion, 0},
+                                          {"getMinorLinkerVersion", A_getMinorLinkerVersion, 0},
+                                          {"getManifest", A_getManifest, 0},
+                                          {"getVersionStringInfo", A_getVersionStringInfo, 1},
+                                          {"getNumberOfImportThunks", A_getNumberOfImportThunks, 1},
+                                          {"getResourceNameOffset", A_getResourceNameOffset, 1},
+                                          {"isResourceNamePresent", A_isResourceNamePresent, 1},
+                                          {"isResourceGroupNamePresent", A_isResourceGroupNamePresent, 1},
+                                          {"isResourceGroupIdPresent", A_isResourceGroupIdPresent, 1},
+                                          {"getCompilerVersion", A_getCompilerVersion, 0},
+                                          {"isConsole", A_isConsole, 0},
+                                          {"isSignedFile", A_isSignedFile, 0},
+                                          {"getSectionNameCollision", A_getSectionNameCollision, 2},
+                                          {"getSectionNumber", A_getSectionNumber, 1},
+                                          {"isDll", A_isDll, 0},
+                                          {"isDriver", A_isDriver, 0},
+                                          {"getNETVersion", A_getNETVersion, 0},
+                                          {"compareEP_NET", A_compareEP_NET, 2},
+                                          {"getSizeOfCode", A_getSizeOfCode, 0},
+                                          {"getSizeOfUninitializedData", A_getSizeOfUninitializedData, 0},
+                                          {"getPEFileVersion", A_getPEFileVersion, 1},
+                                          {"getFileVersion", A_getFileVersion, 0},
+                                          {"getFileVersionMS", A_getFileVersionMS, 0},
+                                          {"calculateSizeOfHeaders", A_calculateSizeOfHeaders, 0},
+                                          {"isExportFunctionPresent", A_isExportFunctionPresent, 1},
+                                          {"getNumberOfExportFunctions", A_getNumberOfExportFunctions, 0},
+                                          {"getNumberOfExports", A_getNumberOfExportFunctions, 0},
+                                          {"getExportFunctionName", A_getExportFunctionName, 1},
+                                          {"getExportNameByNumber", A_getExportFunctionName, 1},
+                                          {"getNextNamedExportFunctionIndex", A_getNextNamedExportFunctionIndex, 1},
+                                          {"isExportPresent", A_isExportPresent, 0},
+                                          {"isTLSPresent", A_isTLSPresent, 0},
+                                          {"isImportPresent", A_isImportPresent, 0},
+                                          {"isResourcesPresent", A_isResourcesPresent, 0},
+                                          {"getImportHash32", A_getImportHash32, 0},
+                                          {"getImportHash64", A_getImportHash64, 0},
+                                          {"isImportPositionHashPresent", A_isImportPositionHashPresent, 2},
+                                          {"getImageFileHeader", A_getImageFileHeader, 1},
+                                          {"getImageOptionalHeader", A_getImageOptionalHeader, 1},
+                                          {"getNumberOfDebugDataRecords", A_getNumberOfDebugDataRecords, 0},
+                                          {"getDebugDataType", A_getDebugDataType, 1},
+                                          {"getDebugDataOffset", A_getDebugDataOffset, 1},
+                                          {"getDebugDataSize", A_getDebugDataSize, 1},
+                                          {NULL, A_NONE, 0}};
 
 void die_engine_api_register_pe(JSCtx *pCtx, JSVal object)
 {
@@ -328,9 +324,7 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
     xx_io_device *pFile = pEngine->device;
 
     switch (id) {
-        case A_getNumberOfSections:
-            *pResult = js_num((double)(pEngine->bHasPE ? pPE->nSectionCount : 0));
-            return true;
+        case A_getNumberOfSections: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nSectionCount : 0)); return true;
 
         case A_getSectionName: {
             char sName[256];
@@ -359,9 +353,7 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
             }
         }
 
-        case A_getNumberOfResources:
-            *pResult = js_num((double)(pEngine->bHasPE ? pPE->nResourceCount : 0));
-            return true;
+        case A_getNumberOfResources: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nResourceCount : 0)); return true;
 
         case A_isSectionNamePresent: {
             char *pName = arg_string(pCtx, nArgc, pArgv, 0);
@@ -450,15 +442,9 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
             }
         }
 
-        case A_isNET:
-            *pResult = js_bool(pEngine->bHasDotNet && pDotNet->bIsNet);
-            return true;
-        case A_isPE32:
-            *pResult = js_bool(pEngine->bHasPE && (!pPE->bIs64));
-            return true;
-        case A_isPEPlus:
-            *pResult = js_bool(pEngine->bHasPE && pPE->bIs64);
-            return true;
+        case A_isNET: *pResult = js_bool(pEngine->bHasDotNet && pDotNet->bIsNet); return true;
+        case A_isPE32: *pResult = js_bool(pEngine->bHasPE && (!pPE->bIs64)); return true;
+        case A_isPEPlus: *pResult = js_bool(pEngine->bHasPE && pPE->bIs64); return true;
 
         case A_getGeneralOptions: {
             char sBuf[64];
@@ -574,9 +560,7 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
             return true;
         }
 
-        case A_getNumberOfImports:
-            *pResult = js_num((double)(pEngine->bHasPE ? pPE->nImportCount : 0));
-            return true;
+        case A_getNumberOfImports: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nImportCount : 0)); return true;
 
         case A_getImportLibraryName: {
             int nNumber = (int)arg_i64(pCtx, nArgc, pArgv, 0, 0);
@@ -693,21 +677,11 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
             return true;
         }
 
-        case A_getImportSection:
-            *pResult = js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_IMPORT));
-            return true;
-        case A_getExportSection:
-            *pResult = js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_EXPORT));
-            return true;
-        case A_getResourceSection:
-            *pResult = js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_RESOURCE));
-            return true;
-        case A_getRelocsSection:
-            *pResult = js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_BASERELOC));
-            return true;
-        case A_getTLSSection:
-            *pResult = js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_TLS));
-            return true;
+        case A_getImportSection: *pResult = js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_IMPORT)); return true;
+        case A_getExportSection: *pResult = js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_EXPORT)); return true;
+        case A_getResourceSection: *pResult = js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_RESOURCE)); return true;
+        case A_getRelocsSection: *pResult = js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_BASERELOC)); return true;
+        case A_getTLSSection: *pResult = js_num((double)pe_directory_section(pEngine, XX_PE_INSPECT_DIR_TLS)); return true;
 
         case A_getEntryPointSection: {
             const xx_memory_record *pRecord;
@@ -723,16 +697,10 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
             return true;
         }
 
-        case A_getMajorLinkerVersion:
-            *pResult = js_num((double)(pEngine->bHasPE ? pPE->nMajorLinkerVersion : 0));
-            return true;
-        case A_getMinorLinkerVersion:
-            *pResult = js_num((double)(pEngine->bHasPE ? pPE->nMinorLinkerVersion : 0));
-            return true;
+        case A_getMajorLinkerVersion: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nMajorLinkerVersion : 0)); return true;
+        case A_getMinorLinkerVersion: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nMinorLinkerVersion : 0)); return true;
 
-        case A_getManifest:
-            *pResult = js_str(pCtx, (pEngine->bHasPE && pPE->pManifest) ? pPE->pManifest : "");
-            return true;
+        case A_getManifest: *pResult = js_str(pCtx, (pEngine->bHasPE && pPE->pManifest) ? pPE->pManifest : ""); return true;
 
         case A_getVersionStringInfo: {
             char *pKey = arg_string(pCtx, nArgc, pArgv, 0);
@@ -758,9 +726,7 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
             return true;
         }
 
-        case A_isConsole:
-            *pResult = js_bool(pEngine->bHasPE && (pe_type(pPE) == PETYPE_CONSOLE));
-            return true;
+        case A_isConsole: *pResult = js_bool(pEngine->bHasPE && (pe_type(pPE) == PETYPE_CONSOLE)); return true;
 
         case A_isSignedFile: {
             cd_i64 nOffset = 0;
@@ -777,19 +743,11 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
             *pResult = js_bool((nSize > 0) && (nOffset > 0) && (nOffset < xx_io_total_size(pFile)) && (nSize <= xx_io_total_size(pFile) - nOffset));
             return true;
         }
-        case A_isDll:
-            *pResult = js_bool(pEngine->bHasPE && (pe_type(pPE) == PETYPE_DLL));
-            return true;
-        case A_isDriver:
-            *pResult = js_bool(pEngine->bHasPE && (pe_type(pPE) == PETYPE_DRIVER));
-            return true;
+        case A_isDll: *pResult = js_bool(pEngine->bHasPE && (pe_type(pPE) == PETYPE_DLL)); return true;
+        case A_isDriver: *pResult = js_bool(pEngine->bHasPE && (pe_type(pPE) == PETYPE_DRIVER)); return true;
 
-        case A_getSizeOfCode:
-            *pResult = js_num((double)(pEngine->bHasPE ? pPE->nSizeOfCode : 0));
-            return true;
-        case A_getSizeOfUninitializedData:
-            *pResult = js_num((double)(pEngine->bHasPE ? pPE->nSizeOfUninitializedData : 0));
-            return true;
+        case A_getSizeOfCode: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nSizeOfCode : 0)); return true;
+        case A_getSizeOfUninitializedData: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nSizeOfUninitializedData : 0)); return true;
 
         case A_getPEFileVersion: {
             char *pFileName = arg_string(pCtx, nArgc, pArgv, 0);
@@ -824,9 +782,7 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
             return true;
         }
 
-        case A_getFileVersion:
-            *pResult = js_str(pCtx, version_value(pEngine, "FileVersion"));
-            return true;
+        case A_getFileVersion: *pResult = js_str(pCtx, version_value(pEngine, "FileVersion")); return true;
 
         case A_getFileVersionMS: {
             char sBuf[64];
@@ -880,9 +836,7 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
             return true;
         }
 
-        case A_getNumberOfExportFunctions:
-            *pResult = js_num((double)(pEngine->bHasPE ? pPE->nExportCount : 0));
-            return true;
+        case A_getNumberOfExportFunctions: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nExportCount : 0)); return true;
 
         case A_getExportFunctionName: {
             int nNumber = (int)arg_i64(pCtx, nArgc, pArgv, 0, 0);
@@ -918,25 +872,13 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
             return true;
         }
 
-        case A_isExportPresent:
-            *pResult = js_bool(pEngine->bHasPE && (pPE->pDirRVA[XX_PE_INSPECT_DIR_EXPORT] != 0));
-            return true;
-        case A_isTLSPresent:
-            *pResult = js_bool(pEngine->bHasPE && (pPE->pDirRVA[XX_PE_INSPECT_DIR_TLS] != 0));
-            return true;
-        case A_isImportPresent:
-            *pResult = js_bool(pEngine->bHasPE && (pPE->pDirRVA[XX_PE_INSPECT_DIR_IMPORT] != 0));
-            return true;
-        case A_isResourcesPresent:
-            *pResult = js_bool(pEngine->bHasPE && (pPE->pDirRVA[XX_PE_INSPECT_DIR_RESOURCE] != 0));
-            return true;
+        case A_isExportPresent: *pResult = js_bool(pEngine->bHasPE && (pPE->pDirRVA[XX_PE_INSPECT_DIR_EXPORT] != 0)); return true;
+        case A_isTLSPresent: *pResult = js_bool(pEngine->bHasPE && (pPE->pDirRVA[XX_PE_INSPECT_DIR_TLS] != 0)); return true;
+        case A_isImportPresent: *pResult = js_bool(pEngine->bHasPE && (pPE->pDirRVA[XX_PE_INSPECT_DIR_IMPORT] != 0)); return true;
+        case A_isResourcesPresent: *pResult = js_bool(pEngine->bHasPE && (pPE->pDirRVA[XX_PE_INSPECT_DIR_RESOURCE] != 0)); return true;
 
-        case A_getImportHash32:
-            *pResult = js_num((double)(pEngine->bHasPE ? pPE->nImportHash32 : 0));
-            return true;
-        case A_getImportHash64:
-            *pResult = js_num((double)(pEngine->bHasPE ? pPE->nImportHash64 : 0));
-            return true;
+        case A_getImportHash32: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nImportHash32 : 0)); return true;
+        case A_getImportHash64: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nImportHash64 : 0)); return true;
 
         case A_isImportPositionHashPresent: {
             cd_i64 nIndex = arg_i64(pCtx, nArgc, pArgv, 0, -1);
@@ -989,9 +931,7 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
             return true;
         }
 
-        case A_getNumberOfDebugDataRecords:
-            *pResult = js_num((double)(pEngine->bHasPE ? pPE->nDebugCount : 0));
-            return true;
+        case A_getNumberOfDebugDataRecords: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nDebugCount : 0)); return true;
 
         case A_getDebugDataType: {
             int nNumber = (int)arg_i64(pCtx, nArgc, pArgv, 0, 0);
@@ -1023,8 +963,7 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
             return true;
         }
 
-        default:
-            break;
+        default: break;
     }
 
     return false;

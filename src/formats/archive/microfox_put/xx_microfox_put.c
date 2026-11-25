@@ -472,7 +472,6 @@ fail:
 
 /* Code page 437, 0x80..0xFF, as Unicode. */
 
-
 static char *put_to_utf8(const uint8_t *raw)
 {
     size_t length = xx_str_len((const char *)raw);

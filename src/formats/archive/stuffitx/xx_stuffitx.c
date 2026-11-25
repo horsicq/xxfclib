@@ -799,7 +799,6 @@ static sx_dec *sx_dec_create(void)
 
 /* Mac Roman 0x80..0xFF as Unicode. */
 
-
 static size_t sx_put_utf8(char *out, uint32_t code)
 {
     if (code < 0x80U) {

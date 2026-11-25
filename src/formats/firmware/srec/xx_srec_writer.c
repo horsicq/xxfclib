@@ -27,7 +27,7 @@ static bool emit_s0(xx_io_device *dest, const char *header_text)
     char line[200];
     static const char hex_digits[] = "0123456789ABCDEF";
     uint32_t count = (uint32_t)text_len + 3U; /* 2 addr bytes + 1 chk */
-    uint32_t sum = count; /* addr is 0000 */
+    uint32_t sum = count;                     /* addr is 0000 */
     size_t pos = 0;
 
     line[pos++] = 'S';
@@ -209,11 +209,8 @@ static bool determine_type_and_validate(xx_srec_format format, uint64_t max_addr
     return true;
 }
 
-XXFC_API bool xx_srec_write_buffer_ex(const uint8_t *data, size_t size,
-                                      uint64_t base_address, unsigned line_length,
-                                      xx_srec_format format, const char *header_text,
-                                      uint64_t entry_point,
-                                      xx_io_device *dest, xx_pd_struct *pd)
+XXFC_API bool xx_srec_write_buffer_ex(const uint8_t *data, size_t size, uint64_t base_address, unsigned line_length, xx_srec_format format, const char *header_text,
+                                      uint64_t entry_point, xx_io_device *dest, xx_pd_struct *pd)
 {
     if (!dest) return false;
     if (line_length == 0U) line_length = XX_SREC_DEFAULT_LINE_LENGTH;
@@ -249,19 +246,14 @@ XXFC_API bool xx_srec_write_buffer_ex(const uint8_t *data, size_t size,
     return emit_termination(dest, type, entry_point);
 }
 
-XXFC_API bool xx_srec_write_buffer(const uint8_t *data, size_t size,
-                                   uint64_t base_address, unsigned line_length,
-                                   xx_srec_format format, const char *header_text,
+XXFC_API bool xx_srec_write_buffer(const uint8_t *data, size_t size, uint64_t base_address, unsigned line_length, xx_srec_format format, const char *header_text,
                                    xx_io_device *dest, xx_pd_struct *pd)
 {
     return xx_srec_write_buffer_ex(data, size, base_address, line_length, format, header_text, 0ULL, dest, pd);
 }
 
-XXFC_API bool xx_srec_write_device_ex(xx_io_device *src, int64_t src_offset, size_t count,
-                                      uint64_t base_address, unsigned line_length,
-                                      xx_srec_format format, const char *header_text,
-                                      uint64_t entry_point,
-                                      xx_io_device *dest, xx_pd_struct *pd)
+XXFC_API bool xx_srec_write_device_ex(xx_io_device *src, int64_t src_offset, size_t count, uint64_t base_address, unsigned line_length, xx_srec_format format,
+                                      const char *header_text, uint64_t entry_point, xx_io_device *dest, xx_pd_struct *pd)
 {
     if (!src || !dest || src_offset < 0) return false;
     if (count > 0U && base_address > UINT64_MAX - count) return false;
@@ -287,18 +279,30 @@ XXFC_API bool xx_srec_write_device_ex(xx_io_device *src, int64_t src_offset, siz
         uint64_t cur_addr = base_address;
 
         while (remaining > 0U) {
-            if (pd && xx_pd_is_stopped(pd)) { ok = false; break; }
+            if (pd && xx_pd_is_stopped(pd)) {
+                ok = false;
+                break;
+            }
             size_t to_read = remaining > 65536 ? 65536 : remaining;
-            if (xx_io_seek64(src, cur_src, SEEK_SET) != 0) { ok = false; break; }
+            if (xx_io_seek64(src, cur_src, SEEK_SET) != 0) {
+                ok = false;
+                break;
+            }
             ssize_t bytes_read = xx_io_read(src, buffer, to_read);
-            if (bytes_read <= 0 || (size_t)bytes_read != to_read) { ok = false; break; }
+            if (bytes_read <= 0 || (size_t)bytes_read != to_read) {
+                ok = false;
+                break;
+            }
 
             const uint8_t *ptr = buffer;
             size_t buf_remain = to_read;
 
             while (buf_remain > 0U) {
                 size_t chunk = buf_remain > line_length ? line_length : buf_remain;
-                if (!emit_srec_data(dest, type, cur_addr, ptr, chunk)) { ok = false; break; }
+                if (!emit_srec_data(dest, type, cur_addr, ptr, chunk)) {
+                    ok = false;
+                    break;
+                }
 
                 data_records++;
                 ptr += chunk;
@@ -319,10 +323,8 @@ XXFC_API bool xx_srec_write_device_ex(xx_io_device *src, int64_t src_offset, siz
     return emit_termination(dest, type, entry_point);
 }
 
-XXFC_API bool xx_srec_write_device(xx_io_device *src, int64_t src_offset, size_t count,
-                                   uint64_t base_address, unsigned line_length,
-                                   xx_srec_format format, const char *header_text,
-                                   xx_io_device *dest, xx_pd_struct *pd)
+XXFC_API bool xx_srec_write_device(xx_io_device *src, int64_t src_offset, size_t count, uint64_t base_address, unsigned line_length, xx_srec_format format,
+                                   const char *header_text, xx_io_device *dest, xx_pd_struct *pd)
 {
     return xx_srec_write_device_ex(src, src_offset, count, base_address, line_length, format, header_text, 0ULL, dest, pd);
 }

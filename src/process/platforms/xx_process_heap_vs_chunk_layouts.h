@@ -166,22 +166,18 @@ static int xx_pswhvn_index(const xx_psw_nt_layout *parent, unsigned width)
 }
 
 static const xx_psw_nt_layout xx_pswhvn_header_profiles[] = {
-    {19045, 0x014c, "Native I386 HEAP_VS_CHUNK_HEADER; stored encoded overlays; HeaderSize bit positions unverified",
-        xx_pswhvn_header32_19045, XX_PSW_COUNT(xx_pswhvn_header32_19045), 0x8},
-    {19045, 0x8664, "Native AMD64 19045 HEAP_VS_CHUNK_HEADER; stored encoded overlays, not decoded allocation fields",
-        xx_pswhvn_header64, XX_PSW_COUNT(xx_pswhvn_header64), 0x10},
-    {26100, 0x8664, "Native AMD64 26100 HEAP_VS_CHUNK_HEADER; stored encoded overlays, not decoded allocation fields",
-        xx_pswhvn_header64, XX_PSW_COUNT(xx_pswhvn_header64), 0x10}
-};
+    {19045, 0x014c, "Native I386 HEAP_VS_CHUNK_HEADER; stored encoded overlays; HeaderSize bit positions unverified", xx_pswhvn_header32_19045,
+     XX_PSW_COUNT(xx_pswhvn_header32_19045), 0x8},
+    {19045, 0x8664, "Native AMD64 19045 HEAP_VS_CHUNK_HEADER; stored encoded overlays, not decoded allocation fields", xx_pswhvn_header64,
+     XX_PSW_COUNT(xx_pswhvn_header64), 0x10},
+    {26100, 0x8664, "Native AMD64 26100 HEAP_VS_CHUNK_HEADER; stored encoded overlays, not decoded allocation fields", xx_pswhvn_header64,
+     XX_PSW_COUNT(xx_pswhvn_header64), 0x10}};
 
 static const xx_psw_nt_layout xx_pswhvn_free_profiles[] = {
-    {19045, 0x014c, "Native I386 HEAP_VS_CHUNK_FREE_HEADER; stored overlays; HeaderSize bit positions unverified",
-        xx_pswhvn_free32_19045, XX_PSW_COUNT(xx_pswhvn_free32_19045), 0x10},
-    {19045, 0x8664, "Native AMD64 19045 HEAP_VS_CHUNK_FREE_HEADER; stored encoded/tree overlays",
-        xx_pswhvn_free64, XX_PSW_COUNT(xx_pswhvn_free64), 0x20},
-    {26100, 0x8664, "Native AMD64 26100 HEAP_VS_CHUNK_FREE_HEADER; stored encoded/tree overlays",
-        xx_pswhvn_free64, XX_PSW_COUNT(xx_pswhvn_free64), 0x20}
-};
+    {19045, 0x014c, "Native I386 HEAP_VS_CHUNK_FREE_HEADER; stored overlays; HeaderSize bit positions unverified", xx_pswhvn_free32_19045,
+     XX_PSW_COUNT(xx_pswhvn_free32_19045), 0x10},
+    {19045, 0x8664, "Native AMD64 19045 HEAP_VS_CHUNK_FREE_HEADER; stored encoded/tree overlays", xx_pswhvn_free64, XX_PSW_COUNT(xx_pswhvn_free64), 0x20},
+    {26100, 0x8664, "Native AMD64 26100 HEAP_VS_CHUNK_FREE_HEADER; stored encoded/tree overlays", xx_pswhvn_free64, XX_PSW_COUNT(xx_pswhvn_free64), 0x20}};
 
 static const xx_psw_nt_layout *xx_pswhvc_native_header(const xx_psw_nt_layout *parent, unsigned width)
 {
@@ -196,4 +192,3 @@ static const xx_psw_nt_layout *xx_pswhvc_native_free(const xx_psw_nt_layout *par
 }
 
 #endif /* XX_PROCESS_HEAP_VS_CHUNK_LAYOUTS_H */
-

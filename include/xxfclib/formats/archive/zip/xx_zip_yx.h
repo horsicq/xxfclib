@@ -55,13 +55,11 @@ typedef struct {
  * defined is_zip=false value. A malformed central entry may leave a prefix
  * of valid entries, just as the upstream forward iterator does. Returns
  * false only for invalid API arguments or an allocation failure. */
-XXFC_API bool xx_zip_yx_parse(const uint8_t *data, size_t size,
-                              xx_zip_yx_result *result);
+XXFC_API bool xx_zip_yx_parse(const uint8_t *data, size_t size, xx_zip_yx_result *result);
 
 /** Decode the validated zip.Zip protobuf supplied by the scanner output API.
  * Optional fields remain absent when their protobuf field is absent. */
-XXFC_API bool xx_zip_yx_parse_output(const uint8_t *data, size_t size,
-                                     xx_zip_yx_result *result);
+XXFC_API bool xx_zip_yx_parse_output(const uint8_t *data, size_t size, xx_zip_yx_result *result);
 
 /** Releases the entry array and each entry file_path, then zeroes the
  * result. Safe on a zero-initialized or already-freed result. */

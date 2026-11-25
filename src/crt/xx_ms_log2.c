@@ -192,10 +192,7 @@ double xx_ms_log2(double nValue)
         double r2;
         u = u + u;
         v = u * u;
-        z = u * v *
-                (s_xx_ms_log2_a1.nDouble +
-                 v * (s_xx_ms_log2_a2.nDouble + v * (s_xx_ms_log2_a3.nDouble + v * s_xx_ms_log2_a4.nDouble))) -
-            nCorrection;
+        z = u * v * (s_xx_ms_log2_a1.nDouble + v * (s_xx_ms_log2_a2.nDouble + v * (s_xx_ms_log2_a3.nDouble + v * s_xx_ms_log2_a4.nDouble))) - nCorrection;
         r1.nDouble = r;
         r1.nBits &= 0xFFFFFFFF00000000ull;
         r2 = (r - r1.nDouble) + z;

@@ -72,13 +72,11 @@ static bool xx_javascript_history_is_keyword(const xx_javascript_segment *segmen
         uint8_t a = xx_javascript_history_byte(segment, 2U);
         uint8_t b = xx_javascript_history_byte(segment, 1U);
         uint8_t c = xx_javascript_history_byte(segment, 0U);
-        if ((a == (uint8_t)'v' && b == (uint8_t)'a' && c == (uint8_t)'r') ||
-            (a == (uint8_t)'l' && b == (uint8_t)'e' && c == (uint8_t)'t'))
-            return true;
+        if ((a == (uint8_t)'v' && b == (uint8_t)'a' && c == (uint8_t)'r') || (a == (uint8_t)'l' && b == (uint8_t)'e' && c == (uint8_t)'t')) return true;
     }
-    return segment->history_length >= 5U && xx_javascript_history_byte(segment, 4U) == (uint8_t)'c' &&
-           xx_javascript_history_byte(segment, 3U) == (uint8_t)'o' && xx_javascript_history_byte(segment, 2U) == (uint8_t)'n' &&
-           xx_javascript_history_byte(segment, 1U) == (uint8_t)'s' && xx_javascript_history_byte(segment, 0U) == (uint8_t)'t';
+    return segment->history_length >= 5U && xx_javascript_history_byte(segment, 4U) == (uint8_t)'c' && xx_javascript_history_byte(segment, 3U) == (uint8_t)'o' &&
+           xx_javascript_history_byte(segment, 2U) == (uint8_t)'n' && xx_javascript_history_byte(segment, 1U) == (uint8_t)'s' &&
+           xx_javascript_history_byte(segment, 0U) == (uint8_t)'t';
 }
 
 static void xx_javascript_history_push(xx_javascript_segment *segment, uint8_t value)
@@ -94,8 +92,8 @@ static bool xx_javascript_pattern_b_ends_here(const xx_javascript_segment *segme
     if (segment->history_length < 5U) return false;
     end = xx_javascript_history_byte(segment, 0U);
     bit = xx_javascript_history_byte(segment, 1U);
-    if ((end != (uint8_t)';' && end != (uint8_t)',' && end != (uint8_t)'}' && end != (uint8_t)')') ||
-        (bit != (uint8_t)'0' && bit != (uint8_t)'1') || xx_javascript_history_byte(segment, 2U) != (uint8_t)'!')
+    if ((end != (uint8_t)';' && end != (uint8_t)',' && end != (uint8_t)'}' && end != (uint8_t)')') || (bit != (uint8_t)'0' && bit != (uint8_t)'1') ||
+        xx_javascript_history_byte(segment, 2U) != (uint8_t)'!')
         return false;
 
     if (xx_javascript_history_byte(segment, 3U) == (uint8_t)'=' && xx_javascript_ascii_alpha(xx_javascript_history_byte(segment, 4U))) return true;
@@ -103,8 +101,7 @@ static bool xx_javascript_pattern_b_ends_here(const xx_javascript_segment *segme
         (xx_javascript_history_byte(segment, 4U) == (uint8_t)'!' || xx_javascript_history_byte(segment, 4U) == (uint8_t)'=') &&
         xx_javascript_ascii_alpha(xx_javascript_history_byte(segment, 5U)))
         return true;
-    return segment->history_length >= 7U && xx_javascript_history_byte(segment, 3U) == (uint8_t)'=' &&
-           xx_javascript_history_byte(segment, 4U) == (uint8_t)'=' &&
+    return segment->history_length >= 7U && xx_javascript_history_byte(segment, 3U) == (uint8_t)'=' && xx_javascript_history_byte(segment, 4U) == (uint8_t)'=' &&
            (xx_javascript_history_byte(segment, 5U) == (uint8_t)'!' || xx_javascript_history_byte(segment, 5U) == (uint8_t)'=') &&
            xx_javascript_ascii_alpha(xx_javascript_history_byte(segment, 6U));
 }
@@ -114,8 +111,7 @@ static void xx_javascript_segment_feed(xx_javascript_segment *segment, uint8_t v
     bool starts_pattern_a;
     segment->has_bytes = true;
 
-    if (value == (uint8_t)'\t' || (value == (uint8_t)' ' && segment->history_length &&
-                                  xx_javascript_history_byte(segment, 0U) == (uint8_t)' ')) {
+    if (value == (uint8_t)'\t' || (value == (uint8_t)' ' && segment->history_length && xx_javascript_history_byte(segment, 0U) == (uint8_t)' ')) {
         segment->invalid_spacing = true;
         return;
     }
@@ -150,8 +146,7 @@ static void xx_javascript_segment_feed(xx_javascript_segment *segment, uint8_t v
         default: break;
     }
 
-    starts_pattern_a = value == (uint8_t)'(' ||
-                       ((value == (uint8_t)' ' || value == (uint8_t)'\t') && xx_javascript_history_is_keyword(segment));
+    starts_pattern_a = value == (uint8_t)'(' || ((value == (uint8_t)' ' || value == (uint8_t)'\t') && xx_javascript_history_is_keyword(segment));
     if (starts_pattern_a) {
         segment->pattern_a_state = 1U;
         segment->pattern_a_pairs = 0U;
@@ -206,8 +201,7 @@ static int xx_javascript_scan_byte(xx_javascript_scanner *scanner, uint8_t value
         case XX_JS_TOP_SINGLE:
         case XX_JS_TOP_DOUBLE:
             if (value == (uint8_t)'\\') scanner->skip_next = true;
-            else if ((scanner->state == XX_JS_TOP_SINGLE && value == (uint8_t)'\'') ||
-                     (scanner->state == XX_JS_TOP_DOUBLE && value == (uint8_t)'"'))
+            else if ((scanner->state == XX_JS_TOP_SINGLE && value == (uint8_t)'\'') || (scanner->state == XX_JS_TOP_DOUBLE && value == (uint8_t)'"'))
                 scanner->state = XX_JS_CODE;
             return 0;
 

@@ -59,14 +59,14 @@ XXFC_API bool xx_lz4_decompress_frames(const void *source, size_t source_size, v
 XXFC_API size_t xx_lz4_compress_bound(size_t source_size);
 /** Encode a complete standard LZ4 frame. out_written is reset to zero on failure.
  * NULL source is accepted only for empty input. Input/output must not overlap. */
-XXFC_API bool xx_lz4_compress_memory(const void *source,size_t source_size,void *destination,size_t destination_capacity,size_t *out_written);
+XXFC_API bool xx_lz4_compress_memory(const void *source, size_t source_size, void *destination, size_t destination_capacity, size_t *out_written);
 /** Buffered device packing (up to INT32_MAX input bytes). offset<0 reads at
  * current position; exact size required. Devices remain owned by the caller.
  * Cancellation is checked between I/O chunks and before/after encoding. */
-XXFC_API bool xx_lz4_pack_device(xx_io_device *source,int64_t offset,int64_t size,xx_io_device *destination,xx_pd_struct *pd);
+XXFC_API bool xx_lz4_pack_device(xx_io_device *source, int64_t offset, int64_t size, xx_io_device *destination, xx_pd_struct *pd);
 /** Encode a raw LZ4 block (no Apple framing). Source size <= UINT32_MAX-1.
  * Bound is n+n/255+16. Final five bytes remain literals, per LZ4 specification. */
-XXFC_API bool xx_lz4_compress_block(const void *source,size_t source_size,void *destination,size_t destination_capacity,size_t *out_written);
+XXFC_API bool xx_lz4_compress_block(const void *source, size_t source_size, void *destination, size_t destination_capacity, size_t *out_written);
 
 #ifdef __cplusplus
 }

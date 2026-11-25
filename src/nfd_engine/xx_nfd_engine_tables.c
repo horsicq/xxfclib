@@ -30,9 +30,7 @@ const char *xx_nfd_tables_data_version(void)
     return XX_NFD_GENERATED_DATA_VERSION;
 }
 
-bool xx_nfd_signature_match(const xx_nfd_signature_row *row, xx_io_device *device,
-                            int64_t offset, const xx_data_sig_context *context,
-                            int64_t *end_offset)
+bool xx_nfd_signature_match(const xx_nfd_signature_row *row, xx_io_device *device, int64_t offset, const xx_data_sig_context *context, int64_t *end_offset)
 {
     if (!row || !device || row->signature.count <= 0) return false;
     return xx_io_signature_match(device, offset, &row->signature, context, end_offset);
@@ -49,19 +47,15 @@ bool xx_nfd_const_match(const xx_nfd_const_row *row, uint64_t value1, uint64_t v
     return row && row->value1 == value1 && row->value2 == value2;
 }
 
-static bool resource_part_match(bool is_string, const char *expected, uint32_t expected_id,
-                                const char *name, uint32_t id)
+static bool resource_part_match(bool is_string, const char *expected, uint32_t expected_id, const char *name, uint32_t id)
 {
     if (is_string) return name && xx_rt_strcmp(expected, name) == 0;
     return expected_id == id;
 }
 
-bool xx_nfd_resource_match(const xx_nfd_resource_row *row,
-                           const char *name1, uint32_t id1,
-                           const char *name2, uint32_t id2)
+bool xx_nfd_resource_match(const xx_nfd_resource_row *row, const char *name1, uint32_t id1, const char *name2, uint32_t id2)
 {
-    return row && resource_part_match(row->is_string1, row->name1, row->id1, name1, id1) &&
-           resource_part_match(row->is_string2, row->name2, row->id2, name2, id2);
+    return row && resource_part_match(row->is_string1, row->name1, row->id1, name1, id1) && resource_part_match(row->is_string2, row->name2, row->id2, name2, id2);
 }
 
 bool xx_nfd_msrich_match(const xx_nfd_msrich_row *row, uint16_t id, uint32_t build)

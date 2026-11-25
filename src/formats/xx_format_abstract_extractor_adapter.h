@@ -50,24 +50,24 @@
     }                                                                                                                                                                   \
     static Abstractformat *xx_##name##_abstract_create_reader(xx_io_device *device)                                                                                     \
     {                                                                                                                                                                   \
-        return (descriptor).open ? (descriptor).open(device) : NULL;                                                                                                     \
+        return (descriptor).open ? (descriptor).open(device) : NULL;                                                                                                    \
     }                                                                                                                                                                   \
     static void xx_##name##_abstract_free_reader(Abstractformat *format)                                                                                                \
     {                                                                                                                                                                   \
-        if ((descriptor).close) (descriptor).close(format);                                                                                                               \
+        if ((descriptor).close) (descriptor).close(format);                                                                                                             \
     }                                                                                                                                                                   \
-    static size_t xx_##name##_abstract_anchors(const xx_format_anchor **anchors)                                                                                      \
+    static size_t xx_##name##_abstract_anchors(const xx_format_anchor **anchors)                                                                                        \
     {                                                                                                                                                                   \
         if (anchors) *anchors = (descriptor).anchors;                                                                                                                   \
         return (descriptor).anchors ? (descriptor).anchor_count : 0;                                                                                                    \
     }                                                                                                                                                                   \
-    static bool xx_##name##_abstract_probe(xx_io_device *device, int64_t base_address, bool is_mapped, xx_pd_struct *pd, xx_file_type_t *type, int64_t *size)       \
+    static bool xx_##name##_abstract_probe(xx_io_device *device, int64_t base_address, bool is_mapped, xx_pd_struct *pd, xx_file_type_t *type, int64_t *size)           \
     {                                                                                                                                                                   \
         return xx_format_search_probe_at(&(descriptor), device, base_address, is_mapped, pd, type, size);                                                               \
     }                                                                                                                                                                   \
-    static int xx_##name##_abstract_signature(xx_io_device *device, int64_t base_address, bool is_mapped)                                                                 \
+    static int xx_##name##_abstract_signature(xx_io_device *device, int64_t base_address, bool is_mapped)                                                               \
     {                                                                                                                                                                   \
-        return xx_format_search_signature(&(descriptor), device, base_address, is_mapped);                                                                                 \
+        return xx_format_search_signature(&(descriptor), device, base_address, is_mapped);                                                                              \
     }                                                                                                                                                                   \
     static Abstractextractor xx_##name##_abstract_extractor = {.file_type = xx_##name##_file_type,                                                                      \
                                                                .fast_detect = xx_##name##_fast_detect,                                                                  \
@@ -81,7 +81,7 @@
                                                                .free_reader = xx_##name##_abstract_free_reader,                                                         \
                                                                .signature = xx_##name##_abstract_signature,                                                             \
                                                                .anchors = xx_##name##_abstract_anchors,                                                                 \
-                                                               .probe = xx_##name##_abstract_probe};                                                            \
+                                                               .probe = xx_##name##_abstract_probe};                                                                    \
     Abstractextractor *xx_##name##_get_abstract_extractor(void)                                                                                                         \
     {                                                                                                                                                                   \
         return &xx_##name##_abstract_extractor;                                                                                                                         \

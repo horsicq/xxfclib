@@ -21,8 +21,7 @@ static bool xx_scan_resources_stopped(xx_pd_struct *pd)
     return xx_pd_is_stopped(pd) || (pd && pd->last_error);
 }
 
-static bool xx_scan_visit_resource_stream(Abstractformat *format, int64_t origin, int64_t range_size,
-                                          xx_scan_resource_callback callback, void *context, xx_pd_struct *pd)
+static bool xx_scan_visit_resource_stream(Abstractformat *format, int64_t origin, int64_t range_size, xx_scan_resource_callback callback, void *context, xx_pd_struct *pd)
 {
     xx_resource_state *state;
     const xx_resource_record *record;
@@ -30,8 +29,7 @@ static bool xx_scan_visit_resource_stream(Abstractformat *format, int64_t origin
     bool result = false;
 
     if (xx_scan_resources_stopped(pd)) return false;
-    if (!xx_format_handle_base_info(format, pd))
-        return xx_scan_resource_error(pd, XXFC_ERR_GENERIC, "Cannot read executable resources");
+    if (!xx_format_handle_base_info(format, pd)) return xx_scan_resource_error(pd, XXFC_ERR_GENERIC, "Cannot read executable resources");
     if (xx_scan_resources_stopped(pd)) return false;
     state = xx_format_create_resources_reading(format, pd);
     if (!state) return xx_scan_resource_error(pd, XXFC_ERR_GENERIC, "Cannot create scan resource reader");
@@ -49,8 +47,7 @@ static bool xx_scan_visit_resource_stream(Abstractformat *format, int64_t origin
             goto done;
         }
         ++count;
-        if (record->size < 0 || (record->size > 0 &&
-            (record->offset < 0 || record->offset > range_size || record->size > range_size - record->offset))) {
+        if (record->size < 0 || (record->size > 0 && (record->offset < 0 || record->offset > range_size || record->size > range_size - record->offset))) {
             xx_scan_resource_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Invalid scan resource range");
             goto done;
         }
@@ -76,8 +73,7 @@ done:
     return result;
 }
 
-bool xx_scan_visit_resources(xx_io_device *device, xx_file_type_t type, int64_t offset, int64_t size,
-                             xx_scan_resource_callback callback, void *context, xx_pd_struct *pd)
+bool xx_scan_visit_resources(xx_io_device *device, xx_file_type_t type, int64_t offset, int64_t size, xx_scan_resource_callback callback, void *context, xx_pd_struct *pd)
 {
     xx_io_device *view;
     int64_t total_size;
@@ -87,8 +83,7 @@ bool xx_scan_visit_resources(xx_io_device *device, xx_file_type_t type, int64_t 
 
     if (!device || !callback) return xx_scan_resource_error(pd, XXFC_ERR_NULL_PARAM, "Missing scan resource argument");
     if (xx_scan_resources_stopped(pd)) return false;
-    if (offset < 0 || size < -1 || (size >= 0 && size > INT64_MAX - offset))
-        return xx_scan_resource_error(pd, XXFC_ERR_INVALID_ARG, "Invalid scan resource input range");
+    if (offset < 0 || size < -1 || (size >= 0 && size > INT64_MAX - offset)) return xx_scan_resource_error(pd, XXFC_ERR_INVALID_ARG, "Invalid scan resource input range");
     switch (type) {
         case XX_FILE_TYPE_PE:
         case XX_FILE_TYPE_PE32:
@@ -103,8 +98,7 @@ bool xx_scan_visit_resources(xx_io_device *device, xx_file_type_t type, int64_t 
     saved_position = xx_io_tell(device);
     if (saved_position < 0) return xx_scan_resource_error(pd, XXFC_ERR_IO, "Cannot save scan resource input position");
     total_size = xx_io_total_size(device);
-    if ((total_size >= 0 && (offset > total_size || (size >= 0 && size > total_size - offset))) ||
-        (total_size < 0 && size == -1)) {
+    if ((total_size >= 0 && (offset > total_size || (size >= 0 && size > total_size - offset))) || (total_size < 0 && size == -1)) {
         result = xx_scan_resource_error(pd, total_size < 0 ? XXFC_ERR_IO : XXFC_ERR_OUT_OF_BOUNDS,
                                         total_size < 0 ? "Cannot determine scan resource input size" : "Scan resource range exceeds input");
         goto restore;
@@ -128,7 +122,6 @@ bool xx_scan_visit_resources(xx_io_device *device, xx_file_type_t type, int64_t 
     }
     xx_io_close(view);
 restore:
-    if (xx_io_seek64(device, saved_position, SEEK_SET) != 0)
-        return xx_scan_resource_error(pd, XXFC_ERR_IO, "Cannot restore scan resource input position");
+    if (xx_io_seek64(device, saved_position, SEEK_SET) != 0) return xx_scan_resource_error(pd, XXFC_ERR_IO, "Cannot restore scan resource input position");
     return result && !xx_scan_resources_stopped(pd);
 }

@@ -150,9 +150,7 @@ xx_thread_pool_t *xx_thread_pool_create_ex(uint32_t thread_count, size_t max_pen
     }
 
     /* Reserve one shutdown wake-up per worker in the counting semaphore. */
-    if (!thread_count || thread_count >= INT32_MAX ||
-        sizeof(xx_pool_worker_t) > SIZE_MAX / (size_t)thread_count ||
-        max_pending > (size_t)INT32_MAX - thread_count) {
+    if (!thread_count || thread_count >= INT32_MAX || sizeof(xx_pool_worker_t) > SIZE_MAX / (size_t)thread_count || max_pending > (size_t)INT32_MAX - thread_count) {
         return NULL;
     }
 

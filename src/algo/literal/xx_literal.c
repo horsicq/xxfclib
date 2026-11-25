@@ -112,10 +112,8 @@ typedef struct xx_literal_group {
 /* Byte model of the packing estimate: separable high/low nibble weights in
  * which small values (zero) and ASCII letters dominate, as in DEX, ELF and
  * text data. Only bucket choice depends on it, never the results. */
-static const double xx_literal_high_weight[16] = {0.30, 0.05, 0.08, 0.07, 0.06, 0.06, 0.12, 0.10,
-                                                  0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02};
-static const double xx_literal_low_weight[16] = {0.25, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
-                                                 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05};
+static const double xx_literal_high_weight[16] = {0.30, 0.05, 0.08, 0.07, 0.06, 0.06, 0.12, 0.10, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02};
+static const double xx_literal_low_weight[16] = {0.25, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05};
 
 /* Weights of every 8-bit half of a 16-bit nibble mask. */
 typedef struct xx_literal_model {
@@ -142,14 +140,12 @@ static void xx_literal_model_init(xx_literal_model *model)
 }
 
 /* Probability that a start passes the masks under the model. */
-static double xx_literal_group_rate(const xx_literal_model *model, const uint16_t *low, const uint16_t *high,
-                                    unsigned filter_bytes)
+static double xx_literal_group_rate(const xx_literal_model *model, const uint16_t *low, const uint16_t *high, unsigned filter_bytes)
 {
     double rate = 1.0;
     unsigned j;
     for (j = 0; j < filter_bytes; ++j)
-        rate *= (model->low[0][low[j] & 255U] + model->low[1][low[j] >> 8]) *
-                (model->high[0][high[j] & 255U] + model->high[1][high[j] >> 8]);
+        rate *= (model->low[0][low[j] & 255U] + model->low[1][low[j] >> 8]) * (model->high[0][high[j] & 255U] + model->high[1][high[j] >> 8]);
     return rate;
 }
 
@@ -161,14 +157,16 @@ static double xx_literal_group_rate(const xx_literal_model *model, const uint16_
 static unsigned xx_literal_popcount64(uint64_t bits)
 {
     unsigned count = 0;
-    while (bits != 0) { bits &= bits - 1; ++count; }
+    while (bits != 0) {
+        bits &= bits - 1;
+        ++count;
+    }
     return count;
 }
 
 /* Greedily merges the pair of groups whose union adds the least expected
  * work until eight remain; returns the expected work per start. */
-static double xx_literal_merge_delta(const xx_literal_model *model, const xx_literal_group *groups,
-                                     const double *costs, const unsigned *members, size_t i, size_t j,
+static double xx_literal_merge_delta(const xx_literal_model *model, const xx_literal_group *groups, const double *costs, const unsigned *members, size_t i, size_t j,
                                      unsigned filter_bytes)
 {
     uint16_t low[4], high[4];
@@ -177,15 +175,14 @@ static double xx_literal_merge_delta(const xx_literal_model *model, const xx_lit
         low[k] = (uint16_t)(groups[i].low[k] | groups[j].low[k]);
         high[k] = (uint16_t)(groups[i].high[k] | groups[j].high[k]);
     }
-    return xx_literal_group_rate(model, low, high, filter_bytes) *
-           (XX_LITERAL_CANDIDATE_COST + XX_LITERAL_ITEM_COST * (members[i] + members[j])) - costs[i] - costs[j];
+    return xx_literal_group_rate(model, low, high, filter_bytes) * (XX_LITERAL_CANDIDATE_COST + XX_LITERAL_ITEM_COST * (members[i] + members[j])) - costs[i] - costs[j];
 }
 
 /* Greedily merges the pair of groups whose union adds the least expected
  * work until eight remain; returns the expected work per start. deltas is
  * scratch space for the pairwise merge costs (SMALL_MAX^2 entries). */
-static double xx_literal_pack(const xx_literal_set *set, const xx_literal_model *model, unsigned filter_bytes,
-                              xx_literal_group *groups, size_t *group_count, double *deltas)
+static double xx_literal_pack(const xx_literal_set *set, const xx_literal_model *model, unsigned filter_bytes, xx_literal_group *groups, size_t *group_count,
+                              double *deltas)
 {
     double costs[XX_LITERAL_SMALL_MAX];
     unsigned members[XX_LITERAL_SMALL_MAX];
@@ -206,28 +203,30 @@ static double xx_literal_pack(const xx_literal_set *set, const xx_literal_model 
         }
         group->items = UINT64_C(1) << i;
         members[i] = 1;
-        costs[i] = xx_literal_group_rate(model, group->low, group->high, filter_bytes) *
-                   (XX_LITERAL_CANDIDATE_COST + XX_LITERAL_ITEM_COST);
+        costs[i] = xx_literal_group_rate(model, group->low, group->high, filter_bytes) * (XX_LITERAL_CANDIDATE_COST + XX_LITERAL_ITEM_COST);
     }
     if (count > 8) {
         for (i = 0; i < count; ++i)
-            for (j = i + 1; j < count; ++j)
-                XX_LITERAL_DELTA(i, j) = xx_literal_merge_delta(model, groups, costs, members, i, j, filter_bytes);
+            for (j = i + 1; j < count; ++j) XX_LITERAL_DELTA(i, j) = xx_literal_merge_delta(model, groups, costs, members, i, j, filter_bytes);
     }
     while (count > 8) {
         size_t best_a = 0, best_b = 1, last = count - 1;
         double best = XX_LITERAL_DELTA(0, 1);
         for (i = 0; i < count; ++i)
             for (j = i + 1; j < count; ++j)
-                if (XX_LITERAL_DELTA(i, j) < best) { best = XX_LITERAL_DELTA(i, j); best_a = i; best_b = j; }
+                if (XX_LITERAL_DELTA(i, j) < best) {
+                    best = XX_LITERAL_DELTA(i, j);
+                    best_a = i;
+                    best_b = j;
+                }
         for (j = 0; j < filter_bytes; ++j) {
             groups[best_a].low[j] |= groups[best_b].low[j];
             groups[best_a].high[j] |= groups[best_b].high[j];
         }
         groups[best_a].items |= groups[best_b].items;
         members[best_a] += members[best_b];
-        costs[best_a] = xx_literal_group_rate(model, groups[best_a].low, groups[best_a].high, filter_bytes) *
-                        (XX_LITERAL_CANDIDATE_COST + XX_LITERAL_ITEM_COST * members[best_a]);
+        costs[best_a] =
+            xx_literal_group_rate(model, groups[best_a].low, groups[best_a].high, filter_bytes) * (XX_LITERAL_CANDIDATE_COST + XX_LITERAL_ITEM_COST * members[best_a]);
         /* The last group takes best_b's place (best_a < best_b <= last). */
         if (best_b != last) {
             groups[best_b] = groups[last];
@@ -298,8 +297,7 @@ static bool xx_literal_prepare_small(xx_literal_set *set)
         for (g = 0; g < best_count; ++g)
             if ((v >> g) & 1U) items |= best_groups[g].items;
         set->bucket_items[v] = items;
-        for (rest = items; rest != 0; rest &= rest - 1)
-            lengths |= (uint8_t)(1U << (set->items[xx_literal_first_bit64(rest)].length - 1));
+        for (rest = items; rest != 0; rest &= rest - 1) lengths |= (uint8_t)(1U << (set->items[xx_literal_first_bit64(rest)].length - 1));
         distinct = xx_literal_popcount64(lengths);
         set->bucket_lengths[v] = xx_literal_popcount64(items) > 6U * distinct ? lengths : 0;
     }
@@ -344,8 +342,7 @@ static unsigned xx_literal_second_colours(const xx_literal_set *set, unsigned se
     uint8_t pair[2];
     pair[0] = (uint8_t)(long_class ? second >> 8 : second);
     pair[1] = (uint8_t)(long_class ? second & 255U : 0U);
-    return long_class ? (set->pair_screen[xx_literal_load16(pair)] >> 22) & 0x3ffU
-                      : (set->pair_screen[xx_literal_load16(pair)] >> 18) & 0xfU;
+    return long_class ? (set->pair_screen[xx_literal_load16(pair)] >> 22) & 0x3ffU : (set->pair_screen[xx_literal_load16(pair)] >> 18) & 0xfU;
 }
 
 /* keys: (first << 16 | second) of one length class grouped by first pair;
@@ -382,14 +379,17 @@ static bool xx_literal_colour(xx_literal_set *set, const uint32_t *keys, size_t 
             double shared = 0.0, fresh = 0.0, score;
             for (k = f->begin; k < f->end; ++k) {
                 unsigned second = keys[k] & 0xffffU;
-                double weight = long_class ? xx_literal_byte_weight(second >> 8) * xx_literal_byte_weight(second & 255U)
-                                           : xx_literal_byte_weight(second);
-                if ((xx_literal_second_colours(set, second, long_class) >> c) & 1U) shared += weight; else fresh += weight;
+                double weight = long_class ? xx_literal_byte_weight(second >> 8) * xx_literal_byte_weight(second & 255U) : xx_literal_byte_weight(second);
+                if ((xx_literal_second_colours(set, second, long_class) >> c) & 1U) shared += weight;
+                else fresh += weight;
             }
             /* New collisions of this first pair with the colour's seconds, and
              * of the colour's earlier first pairs with the seconds it adds. */
             score = f->weight * (used[c] - shared) + fresh * owners[c];
-            if (c == 0 || score < best_score) { best_score = score; best = c; }
+            if (c == 0 || score < best_score) {
+                best_score = score;
+                best = c;
+            }
         }
         owners[best] += f->weight;
         pair[0] = (uint8_t)(first >> 8);
@@ -442,10 +442,8 @@ static size_t xx_literal_group_keys(xx_literal_set *set, uint32_t *keys, bool lo
     for (i = 0; i < set->count; ++i) {
         const xx_literal_item *item = &set->items[i];
         unsigned first = ((unsigned)item->bytes[0] << 8) | item->bytes[1];
-        if (long_class && item->length >= 4)
-            keys[counts[first]++] = ((uint32_t)first << 16) | ((uint32_t)item->bytes[2] << 8) | item->bytes[3];
-        else if (!long_class && item->length == 3)
-            keys[counts[first]++] = ((uint32_t)first << 16) | item->bytes[2];
+        if (long_class && item->length >= 4) keys[counts[first]++] = ((uint32_t)first << 16) | ((uint32_t)item->bytes[2] << 8) | item->bytes[3];
+        else if (!long_class && item->length == 3) keys[counts[first]++] = ((uint32_t)first << 16) | item->bytes[2];
     }
     return count;
 }
@@ -479,8 +477,7 @@ static bool xx_literal_prepare_screen(xx_literal_set *set)
             set->pair_screen[xx_literal_load16(item->bytes)] |= 2U;
         }
     }
-    ok = (len3 == 0 || xx_literal_colour(set, keys, len3, false)) &&
-         (longer == 0 || xx_literal_colour(set, keys + len3, longer, true));
+    ok = (len3 == 0 || xx_literal_colour(set, keys, len3, false)) && (longer == 0 || xx_literal_colour(set, keys + len3, longer, true));
     xx_mem_free(keys);
     return ok;
 }
@@ -516,8 +513,7 @@ typedef struct xx_literal_gram_class {
 
 static double xx_literal_key_weight(unsigned kind, unsigned key)
 {
-    return kind == XX_LITERAL_KEY_PAIR ? xx_literal_byte_weight(key >> 8) * xx_literal_byte_weight(key & 255U)
-                                       : xx_literal_byte_weight(key & 255U);
+    return kind == XX_LITERAL_KEY_PAIR ? xx_literal_byte_weight(key >> 8) * xx_literal_byte_weight(key & 255U) : xx_literal_byte_weight(key & 255U);
 }
 
 /* Native-order index of the gram (b0, b1). */
@@ -543,8 +539,7 @@ static void xx_literal_key_mark(uint32_t *screen, unsigned kind, unsigned key, u
         screen[xx_literal_key_gram(kind, key)] |= bit;
         return;
     }
-    for (other = 0; other < 256; ++other)
-        screen[kind == XX_LITERAL_KEY_HEAD ? xx_literal_gram_index(key, other) : xx_literal_gram_index(other, key)] |= bit;
+    for (other = 0; other < 256; ++other) screen[kind == XX_LITERAL_KEY_HEAD ? xx_literal_gram_index(key, other) : xx_literal_gram_index(other, key)] |= bit;
 }
 
 /* Greedy colouring of one class (keys: first << 16 | second, grouped by
@@ -580,10 +575,14 @@ static bool xx_literal_colour_grams(uint32_t *screen, const uint32_t *keys, size
             for (k = f->begin; k < f->end; ++k) {
                 unsigned second = keys[k] & 0xffffU;
                 double weight = xx_literal_key_weight(cls->second_kind, second);
-                if ((screen[xx_literal_key_gram(cls->second_kind, second)] & bit) != 0) shared += weight; else fresh += weight;
+                if ((screen[xx_literal_key_gram(cls->second_kind, second)] & bit) != 0) shared += weight;
+                else fresh += weight;
             }
             score = f->weight * (used[c] - shared) + fresh * owners[c];
-            if (c == 0 || score < best_score) { best_score = score; best = c; }
+            if (c == 0 || score < best_score) {
+                best_score = score;
+                best = c;
+            }
         }
         owners[best] += f->weight;
         xx_literal_key_mark(screen, cls->first_kind, first, (uint32_t)1U << (cls->first_shift + cls->base + best));
@@ -609,18 +608,10 @@ static bool xx_literal_gram_key(const xx_literal_item *item, unsigned cls, uint3
 {
     const uint8_t *b = item->bytes;
     switch (cls) {
-    case XX_LITERAL_GRAM_EVEN3:
-        *key = ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | b[2];
-        return item->length == 3;
-    case XX_LITERAL_GRAM_EVEN4:
-        *key = ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | b[3];
-        return item->length >= 4;
-    case XX_LITERAL_GRAM_ODD2:
-        *key = ((uint32_t)b[0] << 16) | b[1];
-        return item->length == 2;
-    default:
-        *key = ((uint32_t)b[0] << 16) | ((uint32_t)b[1] << 8) | b[2];
-        return item->length >= 3;
+        case XX_LITERAL_GRAM_EVEN3: *key = ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | b[2]; return item->length == 3;
+        case XX_LITERAL_GRAM_EVEN4: *key = ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | b[3]; return item->length >= 4;
+        case XX_LITERAL_GRAM_ODD2: *key = ((uint32_t)b[0] << 16) | b[1]; return item->length == 2;
+        default: *key = ((uint32_t)b[0] << 16) | ((uint32_t)b[1] << 8) | b[2]; return item->length >= 3;
     }
 }
 
@@ -681,11 +672,10 @@ static double xx_literal_screen_rate(const uint32_t *screen, unsigned roles)
  * byte) is lower. Returns false on allocation failure only. */
 static bool xx_literal_prepare_grams(xx_literal_set *set)
 {
-    static const xx_literal_gram_class classes[4] = {
-        {XX_LITERAL_KEY_PAIR, XX_LITERAL_KEY_HEAD, 0, 8, 0, 0},
-        {XX_LITERAL_KEY_PAIR, XX_LITERAL_KEY_PAIR, 0, 8, 0, 0},
-        {XX_LITERAL_KEY_TAIL, XX_LITERAL_KEY_HEAD, 16, 24, 0, 0},
-        {XX_LITERAL_KEY_TAIL, XX_LITERAL_KEY_PAIR, 16, 24, 0, 0}};
+    static const xx_literal_gram_class classes[4] = {{XX_LITERAL_KEY_PAIR, XX_LITERAL_KEY_HEAD, 0, 8, 0, 0},
+                                                     {XX_LITERAL_KEY_PAIR, XX_LITERAL_KEY_PAIR, 0, 8, 0, 0},
+                                                     {XX_LITERAL_KEY_TAIL, XX_LITERAL_KEY_HEAD, 16, 24, 0, 0},
+                                                     {XX_LITERAL_KEY_TAIL, XX_LITERAL_KEY_PAIR, 16, 24, 0, 0}};
     xx_literal_gram_class cls[4];
     uint32_t *screen, *keys, *counts;
     size_t sizes[4], i, offset = 0;
@@ -700,7 +690,9 @@ static bool xx_literal_prepare_grams(xx_literal_set *set)
     keys = (uint32_t *)xx_mem_alloc((set->count ? set->count : 1) * 4 * sizeof(*keys));
     counts = (uint32_t *)xx_mem_alloc(65536 * sizeof(*counts));
     if (screen == NULL || keys == NULL || counts == NULL) {
-        xx_mem_free(screen); xx_mem_free(keys); xx_mem_free(counts);
+        xx_mem_free(screen);
+        xx_mem_free(keys);
+        xx_mem_free(counts);
         return false;
     }
     for (c = 0; c < 4; ++c) {
@@ -708,7 +700,10 @@ static bool xx_literal_prepare_grams(xx_literal_set *set)
         offset += sizes[c];
     }
     /* Role bits: the uncoloured classes first, the rest split by colours. */
-    if (has1) { even1 = 1U << even++; odd1 = 1U << odd++; }
+    if (has1) {
+        even1 = 1U << even++;
+        odd1 = 1U << odd++;
+    }
     if (has2) even2 = 1U << even++;
     for (c = 0; c < 4; ++c) cls[c] = classes[c];
     rest = 8 - even;
@@ -820,8 +815,7 @@ static bool xx_literal_prepare_slots(xx_literal_set *set)
     for (i = set->count; i-- != 0;) {
         xx_literal_item *item = &set->items[i];
         size_t slot = xx_literal_slot_index(set, item->value, item->length);
-        while (set->slots[slot].first != XX_LITERAL_NONE &&
-               !(set->slots[slot].value == item->value && set->slots[slot].length == item->length))
+        while (set->slots[slot].first != XX_LITERAL_NONE && !(set->slots[slot].value == item->value && set->slots[slot].length == item->length))
             slot = (slot + 1) & set->hash_mask;
         item->next = set->slots[slot].first;
         set->slots[slot].value = item->value;
@@ -919,14 +913,12 @@ bool xx_literal_set_finalize(xx_literal_set *set)
     return true;
 }
 
-static bool xx_literal_scan_valid(const xx_literal_set *set, const uint8_t *data, size_t size,
-                                  size_t begin, size_t end, xx_literal_match_fn match)
+static bool xx_literal_scan_valid(const xx_literal_set *set, const uint8_t *data, size_t size, size_t begin, size_t end, xx_literal_match_fn match)
 {
     return set != NULL && set->finalized && match != NULL && begin <= end && end <= size && (begin == end || data != NULL);
 }
 
-bool xx_literal_set_scan_scalar(const xx_literal_set *set, const uint8_t *data, size_t size,
-                                size_t begin, size_t end, xx_literal_match_fn match, void *context)
+bool xx_literal_set_scan_scalar(const xx_literal_set *set, const uint8_t *data, size_t size, size_t begin, size_t end, xx_literal_match_fn match, void *context)
 {
     size_t position, i;
     if (!xx_literal_scan_valid(set, data, size, begin, end, match)) return false;
@@ -935,7 +927,8 @@ bool xx_literal_set_scan_scalar(const xx_literal_set *set, const uint8_t *data, 
             const xx_literal_item *item = &set->items[i];
             size_t k;
             if (item->length > size - position) continue;
-            for (k = 0; k < item->length && data[position + k] == item->bytes[k]; ++k) {}
+            for (k = 0; k < item->length && data[position + k] == item->bytes[k]; ++k) {
+            }
             if (k == item->length && !match(context, i, position)) return false;
         }
     }
@@ -947,8 +940,8 @@ bool xx_literal_set_scan_scalar(const xx_literal_set *set, const uint8_t *data, 
 
 /* Exact lookups of every length in lengths (each <= the bytes behind word),
  * then the duplicate chains merged by insertion index. */
-static XX_LITERAL_INLINE bool xx_literal_confirm_large(const xx_literal_set *set, uint64_t word, size_t position,
-                                                       uint8_t lengths, xx_literal_match_fn match, void *context)
+static XX_LITERAL_INLINE bool xx_literal_confirm_large(const xx_literal_set *set, uint64_t word, size_t position, uint8_t lengths, xx_literal_match_fn match,
+                                                       void *context)
 {
     uint32_t found[8];
     unsigned used = 0;
@@ -982,7 +975,8 @@ static XX_LITERAL_INLINE bool xx_literal_confirm_large(const xx_literal_set *set
     while (used != 0) {
         unsigned first = 0, j;
         uint32_t index;
-        for (j = 1; j < used; ++j) if (found[j] < found[first]) first = j;
+        for (j = 1; j < used; ++j)
+            if (found[j] < found[first]) first = j;
         index = found[first];
         if (!match(context, index, position)) return false;
         if (set->items[index].next != XX_LITERAL_NONE) found[first] = set->items[index].next;
@@ -991,8 +985,7 @@ static XX_LITERAL_INLINE bool xx_literal_confirm_large(const xx_literal_set *set
     return true;
 }
 
-bool xx_literal_verify_large_fast(const xx_literal_set *set, const uint8_t *data, size_t position,
-                                  uint8_t lengths, xx_literal_match_fn match, void *context)
+bool xx_literal_verify_large_fast(const xx_literal_set *set, const uint8_t *data, size_t position, uint8_t lengths, xx_literal_match_fn match, void *context)
 {
     return xx_literal_confirm_large(set, xx_literal_load64(data + position), position, lengths, match, context);
 }
@@ -1008,8 +1001,8 @@ static XX_LITERAL_INLINE uint8_t xx_literal_lengths_at(const xx_literal_set *set
     return lengths;
 }
 
-static bool xx_literal_verify_small_tail(const xx_literal_set *set, const uint8_t *data, size_t remaining,
-                                         size_t position, uint8_t buckets, xx_literal_match_fn match, void *context)
+static bool xx_literal_verify_small_tail(const xx_literal_set *set, const uint8_t *data, size_t remaining, size_t position, uint8_t buckets, xx_literal_match_fn match,
+                                         void *context)
 {
     uint64_t items = set->bucket_items[buckets];
     uint64_t word = xx_literal_load_tail(data, remaining);
@@ -1022,8 +1015,7 @@ static bool xx_literal_verify_small_tail(const xx_literal_set *set, const uint8_
     return true;
 }
 
-bool xx_literal_verify(const xx_literal_set *set, const uint8_t *data, size_t size,
-                       size_t position, uint8_t buckets, xx_literal_match_fn match, void *context)
+bool xx_literal_verify(const xx_literal_set *set, const uint8_t *data, size_t size, size_t position, uint8_t buckets, xx_literal_match_fn match, void *context)
 {
     size_t remaining = size - position;
     if (set->small) {
@@ -1033,17 +1025,15 @@ bool xx_literal_verify(const xx_literal_set *set, const uint8_t *data, size_t si
     } else {
         uint8_t lengths = xx_literal_lengths_at(set, data + position, remaining);
         if (lengths == 0) return true;
-        return xx_literal_confirm_large(set, remaining >= 8 ? xx_literal_load64(data + position) :
-                                        xx_literal_load_tail(data + position, remaining),
-                                        position, lengths, match, context);
+        return xx_literal_confirm_large(set, remaining >= 8 ? xx_literal_load64(data + position) : xx_literal_load_tail(data + position, remaining), position, lengths,
+                                        match, context);
     }
 }
 
 /* ------------------------------------------------------------------ */
 /* Portable scanners.                                                  */
 
-static bool xx_literal_scan_small_scalar(const xx_literal_set *set, const uint8_t *data, size_t size,
-                                         size_t begin, size_t end, xx_literal_match_fn match, void *context)
+static bool xx_literal_scan_small_scalar(const xx_literal_set *set, const uint8_t *data, size_t size, size_t begin, size_t end, xx_literal_match_fn match, void *context)
 {
     size_t position;
     unsigned filter_bytes = set->filter_bytes, j;
@@ -1062,8 +1052,7 @@ static bool xx_literal_scan_small_scalar(const xx_literal_set *set, const uint8_
     return true;
 }
 
-bool xx_literal_scan_prepared(const xx_literal_set *set, const uint8_t *data, size_t size,
-                              size_t begin, size_t end, xx_literal_match_fn match, void *context)
+bool xx_literal_scan_prepared(const xx_literal_set *set, const uint8_t *data, size_t size, size_t begin, size_t end, xx_literal_match_fn match, void *context)
 {
     size_t position = begin;
     const uint32_t *screen;
@@ -1075,29 +1064,26 @@ bool xx_literal_scan_prepared(const xx_literal_set *set, const uint8_t *data, si
         uint64_t candidates = 0;
         unsigned i;
         for (i = 0; i < XX_LITERAL_BLOCK + 2; ++i) pairs[i] = screen[xx_literal_load16(block + i)];
-        for (i = 0; i < XX_LITERAL_BLOCK; ++i)
-            candidates |= (uint64_t)((pairs[i] & (pairs[i + 2] >> 16)) != 0) << i;
+        for (i = 0; i < XX_LITERAL_BLOCK; ++i) candidates |= (uint64_t)((pairs[i] & (pairs[i + 2] >> 16)) != 0) << i;
         while (candidates != 0) {
             unsigned lane = xx_literal_first_bit64(candidates);
             uint8_t found = xx_literal_screen_lengths(set, block + lane, pairs[lane] & (pairs[lane + 2] >> 16));
             candidates &= candidates - 1;
-            if (found != 0 && !xx_literal_confirm_large(set, xx_literal_load64(block + lane), position + lane,
-                                                        found, match, context)) return false;
+            if (found != 0 && !xx_literal_confirm_large(set, xx_literal_load64(block + lane), position + lane, found, match, context)) return false;
         }
         position += XX_LITERAL_BLOCK;
     }
     for (; position < end; ++position) {
         size_t remaining = size - position;
         uint8_t lengths = xx_literal_lengths_at(set, data + position, remaining);
-        if (lengths != 0 && !xx_literal_confirm_large(set, remaining >= 8 ? xx_literal_load64(data + position) :
-                                                      xx_literal_load_tail(data + position, remaining),
-                                                      position, lengths, match, context)) return false;
+        if (lengths != 0 && !xx_literal_confirm_large(set, remaining >= 8 ? xx_literal_load64(data + position) : xx_literal_load_tail(data + position, remaining),
+                                                      position, lengths, match, context))
+            return false;
     }
     return true;
 }
 
-bool xx_literal_set_scan(const xx_literal_set *set, const uint8_t *data, size_t size,
-                         size_t begin, size_t end, xx_literal_match_fn match, void *context)
+bool xx_literal_set_scan(const xx_literal_set *set, const uint8_t *data, size_t size, size_t begin, size_t end, xx_literal_match_fn match, void *context)
 {
     if (!xx_literal_scan_valid(set, data, size, begin, end, match)) return false;
     if (begin == end || set->count == 0) return true;

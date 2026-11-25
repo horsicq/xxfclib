@@ -41,8 +41,7 @@ void xx_bytestats_histogram_avx2(const uint8_t *data, size_t size, uint64_t coun
             XX_BYTESTATS_COUNT16(p + 48, tables);
         }
         xx_bytestats_tables_add(data + i, part - i, tables);
-        for (value = 0U; value < 256U; ++value)
-            counts[value] += (uint64_t)tables[0][value] + tables[1][value] + tables[2][value] + tables[3][value];
+        for (value = 0U; value < 256U; ++value) counts[value] += (uint64_t)tables[0][value] + tables[1][value] + tables[2][value] + tables[3][value];
         data += part;
         size -= part;
     }
@@ -123,16 +122,12 @@ void xx_bytestats_serial_sums_avx2(const uint8_t *data, size_t size, xx_bytestat
             __m256i b = _mm256_loadu_si256((const __m256i *)(const void *)(data + i + 1U));
             __m256i a_lo = _mm256_unpacklo_epi8(a, zero), a_hi = _mm256_unpackhi_epi8(a, zero);
             __m256i b_lo = _mm256_unpacklo_epi8(b, zero), b_hi = _mm256_unpackhi_epi8(b, zero);
-            products32 = _mm256_add_epi32(products32,
-                                          _mm256_add_epi32(_mm256_madd_epi16(a_lo, b_lo), _mm256_madd_epi16(a_hi, b_hi)));
-            squares32 = _mm256_add_epi32(squares32,
-                                         _mm256_add_epi32(_mm256_madd_epi16(a_lo, a_lo), _mm256_madd_epi16(a_hi, a_hi)));
+            products32 = _mm256_add_epi32(products32, _mm256_add_epi32(_mm256_madd_epi16(a_lo, b_lo), _mm256_madd_epi16(a_hi, b_hi)));
+            squares32 = _mm256_add_epi32(squares32, _mm256_add_epi32(_mm256_madd_epi16(a_lo, a_lo), _mm256_madd_epi16(a_hi, a_hi)));
             sums = _mm256_add_epi64(sums, _mm256_sad_epu8(a, zero));
         }
-        products = _mm256_add_epi64(products, _mm256_add_epi64(_mm256_unpacklo_epi32(products32, zero),
-                                                               _mm256_unpackhi_epi32(products32, zero)));
-        squares = _mm256_add_epi64(squares, _mm256_add_epi64(_mm256_unpacklo_epi32(squares32, zero),
-                                                             _mm256_unpackhi_epi32(squares32, zero)));
+        products = _mm256_add_epi64(products, _mm256_add_epi64(_mm256_unpacklo_epi32(products32, zero), _mm256_unpackhi_epi32(products32, zero)));
+        squares = _mm256_add_epi64(squares, _mm256_add_epi64(_mm256_unpacklo_epi32(squares32, zero), _mm256_unpackhi_epi32(squares32, zero)));
     }
     out->byte_sum = xx_bytestats_avx2_lanes(sums);
     out->square_sum = xx_bytestats_avx2_lanes(squares);
@@ -150,10 +145,10 @@ uint64_t xx_bytestats_circle_hits_avx2(const uint8_t *data, size_t size, uint64_
 {
     /* Per 128-bit lane: two 6-byte tuples become 64-bit x (bytes 0..2) and
      * y (bytes 3..5) values, big-endian like the scalar reference. */
-    const __m256i x_order = _mm256_setr_epi8(2, 1, 0, -128, -128, -128, -128, -128, 8, 7, 6, -128, -128, -128, -128, -128,
-                                             2, 1, 0, -128, -128, -128, -128, -128, 8, 7, 6, -128, -128, -128, -128, -128);
-    const __m256i y_order = _mm256_setr_epi8(5, 4, 3, -128, -128, -128, -128, -128, 11, 10, 9, -128, -128, -128, -128, -128,
-                                             5, 4, 3, -128, -128, -128, -128, -128, 11, 10, 9, -128, -128, -128, -128, -128);
+    const __m256i x_order = _mm256_setr_epi8(2, 1, 0, -128, -128, -128, -128, -128, 8, 7, 6, -128, -128, -128, -128, -128, 2, 1, 0, -128, -128, -128, -128, -128, 8, 7, 6,
+                                             -128, -128, -128, -128, -128);
+    const __m256i y_order = _mm256_setr_epi8(5, 4, 3, -128, -128, -128, -128, -128, 11, 10, 9, -128, -128, -128, -128, -128, 5, 4, 3, -128, -128, -128, -128, -128, 11,
+                                             10, 9, -128, -128, -128, -128, -128);
     __m256i bound, hits = _mm256_setzero_si256();
     size_t chunks = size / 6U;
     size_t chunk = 0U;

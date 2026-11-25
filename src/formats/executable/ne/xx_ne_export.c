@@ -11,8 +11,6 @@ uint64_t xx_ne_get_number_of_exports(Abstractformat *format, xx_pd_struct *pd)
 
 const StreamExport *xx_ne_get_stream_export(void)
 {
-    static const StreamExport stream = {
-        .get_number_of_exports = xx_ne_get_number_of_exports
-    };
+    static const StreamExport stream = {.get_number_of_exports = xx_ne_get_number_of_exports};
     return &stream;
 }

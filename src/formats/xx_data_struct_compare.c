@@ -18,10 +18,10 @@
 
 /* One structure or field of one side, with its pairing key. */
 typedef struct dsc_key {
-    const void *name;  /* const char * (structures) or const wchar_t * (fields) */
+    const void *name; /* const char * (structures) or const wchar_t * (fields) */
     uint64_t occurrence;
-    size_t index;      /* position in its own list */
-    size_t match;      /* position of the partner in the other list, DSC_NONE */
+    size_t index; /* position in its own list */
+    size_t match; /* position of the partner in the other list, DSC_NONE */
 } dsc_key;
 
 typedef struct dsc_side {
@@ -38,13 +38,13 @@ typedef struct dsc_fields {
     dsc_key *keys;
     size_t count;
     size_t capacity;
-    bool decoded;      /* false: no field decoder for this structure */
+    bool decoded; /* false: no field decoder for this structure */
 } dsc_fields;
 
 typedef struct dsc_field_row {
     xx_data_struct_diff_kind kind;
     uint32_t what;
-    size_t first;      /* DSC_NONE when absent */
+    size_t first; /* DSC_NONE when absent */
     size_t second;
     uint64_t occurrence;
 } dsc_field_row;
@@ -63,11 +63,11 @@ typedef struct dsc_context {
 const char *xx_data_struct_diff_kind_to_string(xx_data_struct_diff_kind kind)
 {
     switch (kind) {
-    case XX_DATA_STRUCT_DIFF_SAME: return "same";
-    case XX_DATA_STRUCT_DIFF_CHANGED: return "changed";
-    case XX_DATA_STRUCT_DIFF_ONLY_FIRST: return "only-first";
-    case XX_DATA_STRUCT_DIFF_ONLY_SECOND: return "only-second";
-    default: return "unknown";
+        case XX_DATA_STRUCT_DIFF_SAME: return "same";
+        case XX_DATA_STRUCT_DIFF_CHANGED: return "changed";
+        case XX_DATA_STRUCT_DIFF_ONLY_FIRST: return "only-first";
+        case XX_DATA_STRUCT_DIFF_ONLY_SECOND: return "only-second";
+        default: return "unknown";
     }
 }
 
@@ -83,8 +83,7 @@ static int dsc_cmp_text(const void *a, const void *b, bool wide)
     if (a == b) return 0;
     if (!a) return -1;
     if (!b) return 1;
-    return wide ? wcscmp((const wchar_t *)a, (const wchar_t *)b)
-                : strcmp((const char *)a, (const char *)b);
+    return wide ? wcscmp((const wchar_t *)a, (const wchar_t *)b) : strcmp((const char *)a, (const char *)b);
 }
 
 static int dsc_key_cmp(const void *left, const void *right, void *context)
@@ -116,8 +115,16 @@ static bool dsc_pair(dsc_key *a, size_t na, dsc_key *b, size_t nb, bool wide)
             return false;
         }
     }
-    for (i = 0; i < na; ++i) { a[i].occurrence = 0; a[i].match = DSC_NONE; sa[i] = a[i]; }
-    for (i = 0; i < nb; ++i) { b[i].occurrence = 0; b[i].match = DSC_NONE; sb[i] = b[i]; }
+    for (i = 0; i < na; ++i) {
+        a[i].occurrence = 0;
+        a[i].match = DSC_NONE;
+        sa[i] = a[i];
+    }
+    for (i = 0; i < nb; ++i) {
+        b[i].occurrence = 0;
+        b[i].match = DSC_NONE;
+        sb[i] = b[i];
+    }
     /* Sorted by (name, index): ranks within a name follow list order. */
     if (na) xx_sort_context(sa, na, sizeof(*sa), dsc_key_cmp, context);
     if (nb) xx_sort_context(sb, nb, sizeof(*sb), dsc_key_cmp, context);
@@ -191,8 +198,7 @@ static bool dsc_is_repeated_table(const xx_data_struct *ds)
 {
     uint64_t entry_size;
 
-    if (ds->count <= 1U || ds->type == XX_DATA_STRUCT_TYPE_RAW_DATA || ds->entry_size <= 0 || ds->total_size <= 0)
-        return false;
+    if (ds->count <= 1U || ds->type == XX_DATA_STRUCT_TYPE_RAW_DATA || ds->entry_size <= 0 || ds->total_size <= 0) return false;
     entry_size = (uint64_t)ds->entry_size;
     return ds->count <= UINT64_MAX / entry_size && ds->count * entry_size <= (uint64_t)ds->total_size;
 }
@@ -231,9 +237,7 @@ static bool dsc_side_load(dsc_side *side, xx_pd_struct *pd)
             break;
         }
         if (!xx_format_data_struct_move_to_next(side->format, state, pd)) {
-            if (state->current_index < 0 ||
-                (state->total_structs >= 0 && state->current_index < state->total_structs - 1))
-                ok = false;
+            if (state->current_index < 0 || (state->total_structs >= 0 && state->current_index < state->total_structs - 1)) ok = false;
             break;
         }
         ds = xx_format_get_current_data_struct(side->format, state);
@@ -271,8 +275,7 @@ static bool dsc_fields_append(dsc_fields *fields, const xx_data_struct_record *r
 
     if (fields->count == fields->capacity) {
         size_t capacity = fields->capacity ? fields->capacity * 2U : 32U;
-        xx_data_struct_record *records =
-            (xx_data_struct_record *)xx_mem_realloc(fields->records, capacity * sizeof(*records));
+        xx_data_struct_record *records = (xx_data_struct_record *)xx_mem_realloc(fields->records, capacity * sizeof(*records));
         dsc_key *keys;
 
         if (!records) return false;
@@ -306,16 +309,14 @@ static bool dsc_fields_append(dsc_fields *fields, const xx_data_struct_record *r
 }
 
 /* Decoded fields of one STRUCT. decoded=false when the format has no decoder. */
-static bool dsc_fields_load(Abstractformat *format, const xx_data_struct *ds, dsc_fields *fields,
-                            xx_pd_struct *pd)
+static bool dsc_fields_load(Abstractformat *format, const xx_data_struct *ds, dsc_fields *fields, xx_pd_struct *pd)
 {
     const StreamDataStructs *stream = xx_format_get_stream_datastructs(format);
     xx_data_struct_record_state *state;
     const xx_data_struct_record *record;
     bool ok = true;
 
-    if (ds->type == XX_DATA_STRUCT_TYPE_RAW_DATA || !stream || !stream->create_data_struct_records_reading)
-        return true;
+    if (ds->type == XX_DATA_STRUCT_TYPE_RAW_DATA || !stream || !stream->create_data_struct_records_reading) return true;
     state = xx_format_create_data_struct_records_reading(format, ds, pd);
     if (!state) return true;
     fields->decoded = true;
@@ -327,9 +328,7 @@ static bool dsc_fields_load(Abstractformat *format, const xx_data_struct *ds, ds
             break;
         }
         if (!xx_format_data_struct_record_move_to_next(format, state, pd)) {
-            if (state->current_index < 0 ||
-                (state->total_records >= 0 && state->current_index < state->total_records - 1))
-                ok = false;
+            if (state->current_index < 0 || (state->total_records >= 0 && state->current_index < state->total_records - 1)) ok = false;
             break;
         }
         record = xx_format_get_current_data_struct_record(format, state);
@@ -346,16 +345,12 @@ static int dsc_bytes_equal(dsc_context *ctx, int64_t first_offset, int64_t secon
 {
     int64_t done = 0;
 
-    if (!ctx->side[0].device || !ctx->side[1].device || first_offset < 0 || second_offset < 0 || size < 0)
-        return -1;
+    if (!ctx->side[0].device || !ctx->side[1].device || first_offset < 0 || second_offset < 0 || size < 0) return -1;
     if (size == 0) return 1;
-    if (!xx_io_check(ctx->side[0].device, first_offset, size) ||
-        !xx_io_check(ctx->side[1].device, second_offset, size))
-        return -1;
+    if (!xx_io_check(ctx->side[0].device, first_offset, size) || !xx_io_check(ctx->side[1].device, second_offset, size)) return -1;
     while (done < size) {
         size_t n = (size_t)(size - done > DSC_CHUNK ? DSC_CHUNK : size - done);
-        if (!xx_io_read_at(ctx->side[0].device, first_offset + done, ctx->buffer[0], n) ||
-            !xx_io_read_at(ctx->side[1].device, second_offset + done, ctx->buffer[1], n))
+        if (!xx_io_read_at(ctx->side[0].device, first_offset + done, ctx->buffer[0], n) || !xx_io_read_at(ctx->side[1].device, second_offset + done, ctx->buffer[1], n))
             return -1;
         if (memcmp(ctx->buffer[0], ctx->buffer[1], n) != 0) return 0;
         done += (int64_t)n;
@@ -368,26 +363,23 @@ static int dsc_wtext_cmp(const wchar_t *a, const wchar_t *b)
     return dsc_cmp_text(a, b, true);
 }
 
-static uint32_t dsc_field_what(dsc_context *ctx, const xx_data_struct *sa, const xx_data_struct_record *a,
-                               const xx_data_struct *sb, const xx_data_struct_record *b)
+static uint32_t dsc_field_what(dsc_context *ctx, const xx_data_struct *sa, const xx_data_struct_record *a, const xx_data_struct *sb, const xx_data_struct_record *b)
 {
     uint32_t what = 0;
     int equal = -1;
 
-    if (a->offset != b->offset && !(ctx->options & XX_DATA_STRUCT_COMPARE_IGNORE_LOCATION))
-        what |= XX_DATA_STRUCT_DIFF_OFFSET;
+    if (a->offset != b->offset && !(ctx->options & XX_DATA_STRUCT_COMPARE_IGNORE_LOCATION)) what |= XX_DATA_STRUCT_DIFF_OFFSET;
     if (a->size != b->size) {
         what |= XX_DATA_STRUCT_DIFF_SIZE;
-    } else if (sa->offset >= 0 && sb->offset >= 0 && a->offset >= 0 && b->offset >= 0 && a->size > 0 &&
-               sa->offset <= INT64_MAX - a->offset && sb->offset <= INT64_MAX - b->offset) {
+    } else if (sa->offset >= 0 && sb->offset >= 0 && a->offset >= 0 && b->offset >= 0 && a->size > 0 && sa->offset <= INT64_MAX - a->offset &&
+               sb->offset <= INT64_MAX - b->offset) {
         equal = dsc_bytes_equal(ctx, sa->offset + a->offset, sb->offset + b->offset, a->size);
     }
     if (equal == 0) {
         what |= XX_DATA_STRUCT_DIFF_VALUE;
     } else if (equal < 0) {
         /* No byte location: the decoded text decides. */
-        if (dsc_wtext_cmp(a->raw_value, b->raw_value) || dsc_wtext_cmp(a->display_value, b->display_value))
-            what |= XX_DATA_STRUCT_DIFF_VALUE;
+        if (dsc_wtext_cmp(a->raw_value, b->raw_value) || dsc_wtext_cmp(a->display_value, b->display_value)) what |= XX_DATA_STRUCT_DIFF_VALUE;
     }
     return what;
 }
@@ -438,9 +430,7 @@ static bool dsc_field_rows_push(dsc_field_row **rows, size_t *count, size_t *cap
 }
 
 /* Field rows of a pair in merged order (first's order, second-only inserted). */
-static bool dsc_field_rows(dsc_context *ctx, const xx_data_struct *sa, dsc_fields *fa,
-                           const xx_data_struct *sb, dsc_fields *fb,
-                           dsc_field_row **rows, size_t *count)
+static bool dsc_field_rows(dsc_context *ctx, const xx_data_struct *sa, dsc_fields *fa, const xx_data_struct *sb, dsc_fields *fb, dsc_field_row **rows, size_t *count)
 {
     size_t capacity = 0, i, j = 0;
 
@@ -496,8 +486,7 @@ static bool dsc_emit_pair(dsc_context *ctx, size_t ia, size_t ib)
     xx_mem_zero(&fa, sizeof(fa));
     xx_mem_zero(&fb, sizeof(fb));
     if (want_fields) {
-        if (!dsc_fields_load(ctx->side[0].format, sa, &fa, ctx->pd) ||
-            !dsc_fields_load(ctx->side[1].format, sb, &fb, ctx->pd)) {
+        if (!dsc_fields_load(ctx->side[0].format, sa, &fa, ctx->pd) || !dsc_fields_load(ctx->side[1].format, sb, &fb, ctx->pd)) {
             ok = false;
             goto done;
         }
@@ -559,8 +548,7 @@ static bool dsc_emit_single(dsc_context *ctx, int which, size_t index)
     return dsc_emit(ctx, &diff, false);
 }
 
-bool xx_format_compare_data_structs(Abstractformat *first, Abstractformat *second, uint32_t options,
-                                    xx_data_struct_diff_callback callback, void *user,
+bool xx_format_compare_data_structs(Abstractformat *first, Abstractformat *second, uint32_t options, xx_data_struct_diff_callback callback, void *user,
                                     xx_data_struct_compare_stats *stats, xx_pd_struct *pd)
 {
     dsc_context ctx;
@@ -586,8 +574,7 @@ bool xx_format_compare_data_structs(Abstractformat *first, Abstractformat *secon
         if (!ctx.buffer[s]) goto cleanup;
         if (!dsc_side_load(&ctx.side[s], pd)) goto cleanup;
     }
-    if (!dsc_pair(ctx.side[0].keys, ctx.side[0].count, ctx.side[1].keys, ctx.side[1].count, false))
-        goto cleanup;
+    if (!dsc_pair(ctx.side[0].keys, ctx.side[0].count, ctx.side[1].keys, ctx.side[1].count, false)) goto cleanup;
     for (i = 0; i < ctx.side[0].count; ++i) {
         size_t m = ctx.side[0].keys[i].match;
 

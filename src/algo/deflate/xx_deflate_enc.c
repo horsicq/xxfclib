@@ -306,10 +306,8 @@ void xx_deflate_build_code_lengths(const uint32_t *freqs, int num_symbols, uint8
     for (int merge = 1; merge < num_nodes; ++merge) {
         int pick[2];
         for (int k = 0; k < 2; ++k) {
-            if (next_leaf < num_nodes && (next_inner >= cur_nodes || nodes[sorted[next_leaf]].freq <= nodes[next_inner].freq))
-                pick[k] = sorted[next_leaf++];
-            else
-                pick[k] = next_inner++;
+            if (next_leaf < num_nodes && (next_inner >= cur_nodes || nodes[sorted[next_leaf]].freq <= nodes[next_inner].freq)) pick[k] = sorted[next_leaf++];
+            else pick[k] = next_inner++;
         }
         int min1 = pick[0], min2 = pick[1];
 
@@ -883,8 +881,8 @@ static XX_DEFLATE_INLINE size_t xx_l1_extend(const uint8_t *cur, const uint8_t *
     size_t length = xx_deflate_match_words(cur + 4U, cand + 4U, prefix);
     if (length == prefix && length < left) {
         left -= length;
-        length += match_long && left >= 32U ? match_long(cur + 4U + length, cand + 4U + length, left)
-                                            : xx_deflate_match_words(cur + 4U + length, cand + 4U + length, left);
+        length +=
+            match_long && left >= 32U ? match_long(cur + 4U + length, cand + 4U + length, left) : xx_deflate_match_words(cur + 4U + length, cand + 4U + length, left);
     }
     return 4U + length;
 }
@@ -907,8 +905,8 @@ static XX_DEFLATE_INLINE void xx_l1_insert_tail(uint32_t *tab, const uint8_t *wi
 }
 
 /* Parse one block starting at *head_io; returns the token count. */
-static size_t xx_l1_parse(const uint8_t *win, size_t *head_io, size_t tail, uint64_t base, size_t win_size, uint32_t *tab, uint16_t *tab3,
-                          xx_token *tokens, xx_deflate_match_function match_long, bool short_filter, bool is_deflate64)
+static size_t xx_l1_parse(const uint8_t *win, size_t *head_io, size_t tail, uint64_t base, size_t win_size, uint32_t *tab, uint16_t *tab3, xx_token *tokens,
+                          xx_deflate_match_function match_long, bool short_filter, bool is_deflate64)
 {
     size_t head = *head_io, start = head, n = 0U, misses = 0U, lits = 0U;
     const size_t token_limit = XX_ENC_MAX_TOKENS - 4U - XX_L1_SKIP_MAX;
@@ -995,8 +993,7 @@ static size_t xx_l1_parse(const uint8_t *win, size_t *head_io, size_t tail, uint
             /* A maximal match continues a run or long repeat: try the same
              * distance first and skip the lookups while it stays maximal. */
             while (best_len == 258U && tail - head >= 258U && head - start < XX_L1_BLOCK && n < token_limit &&
-                   xx_l1_load32(win + head) == xx_l1_load32(win + head - best_dist) &&
-                   xx_l1_extend(win + head, win + head - best_dist, 258U, match_long) == 258U) {
+                   xx_l1_load32(win + head) == xx_l1_load32(win + head - best_dist) && xx_l1_extend(win + head, win + head - best_dist, 258U, match_long) == 258U) {
                 xx_set_match_token(&tokens[n++], 258U, best_dist, is_deflate64);
                 xx_l1_insert_tail(tab, win, base, head, 258U, tail);
                 head += 258U;
@@ -1051,9 +1048,9 @@ typedef struct {
 } xx_lazy_level;
 
 #ifndef XX_LAZY_LEVEL_TABLE
-#define XX_LAZY_LEVEL_TABLE                                                                                                                     \
-    {16, 4, 16, 4, 1, 1, 65000}, {32, 16, 32, 8, 1, 1, 65000}, {128, 16, 32, 8, 1, 1, 65000}, {256, 32, 128, 8, 1, 1, 65000},                  \
-        {512, 128, 258, 32, 1, 1, 65000}, {768, 258, 258, 32, 1, 1, 65000}
+#define XX_LAZY_LEVEL_TABLE                                                                                                                                     \
+    {16, 4, 16, 4, 1, 1, 65000}, {32, 16, 32, 8, 1, 1, 65000}, {128, 16, 32, 8, 1, 1, 65000}, {256, 32, 128, 8, 1, 1, 65000}, {512, 128, 258, 32, 1, 1, 65000}, \
+        {768, 258, 258, 32, 1, 1, 65000}
 #endif
 static const xx_lazy_level xx_lazy_levels[6] = {XX_LAZY_LEVEL_TABLE};
 
@@ -1187,8 +1184,8 @@ static XX_DEFLATE_INLINE void xx_lazy_insert_match(const uint8_t *in_window, uin
 
 /* Parse one block starting at *head_io; returns the token count. */
 static size_t xx_lazy_parse(const uint8_t *in_window, size_t *head_io, size_t tail, bool src_eof, uint64_t window_base, size_t win_size, uint32_t *hash_head,
-                            uint32_t *hash_prev, xx_token *tokens, const xx_lazy_params *p, xx_deflate_match_function match_long, bool is_deflate64,
-                            uint32_t *seg_tok, size_t *seg_pos, size_t *segs_out)
+                            uint32_t *hash_prev, xx_token *tokens, const xx_lazy_params *p, xx_deflate_match_function match_long, bool is_deflate64, uint32_t *seg_tok,
+                            size_t *seg_pos, size_t *segs_out)
 {
     uint32_t *hash3 = hash_head + XX_LAZY_HEAD_SIZE;
     size_t head = *head_io, start = head, n = 0U;
@@ -1345,10 +1342,22 @@ static uint32_t xx_log2_q16(uint32_t x)
 {
     unsigned e = 0U;
     uint32_t v = x, m;
-    if (v >= (UINT32_C(1) << 16)) { v >>= 16; e += 16U; }
-    if (v >= (UINT32_C(1) << 8)) { v >>= 8; e += 8U; }
-    if (v >= (UINT32_C(1) << 4)) { v >>= 4; e += 4U; }
-    if (v >= (UINT32_C(1) << 2)) { v >>= 2; e += 2U; }
+    if (v >= (UINT32_C(1) << 16)) {
+        v >>= 16;
+        e += 16U;
+    }
+    if (v >= (UINT32_C(1) << 8)) {
+        v >>= 8;
+        e += 8U;
+    }
+    if (v >= (UINT32_C(1) << 4)) {
+        v >>= 4;
+        e += 4U;
+    }
+    if (v >= (UINT32_C(1) << 2)) {
+        v >>= 2;
+        e += 2U;
+    }
     if (v >= (UINT32_C(1) << 1)) e += 1U;
     m = (e >= 16U ? x >> (e - 16U) : x << (16U - e)) - 65536U;
     return (e << 16) + xx_log2_frac[m >> 11] + (((xx_log2_frac[(m >> 11) + 1U] - xx_log2_frac[m >> 11]) * (m & 2047U)) >> 11);
@@ -1429,8 +1438,8 @@ static size_t xx_split_blocks(const xx_token *tokens, const uint32_t *seg_tok, s
 }
 
 bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size,
-                                             xx_bit_writer *writer, int level, bool is_deflate64, size_t window_size,
-                                             const xx_deflate_pack_options_ex *options, xx_pd_struct *pd)
+                                                xx_bit_writer *writer, int level, bool is_deflate64, size_t window_size, const xx_deflate_pack_options_ex *options,
+                                                xx_pd_struct *pd)
 {
     size_t win_size = xx_deflate_resolve_window(is_deflate64, window_size);
     if (win_size == 0U) return false;
@@ -1444,8 +1453,8 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
      * zero nice/good = off, the filter as given) and only a zero candidate
      * count takes the level's chain. Levels 1..3 keep the old parser. */
     const bool lazy_path = level >= 4;
-    const bool explicit_options = options && (options->max_candidates || options->lazy_match_limit || options->short_match_filter || options->nice_match ||
-                                              options->good_match);
+    const bool explicit_options =
+        options && (options->max_candidates || options->lazy_match_limit || options->short_match_filter || options->nice_match || options->good_match);
     xx_lazy_params lazy_params = {0};
     if (lazy_path) {
         const xx_lazy_level *lv = &xx_lazy_levels[level - 4];
@@ -1675,125 +1684,128 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
             num_tokens = xx_lazy_parse(in_window, &win_head, win_tail, src_eof, window_base, win_size, hash_head, hash_prev, tokens, &lazy_params, match_long,
                                        is_deflate64, split_hist ? split_tok : NULL, split_pos, &split_segs);
         else
-        while (win_head < win_tail && num_tokens < XX_ENC_MAX_TOKENS - 4) {
-            size_t available = win_tail - win_head;
-            if (available < 3) {
-                /* Not enough bytes for match, emit literal */
-                tokens[num_tokens].symbol = in_window[win_head++];
-                num_tokens++;
-                continue;
-            }
+            while (win_head < win_tail && num_tokens < XX_ENC_MAX_TOKENS - 4) {
+                size_t available = win_tail - win_head;
+                if (available < 3) {
+                    /* Not enough bytes for match, emit literal */
+                    tokens[num_tokens].symbol = in_window[win_head++];
+                    num_tokens++;
+                    continue;
+                }
 
-            uint32_t h = xx_calc_hash(in_window + win_head);
-            uint64_t position = window_base + win_head;
-            uint32_t match_entry = hash_head[h];
-            uint64_t match_position;
-            hash_prev[position & (win_size - 1U)] = match_entry;
-            hash_head[h] = (uint32_t)position;
+                uint32_t h = xx_calc_hash(in_window + win_head);
+                uint64_t position = window_base + win_head;
+                uint32_t match_entry = hash_head[h];
+                uint64_t match_position;
+                hash_prev[position & (win_size - 1U)] = match_entry;
+                hash_head[h] = (uint32_t)position;
 
-            size_t best_len = 0, best_dist = 0, chain_count = 0;
-            size_t search_limit = max_chain;
-            size_t nice_match = options ? options->nice_match : 0U;
-            size_t good_match = options ? options->good_match : 0U;
-            size_t max_test = available < max_match_len ? available : max_match_len;
-            const uint8_t *current = in_window + win_head;
-            while (chain_count++ < search_limit) {
-                size_t distance = (uint32_t)((uint32_t)position - match_entry);
-                if (distance == 0U || distance > win_size) break;
-                match_position = position - distance;
-                if (match_position < window_base) break;
-                const uint8_t *candidate = in_window + (size_t)(match_position - window_base);
-                if (candidate[best_len] == current[best_len] && candidate[0] == current[0]) {
-                    size_t prefix = max_test < 16U ? max_test : 16U;
-                    size_t length = xx_deflate_match_words(current, candidate, prefix);
-                    if (length == prefix && length < max_test) {
-                        size_t left = max_test - length;
-                        length += match_long && left >= 32U ? match_long(current + length, candidate + length, left)
-                                                            : xx_deflate_match_words(current + length, candidate + length, left);
-                    }
-                    if (length > best_len) {
-                        best_len = length;
-                        best_dist = distance;
-                        if (best_len == max_test || (nice_match && best_len >= 3U && best_len >= nice_match)) break;
-                        if (good_match && best_len >= 3U && best_len >= good_match) {
-                            /* Reduce the total budget once, not once per improvement. */
-                            search_limit = max_chain / 4U;
-                            if (search_limit == 0U) search_limit = 1U;
+                size_t best_len = 0, best_dist = 0, chain_count = 0;
+                size_t search_limit = max_chain;
+                size_t nice_match = options ? options->nice_match : 0U;
+                size_t good_match = options ? options->good_match : 0U;
+                size_t max_test = available < max_match_len ? available : max_match_len;
+                const uint8_t *current = in_window + win_head;
+                while (chain_count++ < search_limit) {
+                    size_t distance = (uint32_t)((uint32_t)position - match_entry);
+                    if (distance == 0U || distance > win_size) break;
+                    match_position = position - distance;
+                    if (match_position < window_base) break;
+                    const uint8_t *candidate = in_window + (size_t)(match_position - window_base);
+                    if (candidate[best_len] == current[best_len] && candidate[0] == current[0]) {
+                        size_t prefix = max_test < 16U ? max_test : 16U;
+                        size_t length = xx_deflate_match_words(current, candidate, prefix);
+                        if (length == prefix && length < max_test) {
+                            size_t left = max_test - length;
+                            length += match_long && left >= 32U ? match_long(current + length, candidate + length, left)
+                                                                : xx_deflate_match_words(current + length, candidate + length, left);
+                        }
+                        if (length > best_len) {
+                            best_len = length;
+                            best_dist = distance;
+                            if (best_len == max_test || (nice_match && best_len >= 3U && best_len >= nice_match)) break;
+                            if (good_match && best_len >= 3U && best_len >= good_match) {
+                                /* Reduce the total budget once, not once per improvement. */
+                                search_limit = max_chain / 4U;
+                                if (search_limit == 0U) search_limit = 1U;
+                            }
                         }
                     }
+                    /* At exactly one window the ring slot belongs to the current
+                     * position; all earlier candidates would be out of range. */
+                    if (distance == win_size) break;
+                    match_entry = hash_prev[match_position & (win_size - 1U)];
                 }
-                /* At exactly one window the ring slot belongs to the current
-                 * position; all earlier candidates would be out of range. */
-                if (distance == win_size) break;
-                match_entry = hash_prev[match_position & (win_size - 1U)];
-            }
 
-            /* Distant length-3 matches can cost more bits than literals. */
-            if (options && options->short_match_filter && best_len == 3U && best_dist > 4096U) best_len = 0U;
+                /* Distant length-3 matches can cost more bits than literals. */
+                if (options && options->short_match_filter && best_len == 3U && best_dist > 4096U) best_len = 0U;
 
-            /* One-byte lazy parsing: only prove that a longer next match
-             * exists, then let the normal next iteration choose its best
-             * distance. Do not mutate the next position's hash chains here.
-             * Prefix comparisons are bounded by initialized input, with the
-             * same SIMD comparator as ordinary match finding for long spans. */
-            if (best_len >= 3U && best_len < lazy_limit && best_len < max_match_len && available > best_len + 1U) {
-                size_t needed = best_len + 1U, searched = 0U;
-                uint64_t next_position = position + 1U;
-                uint32_t next_entry = hash_head[xx_calc_hash(current + 1U)];
-                uint64_t next_match;
-                while (searched++ < max_chain) {
-                    size_t next_distance = (uint32_t)((uint32_t)next_position - next_entry);
-                    if (next_distance == 0U || next_distance > win_size) break;
-                    next_match = next_position - next_distance;
-                    if (next_match < window_base) break;
-                    const uint8_t *candidate = in_window + (size_t)(next_match - window_base);
-                    if (candidate[best_len] == current[1U + best_len] && candidate[0] == current[1]) {
-                        size_t prefix = needed < 16U ? needed : 16U;
-                        size_t length = xx_deflate_match_words(current + 1U, candidate, prefix);
-                        if (length == prefix && length < needed) {
-                            size_t left = needed - length;
-                            length += match_long && left >= 32U ? match_long(current + 1U + length, candidate + length, left)
-                                                               : xx_deflate_match_words(current + 1U + length, candidate + length, left);
+                /* One-byte lazy parsing: only prove that a longer next match
+                 * exists, then let the normal next iteration choose its best
+                 * distance. Do not mutate the next position's hash chains here.
+                 * Prefix comparisons are bounded by initialized input, with the
+                 * same SIMD comparator as ordinary match finding for long spans. */
+                if (best_len >= 3U && best_len < lazy_limit && best_len < max_match_len && available > best_len + 1U) {
+                    size_t needed = best_len + 1U, searched = 0U;
+                    uint64_t next_position = position + 1U;
+                    uint32_t next_entry = hash_head[xx_calc_hash(current + 1U)];
+                    uint64_t next_match;
+                    while (searched++ < max_chain) {
+                        size_t next_distance = (uint32_t)((uint32_t)next_position - next_entry);
+                        if (next_distance == 0U || next_distance > win_size) break;
+                        next_match = next_position - next_distance;
+                        if (next_match < window_base) break;
+                        const uint8_t *candidate = in_window + (size_t)(next_match - window_base);
+                        if (candidate[best_len] == current[1U + best_len] && candidate[0] == current[1]) {
+                            size_t prefix = needed < 16U ? needed : 16U;
+                            size_t length = xx_deflate_match_words(current + 1U, candidate, prefix);
+                            if (length == prefix && length < needed) {
+                                size_t left = needed - length;
+                                length += match_long && left >= 32U ? match_long(current + 1U + length, candidate + length, left)
+                                                                    : xx_deflate_match_words(current + 1U + length, candidate + length, left);
+                            }
+                            if (length == needed) {
+                                best_len = 0U;
+                                break;
+                            }
                         }
-                        if (length == needed) { best_len = 0U; break; }
+                        if (next_position - next_match == win_size) break;
+                        next_entry = hash_prev[next_match & (win_size - 1U)];
                     }
-                    if (next_position - next_match == win_size) break;
-                    next_entry = hash_prev[next_match & (win_size - 1U)];
+                }
+
+                if (best_len >= 3) {
+                    xx_set_match_token(&tokens[num_tokens], best_len, best_dist, is_deflate64);
+                    num_tokens++;
+
+                    /* Insert intermediate positions into hash table */
+                    size_t k = 1;
+                    if (fast1 && best_len > XX_L1_INSERT_MAX) k = best_len - XX_L1_TAIL;
+                    for (; k < best_len && (win_head + k + 2) < win_tail; ++k) {
+                        uint32_t kh = xx_calc_hash(in_window + win_head + k);
+                        uint64_t inserted = position + k;
+                        hash_prev[inserted & (win_size - 1U)] = hash_head[kh];
+                        hash_head[kh] = (uint32_t)inserted;
+                    }
+                    win_head += best_len;
+                } else {
+                    tokens[num_tokens].symbol = in_window[win_head++];
+                    num_tokens++;
+                }
+
+                /* Block size threshold: emit block every ~32KB to 64KB input */
+                if ((win_head - block_start_pos) >= 32768) {
+                    break;
                 }
             }
-
-            if (best_len >= 3) {
-                xx_set_match_token(&tokens[num_tokens], best_len, best_dist, is_deflate64);
-                num_tokens++;
-
-                /* Insert intermediate positions into hash table */
-                size_t k = 1;
-                if (fast1 && best_len > XX_L1_INSERT_MAX) k = best_len - XX_L1_TAIL;
-                for (; k < best_len && (win_head + k + 2) < win_tail; ++k) {
-                    uint32_t kh = xx_calc_hash(in_window + win_head + k);
-                    uint64_t inserted = position + k;
-                    hash_prev[inserted & (win_size - 1U)] = hash_head[kh];
-                    hash_head[kh] = (uint32_t)inserted;
-                }
-                win_head += best_len;
-            } else {
-                tokens[num_tokens].symbol = in_window[win_head++];
-                num_tokens++;
-            }
-
-            /* Block size threshold: emit block every ~32KB to 64KB input */
-            if ((win_head - block_start_pos) >= 32768) {
-                break;
-            }
-        }
 
         bool is_last_block = (src_eof && win_head >= win_tail);
         if (split_hist && lazy_path && split_segs > 1U) {
             size_t blocks = xx_split_blocks(tokens, split_tok, split_segs, split_hist, split_first);
             for (size_t b = 0; b < blocks && success; ++b) {
                 size_t s0 = split_first[b], s1 = split_first[b + 1U];
-                if (!xx_emit_block(writer, tokens + split_tok[s0], split_tok[s1] - split_tok[s0], in_window + split_pos[s0], split_pos[s1] - split_pos[s0],
-                                   is_deflate64, is_last_block && b + 1U == blocks))
+                if (!xx_emit_block(writer, tokens + split_tok[s0], split_tok[s1] - split_tok[s0], in_window + split_pos[s0], split_pos[s1] - split_pos[s0], is_deflate64,
+                                   is_last_block && b + 1U == blocks))
                     success = false;
             }
             if (!success) break;
@@ -1839,8 +1851,8 @@ bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uin
 }
 
 bool xx_deflate_compress_stream_with_options(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size,
-                                              xx_bit_writer *writer, int level, bool is_deflate64, size_t window_size,
-                                              const xx_deflate_pack_options *options, xx_pd_struct *pd)
+                                             xx_bit_writer *writer, int level, bool is_deflate64, size_t window_size, const xx_deflate_pack_options *options,
+                                             xx_pd_struct *pd)
 {
     xx_deflate_pack_options_ex extended = {options ? options->max_candidates : 0U, 0U, false, 0U, 0U};
     return xx_deflate_compress_stream_with_options_ex(src_dev, mem_src, mem_src_size, src_offset, uncomp_size, writer, level, is_deflate64, window_size, &extended, pd);

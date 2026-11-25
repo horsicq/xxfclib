@@ -7,7 +7,6 @@
 #include "core.h"
 
 /* Additional in-process writers: Brotli and plaintext ZPAQ. */
-int xfu_peazip_create(const xfu_request *request, const char *format,
-                      xx_pd_struct *pd);
+int xfu_peazip_create(const xfu_request *request, const char *format, xx_pd_struct *pd);
 
 #endif

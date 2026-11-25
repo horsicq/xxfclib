@@ -5,7 +5,10 @@
 #include "../../xx_payload_members.h"
 #include "xxfclib/data/xx_data.h"
 
-static bool tic_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
+static bool tic_stop(xx_pd_struct *pd)
+{
+    return pd && xx_pd_is_stopped(pd);
+}
 static const char *tic_name(uint8_t type)
 {
     switch (type) {
@@ -118,10 +121,25 @@ void xx_tic80_destroy(xx_tic80 *reader)
     reader->chunk_count = 0;
     xx_format_cleanup_extra_parameters(&reader->format);
 }
-void xx_tic80_free(xx_tic80 *reader) { if (reader) { xx_tic80_destroy(reader); xx_mem_free(reader); } }
-bool xx_tic80_check_is_valid(Abstractformat *format, xx_pd_struct *pd) { return pm_valid(format, pd); }
-bool xx_tic80_handle_base_info(Abstractformat *format, xx_pd_struct *pd) { return pm_handle(format, pd); }
-uint32_t xx_tic80_get_chunk_count(const xx_tic80 *reader) { return reader && reader->format.base_info_handled ? reader->chunk_count : 0; }
+void xx_tic80_free(xx_tic80 *reader)
+{
+    if (reader) {
+        xx_tic80_destroy(reader);
+        xx_mem_free(reader);
+    }
+}
+bool xx_tic80_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
+    return pm_valid(format, pd);
+}
+bool xx_tic80_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
+    return pm_handle(format, pd);
+}
+uint32_t xx_tic80_get_chunk_count(const xx_tic80 *reader)
+{
+    return reader && reader->format.base_info_handled ? reader->chunk_count : 0;
+}
 const xx_tic80_chunk *xx_tic80_get_chunk(const xx_tic80 *reader, uint32_t index)
 {
     return reader && reader->format.base_info_handled && index < reader->chunk_count ? &reader->chunks[index] : NULL;
@@ -148,8 +166,8 @@ bool xx_tic80_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, 
     for (i = 0; i < reader->chunk_count; ++i) {
         const xx_tic80_chunk *chunk = &reader->chunks[i];
         uint64_t address = chunk->address + (uint64_t)chunk->bank * UINT64_C(0x20000);
-        if (chunk->size && !xx_memory_map_add_part(map, format->base_address + chunk->offset, chunk->size, address, chunk->size, XX_FILE_PART_SECTION, (int32_t)i,
-                                                   chunk->name, false))
+        if (chunk->size &&
+            !xx_memory_map_add_part(map, format->base_address + chunk->offset, chunk->size, address, chunk->size, XX_FILE_PART_SECTION, (int32_t)i, chunk->name, false))
             return false;
     }
     return xx_memory_map_finalize(map);

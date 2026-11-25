@@ -25,9 +25,7 @@ static bool nfd_engine_create(xx_scan_engine *engine, const void *config, xx_pd_
         xx_pd_set_error(pd, XXFC_ERR_NULL_PARAM, "Missing NFD engine");
         return false;
     }
-    if (nfd_config &&
-        (nfd_config->abi_version != NFD_ENGINE_ABI_VERSION ||
-         nfd_config->struct_size < sizeof(*nfd_config))) {
+    if (nfd_config && (nfd_config->abi_version != NFD_ENGINE_ABI_VERSION || nfd_config->struct_size < sizeof(*nfd_config))) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Incompatible NFD engine configuration");
         return false;
     }
@@ -46,10 +44,7 @@ static bool nfd_engine_supports_type(const xx_scan_engine *engine, xx_file_type_
     return file_type == XX_FILE_TYPE_BINARY;
 }
 
-static xx_scan_result *nfd_engine_scan_region(xx_scan_engine *engine,
-                                              const xx_scan_region *region,
-                                              const xx_scan_options *options,
-                                              xx_pd_struct *pd)
+static xx_scan_result *nfd_engine_scan_region(xx_scan_engine *engine, const xx_scan_region *region, const xx_scan_options *options, xx_pd_struct *pd)
 {
     xx_scan_options local;
     xx_nfd_binary_state state;
@@ -61,8 +56,7 @@ static xx_scan_result *nfd_engine_scan_region(xx_scan_engine *engine,
     if (xx_pd_is_stopped(pd)) return NULL;
     if (options) local = *options;
     else xx_scan_options_init(&local);
-    if (local.recursive_scan || local.first_wrapper_only || local.all_types_scan ||
-        local.overlay_scan || local.resources_scan || local.archives_scan) {
+    if (local.recursive_scan || local.first_wrapper_only || local.all_types_scan || local.overlay_scan || local.resources_scan || local.archives_scan) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "NFD region received traversal options");
         return NULL;
     }
@@ -83,8 +77,7 @@ static xx_scan_result *nfd_engine_scan_region(xx_scan_engine *engine,
     state.device = region->device;
     state.region = region;
     state.options = &local;
-    if (!xx_nfd_binary_scan(&state, result, pd) || xx_pd_is_stopped(pd) ||
-        (pd && pd->last_error)) {
+    if (!xx_nfd_binary_scan(&state, result, pd) || xx_pd_is_stopped(pd) || (pd && pd->last_error)) {
         xx_scan_result_free(result);
         xx_rt_free(result);
         if (!xx_pd_is_stopped(pd) && (!pd || !pd->last_error)) {
@@ -95,23 +88,20 @@ static xx_scan_result *nfd_engine_scan_region(xx_scan_engine *engine,
     return result;
 }
 
-static const xx_scan_engine_ops nfd_ops = {
-    XX_SCAN_ENGINE_ABI_VERSION,
-    sizeof(xx_scan_engine_ops),
-    XX_SCAN_ENGINE_NFD,
-    "nfd",
-    "Nauz File Detector",
-    XX_SCAN_CAP_BUILTIN_SIGNATURES | XX_SCAN_CAP_DEEP |
-        XX_SCAN_CAP_HEURISTIC | XX_SCAN_CAP_AGGRESSIVE | XX_SCAN_CAP_VERBOSE |
-        XX_SCAN_CAP_TYPE_QUERY | XX_SCAN_CAP_THREAD_SAFE | XX_SCAN_CAP_REENTRANT,
-    nfd_engine_create,
-    nfd_engine_destroy,
-    NULL,
-    nfd_engine_supports_type,
-    nfd_engine_scan_region,
-    NULL,
-    NULL
-};
+static const xx_scan_engine_ops nfd_ops = {XX_SCAN_ENGINE_ABI_VERSION,
+                                           sizeof(xx_scan_engine_ops),
+                                           XX_SCAN_ENGINE_NFD,
+                                           "nfd",
+                                           "Nauz File Detector",
+                                           XX_SCAN_CAP_BUILTIN_SIGNATURES | XX_SCAN_CAP_DEEP | XX_SCAN_CAP_HEURISTIC | XX_SCAN_CAP_AGGRESSIVE | XX_SCAN_CAP_VERBOSE |
+                                               XX_SCAN_CAP_TYPE_QUERY | XX_SCAN_CAP_THREAD_SAFE | XX_SCAN_CAP_REENTRANT,
+                                           nfd_engine_create,
+                                           nfd_engine_destroy,
+                                           NULL,
+                                           nfd_engine_supports_type,
+                                           nfd_engine_scan_region,
+                                           NULL,
+                                           NULL};
 
 void nfd_engine_config_init(nfd_engine_config *config)
 {
@@ -135,8 +125,7 @@ const xx_scan_engine_ops *nfd_engine_get_ops(void)
     return &nfd_ops;
 }
 
-bool nfd_engine_init(xx_scan_engine *engine, const nfd_engine_config *config,
-                     xx_pd_struct *pd)
+bool nfd_engine_init(xx_scan_engine *engine, const nfd_engine_config *config, xx_pd_struct *pd)
 {
     return xx_scan_engine_init(engine, &nfd_ops, config, NULL, pd);
 }

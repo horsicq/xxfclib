@@ -53,9 +53,15 @@ static void parse_net_tables(xx_dotnet_inspection *state)
     static const unsigned forwarded[] = {MD(Field), MD(MethodDef)};
     static const unsigned implementation[] = {MD(File), MD(AssemblyRef), MD(ExportedType)};
     static const unsigned owner[] = {MD(TypeDef), MD(MethodDef)};
-    static const unsigned debug_parent[] = {MD(MethodDef), MD(Field), MD(TypeRef), MD(TypeDef), MD(Param), MD(InterfaceImpl), MD(MemberRef), MD(Module),
-        MD(DeclSecurity), MD(Property), MD(Event), MD(StandAloneSig), MD(ModuleRef), MD(TypeSpec), MD(Assembly), MD(AssemblyRef), MD(File), MD(ExportedType),
-        MD(ManifestResource), MD(GenericParam), MD(GenericParamConstraint), MD(MethodSpec), MD(Document), MD(LocalScope), MD(LocalVariable), MD(LocalConstant), MD(ImportScope)};
+    static const unsigned debug_parent[] = {MD(MethodDef),        MD(Field),         MD(TypeRef),
+                                            MD(TypeDef),          MD(Param),         MD(InterfaceImpl),
+                                            MD(MemberRef),        MD(Module),        MD(DeclSecurity),
+                                            MD(Property),         MD(Event),         MD(StandAloneSig),
+                                            MD(ModuleRef),        MD(TypeSpec),      MD(Assembly),
+                                            MD(AssemblyRef),      MD(File),          MD(ExportedType),
+                                            MD(ManifestResource), MD(GenericParam),  MD(GenericParamConstraint),
+                                            MD(MethodSpec),       MD(Document),      MD(LocalScope),
+                                            MD(LocalVariable),    MD(LocalConstant), MD(ImportScope)};
     xx_dotnet_inspect_cli *cli = &state->cli;
     xx_executable_input *input = state->pe.pInput;
     int64_t pos = cli->nTablesOffset, end = pos + cli->nTablesSize;

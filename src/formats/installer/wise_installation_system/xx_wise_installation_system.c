@@ -1029,7 +1029,6 @@ static bool wise_safe_output_name(const char *name)
 
 /* Windows-1252 0x80..0x9F; 0 marks the five unassigned bytes. */
 
-
 static size_t wise_put_utf8(char *out, uint8_t byte)
 {
     uint32_t code = byte;
@@ -1768,8 +1767,7 @@ static bool wise_unpack_member(xx_io_device *device, int64_t base, const wise_me
             }
         }
     }
-    if (!wise_inflate_device(device, base + member->data_offset, member->packed_size, destination, member->raw_size, &result, pd))
-        return false;
+    if (!wise_inflate_device(device, base + member->data_offset, member->packed_size, destination, member->raw_size, &result, pd)) return false;
     return result.raw_size == member->raw_size && result.crc32 == member->crc32 && result.consumed <= member->packed_size;
 }
 

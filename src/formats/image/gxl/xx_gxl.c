@@ -157,7 +157,8 @@ static bool gxl_parse(Abstractformat *format, gxl_stream **result, xx_pd_struct 
         if (at < 10U) return false;
         if (xx_data_get_u16(header + 52, 2, 0, false) == GXL_VERSION) {
             /* Blank banner with the Genus version word: the old gate. */
-            for (at = 2U; at < 52U && header[at] == ' '; ++at) {}
+            for (at = 2U; at < 52U && header[at] == ' '; ++at) {
+            }
             if (at == 52U) require_tiling = false;
         }
     }

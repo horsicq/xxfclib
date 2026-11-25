@@ -38,7 +38,6 @@ XXFC_API bool xx_sfx_localzip_unpack_current_archive_record(Abstractformat *self
 XXFC_API bool xx_sfx_localzip_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_sfx_localzip_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-
 #ifdef __cplusplus
 }
 #endif

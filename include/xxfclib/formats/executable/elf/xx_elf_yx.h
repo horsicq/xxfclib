@@ -41,41 +41,31 @@ XXFC_API bool xx_elf_yx_field_supported(const char *member);
  * sh_count >= 0xff00, or no segment/section contains it; `symtab_entries` /
  * `dynsym_entries` are undefined when the section table is truncated.
  * Returns false when the field is undefined for this input. */
-XXFC_API bool xx_elf_yx_field(const uint8_t *data, size_t size,
-                              const char *member, uint64_t *value);
+XXFC_API bool xx_elf_yx_field(const uint8_t *data, size_t size, const char *member, uint64_t *value);
 
 /** Number of entries in a repeated ELF module view. `member` is one of
  * "sections", "segments", "symtab", "dynsym" or "dynamic". Sections are
  * counted as zero when sh_count >= 0xff00. Always returns true for a known
  * member (zero count when the input is not an ELF). */
-XXFC_API bool xx_elf_yx_collection_count(const uint8_t *data, size_t size,
-                                         const char *member, uint64_t *count);
+XXFC_API bool xx_elf_yx_collection_count(const uint8_t *data, size_t size, const char *member, uint64_t *count);
 
 /** True when (collection, member) is a supported indexed field pair. */
-XXFC_API bool xx_elf_yx_indexed_field_supported(const char *collection,
-                                                const char *member);
+XXFC_API bool xx_elf_yx_indexed_field_supported(const char *collection, const char *member);
 
 /** Reads one field of a section, segment, symtab/dynsym symbol or dynamic
  * entry. Enum-typed values are narrowed to signed i32 exactly as the
  * reference protobuf stores them. Returns false when the entry or field is
  * undefined for this input. */
-XXFC_API bool xx_elf_yx_indexed_field(const uint8_t *data, size_t size,
-                                      const char *collection, uint64_t index,
-                                      const char *member, uint64_t *value);
+XXFC_API bool xx_elf_yx_indexed_field(const uint8_t *data, size_t size, const char *collection, uint64_t index, const char *member, uint64_t *value);
 
 /** True when (collection, member) is a supported indexed string field pair
  * ("name" of sections, symtab and dynsym entries). */
-XXFC_API bool xx_elf_yx_indexed_string_field_supported(const char *collection,
-                                                       const char *member);
+XXFC_API bool xx_elf_yx_indexed_string_field_supported(const char *collection, const char *member);
 
 /** Reads one NUL-terminated name of a section or symtab/dynsym symbol. The
  * returned bytes borrow the input and `length` excludes the terminator.
  * Returns false when the entry or its name is undefined. */
-XXFC_API bool xx_elf_yx_indexed_string_field(const uint8_t *data, size_t size,
-                                             const char *collection,
-                                             uint64_t index,
-                                             const char *member,
-                                             const uint8_t **bytes,
+XXFC_API bool xx_elf_yx_indexed_string_field(const uint8_t *data, size_t size, const char *collection, uint64_t index, const char *member, const uint8_t **bytes,
                                              size_t *length);
 
 /** Resolves an inline enum constant from elf.proto (ET_*, EM_*, OSABI_*,
@@ -87,16 +77,14 @@ XXFC_API bool xx_elf_yx_constant(const char *member, uint64_t *value);
  * (or SHT_SYMTAB when there is no dynsym), lossy-decoded, Unicode-lowercased,
  * strcmp-sorted and comma-joined, then MD5 as lowercase hex. Returns false
  * when the input is not an ELF with a symbol table; `out` is empty then. */
-XXFC_API bool xx_elf_yx_import_md5(const uint8_t *data, size_t size,
-                                   char out[33]);
+XXFC_API bool xx_elf_yx_import_md5(const uint8_t *data, size_t size, char out[33]);
 
 /** The elf.telfhash value: global default-visibility STT_FUNC symbols of
  * SHT_DYNSYM (or SHT_SYMTAB), filtered by the telfhash exclusion rules,
  * lossy-decoded, Unicode-lowercased, strcmp-sorted and comma-joined, then
  * the 128-bit TLSH digest as 72 hex chars (out has room for the NUL).
  * Returns false when the input is not an ELF with a symbol table. */
-XXFC_API bool xx_elf_yx_telfhash(const uint8_t *data, size_t size,
-                                 char out[73]);
+XXFC_API bool xx_elf_yx_telfhash(const uint8_t *data, size_t size, char out[73]);
 
 #ifdef __cplusplus
 }

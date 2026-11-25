@@ -112,12 +112,12 @@ bool xx_deflate_compress_stream_with_window(xx_io_device *src_dev, const uint8_t
                                             xx_bit_writer *writer, int level, bool is_deflate64, size_t window_size, xx_pd_struct *pd);
 
 bool xx_deflate_compress_stream_with_options(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size,
-                                              xx_bit_writer *writer, int level, bool is_deflate64, size_t window_size,
-                                              const xx_deflate_pack_options *options, xx_pd_struct *pd);
+                                             xx_bit_writer *writer, int level, bool is_deflate64, size_t window_size, const xx_deflate_pack_options *options,
+                                             xx_pd_struct *pd);
 
 bool xx_deflate_compress_stream_with_options_ex(xx_io_device *src_dev, const uint8_t *mem_src, size_t mem_src_size, int64_t src_offset, int64_t uncomp_size,
-                                                 xx_bit_writer *writer, int level, bool is_deflate64, size_t window_size,
-                                                 const xx_deflate_pack_options_ex *options, xx_pd_struct *pd);
+                                                xx_bit_writer *writer, int level, bool is_deflate64, size_t window_size, const xx_deflate_pack_options_ex *options,
+                                                xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

@@ -101,7 +101,7 @@ typedef struct {
     const char *namespace_name;
     size_t namespace_length;
     const char *visibility; /* Static string. */
-    const char *type; /* "class" or "interface". */
+    const char *type;       /* "class" or "interface". */
     bool is_abstract;
     bool is_sealed;
     size_t number_of_base_types;
@@ -116,7 +116,7 @@ typedef struct {
     bool is_static;
     bool is_virtual;
     bool is_final;
-    bool has_return_type; /* Constructors have an undefined return type. */
+    bool has_return_type;      /* Constructors have an undefined return type. */
     size_t return_type_length; /* Excludes the trailing NUL. */
     size_t number_of_generic_parameters;
     size_t number_of_parameters;
@@ -199,86 +199,50 @@ typedef struct {
 /* Parse a PE/CLR metadata root. All text pointers refer to `data`, whose
  * lifetime must cover use of `result`. Malformed or ordinary files produce
  * is_dotnet=false; a false return indicates an invalid output pointer. */
-XXFC_API bool xx_dotnet_yx_parse(const uint8_t *data, size_t size,
-                                 xx_dotnet_yx_result *result);
+XXFC_API bool xx_dotnet_yx_parse(const uint8_t *data, size_t size, xx_dotnet_yx_result *result);
 
 /* Accessors for repeated values. The user string bytes are UTF-16LE and
  * exclude the final ECMA-335 terminal flag byte. */
-XXFC_API bool xx_dotnet_yx_guid_at(const uint8_t *data, size_t size,
-                                   const xx_dotnet_yx_result *result,
-                                   size_t index, char text[37]);
-XXFC_API bool xx_dotnet_yx_user_string_at(const uint8_t *data, size_t size,
-                                          const xx_dotnet_yx_result *result,
-                                          size_t index, const uint8_t **bytes,
-                                          size_t *length);
-XXFC_API bool xx_dotnet_yx_assembly_ref_at(const xx_dotnet_yx_result *result,
-                                           size_t index,
-                                           xx_dotnet_yx_assembly_ref *out);
-XXFC_API bool xx_dotnet_yx_module_ref_at(const xx_dotnet_yx_result *result,
-                                         size_t index, const uint8_t **name,
-                                         size_t *length);
-XXFC_API bool xx_dotnet_yx_constant_at(const xx_dotnet_yx_result *result,
-                                       size_t index, const uint8_t **bytes,
-                                       size_t *length);
-XXFC_API bool xx_dotnet_yx_field_offset_at(const uint8_t *data, size_t size,
-                                           const xx_dotnet_yx_result *result,
-                                           size_t index, uint32_t *offset);
-XXFC_API bool xx_dotnet_yx_resource_at(const xx_dotnet_yx_result *result,
-                                       size_t index,
-                                       xx_dotnet_yx_resource *out);
+XXFC_API bool xx_dotnet_yx_guid_at(const uint8_t *data, size_t size, const xx_dotnet_yx_result *result, size_t index, char text[37]);
+XXFC_API bool xx_dotnet_yx_user_string_at(const uint8_t *data, size_t size, const xx_dotnet_yx_result *result, size_t index, const uint8_t **bytes, size_t *length);
+XXFC_API bool xx_dotnet_yx_assembly_ref_at(const xx_dotnet_yx_result *result, size_t index, xx_dotnet_yx_assembly_ref *out);
+XXFC_API bool xx_dotnet_yx_module_ref_at(const xx_dotnet_yx_result *result, size_t index, const uint8_t **name, size_t *length);
+XXFC_API bool xx_dotnet_yx_constant_at(const xx_dotnet_yx_result *result, size_t index, const uint8_t **bytes, size_t *length);
+XXFC_API bool xx_dotnet_yx_field_offset_at(const uint8_t *data, size_t size, const xx_dotnet_yx_result *result, size_t index, uint32_t *offset);
+XXFC_API bool xx_dotnet_yx_resource_at(const xx_dotnet_yx_result *result, size_t index, xx_dotnet_yx_resource *out);
 /* Pass NULL and 0 for the buffer to query required_fullname_capacity, then
  * call again with a buffer of that size. A zero capacity means the official
  * full name is undefined for this class. */
-XXFC_API bool xx_dotnet_yx_class_at(const xx_dotnet_yx_result *result,
-                                    size_t index, char *fullname_buffer,
-                                    size_t buffer_capacity,
-                                    xx_dotnet_yx_class *out);
-XXFC_API bool xx_dotnet_yx_class_raw_index(const xx_dotnet_yx_result *result,
-                                           size_t class_index,
-                                           size_t *raw_index);
-XXFC_API bool xx_dotnet_yx_type_def_or_ref_fullname(
-    const xx_dotnet_yx_result *result, uint16_t coded, char *buffer,
-    size_t capacity, size_t *required, size_t *length);
-XXFC_API bool xx_dotnet_yx_class_generic_parameter_at(
-    const xx_dotnet_yx_result *result, size_t class_index,
-    size_t parameter_index, const uint8_t **name, size_t *length);
+XXFC_API bool xx_dotnet_yx_class_at(const xx_dotnet_yx_result *result, size_t index, char *fullname_buffer, size_t buffer_capacity, xx_dotnet_yx_class *out);
+XXFC_API bool xx_dotnet_yx_class_raw_index(const xx_dotnet_yx_result *result, size_t class_index, size_t *raw_index);
+XXFC_API bool xx_dotnet_yx_type_def_or_ref_fullname(const xx_dotnet_yx_result *result, uint16_t coded, char *buffer, size_t capacity, size_t *required, size_t *length);
+XXFC_API bool xx_dotnet_yx_class_generic_parameter_at(const xx_dotnet_yx_result *result, size_t class_index, size_t parameter_index, const uint8_t **name,
+                                                      size_t *length);
 /* Query a base type name with NULL,0, then call with required_capacity.
  * Only resolvable base types are counted. */
-XXFC_API bool xx_dotnet_yx_class_base_type_at(
-    const xx_dotnet_yx_result *result, size_t class_index, size_t base_index,
-    char *buffer, size_t buffer_capacity, size_t *required_capacity,
-    size_t *length);
+XXFC_API bool xx_dotnet_yx_class_base_type_at(const xx_dotnet_yx_result *result, size_t class_index, size_t base_index, char *buffer, size_t buffer_capacity,
+                                              size_t *required_capacity, size_t *length);
 
 /* Methods with missing names or malformed signatures are omitted, exactly as
  * in the reference parser. All indices are zero-based and refer to the
  * filtered `classes`/`methods` arrays visible to rules and CLI dumps. */
-XXFC_API size_t xx_dotnet_yx_class_method_count(
-    const xx_dotnet_yx_result *result, size_t class_index);
+XXFC_API size_t xx_dotnet_yx_class_method_count(const xx_dotnet_yx_result *result, size_t class_index);
 
 /* Pass NULL/0 for return_type_buffer to query return_type_length; then call
  * with at least return_type_length+1 bytes. The buffer is NUL-terminated when
  * large enough. A constructor reports has_return_type=false. */
-XXFC_API bool xx_dotnet_yx_class_method_at(const xx_dotnet_yx_result *result,
-                                           size_t class_index,
-                                           size_t method_index,
-                                           char *return_type_buffer,
-                                           size_t buffer_capacity,
+XXFC_API bool xx_dotnet_yx_class_method_at(const xx_dotnet_yx_result *result, size_t class_index, size_t method_index, char *return_type_buffer, size_t buffer_capacity,
                                            xx_dotnet_yx_method *out);
 
-XXFC_API bool xx_dotnet_yx_method_parameter_at(
-    const xx_dotnet_yx_result *result, const xx_dotnet_yx_method *method,
-    size_t parameter_index, char *type_buffer, size_t buffer_capacity,
-    xx_dotnet_yx_method_parameter *out);
+XXFC_API bool xx_dotnet_yx_method_parameter_at(const xx_dotnet_yx_result *result, const xx_dotnet_yx_method *method, size_t parameter_index, char *type_buffer,
+                                               size_t buffer_capacity, xx_dotnet_yx_method_parameter *out);
 
-XXFC_API bool xx_dotnet_yx_method_generic_parameter_at(
-    const xx_dotnet_yx_result *result, const xx_dotnet_yx_method *method,
-    size_t parameter_index, const uint8_t **name, size_t *length);
+XXFC_API bool xx_dotnet_yx_method_generic_parameter_at(const xx_dotnet_yx_result *result, const xx_dotnet_yx_method *method, size_t parameter_index, const uint8_t **name,
+                                                       size_t *length);
 
 /* Resolve a TypeSpec row for base types as well as method signatures. */
-XXFC_API bool xx_dotnet_yx_type_spec_fullname(
-    const xx_dotnet_yx_result *result, size_t raw_type_spec_index,
-    size_t class_index, char *buffer, size_t buffer_capacity,
-    size_t *required_capacity, size_t *length);
+XXFC_API bool xx_dotnet_yx_type_spec_fullname(const xx_dotnet_yx_result *result, size_t raw_type_spec_index, size_t class_index, char *buffer, size_t buffer_capacity,
+                                              size_t *required_capacity, size_t *length);
 
 #ifdef __cplusplus
 }

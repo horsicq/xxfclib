@@ -34,7 +34,7 @@ extern "C" {
 typedef struct {
     uint32_t nNameIndex;
     uint32_t nType;
-    uint64_t nFlags;   /* sh_flags: SHF_WRITE 0x1, SHF_ALLOC 0x2, SHF_EXECINSTR 0x4. */
+    uint64_t nFlags; /* sh_flags: SHF_WRITE 0x1, SHF_ALLOC 0x2, SHF_EXECINSTR 0x4. */
     uint64_t nAddr;
     uint64_t nOffset;
     uint64_t nSize;

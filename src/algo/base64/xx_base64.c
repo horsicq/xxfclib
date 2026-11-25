@@ -22,17 +22,14 @@ size_t xx_base64_encoded_size(size_t length, bool pad)
     return size;
 }
 
-bool xx_base64_encode_buffer(const uint8_t *in, size_t length,
-                             const char alphabet[64], bool pad,
-                             char *out, size_t out_size, size_t *out_length)
+bool xx_base64_encode_buffer(const uint8_t *in, size_t length, const char alphabet[64], bool pad, char *out, size_t out_size, size_t *out_length)
 {
     size_t written = 0U, i = 0U;
     if (!alphabet || !out || (length && !in)) return false;
     if (length / 3U > (SIZE_MAX - 4U) / 4U) return false;
     if (out_size < xx_base64_encoded_size(length, pad)) return false;
     while (i + 3U <= length) {
-        uint32_t bits = ((uint32_t)in[i] << 16) |
-                        ((uint32_t)in[i + 1U] << 8) | in[i + 2U];
+        uint32_t bits = ((uint32_t)in[i] << 16) | ((uint32_t)in[i + 1U] << 8) | in[i + 2U];
         out[written++] = alphabet[(bits >> 18) & 63U];
         out[written++] = alphabet[(bits >> 12) & 63U];
         out[written++] = alphabet[(bits >> 6) & 63U];
@@ -44,8 +41,7 @@ bool xx_base64_encode_buffer(const uint8_t *in, size_t length,
         if (i + 1U < length) bits |= (uint32_t)in[i + 1U] << 8;
         out[written++] = alphabet[(bits >> 18) & 63U];
         out[written++] = alphabet[(bits >> 12) & 63U];
-        if (i + 1U < length)
-            out[written++] = alphabet[(bits >> 6) & 63U];
+        if (i + 1U < length) out[written++] = alphabet[(bits >> 6) & 63U];
         if (pad)
             while (written % 4U) out[written++] = '=';
     }
@@ -53,17 +49,13 @@ bool xx_base64_encode_buffer(const uint8_t *in, size_t length,
     return true;
 }
 
-bool xx_base64_decode_buffer(const char *in, size_t length,
-                             const char alphabet[64],
-                             uint8_t *out, size_t out_capacity,
-                             size_t *out_length)
+bool xx_base64_decode_buffer(const char *in, size_t length, const char alphabet[64], uint8_t *out, size_t out_capacity, size_t *out_length)
 {
     int8_t reverse[256];
     size_t i = 0U, used = 0U, needed;
     if (!in || !alphabet || !out) return false;
     memset(reverse, -1, sizeof(reverse));
-    for (size_t symbol = 0; symbol < 64U; ++symbol)
-        reverse[(uint8_t)alphabet[symbol]] = (int8_t)symbol;
+    for (size_t symbol = 0; symbol < 64U; ++symbol) reverse[(uint8_t)alphabet[symbol]] = (int8_t)symbol;
     if (length % 4U == 1U) return false;
     needed = (length / 4U) * 3U;
     if (length % 4U == 2U) needed += 1U;

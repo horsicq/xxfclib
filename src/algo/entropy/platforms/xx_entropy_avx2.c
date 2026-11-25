@@ -28,8 +28,7 @@
 #include "xxfclib/algo/entropy/xx_entropy.h"
 #include "xxfclib/rt/xx_rt.h"
 
-#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || \
-    ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
+#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__)))
 #define XX_ENTROPY_AVX2_X86 1
 #endif
 
@@ -80,19 +79,18 @@ static double xx_entropy_avx2_finish(const uint32_t total_counts[256], size_t si
 }
 
 #define XX_ENTROPY_AVX2_COUNT8(q, offset, counts) \
-    do {                                             \
-        (counts)[0][(q)[(offset)]]++;                \
-        (counts)[1][(q)[(offset) + 1U]]++;           \
-        (counts)[2][(q)[(offset) + 2U]]++;           \
-        (counts)[3][(q)[(offset) + 3U]]++;           \
-        (counts)[4][(q)[(offset) + 4U]]++;           \
-        (counts)[5][(q)[(offset) + 5U]]++;           \
-        (counts)[6][(q)[(offset) + 6U]]++;           \
-        (counts)[7][(q)[(offset) + 7U]]++;           \
+    do {                                          \
+        (counts)[0][(q)[(offset)]]++;             \
+        (counts)[1][(q)[(offset) + 1U]]++;        \
+        (counts)[2][(q)[(offset) + 2U]]++;        \
+        (counts)[3][(q)[(offset) + 3U]]++;        \
+        (counts)[4][(q)[(offset) + 4U]]++;        \
+        (counts)[5][(q)[(offset) + 5U]]++;        \
+        (counts)[6][(q)[(offset) + 6U]]++;        \
+        (counts)[7][(q)[(offset) + 7U]]++;        \
     } while (0)
 
-static XX_ENTROPY_AVX2_TARGET XX_ENTROPY_AVX2_NOINLINE void xx_entropy_histogram_avx2_small(const uint8_t *p, size_t size,
-                                                                                              uint32_t total_counts[256])
+static XX_ENTROPY_AVX2_TARGET XX_ENTROPY_AVX2_NOINLINE void xx_entropy_histogram_avx2_small(const uint8_t *p, size_t size, uint32_t total_counts[256])
 {
     XX_ENTROPY_AVX2_ALIGN32 uint32_t counts[8][256] = {{0}};
     size_t i = 0U;
@@ -119,13 +117,11 @@ static XX_ENTROPY_AVX2_TARGET XX_ENTROPY_AVX2_NOINLINE void xx_entropy_histogram
         __m256i c23 = _mm256_add_epi32(c2, c3);
         __m256i c45 = _mm256_add_epi32(c4, c5);
         __m256i c67 = _mm256_add_epi32(c6, c7);
-        _mm256_storeu_si256((__m256i *)(total_counts + i),
-                            _mm256_add_epi32(_mm256_add_epi32(c01, c23), _mm256_add_epi32(c45, c67)));
+        _mm256_storeu_si256((__m256i *)(total_counts + i), _mm256_add_epi32(_mm256_add_epi32(c01, c23), _mm256_add_epi32(c45, c67)));
     }
 }
 
-static XX_ENTROPY_AVX2_TARGET XX_ENTROPY_AVX2_NOINLINE void xx_entropy_histogram_avx2_large(const uint8_t *p, size_t size,
-                                                                                              uint32_t total_counts[256])
+static XX_ENTROPY_AVX2_TARGET XX_ENTROPY_AVX2_NOINLINE void xx_entropy_histogram_avx2_large(const uint8_t *p, size_t size, uint32_t total_counts[256])
 {
     XX_ENTROPY_AVX2_ALIGN64 uint32_t counts[8][256] = {{0}};
     size_t i = 0U;
@@ -156,8 +152,7 @@ static XX_ENTROPY_AVX2_TARGET XX_ENTROPY_AVX2_NOINLINE void xx_entropy_histogram
         __m256i c23 = _mm256_add_epi32(c2, c3);
         __m256i c45 = _mm256_add_epi32(c4, c5);
         __m256i c67 = _mm256_add_epi32(c6, c7);
-        _mm256_storeu_si256((__m256i *)(total_counts + i),
-                            _mm256_add_epi32(_mm256_add_epi32(c01, c23), _mm256_add_epi32(c45, c67)));
+        _mm256_storeu_si256((__m256i *)(total_counts + i), _mm256_add_epi32(_mm256_add_epi32(c01, c23), _mm256_add_epi32(c45, c67)));
     }
 }
 #endif /* XX_ENTROPY_AVX2_X86 */

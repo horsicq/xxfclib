@@ -23,8 +23,7 @@ static bool nso_read_header(const Abstractformat *format, uint8_t header[XX_NSO_
     if (!format || !format->device || !header || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     return total >= format->base_address && total - format->base_address >= XX_NSO_HEADER_SIZE &&
-           xx_io_read_at(format->device, format->base_address, header, XX_NSO_HEADER_SIZE) &&
-           memcmp(header, "NSO0", 4U) == 0;
+           xx_io_read_at(format->device, format->base_address, header, XX_NSO_HEADER_SIZE) && memcmp(header, "NSO0", 4U) == 0;
 }
 
 static bool nso_span(uint32_t offset, uint32_t size, uint64_t limit)
@@ -113,7 +112,8 @@ bool xx_nintendo_nso_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
         segment->compressed_size = segment->compressed ? xx_data_get_u32(header, sizeof(header), packed_fields[index], false) : segment->memory_size;
         segment->flags = permissions[index];
         if (!segment->memory_size || !segment->compressed_size || segment->file_offset < XX_NSO_HEADER_SIZE ||
-            !nso_span(segment->file_offset, segment->compressed_size, available)) return false;
+            !nso_span(segment->file_offset, segment->compressed_size, available))
+            return false;
         file_end = (uint64_t)segment->file_offset + segment->compressed_size;
         memory_end = (uint64_t)segment->memory_offset + segment->memory_size;
         if (index && (segment->file_offset < previous_file_end || segment->memory_offset < previous_memory_end)) return false;
@@ -123,8 +123,9 @@ bool xx_nintendo_nso_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
         memory_total += segment->memory_size;
         if (memory_total > XX_NSO_MAX_DECOMPRESSED_SIZE || memory_end > XX_NSO_MAX_DECOMPRESSED_SIZE) return false;
     }
-    if (reader->segments[XX_NSO_SEGMENT_TEXT].memory_offset != 0U ||
-        reader->bss_size > XX_NSO_MAX_DECOMPRESSED_SIZE - previous_memory_end || maximum_file_end != available) return false;
+    if (reader->segments[XX_NSO_SEGMENT_TEXT].memory_offset != 0U || reader->bss_size > XX_NSO_MAX_DECOMPRESSED_SIZE - previous_memory_end ||
+        maximum_file_end != available)
+        return false;
 
     self->format_size = (int64_t)available;
     self->overlay_offset = -1;
@@ -141,14 +142,12 @@ int64_t xx_nintendo_nso_get_format_size(Abstractformat *self, xx_pd_struct *pd)
 
 const xx_nso_segment *xx_nintendo_nso_get_segment(xx_nintendo_nso *reader, xx_nso_segment_kind kind, xx_pd_struct *pd)
 {
-    return reader && (unsigned)kind < 3U &&
-                   (reader->format.base_info_handled || xx_nintendo_nso_handle_base_info(&reader->format, pd))
+    return reader && (unsigned)kind < 3U && (reader->format.base_info_handled || xx_nintendo_nso_handle_base_info(&reader->format, pd))
                ? &reader->segments[(unsigned)kind]
                : NULL;
 }
 
-bool xx_nintendo_nso_decode_segment(xx_nintendo_nso *reader, xx_nso_segment_kind kind, void *destination, size_t destination_size,
-                                     size_t *written, xx_pd_struct *pd)
+bool xx_nintendo_nso_decode_segment(xx_nintendo_nso *reader, xx_nso_segment_kind kind, void *destination, size_t destination_size, size_t *written, xx_pd_struct *pd)
 {
     const xx_nso_segment *segment;
     uint8_t *packed;
@@ -159,17 +158,14 @@ bool xx_nintendo_nso_decode_segment(xx_nintendo_nso *reader, xx_nso_segment_kind
     segment = xx_nintendo_nso_get_segment(reader, kind, pd);
     if (!segment || destination_size < segment->memory_size) return false;
     if (!segment->compressed) {
-        if (!xx_io_read_at(reader->format.device, reader->format.base_address + segment->file_offset,
-                           destination, segment->memory_size)) return false;
+        if (!xx_io_read_at(reader->format.device, reader->format.base_address + segment->file_offset, destination, segment->memory_size)) return false;
         if (written) *written = segment->memory_size;
         return !nso_stopped(pd);
     }
     packed = (uint8_t *)xx_mem_alloc(segment->compressed_size);
     if (!packed) return false;
-    if (xx_io_read_at(reader->format.device, reader->format.base_address + segment->file_offset,
-                      packed, segment->compressed_size) && !nso_stopped(pd) &&
-        xx_lz4_decompress_block(packed, segment->compressed_size, destination, segment->memory_size, &decoded) &&
-        decoded == segment->memory_size && !nso_stopped(pd)) {
+    if (xx_io_read_at(reader->format.device, reader->format.base_address + segment->file_offset, packed, segment->compressed_size) && !nso_stopped(pd) &&
+        xx_lz4_decompress_block(packed, segment->compressed_size, destination, segment->memory_size, &decoded) && decoded == segment->memory_size && !nso_stopped(pd)) {
         result = true;
         if (written) *written = decoded;
     }
@@ -183,7 +179,8 @@ bool xx_nintendo_nso_get_memory_map(Abstractformat *self, xx_memory_map_mode_t m
     xx_nintendo_nso *reader = (xx_nintendo_nso *)self;
     unsigned index;
     if (!reader || !output || (mode != XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_SEGMENTS) ||
-        (!self->base_info_handled && !xx_nintendo_nso_handle_base_info(self, pd))) return false;
+        (!self->base_info_handled && !xx_nintendo_nso_handle_base_info(self, pd)))
+        return false;
     output->binary_offset = self->base_address;
     output->binary_size = self->format_size;
     output->module_address = XX_NSO_LOAD_ADDRESS;
@@ -196,24 +193,23 @@ bool xx_nintendo_nso_get_memory_map(Abstractformat *self, xx_memory_map_mode_t m
     output->arch = self->arch;
     output->mode = XX_MEMORY_MAP_MODE_SEGMENTS;
     output->is_image = true;
-    if (!xx_memory_map_add_part(output, self->base_address, XX_NSO_HEADER_SIZE, XX_INVALID_ADDRESS, 0,
-                                XX_FILE_PART_HEADER, 0, "header", false)) return false;
+    if (!xx_memory_map_add_part(output, self->base_address, XX_NSO_HEADER_SIZE, XX_INVALID_ADDRESS, 0, XX_FILE_PART_HEADER, 0, "header", false)) return false;
     for (index = 0U; index < 3U; ++index) {
         const xx_nso_segment *segment = &reader->segments[index];
         uint64_t address = XX_NSO_LOAD_ADDRESS + segment->memory_offset;
         if (segment->compressed) {
             char packed_name[32];
             (void)xx_rt_snprintf(packed_name, sizeof(packed_name), "%s (compressed)", names[index]);
-            if (!xx_memory_map_add_part(output, self->base_address + segment->file_offset, segment->compressed_size,
-                                        XX_INVALID_ADDRESS, 0, XX_FILE_PART_DATA, (int32_t)index + 1, packed_name, false) ||
-                !xx_memory_map_add_part(output, -1, 0, address, segment->memory_size,
-                                        XX_FILE_PART_SEGMENT, (int32_t)index + 1, names[index], false)) return false;
-        } else if (!xx_memory_map_add_part(output, self->base_address + segment->file_offset, segment->memory_size,
-                                           address, segment->memory_size, XX_FILE_PART_SEGMENT,
-                                           (int32_t)index + 1, names[index], false)) return false;
+            if (!xx_memory_map_add_part(output, self->base_address + segment->file_offset, segment->compressed_size, XX_INVALID_ADDRESS, 0, XX_FILE_PART_DATA,
+                                        (int32_t)index + 1, packed_name, false) ||
+                !xx_memory_map_add_part(output, -1, 0, address, segment->memory_size, XX_FILE_PART_SEGMENT, (int32_t)index + 1, names[index], false))
+                return false;
+        } else if (!xx_memory_map_add_part(output, self->base_address + segment->file_offset, segment->memory_size, address, segment->memory_size, XX_FILE_PART_SEGMENT,
+                                           (int32_t)index + 1, names[index], false))
+            return false;
         if (index == XX_NSO_SEGMENT_DATA && reader->bss_size &&
-            !xx_memory_map_add_part(output, -1, 0, address + segment->memory_size, reader->bss_size,
-                                    XX_FILE_PART_SEGMENT, (int32_t)index + 1, "bss", false)) return false;
+            !xx_memory_map_add_part(output, -1, 0, address + segment->memory_size, reader->bss_size, XX_FILE_PART_SEGMENT, (int32_t)index + 1, "bss", false))
+            return false;
     }
     return !nso_stopped(pd) && xx_memory_map_finalize(output);
 }

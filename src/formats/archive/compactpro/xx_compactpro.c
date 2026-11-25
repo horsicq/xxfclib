@@ -236,7 +236,6 @@ static void xx_compactpro_scan_cleanup(xx_compactpro_scan *scan)
 /* Mac OS Roman 0x80..0xFF as Unicode (Apple's ROMAN.TXT, with the euro sign
  * Mac OS 8.5 put at 0xDB). */
 
-
 /* Room for one converted name component: a device-name prefix, 127
  * characters of at most three UTF-8 bytes, a "_<n>" suffix and a NUL. */
 #define XX_COMPACTPRO_COMPONENT_BUFFER (1U + 127U * 3U + 16U + 1U)

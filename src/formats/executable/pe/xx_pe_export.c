@@ -208,12 +208,10 @@ uint64_t xx_pe_get_number_of_exports(Abstractformat *format, xx_pd_struct *pd)
 
 const StreamExport *xx_pe_get_stream_export(void)
 {
-    static const StreamExport stream = {
-        .get_number_of_exports = xx_pe_get_number_of_exports,
-        .create_exports_reading = xx_pe_create_exports_reading,
-        .get_current_export = xx_pe_get_current_export,
-        .export_move_to_next = xx_pe_export_move_to_next,
-        .free_exports_reading = xx_pe_free_exports_reading
-    };
+    static const StreamExport stream = {.get_number_of_exports = xx_pe_get_number_of_exports,
+                                        .create_exports_reading = xx_pe_create_exports_reading,
+                                        .get_current_export = xx_pe_get_current_export,
+                                        .export_move_to_next = xx_pe_export_move_to_next,
+                                        .free_exports_reading = xx_pe_free_exports_reading};
     return &stream;
 }

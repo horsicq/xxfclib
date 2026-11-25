@@ -157,9 +157,11 @@ static bool xx_kboom_pick_header(Abstractformat *self, int64_t span, size_t raw,
     n = (size_t)(span - 8);
     packed = (uint8_t *)xx_mem_alloc(n);
     if (!packed) return false;
-    if (!xx_kboom_read_at(self, self->base_address + 8, packed, n)) { xx_mem_free(packed); return false; }
-    if (!(n >= 6 && xx_kboom_decode_exact_memory(packed + 4, n - 4, NULL, raw, NULL)) &&
-        xx_kboom_decode_exact_memory(packed, n, NULL, raw, NULL)) *size = 8;
+    if (!xx_kboom_read_at(self, self->base_address + 8, packed, n)) {
+        xx_mem_free(packed);
+        return false;
+    }
+    if (!(n >= 6 && xx_kboom_decode_exact_memory(packed + 4, n - 4, NULL, raw, NULL)) && xx_kboom_decode_exact_memory(packed, n, NULL, raw, NULL)) *size = 8;
     xx_mem_free(packed);
     return !(pd && xx_pd_is_stopped(pd));
 }
@@ -256,9 +258,9 @@ static xx_kboom_stream *xx_kboom_parse(Abstractformat *self, xx_pd_struct *pd)
     /* Published as (date << 16) | time. The header stores the date word
      * first and the time word second, the reverse of the packed DOS order,
      * and swapping them yields plausible nonsense rather than an error. */
-    member.timestamp =
-        header_size == XX_KBOOM_HEADER_SIZE ?
-        ((uint64_t)xx_data_get_u16(header + XX_KBOOM_DOSDATE_OFFSET, 2, 0, false) << 16) | (uint64_t)xx_data_get_u16(header + XX_KBOOM_DOSTIME_OFFSET, 2, 0, false) : 0;
+    member.timestamp = header_size == XX_KBOOM_HEADER_SIZE ? ((uint64_t)xx_data_get_u16(header + XX_KBOOM_DOSDATE_OFFSET, 2, 0, false) << 16) |
+                                                                 (uint64_t)xx_data_get_u16(header + XX_KBOOM_DOSTIME_OFFSET, 2, 0, false)
+                                                           : 0;
     /* The wrapper has no directory entries and never will: it holds one
      * file. */
     member.is_folder = false;
@@ -329,9 +331,8 @@ static bool xx_kboom_decode(Abstractformat *self, const xx_kboom_member *member,
      * The codec itself already absorbs the reference's one quirk - a final
      * phrase that runs past the declared size is truncated, not failed - so
      * a `false` here is a genuinely broken stream, never that quirk. */
-    if (!(member->header_size == 8 ?
-          xx_kboom_decode_exact_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written) :
-          xx_lzwvariants_kboom_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written)) ||
+    if (!(member->header_size == 8 ? xx_kboom_decode_exact_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written)
+                                   : xx_lzwvariants_kboom_decode_memory(input, (size_t)member->compressed_size, output, (size_t)member->uncompressed_size, &written)) ||
         written != (size_t)member->uncompressed_size) {
         xx_mem_free(output);
         xx_mem_free(input);
@@ -466,9 +467,8 @@ static bool xx_kboom_set_record(xx_archive_record *record, const xx_kboom_member
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
            (member->header_size != XX_KBOOM_HEADER_SIZE || xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp)) &&
            /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
-           (member->header_size != XX_KBOOM_HEADER_SIZE ||
-            (xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (member->timestamp >> 16) & 0xFFFFU) &&
-             xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->timestamp & 0xFFFFU))) &&
+           (member->header_size != XX_KBOOM_HEADER_SIZE || (xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (member->timestamp >> 16) & 0xFFFFU) &&
+                                                            xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->timestamp & 0xFFFFU))) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 

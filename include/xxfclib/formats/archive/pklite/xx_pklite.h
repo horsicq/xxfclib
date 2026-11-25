@@ -9,10 +9,12 @@ extern "C" {
  * Preserves a consistent saved header; otherwise builds a documented MZ
  * header from the decoded code, relocations, loader AX and register footer.
  * Other loader families, extra compression, nonzero tails and overlays fail. */
-typedef struct xx_pklite { Abstractformat format; } xx_pklite;
-XXFC_API void xx_pklite_init(xx_pklite *,xx_io_device *,int64_t);
+typedef struct xx_pklite {
+    Abstractformat format;
+} xx_pklite;
+XXFC_API void xx_pklite_init(xx_pklite *, xx_io_device *, int64_t);
 XXFC_API void xx_pklite_destroy(xx_pklite *);
-XXFC_API xx_pklite *xx_pklite_create(xx_io_device *,int64_t);
+XXFC_API xx_pklite *xx_pklite_create(xx_io_device *, int64_t);
 XXFC_API void xx_pklite_free(xx_pklite *);
 #ifdef __cplusplus
 }

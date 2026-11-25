@@ -138,8 +138,7 @@ XXFC_API bool xx_zoom_rle_decode_memory(const uint8_t *input, size_t input_size,
  * strict form requires the complete validated stream; the prefix form reports
  * only the last complete authenticated record. Label-free inputs refuse. */
 XXFC_API bool xx_zoom_decode_labels_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written);
-XXFC_API bool xx_zoom_decode_labels_prefix_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size,
-                                                 size_t *written, bool *complete);
+XXFC_API bool xx_zoom_decode_labels_prefix_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *written, bool *complete);
 
 #ifdef __cplusplus
 }

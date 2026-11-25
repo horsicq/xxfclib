@@ -244,8 +244,8 @@ static xx_earefpack_stream *xx_earefpack_parse(Abstractformat *self, xx_pd_struc
     if (span - (int64_t)consumed > 0 && span - (int64_t)consumed <= 3 && (span & 3) == 0) {
         uint8_t prefix[3], padding[3];
         size_t amount = (size_t)(span - (int64_t)consumed);
-        if (!xx_earefpack_read_at(self, self->base_address, prefix, amount) ||
-            !xx_earefpack_read_at(self, self->base_address + (int64_t)consumed, padding, amount)) return NULL;
+        if (!xx_earefpack_read_at(self, self->base_address, prefix, amount) || !xx_earefpack_read_at(self, self->base_address + (int64_t)consumed, padding, amount))
+            return NULL;
         word_padding = xx_rt_memcmp(prefix, padding, amount) == 0;
     }
     if ((int64_t)consumed != span && !tagged_footer && !word_padding && !((consumed & 1U) != 0U && (int64_t)consumed + 1 == span)) return NULL;

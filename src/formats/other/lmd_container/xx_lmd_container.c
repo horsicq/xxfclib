@@ -165,8 +165,8 @@ static bool carrier_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
             ++at;
             if (at + 4 + 26 > (int64_t)stop || !pm_read(f, at, b, 4)) return false;
             bytes = xx_data_get_u32(b, 4, 0, false);
-            if ((int64_t)bytes != (int64_t)stop - (at + 4) || !pm_read(f, at + 4, b, 18) || b[0] != 'B' || b[1] != 'M' ||
-                xx_data_get_u32(b + 2, 4, 0, false) != bytes || xx_data_get_u32(b + 10, 4, 0, false) >= bytes)
+            if ((int64_t)bytes != (int64_t)stop - (at + 4) || !pm_read(f, at + 4, b, 18) || b[0] != 'B' || b[1] != 'M' || xx_data_get_u32(b + 2, 4, 0, false) != bytes ||
+                xx_data_get_u32(b + 10, 4, 0, false) >= bytes)
                 return false;
             if (!pm_add(f, s, "bitmap", at + 4, bytes)) return false;
             xx_rt_snprintf(s->items[s->count - 1].name, sizeof(s->items[s->count - 1].name), "%u.bmp", i);

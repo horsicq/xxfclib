@@ -557,8 +557,7 @@ static JSVal string_from_buffer(JSCtx *pCtx, xx_buf_t *pBuf)
 /* Validate the whole range before borrowing it: primitive conversion cannot
  * call script, whereas a hole or object must retain the observable Get and
  * ToString order of the general path. Separator conversion has already run. */
-static int array_join_dense_primitives(JSCtx *pCtx, JSVal array, int64_t nLength,
-                                      const char *pSeparator, size_t nSeparatorSize, JSVal *pResult)
+static int array_join_dense_primitives(JSCtx *pCtx, JSVal array, int64_t nLength, const char *pSeparator, size_t nSeparatorSize, JSVal *pResult)
 {
     JSObj *pArray;
     JSVal *pItems;
@@ -567,8 +566,7 @@ static int array_join_dense_primitives(JSCtx *pCtx, JSVal array, int64_t nLength
 
     if (array.tag != JT_OBJ || array.u.o->cls != JCLASS_ARRAY) return 0;
     pArray = array.u.o;
-    if (pArray->bArraySparse || pArray->nArrayLen != nLength ||
-        pArray->nArrayUsed != (size_t)nLength || pArray->nArrayHoles) return 0;
+    if (pArray->bArraySparse || pArray->nArrayLen != nLength || pArray->nArrayUsed != (size_t)nLength || pArray->nArrayHoles) return 0;
     pItems = pArray->pArrayData ? pArray->pArrayData + pArray->nArrayStart : NULL;
     if (nLength > 1) {
         if (nSeparatorSize > ((size_t)-2) / (size_t)(nLength - 1)) goto too_large;
@@ -598,8 +596,14 @@ static int array_join_dense_primitives(JSCtx *pCtx, JSVal array, int64_t nLength
             nOffset += nSeparatorSize;
         }
         switch (item.tag) {
-            case JT_STR: pPiece = item.u.s->pData; nPiece = item.u.s->nSize; break;
-            case JT_BOOL: pPiece = item.u.b ? "true" : "false"; nPiece = item.u.b ? 4 : 5; break;
+            case JT_STR:
+                pPiece = item.u.s->pData;
+                nPiece = item.u.s->nSize;
+                break;
+            case JT_BOOL:
+                pPiece = item.u.b ? "true" : "false";
+                nPiece = item.u.b ? 4 : 5;
+                break;
             case JT_NUM: {
                 int nDigits = js_int_to_buf(pText + nOffset, item.u.n);
                 if (nDigits > 0) nPiece = (size_t)nDigits;
@@ -1189,8 +1193,7 @@ static JSVal fn_string_charcodeat(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *
  * indexOf/split/replace into quadratic scans. Short needles have a fixed upper
  * bound and avoid the prefix-table setup. The reverse mode visits bytes from
  * the end and returns the last match without scanning an already matched tail. */
-static int64_t search_substring(JSCtx *pCtx, const char *pText, size_t nTextSize, const char *pNeedle,
-                                size_t nNeedleSize, size_t nStart, int bReverse)
+static int64_t search_substring(JSCtx *pCtx, const char *pText, size_t nTextSize, const char *pNeedle, size_t nNeedleSize, size_t nStart, int bReverse)
 {
     size_t i;
     size_t j;
@@ -1235,8 +1238,7 @@ static int64_t search_substring(JSCtx *pCtx, const char *pText, size_t nTextSize
             while (i <= nLast) {
                 /* Probe the last byte first: a long repeated prefix such as
                  * aaaa...ab should skip the whole text when b is absent. */
-                const char *pFound = (const char *)xx_rt_memchr(pText + i + nNeedleSize - 1,
-                    (unsigned char)pNeedle[nNeedleSize - 1], nLast - i + 1);
+                const char *pFound = (const char *)xx_rt_memchr(pText + i + nNeedleSize - 1, (unsigned char)pNeedle[nNeedleSize - 1], nLast - i + 1);
                 if (!pFound) {
                     break;
                 }
@@ -2472,8 +2474,7 @@ static void json_stringify_raw(JSCtx *pCtx, xx_buf_t *pBuf, JSVal value, int nDe
 
                     /* Properties holding undefined or a function are omitted, as
                      * JSON has no spelling for them (array slots write null). */
-                    if ((pMap->pEntries[i].value.tag == JT_UNDEF) ||
-                        ((pMap->pEntries[i].value.tag == JT_OBJ) && js_is_callable(pMap->pEntries[i].value))) {
+                    if ((pMap->pEntries[i].value.tag == JT_UNDEF) || ((pMap->pEntries[i].value.tag == JT_OBJ) && js_is_callable(pMap->pEntries[i].value))) {
                         continue;
                     }
 

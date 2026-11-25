@@ -14,7 +14,7 @@
 #include "../../common/xx_container_codec_helpers.h"
 
 #define MSF_DS_HEADER 56U
-#define MSF_JG_HEADER 60U /* 44-byte magic, page size, FPM page, page count, root stream {size, reserved} */
+#define MSF_JG_HEADER 60U      /* 44-byte magic, page size, FPM page, page count, root stream {size, reserved} */
 #define MSF_MAX_STREAMS 65535U /* stream numbers are 16-bit in the PDB streams */
 
 /* One parse owns one reader; every lazy member holds a reference. */
@@ -166,7 +166,10 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     avail = (uint64_t)available;
     got = avail < MSF_JG_HEADER ? (size_t)avail : MSF_JG_HEADER;
     if (!pm_read(f, 0, head, got)) return false;
-    if (!xx_rt_memcmp(head, "Microsoft C/C++ MSF 7.00\r\n\x1a" "DS\0\0\0", 32)) {
+    if (!xx_rt_memcmp(head,
+                      "Microsoft C/C++ MSF 7.00\r\n\x1a"
+                      "DS\0\0\0",
+                      32)) {
         jg = false;
         if (got < MSF_DS_HEADER) {
             xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Invalid MSF page or directory size");
@@ -188,7 +191,10 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
         avail = blocks * bs;
         db = (dn + bs - 1) / bs;
         if (db * 4 > bs) return false;
-    } else if (got >= 44 && !xx_rt_memcmp(head, "Microsoft C/C++ program database 2.00\r\n\x1a" "JG\0\0", 44)) {
+    } else if (got >= 44 && !xx_rt_memcmp(head,
+                                          "Microsoft C/C++ program database 2.00\r\n\x1a"
+                                          "JG\0\0",
+                                          44)) {
         jg = true;
         if (got < MSF_JG_HEADER) return false;
         bs = xx_data_get_u32(head + 44, 4, 0, false);

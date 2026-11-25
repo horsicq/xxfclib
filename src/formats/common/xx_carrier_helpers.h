@@ -440,8 +440,8 @@ static XXFC_MAYBE_UNUSED bool carrier_zip(Abstractformat *f, int64_t start, int6
          * 12, 14 and 15 unused or reserved, and some writers set them in the
          * local header only (PKZIP's ZIP2EXE stores bit 15 there). */
         if (lp < start || lp > dir - 30 || !pm_read(f, lp, l, 30) || xx_rt_memcmp(l, "PK\3\4", 4) ||
-            ((xx_data_get_u16(l + 6, 2, 0, false) ^ xx_data_get_u16(h + 8, 2, 0, false)) & 0x287FU) || xx_data_get_u16(l + 8, 2, 0, false) != xx_data_get_u16(h + 10, 2, 0, false) ||
-            xx_data_get_u16(l + 26, 2, 0, false) != fn)
+            ((xx_data_get_u16(l + 6, 2, 0, false) ^ xx_data_get_u16(h + 8, 2, 0, false)) & 0x287FU) ||
+            xx_data_get_u16(l + 8, 2, 0, false) != xx_data_get_u16(h + 10, 2, 0, false) || xx_data_get_u16(l + 26, 2, 0, false) != fn)
             goto done;
         if ((uint64_t)30 + xx_data_get_u16(l + 26, 2, 0, false) + xx_data_get_u16(l + 28, 2, 0, false) + packed > (uint64_t)(dir - lp) ||
             !carrier_equal(f, lp + 30, at + 46, fn, pd))

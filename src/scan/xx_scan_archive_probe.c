@@ -48,4 +48,3 @@ bool xx_scan_archive_is_tar(xx_io_device *device)
     if (position >= 0) (void)xx_io_seek64(device, position, SEEK_SET);
     return valid;
 }
-

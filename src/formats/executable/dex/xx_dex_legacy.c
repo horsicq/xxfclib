@@ -101,15 +101,14 @@ static bool xx_dex_legacy_string_unicode(const xx_dex_legacy_state *dex, uint32_
 /* load_encoded_field() / load_encoded_method(): the bytes consumed, 0 when
  * the member cannot be loaded. *name_unicode tells whether the member's
  * name was set and has a non-ASCII byte. */
-static uint32_t xx_dex_legacy_member(const xx_dex_legacy_state *dex, size_t start, uint32_t *previous, bool method,
-                                     bool *name_unicode)
+static uint32_t xx_dex_legacy_member(const xx_dex_legacy_state *dex, size_t start, uint32_t *previous, bool method, bool *name_unicode)
 {
     uint32_t used = 0, diff;
     bool defined;
     *name_unicode = false;
     if (!xx_dex_legacy_fits(dex, start, method ? 12 : 8)) return 0;
     diff = xx_dex_legacy_uleb128(dex, start, &used);
-    (void)xx_dex_legacy_uleb128(dex, start + used, &used);              /* access_flags */
+    (void)xx_dex_legacy_uleb128(dex, start + used, &used);             /* access_flags */
     if (method) (void)xx_dex_legacy_uleb128(dex, start + used, &used); /* code_off */
     *previous += diff;
     /* field_ids[idx] / method_ids[idx] exist for idx < size, and the getter
@@ -129,8 +128,7 @@ bool xx_dex_legacy_analyze(const uint8_t *data, size_t size, xx_dex_legacy *resu
     bool ok = true;
     memset(result, 0, sizeof(*result));
     if (size < XX_DEX_LEGACY_HEADER_SIZE) return true;
-    for (size_t i = 0; i < sizeof(magics) / sizeof(magics[0]) && !result->parsed; ++i)
-        result->parsed = memcmp(data, magics[i], 8) == 0; /* includes the NUL */
+    for (size_t i = 0; i < sizeof(magics) / sizeof(magics[0]) && !result->parsed; ++i) result->parsed = memcmp(data, magics[i], 8) == 0; /* includes the NUL */
     if (!result->parsed) return true;
 
     memset(&dex, 0, sizeof(dex));
@@ -182,13 +180,11 @@ bool xx_dex_legacy_analyze(const uint8_t *data, size_t size, xx_dex_legacy *resu
     }
 
     /* The remaining ID tables only gate the class data walk. */
-    if (!xx_dex_legacy_fits(&dex, type_ids_offset, (uint64_t)type_ids_size * 4) ||
-        !xx_dex_legacy_fits(&dex, proto_ids_offset, (uint64_t)proto_ids_size * 12) ||
+    if (!xx_dex_legacy_fits(&dex, type_ids_offset, (uint64_t)type_ids_size * 4) || !xx_dex_legacy_fits(&dex, proto_ids_offset, (uint64_t)proto_ids_size * 12) ||
         !xx_dex_legacy_fits(&dex, dex.field_ids_offset, (uint64_t)dex.field_ids_size * 8) ||
         !xx_dex_legacy_fits(&dex, dex.method_ids_offset, (uint64_t)dex.method_ids_size * 8))
         goto done;
-    if (map_offset != 0 && xx_dex_legacy_fits(&dex, map_offset, 4) &&
-        !xx_dex_legacy_fits(&dex, map_offset, 4 + (uint64_t)xx_dex_legacy_u32(&dex, map_offset) * 12))
+    if (map_offset != 0 && xx_dex_legacy_fits(&dex, map_offset, 4) && !xx_dex_legacy_fits(&dex, map_offset, 4 + (uint64_t)xx_dex_legacy_u32(&dex, map_offset) * 12))
         goto done;
     if (!xx_dex_legacy_fits(&dex, class_defs_offset, (uint64_t)class_defs_size * 32)) goto done;
 

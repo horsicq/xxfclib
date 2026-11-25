@@ -580,7 +580,8 @@ bool xx_sha1_blocks_backend(uint32_t state[5], const uint8_t *blocks, size_t blo
 {
     if (!state || (!blocks && block_count != 0) || block_count > SIZE_MAX / 64U) return false;
     if (backend == XX_SHA_BACKEND_AUTO) backend = xx_sha_selected_backend();
-    if (backend < XX_SHA_BACKEND_SCALAR || backend > XX_SHA_BACKEND_ARM_CRYPTO || !(xx_sha_backend_capabilities() & (1U << backend)) || !xx_sha_backend_enabled(backend)) return false;
+    if (backend < XX_SHA_BACKEND_SCALAR || backend > XX_SHA_BACKEND_ARM_CRYPTO || !(xx_sha_backend_capabilities() & (1U << backend)) || !xx_sha_backend_enabled(backend))
+        return false;
     if (block_count == 0) return true;
 #ifdef XX_SHA_X86
 #ifdef XX_SHA_HAVE_SHA_NI
@@ -614,7 +615,8 @@ bool xx_sha256_blocks_backend(uint32_t state[8], const uint8_t *blocks, size_t b
 {
     if (!state || (!blocks && block_count != 0) || block_count > SIZE_MAX / 64U) return false;
     if (backend == XX_SHA_BACKEND_AUTO) backend = xx_sha_selected_backend();
-    if (backend < XX_SHA_BACKEND_SCALAR || backend > XX_SHA_BACKEND_ARM_CRYPTO || !(xx_sha_backend_capabilities() & (1U << backend)) || !xx_sha_backend_enabled(backend)) return false;
+    if (backend < XX_SHA_BACKEND_SCALAR || backend > XX_SHA_BACKEND_ARM_CRYPTO || !(xx_sha_backend_capabilities() & (1U << backend)) || !xx_sha_backend_enabled(backend))
+        return false;
     if (block_count == 0) return true;
 #ifdef XX_SHA_X86
 #ifdef XX_SHA_HAVE_SHA_NI

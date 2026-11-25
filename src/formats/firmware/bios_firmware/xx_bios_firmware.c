@@ -10,8 +10,7 @@
 #include <limits.h>
 #include <string.h>
 
-static bool bios_firmware_layout(const Abstractformat *format, int64_t *size, int64_t *reset_offset,
-                                 uint8_t reset[5], xx_pd_struct *pd)
+static bool bios_firmware_layout(const Abstractformat *format, int64_t *size, int64_t *reset_offset, uint8_t reset[5], xx_pd_struct *pd)
 {
     int64_t total;
     uint8_t prefix[3];
@@ -21,16 +20,12 @@ static bool bios_firmware_layout(const Abstractformat *format, int64_t *size, in
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     available = total - format->base_address;
-    if (available <= UINT16_MAX || available < 16 ||
-        !xx_io_read_at(format->device, format->base_address, prefix, sizeof(prefix)) ||
-        prefix[0] == UINT8_C(0xcf) || prefix[0] == UINT8_C(0x7f) ||
-        memcmp(prefix, "dex", 3U) == 0 || memcmp(prefix, "MZ", 2U) == 0)
+    if (available <= UINT16_MAX || available < 16 || !xx_io_read_at(format->device, format->base_address, prefix, sizeof(prefix)) || prefix[0] == UINT8_C(0xcf) ||
+        prefix[0] == UINT8_C(0x7f) || memcmp(prefix, "dex", 3U) == 0 || memcmp(prefix, "MZ", 2U) == 0)
         return false;
     if (available - 16 > INT64_MAX - format->base_address) return false;
     reset_absolute = format->base_address + available - 16;
-    if (!xx_io_read_at(format->device, reset_absolute, reset, 5U) ||
-        (reset[0] != XX_BIOS_FIRMWARE_FAR_JUMP && reset[0] != XX_BIOS_FIRMWARE_NEAR_JUMP))
-        return false;
+    if (!xx_io_read_at(format->device, reset_absolute, reset, 5U) || (reset[0] != XX_BIOS_FIRMWARE_FAR_JUMP && reset[0] != XX_BIOS_FIRMWARE_NEAR_JUMP)) return false;
     if (size) *size = available;
     if (reset_offset) *reset_offset = reset_absolute;
     return true;
@@ -137,13 +132,11 @@ bool xx_bios_firmware_get_memory_map(Abstractformat *format, xx_memory_map_mode_
     output->arch = format->arch;
     output->mode = mode;
     output->is_image = true;
-    if (!xx_memory_map_add_part(output, boot_offset, XX_BIOS_FIRMWARE_BLOCK_SIZE, UINT64_C(0x000f0000),
-                                XX_BIOS_FIRMWARE_BLOCK_SIZE, part, 0, "bootblk", false))
+    if (!xx_memory_map_add_part(output, boot_offset, XX_BIOS_FIRMWARE_BLOCK_SIZE, UINT64_C(0x000f0000), XX_BIOS_FIRMWARE_BLOCK_SIZE, part, 0, "bootblk", false))
         return false;
     if (size >= 2 * (int64_t)XX_BIOS_FIRMWARE_BLOCK_SIZE) {
         early_offset = format->base_address + size - 2 * (int64_t)XX_BIOS_FIRMWARE_BLOCK_SIZE;
-        if (!xx_memory_map_add_part(output, early_offset, XX_BIOS_FIRMWARE_BLOCK_SIZE, UINT64_C(0x000e0000),
-                                    XX_BIOS_FIRMWARE_BLOCK_SIZE, part, 1, "_e000", false))
+        if (!xx_memory_map_add_part(output, early_offset, XX_BIOS_FIRMWARE_BLOCK_SIZE, UINT64_C(0x000e0000), XX_BIOS_FIRMWARE_BLOCK_SIZE, part, 1, "_e000", false))
             return false;
     }
     return xx_memory_map_finalize(output);

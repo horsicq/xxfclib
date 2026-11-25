@@ -31,8 +31,8 @@
 
 static uint64_t xx_crc_pmull_read64(const uint8_t *p)
 {
-    return (uint64_t)p[0] | ((uint64_t)p[1] << 8U) | ((uint64_t)p[2] << 16U) | ((uint64_t)p[3] << 24U) |
-           ((uint64_t)p[4] << 32U) | ((uint64_t)p[5] << 40U) | ((uint64_t)p[6] << 48U) | ((uint64_t)p[7] << 56U);
+    return (uint64_t)p[0] | ((uint64_t)p[1] << 8U) | ((uint64_t)p[2] << 16U) | ((uint64_t)p[3] << 24U) | ((uint64_t)p[4] << 32U) | ((uint64_t)p[5] << 40U) |
+           ((uint64_t)p[6] << 48U) | ((uint64_t)p[7] << 56U);
 }
 
 uint32_t xx_crc32_arm_pmull(uint32_t crc, const void *data, size_t size)

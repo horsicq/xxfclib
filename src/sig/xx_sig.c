@@ -91,7 +91,8 @@ int xx_sig_valid(const char *normalized, xx_data_signature *signature, int *pars
     for (j = 0; j < signature->count; j++) {
         const xx_data_sig_record *record = &signature->records[j];
         if ((record->kind == XX_DATA_SIG_REL_OFFSET || record->kind == XX_DATA_SIG_ADDRESS) && record->address_size != 1 && record->address_size != 2 &&
-            record->address_size != 4 && record->address_size != 8) valid = 0;
+            record->address_size != 4 && record->address_size != 8)
+            valid = 0;
     }
     return valid;
 }

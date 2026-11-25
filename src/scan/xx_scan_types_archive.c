@@ -11,7 +11,6 @@
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
 
-
 /* XZip::isValid, the check XFormats types a ZIP by: an end record whose whole
  * central directory agrees with every local header (XZip::findECDOffset), or,
  * without one, a bare stream of local headers with no end record after it.
@@ -420,7 +419,6 @@ static bool xx_scan_is_zip(xx_io_device *device, int64_t size, const uint8_t *he
     xx_mem_free(scratch);
     return found && !(pd && pd->is_stop);
 }
-
 
 xx_file_type_t xx_scan_type_detect_gzip(xx_io_device *device, const uint8_t *head, size_t head_size, xx_pd_struct *pd)
 {

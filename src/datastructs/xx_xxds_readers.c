@@ -252,8 +252,8 @@ static bool xxds_rar_archive(Abstractformat *format, xx_xxds_table *table, xx_pd
 {
     const xx_rar *rar = (const xx_rar *)format;
     int64_t base = format->base_address;
-    if ((!format->base_info_handled && !xx_format_handle_base_info(format, pd)) || !format->is_valid || rar->signature_offset < base ||
-        rar->first_header_offset < base || !xx_xxds_table_row(table))
+    if ((!format->base_info_handled && !xx_format_handle_base_info(format, pd)) || !format->is_valid || rar->signature_offset < base || rar->first_header_offset < base ||
+        !xx_xxds_table_row(table))
         return false;
     xx_xxds_table_int(table, "version", (int64_t)rar->version);
     xx_xxds_table_int(table, "signature", rar->signature_offset - base);
@@ -301,8 +301,7 @@ static bool xxds_zip_entries(Abstractformat *format, xx_xxds_table *table, xx_pd
 {
     xx_zip *zip = (xx_zip *)format;
     int64_t base, device_size, cursor;
-    if (!xx_format_handle_split_format(format, pd) || (!format->base_info_handled && !xx_format_handle_base_info(format, pd)) || !format->is_valid)
-        return false;
+    if (!xx_format_handle_split_format(format, pd) || (!format->base_info_handled && !xx_format_handle_base_info(format, pd)) || !format->is_valid) return false;
     base = format->base_address;
     device_size = xx_io_total_size(format->device);
     cursor = zip->cd_offset;
@@ -413,8 +412,7 @@ static bool xxds_7zip_packs(Abstractformat *format, xx_xxds_table *table, xx_pd_
     for (uint64_t i = 0; i < priv->streams.num_packs; ++i) {
         int64_t offset;
         uint64_t size;
-        if ((pd && xx_pd_is_stopped(pd)) || !xx_7zip_pack_offset(format, &priv->streams, i, &offset, &size) || size > (uint64_t)INT64_MAX ||
-            !xx_xxds_table_row(table))
+        if ((pd && xx_pd_is_stopped(pd)) || !xx_7zip_pack_offset(format, &priv->streams, i, &offset, &size) || size > (uint64_t)INT64_MAX || !xx_xxds_table_row(table))
             return false;
         xx_xxds_table_int(table, "offset", offset - format->base_address);
         xx_xxds_table_int(table, "size", (int64_t)size);
@@ -472,8 +470,8 @@ static bool xxds_archive_records(Abstractformat *format, xx_xxds_table *table, x
     const xx_archive_record *record;
     int64_t base = format->base_address;
     bool ok = true;
-    if (!format->create_archive_records_reading || !format->get_current_archive_record || !format->archive_record_move_to_next ||
-        !format->free_archive_records_reading || !(state = (format->create_archive_records_reading)(format, NULL, pd)))
+    if (!format->create_archive_records_reading || !format->get_current_archive_record || !format->archive_record_move_to_next || !format->free_archive_records_reading ||
+        !(state = (format->create_archive_records_reading)(format, NULL, pd)))
         return false;
     for (record = (format->get_current_archive_record)(format, state); ok && record; record = (format->get_current_archive_record)(format, state)) {
         const char *name = xx_archive_record_get_original_name(record);
@@ -535,7 +533,8 @@ static bool xxds_schema_reader(Abstractformat *format, xx_xxds_table *table, xx_
     switch (format->file_type) {
         case XX_FILE_TYPE_GPT: {
             const xx_gpt *gpt = (const xx_gpt *)format;
-            return xx_xxds_table_row(table) && xx_xxds_table_int(table, "block_size", gpt->block_size) && xx_xxds_table_int(table, "used_backup", gpt->used_backup ? 1 : 0);
+            return xx_xxds_table_row(table) && xx_xxds_table_int(table, "block_size", gpt->block_size) &&
+                   xx_xxds_table_int(table, "used_backup", gpt->used_backup ? 1 : 0);
         }
         case XX_FILE_TYPE_PC98_PARTITIONS: {
             const xx_volume *volume = (const xx_volume *)format;
@@ -543,8 +542,8 @@ static bool xxds_schema_reader(Abstractformat *format, xx_xxds_table *table, xx_
         }
         case XX_FILE_TYPE_APFS: {
             const xx_apfs *apfs = (const xx_apfs *)format;
-            return xx_xxds_table_row(table) && xx_xxds_table_int(table, "block_size", apfs->block_size) && xx_xxds_table_int(table, "omap_oid", (int64_t)apfs->omap_oid) &&
-                   xx_xxds_table_int(table, "volume_count", apfs->volume_count);
+            return xx_xxds_table_row(table) && xx_xxds_table_int(table, "block_size", apfs->block_size) &&
+                   xx_xxds_table_int(table, "omap_oid", (int64_t)apfs->omap_oid) && xx_xxds_table_int(table, "volume_count", apfs->volume_count);
         }
         case XX_FILE_TYPE_BTRFS: {
             const xx_btrfs *btrfs = (const xx_btrfs *)format;
@@ -565,7 +564,8 @@ static bool xxds_schema_apfs_volumes(Abstractformat *format, xx_xxds_table *tabl
     const xx_apfs *apfs = (const xx_apfs *)format;
     if (format->file_type != XX_FILE_TYPE_APFS || (!format->base_info_handled && !xx_format_handle_base_info(format, pd)) || !format->is_valid) return false;
     for (uint32_t i = 0; i < apfs->volume_count && i < XX_APFS_MAX_VOLUMES; ++i) {
-        if (!xx_xxds_table_row(table) || !xx_xxds_table_int(table, "block", apfs->volumes[i].block) || !xx_xxds_table_int(table, "omap_oid", (int64_t)apfs->volumes[i].omap_oid) ||
+        if (!xx_xxds_table_row(table) || !xx_xxds_table_int(table, "block", apfs->volumes[i].block) ||
+            !xx_xxds_table_int(table, "omap_oid", (int64_t)apfs->volumes[i].omap_oid) ||
             !xx_xxds_table_int(table, "superblock_valid", apfs->volumes[i].superblock_valid ? 1 : 0))
             return false;
     }
@@ -596,10 +596,11 @@ static bool xxds_schema_molebox(Abstractformat *format, xx_xxds_table *table, xx
     for (uint32_t i = 0; i < 64U; ++i) {
         if (!xx_molebox_get_physical_metadata(format, i, &m, pd)) break;
         if (!xx_xxds_table_row(table) || !xx_xxds_table_int(table, "package_count", m.package_count) ||
-            !xx_xxds_table_int(table, "package_offset", m.package_offset - format->base_address) || !xx_xxds_table_int(table, "tree_offset", m.tree_offset - format->base_address) ||
-            !xx_xxds_table_int(table, "header_offset", m.header_offset - format->base_address) || !xx_xxds_table_int(table, "catalog_offset", m.catalog_offset - format->base_address) ||
-            !xx_xxds_table_int(table, "tree_size", m.tree_size) || !xx_xxds_table_int(table, "catalog_size", m.catalog_size) ||
-            !xx_xxds_table_int(table, "has_verified_prefix", m.has_verified_prefix ? 1 : 0))
+            !xx_xxds_table_int(table, "package_offset", m.package_offset - format->base_address) ||
+            !xx_xxds_table_int(table, "tree_offset", m.tree_offset - format->base_address) ||
+            !xx_xxds_table_int(table, "header_offset", m.header_offset - format->base_address) ||
+            !xx_xxds_table_int(table, "catalog_offset", m.catalog_offset - format->base_address) || !xx_xxds_table_int(table, "tree_size", m.tree_size) ||
+            !xx_xxds_table_int(table, "catalog_size", m.catalog_size) || !xx_xxds_table_int(table, "has_verified_prefix", m.has_verified_prefix ? 1 : 0))
             return false;
         if (i + 1U >= m.package_count) break;
     }
@@ -617,9 +618,9 @@ static bool xxds_schema_cpm(Abstractformat *format, xx_xxds_table *table, xx_pd_
     if (!state) return false;
     for (uint32_t i = 0; ok && i < 262144U; ++i) {
         if (!xx_cpm_get_directory_slot(format, state, i, &slot)) break;
-        ok = xx_xxds_table_row(table) && xx_xxds_table_int(table, "offset", slot.offset - format->base_address) && xx_xxds_table_int(table, "entry_count", slot.entry_count) &&
-             xx_xxds_table_int(table, "allocation_pointer_size", slot.allocation_pointer_size) && xx_xxds_table_int(table, "version", (int64_t)slot.version) &&
-             xx_xxds_table_int(table, "length_mode", (int64_t)slot.length_mode);
+        ok = xx_xxds_table_row(table) && xx_xxds_table_int(table, "offset", slot.offset - format->base_address) &&
+             xx_xxds_table_int(table, "entry_count", slot.entry_count) && xx_xxds_table_int(table, "allocation_pointer_size", slot.allocation_pointer_size) &&
+             xx_xxds_table_int(table, "version", (int64_t)slot.version) && xx_xxds_table_int(table, "length_mode", (int64_t)slot.length_mode);
         if (i + 1U >= slot.entry_count) break;
     }
     xx_format_free_archive_records_reading(format, state);

@@ -502,8 +502,8 @@ static xx_fpak_assembly xx_fpak_assemble(xx_fpak_stream *stream, int64_t expecte
         } else {
             const xx_fpak_segment *first = &stream->segments[current.first_segment];
             if (first->packed_size != segment->packed_size || first->raw_size != segment->raw_size || first->crc32 != segment->crc32 ||
-                first->method != segment->method || first->flags != segment->flags ||
-                first->dos_time != segment->dos_time || first->dos_date != segment->dos_date || !xx_str_equals(first->name, segment->name)) {
+                first->method != segment->method || first->flags != segment->flags || first->dos_time != segment->dos_time || first->dos_date != segment->dos_date ||
+                !xx_str_equals(first->name, segment->name)) {
                 return XX_FPAK_ASSEMBLY_MALFORMED;
             }
         }
@@ -649,7 +649,12 @@ static bool xx_fpak_read_member_data(Abstractformat *self, const xx_fpak_stream 
     if (member->first_segment > stream->segment_count || member->segment_count > stream->segment_count - member->first_segment) {
         return false;
     }
-    if (stream->volumes) { logical = *self; logical.device = stream->volumes; logical.base_address = 0; self = &logical; }
+    if (stream->volumes) {
+        logical = *self;
+        logical.device = stream->volumes;
+        logical.base_address = 0;
+        self = &logical;
+    }
     packed = (uint8_t *)xx_mem_alloc((size_t)member->compressed_size);
     if (!packed) return false;
 

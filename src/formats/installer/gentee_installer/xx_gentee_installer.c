@@ -960,7 +960,8 @@ static bool gi_walk_layout(Abstractformat *format, gi_list **result, bool names,
             if (!gi_in_byte(in, &header[index])) goto stop;
         if (archive_header_size == 14U) {
             if (list->location.total > UINT32_MAX || xx_data_get_u32(header, 4, 0, false) != (uint32_t)list->location.total ||
-                xx_data_get_u16(header + 12U, 2, 0, false) != 1U) goto stop;
+                xx_data_get_u16(header + 12U, 2, 0, false) != 1U)
+                goto stop;
         } else if (xx_data_get_u16(header + GI_ARCHIVE_HEADER_FLAG, 2, 0, false) != 0U) goto stop;
     }
     {
@@ -1150,7 +1151,11 @@ static bool gi_walk(Abstractformat *format, gi_list **result, bool names, xx_pd_
             *result = legacy;
         } else if (legacy) gi_list_free(legacy);
     }
-    if (gi_stopped(pd)) { gi_list_free(*result); *result = NULL; return false; }
+    if (gi_stopped(pd)) {
+        gi_list_free(*result);
+        *result = NULL;
+        return false;
+    }
     return true;
 }
 

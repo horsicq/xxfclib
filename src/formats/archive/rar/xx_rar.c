@@ -239,54 +239,48 @@ static bool xx_rar_verify_header_crc(xx_io_device *device, const xx_rar_block *b
         /* RAR2 main headers can contain an old compressed-comment record.
          * Both CRCs cover their own fixed 13-byte prefixes. Require a complete
          * nested comment occupying exactly the remainder of the main header. */
-        if (block->type == XX_RAR4_HEADER_MAIN &&
-            (block->flags & 0x0002U) && !(block->flags & XX_RAR4_FLAG_LONG_BLOCK) &&
-            block->header_size >= 26) {
+        if (block->type == XX_RAR4_HEADER_MAIN && (block->flags & 0x0002U) && !(block->flags & XX_RAR4_FLAG_LONG_BLOCK) && block->header_size >= 26) {
             uint8_t comment[13];
             uint16_t nested;
-            if (!xx_rar_read_exact_at(device,block->offset+13,comment,sizeof(comment))) return false;
-            nested=xx_data_get_u16(comment+5,2,0,false);
-            if (comment[2]!=0x75U || xx_data_get_u16(comment+3,2,0,false)!=0 ||
-                nested<13U || (int64_t)nested+13!=block->header_size ||
-                (comment[9]!=15U && comment[9]!=20U) || comment[10]<0x30U || comment[10]>0x35U ||
-                (uint16_t)xx_crc32_calc(0,comment+2,11)!=xx_data_get_u16(comment,2,0,false)) return false;
-            if (!xx_crc_calculate_device_by_type(device,block->offset+2,11,
-                    XX_CRC_TYPE_CRC32,NULL,&calculated)) return false;
-            return expected==(uint16_t)calculated;
+            if (!xx_rar_read_exact_at(device, block->offset + 13, comment, sizeof(comment))) return false;
+            nested = xx_data_get_u16(comment + 5, 2, 0, false);
+            if (comment[2] != 0x75U || xx_data_get_u16(comment + 3, 2, 0, false) != 0 || nested < 13U || (int64_t)nested + 13 != block->header_size ||
+                (comment[9] != 15U && comment[9] != 20U) || comment[10] < 0x30U || comment[10] > 0x35U ||
+                (uint16_t)xx_crc32_calc(0, comment + 2, 11) != xx_data_get_u16(comment, 2, 0, false))
+                return false;
+            if (!xx_crc_calculate_device_by_type(device, block->offset + 2, 11, XX_CRC_TYPE_CRC32, NULL, &calculated)) return false;
+            return expected == (uint16_t)calculated;
         }
         /* Another old AV form is an opaque 16-byte authentication body.
          * Only its observed zero-CRC/zero-flags/23-byte envelope is accepted. */
-        if (block->type==0x76U && block->flags==0 && block->header_size==23 && expected==0) return true;
+        if (block->type == 0x76U && block->flags == 0 && block->header_size == 23 && expected == 0) return true;
         /* RAR1.5's observed AV form stores no header checksum. Its zero
          * CRC, zero flags, 82-byte size and version bytes identify metadata
          * that can be skipped; no authenticity verification is implied. */
-        if (block->type==0x76U && block->flags==0 && block->header_size==82 && expected==0) {
+        if (block->type == 0x76U && block->flags == 0 && block->header_size == 82 && expected == 0) {
             uint8_t fixed[14];
-            return xx_rar_read_exact_at(device,block->offset,fixed,sizeof(fixed)) &&
-                fixed[7]==15U && fixed[8]>=0x30U && fixed[8]<=0x35U && fixed[9]==0;
+            return xx_rar_read_exact_at(device, block->offset, fixed, sizeof(fixed)) && fixed[7] == 15U && fixed[8] >= 0x30U && fixed[8] <= 0x35U && fixed[9] == 0;
         }
         /* Observed old AV_HEAD has a 14-byte fixed prefix and 80/96-byte body.
          * Its payload is authenticity metadata, not an archive member. */
-        if (block->type==0x76U && block->flags==0x4000U && (block->header_size==94 || block->header_size==110)) {
+        if (block->type == 0x76U && block->flags == 0x4000U && (block->header_size == 94 || block->header_size == 110)) {
             uint8_t fixed[14];
-            if (!xx_rar_read_exact_at(device,block->offset,fixed,sizeof(fixed)) ||
-                fixed[7]!=20U || fixed[8]<0x30U || fixed[8]>0x35U || fixed[9]!=20U) return false;
+            if (!xx_rar_read_exact_at(device, block->offset, fixed, sizeof(fixed)) || fixed[7] != 20U || fixed[8] < 0x30U || fixed[8] > 0x35U || fixed[9] != 20U)
+                return false;
             /* Some producers leave this legacy AV checksum unset. */
-            return expected==0 || expected==(uint16_t)xx_crc32_calc(0,fixed+2,12);
+            return expected == 0 || expected == (uint16_t)xx_crc32_calc(0, fixed + 2, 12);
         }
         /* Legacy SIGN_HEAD (0x79) records cover the fixed 15-byte prefix,
          * rather than the variable name/signature body. Authenticate that
          * observed grammar; other RAR headers retain their full CRC scope.
          * This permits skipping metadata, not verifying its authenticity. */
-        if (block->type == 0x79U && block->flags == 0x4000U &&
-            block->header_size >= 182) {
+        if (block->type == 0x79U && block->flags == 0x4000U && block->header_size >= 182) {
             uint8_t fixed[15];
             uint64_t names;
-            if (!xx_rar_read_exact_at(device,block->offset,fixed,sizeof(fixed))) return false;
-            names=(uint64_t)xx_data_get_u16(fixed+11,2,0,false)+
-                  xx_data_get_u16(fixed+13,2,0,false);
-            if (names+182U != (uint64_t)block->header_size) return false;
-            calculated=xx_crc32_calc(0,fixed+2,13);
+            if (!xx_rar_read_exact_at(device, block->offset, fixed, sizeof(fixed))) return false;
+            names = (uint64_t)xx_data_get_u16(fixed + 11, 2, 0, false) + xx_data_get_u16(fixed + 13, 2, 0, false);
+            if (names + 182U != (uint64_t)block->header_size) return false;
+            calculated = xx_crc32_calc(0, fixed + 2, 13);
             return expected == (uint16_t)calculated;
         }
         return false;
@@ -326,10 +320,10 @@ static bool xx_rar_find_signature_bound(Abstractformat *self, xx_rar_version_t *
     if (available < (int64_t)XX_RAR4_SIGNATURE_SIZE) {
         return false;
     }
-    if (archive_end) *archive_end=device_size;
+    if (archive_end) *archive_end = device_size;
     {
-        int resource=xx_rar_pe_resource_find(self,version,signature_offset,archive_end,pd);
-        if (resource) return resource>0;
+        int resource = xx_rar_pe_resource_find(self, version, signature_offset, archive_end, pd);
+        if (resource) return resource > 0;
     }
     scan_size = (size_t)((available > (int64_t)(XX_RAR_MAX_SFX_SIZE + XX_RAR5_SIGNATURE_SIZE)) ? (XX_RAR_MAX_SFX_SIZE + XX_RAR5_SIGNATURE_SIZE) : available);
     buffer = (uint8_t *)xx_mem_alloc(scan_size);
@@ -349,12 +343,14 @@ static bool xx_rar_find_signature_bound(Abstractformat *self, xx_rar_version_t *
         }
         /* RAR1.4 has no header CRC. Limit its carrier discovery to a plain
          * archive or the exact DOS executable image boundary. */
-        if (xx_mem_compare(buffer+i,"RE~^",4)==0 &&
-            (i==0 || (buffer[0]=='M' && buffer[1]=='Z' &&
-              xx_data_get_u16(buffer+4,2,0,false)>0 && xx_data_get_u16(buffer+2,2,0,false)<=511U &&
-              i==((uint64_t)xx_data_get_u16(buffer+4,2,0,false)*512U-
-                 (xx_data_get_u16(buffer+2,2,0,false)?512U-xx_data_get_u16(buffer+2,2,0,false):0U))))) {
-            *version=XX_RAR_VERSION_14;*signature_offset=self->base_address+(int64_t)i;found=true;break;
+        if (xx_mem_compare(buffer + i, "RE~^", 4) == 0 &&
+            (i == 0 || (buffer[0] == 'M' && buffer[1] == 'Z' && xx_data_get_u16(buffer + 4, 2, 0, false) > 0 && xx_data_get_u16(buffer + 2, 2, 0, false) <= 511U &&
+                        i == ((uint64_t)xx_data_get_u16(buffer + 4, 2, 0, false) * 512U -
+                              (xx_data_get_u16(buffer + 2, 2, 0, false) ? 512U - xx_data_get_u16(buffer + 2, 2, 0, false) : 0U))))) {
+            *version = XX_RAR_VERSION_14;
+            *signature_offset = self->base_address + (int64_t)i;
+            found = true;
+            break;
         }
         if (xx_mem_compare(buffer + i, g_xx_rar4_signature, XX_RAR4_SIGNATURE_SIZE) == 0) {
             *version = XX_RAR_VERSION_4;
@@ -367,10 +363,9 @@ static bool xx_rar_find_signature_bound(Abstractformat *self, xx_rar_version_t *
     return found;
 }
 
-static bool xx_rar_find_signature(Abstractformat *self, xx_rar_version_t *version,
-                                   int64_t *signature_offset)
+static bool xx_rar_find_signature(Abstractformat *self, xx_rar_version_t *version, int64_t *signature_offset)
 {
-    return xx_rar_find_signature_bound(self,version,signature_offset,NULL,NULL);
+    return xx_rar_find_signature_bound(self, version, signature_offset, NULL, NULL);
 }
 
 static bool xx_rar_parse_block4(xx_io_device *device, int64_t device_size, int64_t offset, xx_rar_block *block)
@@ -511,7 +506,7 @@ static bool xx_rar_parse_block5(xx_io_device *device, int64_t device_size, int64
 
 bool xx_rar_parse_block(xx_io_device *device, int64_t device_size, xx_rar_version_t version, int64_t offset, xx_rar_block *block)
 {
-    if (version == XX_RAR_VERSION_14) return xx_rar14_parse_block(device,device_size,offset,block);
+    if (version == XX_RAR_VERSION_14) return xx_rar14_parse_block(device, device_size, offset, block);
     if (version == XX_RAR_VERSION_4) {
         return xx_rar_parse_block4(device, device_size, offset, block);
     }
@@ -714,7 +709,7 @@ static bool xx_rar_parse_file_info(xx_io_device *device, const xx_rar_block *blo
     if (!block) {
         return false;
     }
-    if (block->version==XX_RAR_VERSION_14) return xx_rar14_file_info(device,block,info);
+    if (block->version == XX_RAR_VERSION_14) return xx_rar14_file_info(device, block, info);
     return block->version == XX_RAR_VERSION_4 ? xx_rar_parse_file_info4(device, block, info) : xx_rar_parse_file_info5(device, block, info, headers_encrypted);
 }
 
@@ -817,37 +812,40 @@ static wchar_t *xx_rar4_decode_unicode_name(const char *fallback, size_t fallbac
             flag_bits = 8U;
         }
         switch ((flags >> 6) & 3U) {
-        case 0U:
-            if (enc_pos >= enc_size) break;
-            units[dec_pos++] = enc[enc_pos++];
-            break;
-        case 1U:
-            if (enc_pos >= enc_size) break;
-            units[dec_pos++] = (uint16_t)(enc[enc_pos++] | ((unsigned)high << 8));
-            break;
-        case 2U:
-            if (enc_pos + 1U >= enc_size) { enc_pos = enc_size; break; }
-            units[dec_pos++] = (uint16_t)(enc[enc_pos] | ((unsigned)enc[enc_pos + 1U] << 8));
-            enc_pos += 2U;
-            break;
-        default: {
-            unsigned length;
-            if (enc_pos >= enc_size) break;
-            length = enc[enc_pos++];
-            if ((length & 0x80U) != 0U) {
-                uint8_t correction;
+            case 0U:
                 if (enc_pos >= enc_size) break;
-                correction = enc[enc_pos++];
-                for (length = (length & 0x7FU) + 2U; length > 0U && dec_pos < max_units && dec_pos < fallback_size; --length, ++dec_pos) {
-                    units[dec_pos] = (uint16_t)((((uint8_t)fallback[dec_pos] + correction) & 0xFFU) | ((unsigned)high << 8));
+                units[dec_pos++] = enc[enc_pos++];
+                break;
+            case 1U:
+                if (enc_pos >= enc_size) break;
+                units[dec_pos++] = (uint16_t)(enc[enc_pos++] | ((unsigned)high << 8));
+                break;
+            case 2U:
+                if (enc_pos + 1U >= enc_size) {
+                    enc_pos = enc_size;
+                    break;
                 }
-            } else {
-                for (length += 2U; length > 0U && dec_pos < max_units && dec_pos < fallback_size; --length, ++dec_pos) {
-                    units[dec_pos] = (uint8_t)fallback[dec_pos];
+                units[dec_pos++] = (uint16_t)(enc[enc_pos] | ((unsigned)enc[enc_pos + 1U] << 8));
+                enc_pos += 2U;
+                break;
+            default: {
+                unsigned length;
+                if (enc_pos >= enc_size) break;
+                length = enc[enc_pos++];
+                if ((length & 0x80U) != 0U) {
+                    uint8_t correction;
+                    if (enc_pos >= enc_size) break;
+                    correction = enc[enc_pos++];
+                    for (length = (length & 0x7FU) + 2U; length > 0U && dec_pos < max_units && dec_pos < fallback_size; --length, ++dec_pos) {
+                        units[dec_pos] = (uint16_t)((((uint8_t)fallback[dec_pos] + correction) & 0xFFU) | ((unsigned)high << 8));
+                    }
+                } else {
+                    for (length += 2U; length > 0U && dec_pos < max_units && dec_pos < fallback_size; --length, ++dec_pos) {
+                        units[dec_pos] = (uint8_t)fallback[dec_pos];
+                    }
                 }
+                break;
             }
-            break;
-        }
         }
         flags = (flags << 2) & 0xFFU;
         flag_bits -= 2U;
@@ -863,8 +861,7 @@ static wchar_t *xx_rar4_decode_unicode_name(const char *fallback, size_t fallbac
         if (cp == 0U) break;
 #if WCHAR_MAX > 0xFFFF
         /* 32-bit wchar_t: join UTF-16 surrogate pairs into one code point */
-        if (cp >= 0xD800U && cp <= 0xDBFFU && i + 1U < dec_pos &&
-            units[i + 1U] >= 0xDC00U && units[i + 1U] <= 0xDFFFU) {
+        if (cp >= 0xD800U && cp <= 0xDBFFU && i + 1U < dec_pos && units[i + 1U] >= 0xDC00U && units[i + 1U] <= 0xDFFFU) {
             cp = 0x10000U + ((cp - 0xD800U) << 10) + (units[i + 1U] - 0xDC00U);
             ++i;
         }
@@ -916,19 +913,18 @@ static bool xx_rar_set_record_name(xx_io_device *device, const xx_rar_file_info 
     }
     wide_name = NULL;
     if (info->rar4_unicode_name && usable_size + 1U < info->name_size) {
-        wide_name = xx_rar4_decode_unicode_name(name, usable_size, (const uint8_t *)name + usable_size + 1U,
-                                                info->name_size - usable_size - 1U);
+        wide_name = xx_rar4_decode_unicode_name(name, usable_size, (const uint8_t *)name + usable_size + 1U, info->name_size - usable_size - 1U);
     }
     name[usable_size] = '\0';
     if (wide_name) {
         /* decoded from the Unicode part */
-    } else if (info->block.version!=XX_RAR_VERSION_5 && info->host_os==0 && !info->rar4_unicode_name) {
-        const xx_codepage *dos=xx_codepage_by_number(437);
+    } else if (info->block.version != XX_RAR_VERSION_5 && info->host_os == 0 && !info->rar4_unicode_name) {
+        const xx_codepage *dos = xx_codepage_by_number(437);
         size_t i;
-        wide_name=dos?(wchar_t *)xx_mem_alloc((usable_size+1U)*sizeof(wchar_t)):NULL;
+        wide_name = dos ? (wchar_t *)xx_mem_alloc((usable_size + 1U) * sizeof(wchar_t)) : NULL;
         if (wide_name) {
-            for(i=0;i<usable_size;i++) wide_name[i]=(wchar_t)xx_codepage_decode_byte(dos,(uint8_t)name[i],0xfffdU);
-            wide_name[usable_size]=0;
+            for (i = 0; i < usable_size; i++) wide_name[i] = (wchar_t)xx_codepage_decode_byte(dos, (uint8_t)name[i], 0xfffdU);
+            wide_name[usable_size] = 0;
         }
     } else wide_name = info->name_is_utf8 ? xx_str_utf8_to_unicode(name) : xx_str_ansi_to_unicode(name);
     if (wide_name) {
@@ -960,9 +956,8 @@ static bool xx_rar_populate_archive_record(xx_io_device *device, const xx_rar_fi
         !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, info->timestamp) ||
         /* RAR 1.4-4.x store a packed MS-DOS date<<16|time (RAR5 a Unix time):
          * also expose the words, because the listing reads TIMESTAMP as Unix seconds. */
-        (info->block.version != XX_RAR_VERSION_5 &&
-         (!xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (info->timestamp >> 16) & 0xFFFFU) ||
-          !xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, info->timestamp & 0xFFFFU))) ||
+        (info->block.version != XX_RAR_VERSION_5 && (!xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (info->timestamp >> 16) & 0xFFFFU) ||
+                                                     !xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, info->timestamp & 0xFFFFU))) ||
         !xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, info->block.flags) ||
         !xx_archive_record_set_meta_u64(record, XX_META_ID_INTERNAL_ATTRS, info->file_flags) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, info->is_folder) ||
@@ -970,7 +965,7 @@ static bool xx_rar_populate_archive_record(xx_io_device *device, const xx_rar_fi
         xx_archive_record_cleanup(record);
         return false;
     }
-    if (info->has_crc && info->block.version!=XX_RAR_VERSION_14 && !xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, info->data_crc)) {
+    if (info->has_crc && info->block.version != XX_RAR_VERSION_14 && !xx_archive_record_set_meta_u64(record, XX_META_ID_CRC32, info->data_crc)) {
         xx_archive_record_cleanup(record);
         return false;
     }
@@ -1077,7 +1072,8 @@ bool xx_rar_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
         return false;
     }
     rar = (xx_rar *)self;
-    offset = version==XX_RAR_VERSION_14 ? signature_offset : signature_offset + (version == XX_RAR_VERSION_4 ? (int64_t)XX_RAR4_SIGNATURE_SIZE : (int64_t)XX_RAR5_SIGNATURE_SIZE);
+    offset = version == XX_RAR_VERSION_14 ? signature_offset
+                                          : signature_offset + (version == XX_RAR_VERSION_4 ? (int64_t)XX_RAR4_SIGNATURE_SIZE : (int64_t)XX_RAR5_SIGNATURE_SIZE);
     rar->version = version;
     rar->signature_offset = signature_offset;
     rar->first_header_offset = offset;
@@ -1094,8 +1090,7 @@ bool xx_rar_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
             /* RAR 2.0 self-extractors are often followed by a few bytes of
              * stub bookkeeping instead of ENDARC: after verified file
              * headers, a short undecodable tail ends the archive. */
-            if (version == XX_RAR_VERSION_4 && !first_block && count != 0 && !headers_encrypted && last_unpack_version <= 20U &&
-                device_size - offset <= 64) {
+            if (version == XX_RAR_VERSION_4 && !first_block && count != 0 && !headers_encrypted && last_unpack_version <= 20U && device_size - offset <= 64) {
                 found_end = true;
                 format_end = offset;
                 break;
@@ -1119,11 +1114,11 @@ bool xx_rar_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
 
         if (version != XX_RAR_VERSION_5) {
             if (block.type == XX_RAR4_HEADER_MAIN) {
-                if (block.header_size < (version==XX_RAR_VERSION_14?7:13)) {
+                if (block.header_size < (version == XX_RAR_VERSION_14 ? 7 : 13)) {
                     self->is_valid = false;
                     return false;
                 }
-                if (version==XX_RAR_VERSION_4 && (block.flags & XX_RAR4_MAIN_FLAG_PASSWORD) != 0) {
+                if (version == XX_RAR_VERSION_4 && (block.flags & XX_RAR4_MAIN_FLAG_PASSWORD) != 0) {
                     headers_encrypted = true;
                     self->is_crypted = true;
                     format_end = device_size;
@@ -1176,7 +1171,8 @@ bool xx_rar_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
     }
 
     /* RAR 1.5/2.0 commonly terminates exactly at EOF without ENDARC. */
-    if (!found_end && !headers_encrypted && version != XX_RAR_VERSION_5 && (count != 0 || version==XX_RAR_VERSION_14) && offset == device_size && last_unpack_version <= 20U) {
+    if (!found_end && !headers_encrypted && version != XX_RAR_VERSION_5 && (count != 0 || version == XX_RAR_VERSION_14) && offset == device_size &&
+        last_unpack_version <= 20U) {
         found_end = true;
         format_end = device_size;
     }
@@ -1298,16 +1294,15 @@ static bool xx_rar_stream_load_next(Abstractformat *self, xx_archive_record_stat
         if (!xx_rar_parse_block(self->device, device_size, rar->version, cursor, &block)) {
             return false;
         }
-        if (rar->version!=XX_RAR_VERSION_5 && block.type==XX_RAR4_HEADER_MAIN)
-            rar_state->legacy_archive_solid=(block.flags & 0x0008U)!=0;
+        if (rar->version != XX_RAR_VERSION_5 && block.type == XX_RAR4_HEADER_MAIN) rar_state->legacy_archive_solid = (block.flags & 0x0008U) != 0;
         is_file = rar->version != XX_RAR_VERSION_5 ? block.type == XX_RAR4_HEADER_FILE : block.type == XX_RAR5_HEADER_FILE;
         if (is_file) {
             xx_rar_file_info info;
-            bool parsed=xx_rar_parse_file_info(self->device, &block, &info, xx_rar_has_decrypted_headers(rar));
+            bool parsed = xx_rar_parse_file_info(self->device, &block, &info, xx_rar_has_decrypted_headers(rar));
             /* RAR before 2.0 has only an archive-wide solid flag. The first
              * file resets the decoder; later files continue its state. */
-            if (parsed && block.version!=XX_RAR_VERSION_5 && info.unpack_version<=15U && !info.is_folder) {
-                info.solid=rar_state->legacy_archive_solid && rar_state->legacy_file_count>0;
+            if (parsed && block.version != XX_RAR_VERSION_5 && info.unpack_version <= 15U && !info.is_folder) {
+                info.solid = rar_state->legacy_archive_solid && rar_state->legacy_file_count > 0;
                 rar_state->legacy_file_count++;
             }
             if (!parsed || !xx_rar_populate_archive_record(self->device, &info, &state->current_record)) {
@@ -1536,13 +1531,14 @@ static bool xx_rar_verify_member(const xx_rar_file_info *info, const uint8_t *da
     size_t done = 0, i;
     unsigned difference = 0;
     bool ok = false;
-    if (info->block.version==XX_RAR_VERSION_14) {
-        uint16_t sum=0;
-        for (i=0;i<size;i++) {
-            if ((i&65535U)==0 && xx_pd_is_stopped(pd)) return false;
-            sum=(uint16_t)(sum+data[i]);sum=(uint16_t)((sum<<1)|(sum>>15));
+    if (info->block.version == XX_RAR_VERSION_14) {
+        uint16_t sum = 0;
+        for (i = 0; i < size; i++) {
+            if ((i & 65535U) == 0 && xx_pd_is_stopped(pd)) return false;
+            sum = (uint16_t)(sum + data[i]);
+            sum = (uint16_t)((sum << 1) | (sum >> 15));
         }
-        return sum==(uint16_t)info->data_crc && !xx_pd_is_stopped(pd);
+        return sum == (uint16_t)info->data_crc && !xx_pd_is_stopped(pd);
     }
     if (info->has_blake2 && !xx_blake2sp_init(&blake)) return false;
     if (!pd) {
@@ -1614,10 +1610,8 @@ static void xx_rar_stream_hash_chunk(void *user_data, const uint8_t *data, size_
     }
 }
 
-static bool xx_rar_stream_store_member(xx_io_device *src_device, int64_t offset, size_t size,
-                                       const char *dest_file_path, bool overwrite,
-                                       const xx_rar_file_info *info, const uint8_t hash_key[32],
-                                       bool *out_already_written, xx_pd_struct *pd)
+static bool xx_rar_stream_store_member(xx_io_device *src_device, int64_t offset, size_t size, const char *dest_file_path, bool overwrite, const xx_rar_file_info *info,
+                                       const uint8_t hash_key[32], bool *out_already_written, xx_pd_struct *pd)
 {
     xx_io_device *out_device = NULL;
     xx_blake2sp_context blake;
@@ -1791,8 +1785,8 @@ static bool xx_rar_resource_limits_allow(const Abstractformat *self, const xx_li
     return true;
 }
 
-static bool xx_rar_decode_current_record(Abstractformat *self, xx_rar_stream_state *rar_state, const xx_list_s *options,
-                                         const char *dest_file_path, bool overwrite, bool *out_already_written, xx_pd_struct *pd)
+static bool xx_rar_decode_current_record(Abstractformat *self, xx_rar_stream_state *rar_state, const xx_list_s *options, const char *dest_file_path, bool overwrite,
+                                         bool *out_already_written, xx_pd_struct *pd)
 {
     const xx_rar_file_info *info;
     uint8_t *output = NULL;
@@ -1827,11 +1821,9 @@ static bool xx_rar_decode_current_record(Abstractformat *self, xx_rar_stream_sta
         rar_state->current_decoded = true;
         return true;
     }
-    if (is_store && !info->is_encrypted && info->block.version!=XX_RAR_VERSION_14) {
+    if (is_store && !info->is_encrypted && info->block.version != XX_RAR_VERSION_14) {
         if (packed_size != output_size) return false;
-        if (!xx_rar_stream_store_member(self->device, info->block.data_offset, output_size,
-                                        dest_file_path, overwrite, info, hash_key,
-                                        out_already_written, pd)) {
+        if (!xx_rar_stream_store_member(self->device, info->block.data_offset, output_size, dest_file_path, overwrite, info, hash_key, out_already_written, pd)) {
             return false;
         }
         rar_state->current_decoded = true;
@@ -2153,4 +2145,3 @@ void xx_rar_free_archive_records_reading(Abstractformat *self, xx_archive_record
 /* ========================================================================= */
 /* --- Data structure streaming                                           --- */
 /* ========================================================================= */
-

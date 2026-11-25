@@ -85,8 +85,8 @@ int64_t xx_format_search_size(const xx_format_search_desc *desc, xx_io_device *d
 
 /** The search's test of one candidate start (reader, detector, size), at an
  * absolute offset. Preserves the device cursor; false when it cannot. */
-bool xx_format_search_probe_at(const xx_format_search_desc *desc, xx_io_device *device, int64_t base_address, bool is_mapped,
-                               xx_pd_struct *pd, xx_file_type_t *type, int64_t *size);
+bool xx_format_search_probe_at(const xx_format_search_desc *desc, xx_io_device *device, int64_t base_address, bool is_mapped, xx_pd_struct *pd, xx_file_type_t *type,
+                               int64_t *size);
 
 xx_format_search_state *xx_format_search_create(const xx_format_search_desc *desc, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd);
 const xx_format_search_info *xx_format_search_current(xx_format_search_state *state);

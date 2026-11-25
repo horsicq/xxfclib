@@ -52,7 +52,8 @@ static char *cab_name_cp932(const char *raw)
          * are not filenames, even though the general CP932 codec knows them. */
         if (byte == 0x80 || byte == 0xa0 || byte >= 0xfd) goto fail;
         if (xx_codepage_decode(cp, (const unsigned char *)raw + at, n - at, &used, &scalar) != XX_CODEPAGE_OK ||
-            xx_codepage_encode(utf8, scalar, (unsigned char *)out + wrote, n * 3 - wrote, &written) != XX_CODEPAGE_OK) goto fail;
+            xx_codepage_encode(utf8, scalar, (unsigned char *)out + wrote, n * 3 - wrote, &written) != XX_CODEPAGE_OK)
+            goto fail;
         at += used;
         wrote += written;
     }

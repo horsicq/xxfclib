@@ -152,9 +152,9 @@ static bool xx_mi10_authenticate(Abstractformat *self, xx_mi10_stream *stream, x
         size_t size = 0;
         uint32_t sum = 0;
         total += (uint64_t)stream->items[i].uncompressed_size;
-        if (total > XX_MI10_MAX_DECODED || (pd && xx_pd_is_stopped(pd)) ||
-            !xx_mi10_read_at(self, stream->items[i].header_offset + 4, header, sizeof(header)) ||
-            !xx_mi10_decode(self, &stream->items[i], &plain, &size, pd)) return false;
+        if (total > XX_MI10_MAX_DECODED || (pd && xx_pd_is_stopped(pd)) || !xx_mi10_read_at(self, stream->items[i].header_offset + 4, header, sizeof(header)) ||
+            !xx_mi10_decode(self, &stream->items[i], &plain, &size, pd))
+            return false;
         for (size_t j = 0; j < size; ++j) sum += plain[j];
         xx_mem_free(plain);
         if (sum != xx_data_get_u32(header, sizeof(header), 0, true)) return false;
@@ -167,7 +167,8 @@ static bool xx_mi10_zero_tail(Abstractformat *self, xx_mi10_stream *stream, int6
     uint8_t bytes[128];
     size_t n = (size_t)(span - at);
     if (!n || n > sizeof(bytes) || !xx_mi10_read_at(self, self->base_address + at, bytes, n)) return false;
-    for (size_t i = 0; i < n; ++i) if (bytes[i]) return false;
+    for (size_t i = 0; i < n; ++i)
+        if (bytes[i]) return false;
     return xx_mi10_authenticate(self, stream, pd);
 }
 

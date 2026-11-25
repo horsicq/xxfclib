@@ -39,11 +39,11 @@ typedef struct xx_sega_megadrive_rom_info_s {
 
 /** One printable string selected by the SMD plugin's uppercase filter. */
 typedef struct xx_sega_megadrive_rom_string_s {
-    uint64_t offset;      /**< Absolute byte offset in the supplied device. */
-    uint32_t ordinal;     /**< Ordinal before the uppercase filter is applied. */
-    uint32_t length;      /**< Unicode scalar count after trailing-space trim. */
+    uint64_t offset;       /**< Absolute byte offset in the supplied device. */
+    uint32_t ordinal;      /**< Ordinal before the uppercase filter is applied. */
+    uint32_t length;       /**< Unicode scalar count after trailing-space trim. */
     uint32_t storage_size; /**< Source bytes including a consumed terminator. */
-    const char *text;     /**< UTF-8/display text, valid only during the callback. */
+    const char *text;      /**< UTF-8/display text, valid only during the callback. */
 } xx_sega_megadrive_rom_string;
 
 typedef bool (*xx_sega_megadrive_rom_string_callback)(const xx_sega_megadrive_rom_string *record, void *user);

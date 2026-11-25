@@ -484,26 +484,19 @@ static const xx_data_struct_field_desc xx_pswh_segment64_26100[] = {
 };
 
 static const xx_psw_nt_layout xx_pswh_segment_profiles[] = {
-    {19045, 0x014c, "NT 10.0.19045 native I386 SEGMENT_HEAP symbol profile",
-        xx_pswh_segment32_19045, XX_PSW_COUNT(xx_pswh_segment32_19045), XX_PSWH_SEGMENT32_19045_SIZE},
-    {19045, 0x8664, "NT 10.0.19045 AMD64 SEGMENT_HEAP symbol profile",
-        xx_pswh_segment64_19045, XX_PSW_COUNT(xx_pswh_segment64_19045), XX_PSWH_SEGMENT64_19045_SIZE},
-    {26100, 0x8664, "NT 10.0.26100 AMD64 SEGMENT_HEAP symbol profile",
-        xx_pswh_segment64_26100, XX_PSW_COUNT(xx_pswh_segment64_26100), XX_PSWH_SEGMENT64_26100_SIZE}
-};
+    {19045, 0x014c, "NT 10.0.19045 native I386 SEGMENT_HEAP symbol profile", xx_pswh_segment32_19045, XX_PSW_COUNT(xx_pswh_segment32_19045),
+     XX_PSWH_SEGMENT32_19045_SIZE},
+    {19045, 0x8664, "NT 10.0.19045 AMD64 SEGMENT_HEAP symbol profile", xx_pswh_segment64_19045, XX_PSW_COUNT(xx_pswh_segment64_19045), XX_PSWH_SEGMENT64_19045_SIZE},
+    {26100, 0x8664, "NT 10.0.26100 AMD64 SEGMENT_HEAP symbol profile", xx_pswh_segment64_26100, XX_PSW_COUNT(xx_pswh_segment64_26100), XX_PSWH_SEGMENT64_26100_SIZE}};
 
 static const xx_psw_nt_layout *xx_pswh_segment_profile(const xx_psw_target *target, unsigned width)
 {
     USHORT machine = 0;
     if (!target || !target->version_available || target->major != 10 || target->minor != 0) return NULL;
-    if (width == 4 && target->native_machine == 0x014c && target->process_machine == 0x014c)
-        machine = 0x014c;
-    else if (width == 8 && target->native_machine == 0x8664 &&
-        (target->process_machine == 0x8664 || target->process_machine == 0x014c))
-        machine = 0x8664;
+    if (width == 4 && target->native_machine == 0x014c && target->process_machine == 0x014c) machine = 0x014c;
+    else if (width == 8 && target->native_machine == 0x8664 && (target->process_machine == 0x8664 || target->process_machine == 0x014c)) machine = 0x8664;
     for (size_t i = 0; machine && i < XX_PSW_COUNT(xx_pswh_segment_profiles); ++i)
-        if (xx_pswh_segment_profiles[i].machine == machine && xx_pswh_segment_profiles[i].build == target->build)
-            return xx_pswh_segment_profiles + i;
+        if (xx_pswh_segment_profiles[i].machine == machine && xx_pswh_segment_profiles[i].build == target->build) return xx_pswh_segment_profiles + i;
     return NULL;
 }
 

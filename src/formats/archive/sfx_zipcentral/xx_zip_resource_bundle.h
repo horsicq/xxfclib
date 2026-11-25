@@ -47,19 +47,21 @@ static bool sfx_zip_bundle_name(sfx_zip_bundle_entry *entry, xx_archive_record_s
     bool folder;
     xx_archive_record *r = &st->current_record;
     if (carrier_stop(pd) || (r->data_offset < 0 && !xx_zip_resolve_record_data_offset(&entry->zip, r)) || r->header_offset < 0 ||
-        !xx_io_read_at(&entry->view.device, r->header_offset, h, sizeof(h)) || xx_rt_memcmp(h, "PK\3\4", 4)) return false;
+        !xx_io_read_at(&entry->view.device, r->header_offset, h, sizeof(h)) || xx_rt_memcmp(h, "PK\3\4", 4))
+        return false;
     n = xx_data_get_u16(h + 26, 2, 0, false);
     if (!n || n > 4096 || r->data_offset != r->header_offset + 30 + (int64_t)n + xx_data_get_u16(h + 28, 2, 0, false) ||
-        !xx_io_read_at(&entry->view.device, r->header_offset + 30, raw, n)) return false;
-    for (i = 0; i < n; ++i) if (!raw[i]) return false;
+        !xx_io_read_at(&entry->view.device, r->header_offset + 30, raw, n))
+        return false;
+    for (i = 0; i < n; ++i)
+        if (!raw[i]) return false;
     raw[n] = 0;
     if (xx_data_get_u16(h + 6, 2, 0, false) & 0x0800U) {
         decoded = xx_str_utf8_to_unicode((const char *)raw);
         if (!decoded) return false;
         name = decoded;
     } else {
-        for (i = 0; i < n; ++i)
-            joined[i] = (wchar_t)xx_codepage_decode_byte(xx_codepage_by_number(437), raw[i], 0xfffd);
+        for (i = 0; i < n; ++i) joined[i] = (wchar_t)xx_codepage_decode_byte(xx_codepage_by_number(437), raw[i], 0xfffd);
         joined[n] = 0;
         name = joined;
     }
@@ -72,8 +74,7 @@ static bool sfx_zip_bundle_name(sfx_zip_bundle_entry *entry, xx_archive_record_s
         if (!c || c == L'/' || c == L'\\') {
             size_t length = i - segment;
             if (!length && !(i == n && folder && segment == n)) goto bad;
-            if ((length == 1 && name[segment] == L'.') ||
-                (length == 2 && name[segment] == L'.' && name[segment + 1] == L'.')) goto bad;
+            if ((length == 1 && name[segment] == L'.') || (length == 2 && name[segment] == L'.' && name[segment + 1] == L'.')) goto bad;
             segment = i + 1;
         }
     }
@@ -149,8 +150,9 @@ static int sfx_zip_bundle_ensure(xx_sfx_zipcentral *r, xx_pd_struct *pd)
             unsigned i;
             bool good = true;
             recognized = true;
-            if (bundle->count == 128 || row->size < 22 || row->offset < f->base_address || row->offset > total ||
-                row->size > total - row->offset || row->size > 256 * 1024 * 1024 - bundle->stored) goto done;
+            if (bundle->count == 128 || row->size < 22 || row->offset < f->base_address || row->offset > total || row->size > total - row->offset ||
+                row->size > 256 * 1024 * 1024 - bundle->stored)
+                goto done;
             e = (sfx_zip_bundle_entry *)xx_mem_alloc(sizeof(*e));
             if (!e) goto done;
             xx_mem_zero(e, sizeof(*e));
@@ -160,18 +162,17 @@ static int sfx_zip_bundle_ensure(xx_sfx_zipcentral *r, xx_pd_struct *pd)
             if (!sfx_zip_bundle_prefix(e, row)) goto done;
             for (i = 0; i + 1 < bundle->count; ++i)
                 if (sfx_zip_bundle_same_prefix(bundle->entries[i]->prefix, e->prefix)) goto done;
-            if (!xx_io_read_at(&e->view.device, 0, magic, 4) ||
-                (xx_rt_memcmp(magic, "PK\3\4", 4) && xx_rt_memcmp(magic, "PK\5\6", 4)) ||
-                !xx_zip_handle_base_info(&e->zip.format, pd) || e->zip.format.format_size != row->size ||
-                e->zip.format.number_of_archive_records > 4096U ||
-                e->zip.format.number_of_archive_records > 65536U - bundle->records) goto done;
+            if (!xx_io_read_at(&e->view.device, 0, magic, 4) || (xx_rt_memcmp(magic, "PK\3\4", 4) && xx_rt_memcmp(magic, "PK\5\6", 4)) ||
+                !xx_zip_handle_base_info(&e->zip.format, pd) || e->zip.format.format_size != row->size || e->zip.format.number_of_archive_records > 4096U ||
+                e->zip.format.number_of_archive_records > 65536U - bundle->records)
+                goto done;
             st = xx_zip_create_archive_records_reading(&e->zip.format, NULL, pd);
             if (!st) goto done;
             while (st->has_record) {
                 const xx_archive_record *m = &st->current_record;
                 if (carrier_stop(pd) || ++seen > 4096U || m->compressed_size < 0 ||
-                    (m->data_offset < 0 && !xx_zip_resolve_record_data_offset(&e->zip, &st->current_record)) || m->data_offset < 0 ||
-                    m->data_offset > row->size || m->compressed_size > row->size - m->data_offset || !sfx_zip_bundle_name(e, st, pd)) {
+                    (m->data_offset < 0 && !xx_zip_resolve_record_data_offset(&e->zip, &st->current_record)) || m->data_offset < 0 || m->data_offset > row->size ||
+                    m->compressed_size > row->size - m->data_offset || !sfx_zip_bundle_name(e, st, pd)) {
                     good = false;
                     break;
                 }
@@ -257,16 +258,17 @@ static xx_archive_record_state *sfx_zip_bundle_records(Abstractformat *f, const 
     st->internal_state = c;
     st->free_internal = sfx_zip_bundle_cursor_free;
     st->total_records = (int64_t)c->bundle->records;
-    if (opts) for (i = 0; i < opts->count; ++i) {
-        const xx_meta *m = (const xx_meta *)xx_list_at(opts, i);
-        xx_meta copy;
-        if (!m) goto fail;
-        xx_meta_init(&copy, m->meta_id);
-        if (!xx_var_copy(&copy.var, &m->var) || !xx_list_append(&st->options, &copy)) {
-            xx_meta_cleanup(&copy);
-            goto fail;
+    if (opts)
+        for (i = 0; i < opts->count; ++i) {
+            const xx_meta *m = (const xx_meta *)xx_list_at(opts, i);
+            xx_meta copy;
+            if (!m) goto fail;
+            xx_meta_init(&copy, m->meta_id);
+            if (!xx_var_copy(&copy.var, &m->var) || !xx_list_append(&st->options, &copy)) {
+                xx_meta_cleanup(&copy);
+                goto fail;
+            }
         }
-    }
     if (!sfx_zip_bundle_open_next(st, pd)) goto fail;
     return st;
 fail:
@@ -284,10 +286,8 @@ static bool sfx_zip_bundle_next(xx_archive_record_state *st, xx_pd_struct *pd)
     st->has_record = false;
     xx_archive_record_cleanup(&st->current_record);
     xx_archive_record_init(&st->current_record);
-    if (xx_zip_archive_record_move_to_next(&e->zip.format, c->inner, pd))
-        return sfx_zip_bundle_publish(st, pd);
-    if (carrier_stop(pd) || e->zip.directory_damaged ||
-        c->inner->current_index + 1 != c->inner->total_records) {
+    if (xx_zip_archive_record_move_to_next(&e->zip.format, c->inner, pd)) return sfx_zip_bundle_publish(st, pd);
+    if (carrier_stop(pd) || e->zip.directory_damaged || c->inner->current_index + 1 != c->inner->total_records) {
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Incomplete ZIP resource directory");
         return false;
     }

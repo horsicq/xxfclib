@@ -30,10 +30,7 @@ static bool put(xx_io_device *output, const void *data, size_t size)
 #if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZ4) || defined(XFU_SUPPORT_FORMAT_LZIP)
 static bool put_u32le(xx_io_device *output, uint32_t value)
 {
-    unsigned char bytes[4] = {
-        (unsigned char)value, (unsigned char)(value >> 8),
-        (unsigned char)(value >> 16), (unsigned char)(value >> 24)
-    };
+    unsigned char bytes[4] = {(unsigned char)value, (unsigned char)(value >> 8), (unsigned char)(value >> 16), (unsigned char)(value >> 24)};
     return put(output, bytes, sizeof(bytes));
 }
 
@@ -42,10 +39,7 @@ static bool put_u32le(xx_io_device *output, uint32_t value)
 #if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZOP)
 static bool put_u32be(xx_io_device *output, uint32_t value)
 {
-    unsigned char bytes[4] = {
-        (unsigned char)(value >> 24), (unsigned char)(value >> 16),
-        (unsigned char)(value >> 8), (unsigned char)value
-    };
+    unsigned char bytes[4] = {(unsigned char)(value >> 24), (unsigned char)(value >> 16), (unsigned char)(value >> 8), (unsigned char)value};
     return put(output, bytes, sizeof(bytes));
 }
 
@@ -64,8 +58,7 @@ static bool put_u64le(xx_io_device *output, uint64_t value)
 
 static bool stopped(const xfu_request *request, xx_pd_struct *pd)
 {
-    if (request->callbacks.cancelled &&
-        request->callbacks.cancelled(request->callbacks.user)) xx_pd_stop(pd);
+    if (request->callbacks.cancelled && request->callbacks.cancelled(request->callbacks.user)) xx_pd_stop(pd);
     return xx_pd_is_stopped(pd);
 }
 
@@ -92,21 +85,16 @@ static uint32_t lz4_header_hash(const unsigned char descriptor[2])
     return hash;
 }
 
-static bool encode_lz4(const xfu_request *request, xx_io_device *input,
-                       xx_io_device *output, xx_pd_struct *pd)
+static bool encode_lz4(const xfu_request *request, xx_io_device *input, xx_io_device *output, xx_pd_struct *pd)
 {
     const unsigned char descriptor[2] = {0x60, 0x40};
     const unsigned char magic[4] = {0x04, 0x22, 0x4d, 0x18};
     unsigned char checksum = (unsigned char)(lz4_header_hash(descriptor) >> 8);
     unsigned char buffer[FILTER_CHUNK];
     ssize_t amount;
-    if (!put(output, magic, sizeof(magic)) ||
-        !put(output, descriptor, sizeof(descriptor)) ||
-        !put(output, &checksum, 1)) return false;
+    if (!put(output, magic, sizeof(magic)) || !put(output, descriptor, sizeof(descriptor)) || !put(output, &checksum, 1)) return false;
     while ((amount = xx_io_read(input, buffer, sizeof(buffer))) > 0) {
-        if (stopped(request, pd) ||
-            !put_u32le(output, (uint32_t)amount | UINT32_C(0x80000000)) ||
-            !put(output, buffer, (size_t)amount)) return false;
+        if (stopped(request, pd) || !put_u32le(output, (uint32_t)amount | UINT32_C(0x80000000)) || !put(output, buffer, (size_t)amount)) return false;
     }
     return amount == 0 && !stopped(request, pd) && put_u32le(output, 0);
 }
@@ -114,18 +102,16 @@ static bool encode_lz4(const xfu_request *request, xx_io_device *input,
 #endif
 
 #if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZOP)
-static bool encode_lzop(const xfu_request *request, const char *stream_name,
-                        xx_io_device *input, xx_io_device *output, xx_pd_struct *pd)
+static bool encode_lzop(const xfu_request *request, const char *stream_name, xx_io_device *input, xx_io_device *output, xx_pd_struct *pd)
 {
-    static const unsigned char magic[9] =
-        {0x89, 'L', 'Z', 'O', 0, 0x0d, 0x0a, 0x1a, 0x0a};
+    static const unsigned char magic[9] = {0x89, 'L', 'Z', 'O', 0, 0x0d, 0x0a, 0x1a, 0x0a};
     unsigned char header[25] = {
-        0x09, 0x40, 0x09, 0x40, 0x09, 0x40, /* versions */
-        1, 1,                         /* method and level */
-        0, 0, 0, 1,                   /* data Adler checksum */
-        0, 0, 0, 0,                   /* mode */
-        0, 0, 0, 0, 0, 0, 0, 0,       /* timestamps */
-        0                             /* filename length */
+        0x09, 0x40, 0x09, 0x40, 0x09, 0x40,       /* versions */
+        1,    1,                                  /* method and level */
+        0,    0,    0,    1,                      /* data Adler checksum */
+        0,    0,    0,    0,                      /* mode */
+        0,    0,    0,    0,    0,    0,    0, 0, /* timestamps */
+        0                                         /* filename length */
     };
     unsigned char buffer[FILTER_CHUNK];
     size_t name_length = 0;
@@ -142,17 +128,13 @@ static bool encode_lzop(const xfu_request *request, const char *stream_name,
     header[24] = (unsigned char)name_length;
     checksum = xx_adler32_update(1, header, sizeof(header));
     if (name_length) checksum = xx_adler32_update(checksum, (const unsigned char *)stream_name, name_length);
-    if (!put(output, magic, sizeof(magic)) ||
-        !put(output, header, sizeof(header)) ||
-        (name_length && !put(output, stream_name, name_length)) ||
+    if (!put(output, magic, sizeof(magic)) || !put(output, header, sizeof(header)) || (name_length && !put(output, stream_name, name_length)) ||
         !put_u32be(output, checksum))
         return false;
     while ((amount = xx_io_read(input, buffer, sizeof(buffer))) > 0) {
-        if (stopped(request, pd) ||
-            !put_u32be(output, (uint32_t)amount) ||
-            !put_u32be(output, (uint32_t)amount) ||
-            !put_u32be(output, xx_adler32_update(1, buffer, (size_t)amount)) ||
-            !put(output, buffer, (size_t)amount)) return false;
+        if (stopped(request, pd) || !put_u32be(output, (uint32_t)amount) || !put_u32be(output, (uint32_t)amount) ||
+            !put_u32be(output, xx_adler32_update(1, buffer, (size_t)amount)) || !put(output, buffer, (size_t)amount))
+            return false;
     }
     return amount == 0 && !stopped(request, pd) && put_u32be(output, 0);
 }
@@ -178,11 +160,11 @@ static bool encode_lzop(const xfu_request *request, const char *stream_name,
 
 typedef struct compress_writer {
     xx_io_device *output;
-    uint64_t bits; /* Pending bits, the oldest lowest. */
+    uint64_t bits;      /* Pending bits, the oldest lowest. */
     unsigned available; /* How many of them. */
-    unsigned width; /* The current code width. */
-    uint64_t section; /* Bits written since the last width change or CLEAR. */
-    uint64_t written; /* Bytes handed to output. */
+    unsigned width;     /* The current code width. */
+    uint64_t section;   /* Bits written since the last width change or CLEAR. */
+    uint64_t written;   /* Bytes handed to output. */
     unsigned char buffer[FILTER_CHUNK];
     size_t used;
 } compress_writer;
@@ -224,8 +206,7 @@ static bool compress_pad(compress_writer *writer)
     return true;
 }
 
-static bool encode_compress(const xfu_request *request, xx_io_device *input,
-                            xx_io_device *output, xx_pd_struct *pd)
+static bool encode_compress(const xfu_request *request, xx_io_device *input, xx_io_device *output, xx_pd_struct *pd)
 {
     static const unsigned char header[3] = {0x1f, 0x9d, 0x80 | COMPRESS_MAX_BITS};
     const uint32_t table_size = UINT32_C(1) << COMPRESS_TABLE_BITS;
@@ -273,13 +254,11 @@ static bool encode_compress(const xfu_request *request, xx_io_device *input,
                  * ones so far), with 8 fractional bits, as ncompress counts. */
                 const uint64_t in = consumed + i + 1U;
                 const uint64_t out = 3U + writer->written + writer->used;
-                const uint64_t now = in > UINT64_C(0x7fffff) ?
-                    ((out >> 8U) ? in / (out >> 8U) : UINT64_C(0x7fffffff)) : (in << 8U) / out;
+                const uint64_t now = in > UINT64_C(0x7fffff) ? ((out >> 8U) ? in / (out >> 8U) : UINT64_C(0x7fffffff)) : (in << 8U) / out;
                 checkpoint = in + COMPRESS_CHECK_GAP;
                 if (now >= ratio) ratio = now;
                 else {
-                    if (!compress_bits_out(writer, COMPRESS_CLEAR, writer->width) ||
-                        !compress_pad(writer)) goto done;
+                    if (!compress_bits_out(writer, COMPRESS_CLEAR, writer->width) || !compress_pad(writer)) goto done;
                     writer->width = 9U;
                     memset(keys, 0, table_size * sizeof(*keys));
                     next = COMPRESS_FIRST;
@@ -308,8 +287,7 @@ done:
 #endif
 
 #if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZIP)
-static bool copy_device(const xfu_request *request, xx_io_device *input,
-                        xx_io_device *output, xx_pd_struct *pd)
+static bool copy_device(const xfu_request *request, xx_io_device *input, xx_io_device *output, xx_pd_struct *pd)
 {
     unsigned char buffer[FILTER_CHUNK];
     ssize_t amount;
@@ -320,8 +298,7 @@ static bool copy_device(const xfu_request *request, xx_io_device *input,
     return amount == 0 && !stopped(request, pd);
 }
 
-static bool encode_lzip(const xfu_request *request, xx_io_device *input,
-                        xx_io_device *output, xx_pd_struct *pd)
+static bool encode_lzip(const xfu_request *request, xx_io_device *input, xx_io_device *output, xx_pd_struct *pd)
 {
     xx_io_device *compressed = NULL;
     int64_t input_size, output_size, packed_size;
@@ -334,24 +311,16 @@ static bool encode_lzip(const xfu_request *request, xx_io_device *input,
     bool success = false;
     int level = request->compression_level_set ? request->compression_level : 6;
     input_size = xx_io_total_size(input);
-    if (input_size < 0 || input_size > INT64_C(0xffffffff) - 1 ||
-        !(compressed = xx_io_temp_open()) ||
-        !xx_lzma_pack_source(input, NULL, &output_size, &packed_size, &crc,
-                             compressed, level, properties, &properties_size, pd) ||
-        properties_size != sizeof(properties) || properties[0] != 0x5d ||
-        output_size != input_size || packed_size < 5) goto done;
-    dictionary = (uint32_t)properties[1] |
-        ((uint32_t)properties[2] << 8) |
-        ((uint32_t)properties[3] << 16) |
-        ((uint32_t)properties[4] << 24);
+    if (input_size < 0 || input_size > INT64_C(0xffffffff) - 1 || !(compressed = xx_io_temp_open()) ||
+        !xx_lzma_pack_source(input, NULL, &output_size, &packed_size, &crc, compressed, level, properties, &properties_size, pd) ||
+        properties_size != sizeof(properties) || properties[0] != 0x5d || output_size != input_size || packed_size < 5)
+        goto done;
+    dictionary = (uint32_t)properties[1] | ((uint32_t)properties[2] << 8) | ((uint32_t)properties[3] << 16) | ((uint32_t)properties[4] << 24);
     while (exponent <= 29 && (UINT32_C(1) << exponent) != dictionary) ++exponent;
     if (exponent > 29 || (uint64_t)packed_size > UINT64_MAX - 26U) goto done;
     header[5] = (unsigned char)exponent;
-    success = put(output, header, sizeof(header)) &&
-        copy_device(request, compressed, output, pd) &&
-        put_u32le(output, crc) &&
-        put_u64le(output, (uint64_t)input_size) &&
-        put_u64le(output, (uint64_t)packed_size + 26U);
+    success = put(output, header, sizeof(header)) && copy_device(request, compressed, output, pd) && put_u32le(output, crc) && put_u64le(output, (uint64_t)input_size) &&
+              put_u64le(output, (uint64_t)packed_size + 26U);
 done:
     if (compressed) xx_io_close(compressed);
     return success && !stopped(request, pd);
@@ -360,19 +329,15 @@ done:
 #endif
 
 #if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_UUE) || defined(XFU_SUPPORT_FORMAT_BASE64)
-static bool encode_text(const xfu_request *request, const char *name,
-                        const char *stream_name, xx_io_device *input,
-                        xx_io_device *output, xx_pd_struct *pd)
+static bool encode_text(const xfu_request *request, const char *name, const char *stream_name, xx_io_device *input, xx_io_device *output, xx_pd_struct *pd)
 {
-    static const char base64[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    static const char base64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     unsigned char data[57];
     char line[82];
     bool b64 = !strcmp(name, "b64encode");
     ssize_t amount;
     if (!stream_name || !*stream_name) stream_name = "payload";
-    if (!put(output, b64 ? "begin-base64 644 " : "begin 644 ", b64 ? 17U : 10U) ||
-        !put(output, stream_name, strlen(stream_name)) || !put(output, "\n", 1U)) return false;
+    if (!put(output, b64 ? "begin-base64 644 " : "begin 644 ", b64 ? 17U : 10U) || !put(output, stream_name, strlen(stream_name)) || !put(output, "\n", 1U)) return false;
     while ((amount = xx_io_read(input, data, b64 ? 57U : 45U)) > 0) {
         size_t index, used = 0;
         if (stopped(request, pd)) return false;
@@ -381,8 +346,7 @@ static bool encode_text(const xfu_request *request, const char *name,
             unsigned a = data[index];
             unsigned b = index + 1U < (size_t)amount ? data[index + 1U] : 0U;
             unsigned c = index + 2U < (size_t)amount ? data[index + 2U] : 0U;
-            unsigned values[4] = {a >> 2, ((a & 3U) << 4) | (b >> 4),
-                                  ((b & 15U) << 2) | (c >> 6), c & 63U};
+            unsigned values[4] = {a >> 2, ((a & 3U) << 4) | (b >> 4), ((b & 15U) << 2) | (c >> 6), c & 63U};
             unsigned j;
             for (j = 0; j < 4; ++j) {
                 if (b64) line[used++] = base64[values[j]];
@@ -428,13 +392,9 @@ bool xfu_native_filter_can_encode(const char *name)
     return false;
 }
 
-bool xfu_native_filter_encode(const xfu_request *request, const char *name,
-                              const char *stream_name,
-                              xx_io_device *input, xx_io_device *output,
-                              xx_pd_struct *pd)
+bool xfu_native_filter_encode(const xfu_request *request, const char *name, const char *stream_name, xx_io_device *input, xx_io_device *output, xx_pd_struct *pd)
 {
-    if (!request || !name || !input || !output || !pd ||
-        xx_io_seek64(input, 0, SEEK_SET) != 0) return false;
+    if (!request || !name || !input || !output || !pd || xx_io_seek64(input, 0, SEEK_SET) != 0) return false;
     (void)stream_name;
 #if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_LZ4)
     if (!strcmp(name, "lz4")) return encode_lz4(request, input, output, pd);
@@ -449,8 +409,7 @@ bool xfu_native_filter_encode(const xfu_request *request, const char *name,
     if (!strcmp(name, "compress")) return encode_compress(request, input, output, pd);
 #endif
 #if XFU_FORMAT_SUPPORT_FULL || defined(XFU_SUPPORT_FORMAT_UUE) || defined(XFU_SUPPORT_FORMAT_BASE64)
-    if (!strcmp(name, "uuencode") || !strcmp(name, "b64encode"))
-        return encode_text(request, name, stream_name, input, output, pd);
+    if (!strcmp(name, "uuencode") || !strcmp(name, "b64encode")) return encode_text(request, name, stream_name, input, output, pd);
 #endif
     return false;
 }

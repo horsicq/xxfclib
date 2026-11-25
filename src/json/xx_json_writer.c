@@ -29,13 +29,13 @@ struct xx_json_writer {
     char *buf;
     size_t buf_size;
     size_t buf_capacity;
-    int indent;                 /* 0 = compact, > 0 = indentation spaces */
-    int depth;                  /* Current nesting depth (0 = top-level) */
-    bool failed;                /* Sticky error flag */
-    bool finished;              /* finish() has been called */
-    bool crlf;                  /* true = CRLF, false = LF (default) */
-    bool trailing_newline;      /* true = emit newline at finish (default) */
-    bool top_level_done;        /* true once a top-level value was written */
+    int indent;            /* 0 = compact, > 0 = indentation spaces */
+    int depth;             /* Current nesting depth (0 = top-level) */
+    bool failed;           /* Sticky error flag */
+    bool finished;         /* finish() has been called */
+    bool crlf;             /* true = CRLF, false = LF (default) */
+    bool trailing_newline; /* true = emit newline at finish (default) */
+    bool top_level_done;   /* true once a top-level value was written */
     xx_json_frame_t stack[XX_JSON_WRITER_MAX_DEPTH];
 };
 
@@ -168,13 +168,14 @@ size_t xx_json_escape(char *out, size_t capacity, const char *utf8, size_t lengt
 
     static const char hex[] = "0123456789abcdef";
 
-#define ESCAPE_EMIT_BYTE(b) do { \
-    if (out && capacity > 0 && (written + 1 < capacity)) { \
-        out[written] = (char)(b); \
-    } \
-    written++; \
-    needed++; \
-} while (0)
+#define ESCAPE_EMIT_BYTE(b)                                    \
+    do {                                                       \
+        if (out && capacity > 0 && (written + 1 < capacity)) { \
+            out[written] = (char)(b);                          \
+        }                                                      \
+        written++;                                             \
+        needed++;                                              \
+    } while (0)
 
     if (!utf8) {
         length = 0;
@@ -244,9 +245,7 @@ size_t xx_json_escape(char *out, size_t capacity, const char *utf8, size_t lengt
             }
 
             if (ok) {
-                if (((seq_len == 2) && (code < 0x80)) ||
-                    ((seq_len == 3) && (code < 0x800)) ||
-                    ((seq_len == 4) && ((code < 0x10000) || (code > 0x10FFFF))) ||
+                if (((seq_len == 2) && (code < 0x80)) || ((seq_len == 3) && (code < 0x800)) || ((seq_len == 4) && ((code < 0x10000) || (code > 0x10FFFF))) ||
                     ((code >= 0xD800) && (code <= 0xDFFF))) {
                     ok = false;
                 }
@@ -364,9 +363,7 @@ static void json_append_string_escaped(xx_json_writer *w, const char *utf8, size
             }
 
             if (ok) {
-                if (((seq_len == 2) && (code < 0x80)) ||
-                    ((seq_len == 3) && (code < 0x800)) ||
-                    ((seq_len == 4) && ((code < 0x10000) || (code > 0x10FFFF))) ||
+                if (((seq_len == 2) && (code < 0x80)) || ((seq_len == 3) && (code < 0x800)) || ((seq_len == 4) && ((code < 0x10000) || (code > 0x10FFFF))) ||
                     ((code >= 0xD800) && (code <= 0xDFFF))) {
                     ok = false;
                 }

@@ -79,10 +79,8 @@ static const color_entry entries[] = {
     {"stub", XX_SCAN_COLOR_STUB, {UINT32_MAX, UINT32_MAX}, {UINT32_MAX, UINT32_MAX}},
     {"tool", XX_SCAN_COLOR_TOOL, {UINT32_MAX, UINT32_MAX}, {UINT32_MAX, UINT32_MAX}},
 };
-static const char *const protection_aliases[] = {
-    "protector", "apk obfuscator", "jar obfuscator", ".net obfuscator", ".net compressor",
-    "dongle protection", "joiner", "packer", "protection", "crypter", "cryptor"
-};
+static const char *const protection_aliases[] = {"protector", "apk obfuscator", "jar obfuscator", ".net obfuscator", ".net compressor", "dongle protection",
+                                                 "joiner",    "packer",         "protection",     "crypter",         "cryptor"};
 
 static int category_equal(const char *type, const char *category)
 {
@@ -111,10 +109,8 @@ void xx_scan_color_options_init(xx_scan_color_options *options, int dark_mode)
 {
     size_t i;
     if (!options) return;
-    for (i = 0; i < XX_SCAN_COLOR_COUNT; ++i)
-        options->records[i] = (xx_scan_color_record){UINT32_MAX, UINT32_MAX};
-    for (i = 0; i < sizeof(entries) / sizeof(entries[0]); ++i)
-        options->records[entries[i].category] = dark_mode ? entries[i].dark : entries[i].light;
+    for (i = 0; i < XX_SCAN_COLOR_COUNT; ++i) options->records[i] = (xx_scan_color_record){UINT32_MAX, UINT32_MAX};
+    for (i = 0; i < sizeof(entries) / sizeof(entries[0]); ++i) options->records[entries[i].category] = dark_mode ? entries[i].dark : entries[i].light;
 }
 
 xx_scan_color_record xx_scan_type_to_color_record(const char *type, const xx_scan_color_options *options)

@@ -6,10 +6,7 @@
 
 #include "xx_die_engine_api_internal.h"
 
-static const ApiEntry g_pyc_api_table[] = {
-    {"isConstPresent", A_isConstPresent, 1},
-    {NULL, A_NONE, 0}
-};
+static const ApiEntry g_pyc_api_table[] = {{"isConstPresent", A_isConstPresent, 1}, {NULL, A_NONE, 0}};
 
 void die_engine_api_register_pyc(JSCtx *pCtx, JSVal object)
 {
@@ -31,8 +28,7 @@ bool die_engine_api_dispatch_pyc(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int 
         /* Util: exact 64-bit arithmetic (JS numbers are doubles). Mirrors
          * Util_script; a zero divisor yields -1 as in the reference, and the
          * shifts take the low 6 bits of the count as x86 does. */
-        default:
-            break;
+        default: break;
     }
 
     return false;

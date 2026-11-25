@@ -8,7 +8,11 @@
 extern "C" {
 #endif
 #define XX_JS_DEBUG_API 1
-typedef enum { JS_DEBUG_STATEMENT = 0, JS_DEBUG_EXCEPTION, JS_DEBUG_DEBUGGER } JSDebugEventType;
+typedef enum {
+    JS_DEBUG_STATEMENT = 0,
+    JS_DEBUG_EXCEPTION,
+    JS_DEBUG_DEBUGGER
+} JSDebugEventType;
 typedef struct {
     JSDebugEventType type;
     const char *pSourceName;

@@ -93,8 +93,7 @@ static uint16_t dump_u16(const uint8_t *data, size_t size, size_t offset)
 static uint32_t dump_u32(const uint8_t *data, size_t size, size_t offset)
 {
     if (offset + 3 < size) {
-        return (uint32_t)data[offset] | ((uint32_t)data[offset + 1] << 8) |
-               ((uint32_t)data[offset + 2] << 16) | ((uint32_t)data[offset + 3] << 24);
+        return (uint32_t)data[offset] | ((uint32_t)data[offset + 1] << 8) | ((uint32_t)data[offset + 2] << 16) | ((uint32_t)data[offset + 3] << 24);
     }
     return 0;
 }
@@ -124,8 +123,7 @@ static void dump_guid_str(const uint8_t *g, char *out, size_t out_sz)
     uint32_t d1 = (uint32_t)g[0] | ((uint32_t)g[1] << 8) | ((uint32_t)g[2] << 16) | ((uint32_t)g[3] << 24);
     uint16_t d2 = (uint16_t)((uint16_t)g[4] | ((uint16_t)g[5] << 8));
     uint16_t d3 = (uint16_t)((uint16_t)g[6] | ((uint16_t)g[7] << 8));
-    snprintf(out, out_sz, "{%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-             d1, d2, d3, g[8], g[9], g[10], g[11], g[12], g[13], g[14], g[15]);
+    snprintf(out, out_sz, "{%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}", d1, d2, d3, g[8], g[9], g[10], g[11], g[12], g[13], g[14], g[15]);
 }
 
 /* ---- Event emission helpers ------------------------------------------------ */
@@ -375,19 +373,14 @@ static void dump_init_roles(dump_ctx *ctx)
     dump_set_role(ctx, 4, "IPI Stream");
 
     if (ctx->dbi_info.is_valid) {
-        if (ctx->dbi_info.sym_record_stream != 0xFFFF)
-            dump_set_role(ctx, ctx->dbi_info.sym_record_stream, "Symbol Records");
-        if (ctx->dbi_info.global_stream_index != 0xFFFF)
-            dump_set_role(ctx, ctx->dbi_info.global_stream_index, "Global Symbol Hash");
-        if (ctx->dbi_info.public_stream_index != 0xFFFF)
-            dump_set_role(ctx, ctx->dbi_info.public_stream_index, "Public Symbol Hash");
+        if (ctx->dbi_info.sym_record_stream != 0xFFFF) dump_set_role(ctx, ctx->dbi_info.sym_record_stream, "Symbol Records");
+        if (ctx->dbi_info.global_stream_index != 0xFFFF) dump_set_role(ctx, ctx->dbi_info.global_stream_index, "Global Symbol Hash");
+        if (ctx->dbi_info.public_stream_index != 0xFFFF) dump_set_role(ctx, ctx->dbi_info.public_stream_index, "Public Symbol Hash");
 
         if (ctx->dbi_info.dbg_streams) {
             static const char *const dbg_names[] = {
-                "FPO Data", "Exception Data", "Fixup Data", "OMAP To Source Data",
-                "OMAP From Source Data", "Section Header Data", "Token RID Map",
-                "Xdata", "Pdata", "New FPO Data", "Original Section Header Data"
-            };
+                "FPO Data",      "Exception Data", "Fixup Data", "OMAP To Source Data", "OMAP From Source Data",       "Section Header Data",
+                "Token RID Map", "Xdata",          "Pdata",      "New FPO Data",        "Original Section Header Data"};
             for (i = 0; i < (int32_t)ctx->dbi_info.dbg_stream_count && i < 11; i++) {
                 if (ctx->dbi_info.dbg_streams[i] != 0xFFFF) {
                     dump_set_role(ctx, ctx->dbi_info.dbg_streams[i], dbg_names[i]);
@@ -407,8 +400,7 @@ static void dump_init_roles(dump_ctx *ctx)
         for (i = 0; i < (int32_t)mods.count; i++) {
             if (mods.items[i].stream_index != 0xFFFF) {
                 char mod_role[512];
-                snprintf(mod_role, sizeof(mod_role), "Module \"%s\"",
-                         mods.items[i].module_name ? mods.items[i].module_name : "");
+                snprintf(mod_role, sizeof(mod_role), "Module \"%s\"", mods.items[i].module_name ? mods.items[i].module_name : "");
                 dump_set_role(ctx, mods.items[i].stream_index, mod_role);
             }
         }
@@ -556,7 +548,9 @@ static void dump_walk_msf(dump_ctx *ctx)
     dump_begin(ctx, "msf", -1, -1);
 
     dump_begin(ctx, "superblock", -1, 0);
-    dump_field_string(ctx, "magic", "Microsoft C/C++ MSF 7.00\r\n\x1a" "DS\0\0\0");
+    dump_field_string(ctx, "magic",
+                      "Microsoft C/C++ MSF 7.00\r\n\x1a"
+                      "DS\0\0\0");
     dump_field_uint(ctx, "block_size", ctx->msf.block_size);
     dump_field_uint(ctx, "free_block_map_block", ctx->msf.free_block_map_block);
     dump_field_uint(ctx, "block_count", ctx->msf.num_blocks);
@@ -1057,8 +1051,7 @@ static void dump_walk_dbi(dump_ctx *ctx)
         size_t sc_end = sub_off + (size_t)ctx->dbi_info.section_contribution_size;
         uint32_t sc_ver = dump_u32(data, size, sub_off);
         size_t entry_sz = (sc_ver == (uint32_t)XX_MS_PDB_DBI_SECCONTRIB_V2) ? 32 : 28;
-        const char *vname = (sc_ver == (uint32_t)XX_MS_PDB_DBI_SECCONTRIB_V2) ? "V2" :
-                            (sc_ver == (uint32_t)XX_MS_PDB_DBI_SECCONTRIB_VER60) ? "V60" : "V1";
+        const char *vname = (sc_ver == (uint32_t)XX_MS_PDB_DBI_SECCONTRIB_V2) ? "V2" : (sc_ver == (uint32_t)XX_MS_PDB_DBI_SECCONTRIB_VER60) ? "V60" : "V1";
 
         dump_begin(ctx, "section_contribs", XX_MS_PDB_STREAM_DBI, (int64_t)sub_off);
         dump_field_enum(ctx, "version", sc_ver, vname);
@@ -1190,10 +1183,8 @@ static void dump_walk_dbi(dump_ctx *ctx)
 
     /* 8. Optional debug header */
     if (ctx->dbi_info.optional_dbg_header_size >= 2 && sub_off + (size_t)ctx->dbi_info.optional_dbg_header_size <= size) {
-        static const char *const dbg_role_names[] = {
-            "fpo", "exception", "fixup", "omap_to_src", "omap_from_src", "section_header",
-            "token_rid_map", "xdata", "pdata", "new_fpo", "section_header_orig"
-        };
+        static const char *const dbg_role_names[] = {"fpo",           "exception", "fixup", "omap_to_src", "omap_from_src",      "section_header",
+                                                     "token_rid_map", "xdata",     "pdata", "new_fpo",     "section_header_orig"};
         size_t count = (size_t)ctx->dbi_info.optional_dbg_header_size / 2;
         dump_begin(ctx, "optional_debug_header", XX_MS_PDB_STREAM_DBI, (int64_t)sub_off);
         for (size_t i = 0; i < count && i < 11 && !ctx->stopped; i++) {
@@ -1473,8 +1464,7 @@ static void dump_walk_dbg_streams(dump_ctx *ctx)
 }
 
 /* ---- 8. MODULES ----------------------------------------------------------- */
-static void dump_walk_c13_subsection(dump_ctx *ctx, int32_t strm_idx, uint32_t kind,
-                                     const uint8_t *sub_data, size_t sub_len, int64_t sub_off)
+static void dump_walk_c13_subsection(dump_ctx *ctx, int32_t strm_idx, uint32_t kind, const uint8_t *sub_data, size_t sub_len, int64_t sub_off)
 {
     dump_begin(ctx, "subsection", strm_idx, sub_off);
     dump_field_enum(ctx, "kind", kind, dump_subsection_kind_str(kind));
@@ -1492,8 +1482,7 @@ static void dump_walk_c13_subsection(dump_ctx *ctx, int32_t strm_idx, uint32_t k
             dump_field_enum(ctx, "kind", skind, xx_ms_pdb_symbol_kind_to_string(skind));
             dump_field_uint(ctx, "length", len);
             if (len >= 2) {
-                xx_ms_pdb_decode_symbol(skind, sub_data + cur + 4, (size_t)len - 2,
-                                        ctx->dbi_info.machine, ctx->depth, ctx->fn, ctx->user);
+                xx_ms_pdb_decode_symbol(skind, sub_data + cur + 4, (size_t)len - 2, ctx->dbi_info.machine, ctx->depth, ctx->fn, ctx->user);
             }
             dump_end(ctx, "symbol", strm_idx, sub_off + 8 + (int64_t)cur);
             cur += rec_sz;
@@ -1735,8 +1724,7 @@ static void dump_walk_modules(dump_ctx *ctx)
                 dump_field_enum(ctx, "kind", kind, xx_ms_pdb_symbol_kind_to_string(kind));
                 dump_field_uint(ctx, "length", len);
                 if (len >= 2) {
-                    xx_ms_pdb_decode_symbol(kind, data + sym_off + 4, (size_t)len - 2,
-                                            cur_machine, ctx->depth, ctx->fn, ctx->user);
+                    xx_ms_pdb_decode_symbol(kind, data + sym_off + 4, (size_t)len - 2, cur_machine, ctx->depth, ctx->fn, ctx->user);
                 }
                 dump_end(ctx, "symbol", m->stream_index, (int64_t)sym_off);
                 sym_off += rec_sz;
@@ -1820,8 +1808,7 @@ static void dump_walk_symbols(dump_ctx *ctx)
         dump_field_enum(ctx, "kind", kind, xx_ms_pdb_symbol_kind_to_string(kind));
         dump_field_uint(ctx, "length", len);
         if (len >= 2) {
-            xx_ms_pdb_decode_symbol(kind, data + off + 4, (size_t)len - 2,
-                                    ctx->dbi_info.machine, ctx->depth, ctx->fn, ctx->user);
+            xx_ms_pdb_decode_symbol(kind, data + off + 4, (size_t)len - 2, ctx->dbi_info.machine, ctx->depth, ctx->fn, ctx->user);
         }
         dump_end(ctx, "symbol", strm_idx, (int64_t)off);
         off += rec_sz;
@@ -2123,8 +2110,7 @@ const char *xx_ms_pdb_dump_section_name(uint32_t what_bit)
     }
 }
 
-bool xx_ms_pdb_dump(xx_ms_pdb *pdb, uint32_t what, const xx_ms_pdb_names *names,
-                     xx_ms_pdb_dump_fn fn, void *user)
+bool xx_ms_pdb_dump(xx_ms_pdb *pdb, uint32_t what, const xx_ms_pdb_names *names, xx_ms_pdb_dump_fn fn, void *user)
 {
     dump_ctx ctx = {0};
 

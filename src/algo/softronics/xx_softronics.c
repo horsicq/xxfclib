@@ -51,7 +51,8 @@ static bool xx_softronics_read_code(xx_softronics_bit_reader *reader, unsigned w
 {
     uint16_t value = 0U;
     unsigned index;
-    if (!xx_softronics_charge(work) || !reader || !code || width == 0U || width > XX_SOFTRONICS_MAX_BITS || reader->bit_position > reader->bit_size || width > reader->bit_size - reader->bit_position) {
+    if (!xx_softronics_charge(work) || !reader || !code || width == 0U || width > XX_SOFTRONICS_MAX_BITS || reader->bit_position > reader->bit_size ||
+        width > reader->bit_size - reader->bit_position) {
         return false;
     }
     for (index = 0U; index < width; ++index) {
@@ -108,8 +109,7 @@ static bool xx_softronics_emit_byte(uint8_t *output, size_t output_size, size_t 
     return true;
 }
 
-static bool xx_softronics_emit_reversed(uint8_t *output, size_t output_size, size_t *output_position, const uint8_t *stack, size_t stack_size,
-                                        xx_softronics_work *work)
+static bool xx_softronics_emit_reversed(uint8_t *output, size_t output_size, size_t *output_position, const uint8_t *stack, size_t stack_size, xx_softronics_work *work)
 {
     size_t index;
     if (!output_position || !stack || !stack_size || *output_position > output_size || stack_size > output_size - *output_position) return false;
@@ -119,8 +119,8 @@ static bool xx_softronics_emit_reversed(uint8_t *output, size_t output_size, siz
     return true;
 }
 
-static bool xx_softronics_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *consumed_size, bool exact, bool measure, size_t *measured_size, uint64_t work_limit,
-                                  xx_softronics_poll_fn poll, void *context)
+static bool xx_softronics_decode(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *consumed_size, bool exact, bool measure,
+                                 size_t *measured_size, uint64_t work_limit, xx_softronics_poll_fn poll, void *context)
 {
     xx_softronics_bit_reader reader;
     xx_softronics_work work = {work_limit, 256U, work_limit != 0U, poll, context};
@@ -157,7 +157,8 @@ static bool xx_softronics_decode(const uint8_t *input, size_t input_size, uint8_
             continue;
         }
         if (code == XX_SOFTRONICS_END) {
-            if (!have_previous || (!measure && output_position != output_size) || (exact && (reader.bit_position+7U)/8U!=input_size) || !xx_softronics_padding_is_zero(&reader, &work) || (poll && !poll(context))) {
+            if (!have_previous || (!measure && output_position != output_size) || (exact && (reader.bit_position + 7U) / 8U != input_size) ||
+                !xx_softronics_padding_is_zero(&reader, &work) || (poll && !poll(context))) {
                 return false;
             }
             if (consumed_size) *consumed_size = input_size;
@@ -202,26 +203,26 @@ static bool xx_softronics_decode(const uint8_t *input, size_t input_size, uint8_
     }
 }
 
-bool xx_softronics_lzw_decompress_memory(const uint8_t *input,size_t input_size,uint8_t *output,size_t output_size,size_t *consumed_size)
+bool xx_softronics_lzw_decompress_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, size_t *consumed_size)
 {
-    return xx_softronics_decode(input,input_size,output,output_size,consumed_size,false,false,NULL,0U,NULL,NULL);
+    return xx_softronics_decode(input, input_size, output, output_size, consumed_size, false, false, NULL, 0U, NULL, NULL);
 }
-bool xx_softronics_lzw_decompress_memory_exact(const uint8_t *input,size_t input_size,uint8_t *output,size_t output_size)
+bool xx_softronics_lzw_decompress_memory_exact(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size)
 {
-    return xx_softronics_decode(input,input_size,output,output_size,NULL,true,false,NULL,0U,NULL,NULL);
+    return xx_softronics_decode(input, input_size, output, output_size, NULL, true, false, NULL, 0U, NULL, NULL);
 }
 
-bool xx_softronics_lzw_measure_memory_exact_bounded(const uint8_t *input, size_t input_size, size_t output_limit,
-                                                    uint64_t work_limit, xx_softronics_poll_fn poll, void *context, size_t *measured_size)
+bool xx_softronics_lzw_measure_memory_exact_bounded(const uint8_t *input, size_t input_size, size_t output_limit, uint64_t work_limit, xx_softronics_poll_fn poll,
+                                                    void *context, size_t *measured_size)
 {
     if (measured_size) *measured_size = 0U;
     if (!work_limit) return false;
-    return xx_softronics_decode(input,input_size,NULL,output_limit,NULL,true,true,measured_size,work_limit,poll,context);
+    return xx_softronics_decode(input, input_size, NULL, output_limit, NULL, true, true, measured_size, work_limit, poll, context);
 }
 
-bool xx_softronics_lzw_decompress_memory_exact_bounded(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size,
-                                                       uint64_t work_limit, xx_softronics_poll_fn poll, void *context)
+bool xx_softronics_lzw_decompress_memory_exact_bounded(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_size, uint64_t work_limit,
+                                                       xx_softronics_poll_fn poll, void *context)
 {
     if (!work_limit) return false;
-    return xx_softronics_decode(input,input_size,output,output_size,NULL,true,false,NULL,work_limit,poll,context);
+    return xx_softronics_decode(input, input_size, output, output_size, NULL, true, false, NULL, work_limit, poll, context);
 }

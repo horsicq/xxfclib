@@ -224,8 +224,8 @@ bool xx_format_search_fast_detect(const xx_format_search_desc *desc, xx_io_devic
     return xx_format_search_probe_direct(desc, device, base_address, is_mapped, false, NULL);
 }
 
-bool xx_format_search_probe_at(const xx_format_search_desc *desc, xx_io_device *device, int64_t base_address, bool is_mapped,
-                               xx_pd_struct *pd, xx_file_type_t *type, int64_t *size)
+bool xx_format_search_probe_at(const xx_format_search_desc *desc, xx_io_device *device, int64_t base_address, bool is_mapped, xx_pd_struct *pd, xx_file_type_t *type,
+                               int64_t *size)
 {
     int64_t saved_position, total;
     xx_file_type_t found_type = XX_FILE_TYPE_UNKNOWN;
@@ -237,8 +237,7 @@ bool xx_format_search_probe_at(const xx_format_search_desc *desc, xx_io_device *
     saved_position = xx_io_tell(device);
     if (saved_position < 0) return false;
     total = xx_io_total_size(device);
-    if (base_address < total)
-        matched = xx_format_search_probe(desc, device, base_address, total, is_mapped, true, pd, &found_type, &found_size);
+    if (base_address < total) matched = xx_format_search_probe(desc, device, base_address, total, is_mapped, true, pd, &found_type, &found_size);
     if (xx_io_seek64(device, saved_position, SEEK_SET) != 0) return false;
     if (matched) {
         if (type) *type = found_type;
@@ -453,8 +452,8 @@ void xx_format_search_free(xx_format_search_state *state)
 /* One extractor per format, and the file types each answers to. Generated. */
 
 #if !XFU_FORMAT_SUPPORT_FULL
-#define XX_SUPPORTED_FORMAT(type, name, label) \
-    extern xx_format_extractor xx_##name##_extractor; \
+#define XX_SUPPORTED_FORMAT(type, name, label)                          \
+    extern xx_format_extractor xx_##name##_extractor;                   \
     extern Abstractextractor *xx_##name##_get_abstract_extractor(void); \
     extern Abstractdetector *xx_##name##_get_abstract_detector(void);
 #include "xxfclib/formats/xx_format_support_rows.inc"
@@ -465,9 +464,7 @@ static const struct {
     Abstractextractor *(*get)(void);
     Abstractdetector *(*get_detector)(void);
 } g_xx_format_extractors[] = {
-#define XX_SUPPORTED_FORMAT(type, name, label) \
-    {XX_FILE_TYPE_##type, &xx_##name##_extractor, \
-     xx_##name##_get_abstract_extractor, xx_##name##_get_abstract_detector},
+#define XX_SUPPORTED_FORMAT(type, name, label) {XX_FILE_TYPE_##type, &xx_##name##_extractor, xx_##name##_get_abstract_extractor, xx_##name##_get_abstract_detector},
 #include "xxfclib/formats/xx_format_support_rows.inc"
 #undef XX_SUPPORTED_FORMAT
 };

@@ -51,8 +51,7 @@ static bool dc_vr(const uint8_t *p, bool *wide, unsigned *alignment)
         if (p[0] == values[i][0] && p[1] == values[i][1]) break;
     }
     if (i == sizeof(values) / sizeof(values[0])) return false;
-    *wide = (p[0] == 'O') || (p[0] == 'S' && (p[1] == 'Q' || p[1] == 'V')) ||
-            (p[0] == 'U' && (p[1] == 'C' || p[1] == 'N' || p[1] == 'R' || p[1] == 'T' || p[1] == 'V'));
+    *wide = (p[0] == 'O') || (p[0] == 'S' && (p[1] == 'Q' || p[1] == 'V')) || (p[0] == 'U' && (p[1] == 'C' || p[1] == 'N' || p[1] == 'R' || p[1] == 'T' || p[1] == 'V'));
     *alignment = 1;
     if (((p[0] == 'U' || p[0] == 'S') && p[1] == 'S') || (p[0] == 'O' && p[1] == 'W')) *alignment = 2;
     if (((p[0] == 'U' || p[0] == 'S') && p[1] == 'L') || (p[0] == 'F' && p[1] == 'L') || (p[0] == 'O' && (p[1] == 'F' || p[1] == 'L')) || (p[0] == 'A' && p[1] == 'T'))

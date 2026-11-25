@@ -537,13 +537,14 @@ static xx_ivt_stream *xx_ivt_parse(Abstractformat *self, xx_pd_struct *pd)
         for (i = 1U; i < stream->count; ++i) {
             const uint8_t *candidate = (const uint8_t *)stream->items[i].name;
             size_t j, value = 0U;
-            if (xx_rt_strlen((const char *)candidate) != 25U ||
-                xx_ivt_key_compare(candidate, 15U, (const uint8_t *)"unnamed-stream-", 15U) != 0 ||
-                xx_ivt_key_compare(candidate + 21U, 4U, (const uint8_t *)".bin", 4U) != 0) continue;
+            if (xx_rt_strlen((const char *)candidate) != 25U || xx_ivt_key_compare(candidate, 15U, (const uint8_t *)"unnamed-stream-", 15U) != 0 ||
+                xx_ivt_key_compare(candidate + 21U, 4U, (const uint8_t *)".bin", 4U) != 0)
+                continue;
             for (j = 15U; j < 21U && candidate[j] >= '0' && candidate[j] <= '9'; ++j) value = value * 10U + candidate[j] - '0';
             if (j == 21U && value <= stream->count) used[value] = 1U;
         }
-        for (number = 0U; number <= stream->count && used[number]; ++number) {}
+        for (number = 0U; number <= stream->count && used[number]; ++number) {
+        }
         xx_mem_free(used);
         xx_rt_snprintf(alias, sizeof(alias), "unnamed-stream-%06u.bin", (unsigned)number);
         xx_str_free(stream->items[0].name);

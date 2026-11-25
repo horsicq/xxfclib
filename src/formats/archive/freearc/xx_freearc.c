@@ -357,7 +357,11 @@ static bool fa_parse_aes(const char *s, size_t n, size_t colon, fa_stage *stage)
         len = colon - start;
         if (!len) return false;
         switch (s[start]) {
-            case 'f': flag = 1U; if (len != 1U) return false; stage->fixed_hex = true; break;
+            case 'f':
+                flag = 1U;
+                if (len != 1U) return false;
+                stage->fixed_hex = true;
+                break;
             case 'n':
                 flag = 2U;
                 if (!fa_decimal(s + start + 1U, len - 1U, &value) || !value || value > FA_MAX_KDF_ROUNDS) return false;
@@ -436,7 +440,10 @@ static bool fa_parse_stage(const char *s, size_t n, fa_stage *stage)
             if (s[start] == 'c') {
                 if (!fa_decimal(s + start + 1U, length - 1U, &ignored) || ignored > 4U) return false;
             } else {
-                if (s[start] == 'h' || s[start] == 'b') { ++start; --length; }
+                if (s[start] == 'h' || s[start] == 'b') {
+                    ++start;
+                    --length;
+                }
                 if (!fa_memory(s + start, length, &ignored)) return false;
             }
         }
@@ -553,8 +560,7 @@ static bool fa_method_encrypted(const char *method)
     do {
         size_t start = at;
         while (method[at] && method[at] != '+') ++at;
-        if (at - start >= 11U && xx_rt_memcmp(method + start, "aes-256/ctr", 11U) == 0 &&
-            (at - start == 11U || method[start + 11U] == ':')) return true;
+        if (at - start >= 11U && xx_rt_memcmp(method + start, "aes-256/ctr", 11U) == 0 && (at - start == 11U || method[start + 11U] == ':')) return true;
         if (!method[at]) break;
         ++at;
     } while (method[at]);
@@ -716,7 +722,9 @@ static bool fa_tor_sift(fa_tor_state *s, size_t count, size_t parent)
         if (!fa_tor_charge(s)) return false;
         if (child + 1U < count && s->keys[child] < s->keys[child + 1U]) ++child;
         if (s->keys[parent] >= s->keys[child]) break;
-        swap = s->keys[parent]; s->keys[parent] = s->keys[child]; s->keys[child] = swap;
+        swap = s->keys[parent];
+        s->keys[parent] = s->keys[child];
+        s->keys[child] = swap;
         parent = child;
     }
     return true;
@@ -732,9 +740,12 @@ static bool fa_tor_tree(fa_tor_state *s, unsigned mode)
         s->keys[i] = ((uint64_t)s->counts[i] << 10U) | i;
     }
     /* Heap-sort the fixed alphabet by frequency, then symbol number. */
-    for (i = FA_TOR_CODES / 2U; i > 0U; --i) if (!fa_tor_sift(s, FA_TOR_CODES, i - 1U)) return false;
+    for (i = FA_TOR_CODES / 2U; i > 0U; --i)
+        if (!fa_tor_sift(s, FA_TOR_CODES, i - 1U)) return false;
     for (i = FA_TOR_CODES; i > 1U; --i) {
-        uint64_t swap = s->keys[0]; s->keys[0] = s->keys[i - 1U]; s->keys[i - 1U] = swap;
+        uint64_t swap = s->keys[0];
+        s->keys[0] = s->keys[i - 1U];
+        s->keys[i - 1U] = swap;
         if (!fa_tor_sift(s, i - 1U, 0U)) return false;
     }
     for (i = 0U; i < FA_TOR_NODES; ++i) {
@@ -751,13 +762,22 @@ static bool fa_tor_tree(fa_tor_state *s, unsigned mode)
     while (!(a == FA_TOR_CODES && end - b == 1U)) {
         size_t left, right;
         if (!fa_tor_charge(s) || a > FA_TOR_CODES || b > end || end >= FA_TOR_NODES) return false;
-        if (s->nodes[a + 1U].weight < s->nodes[b].weight) { left = a; right = a + 1U; a += 2U; }
-        else if (s->nodes[a].weight > s->nodes[b + 1U].weight) { left = b; right = b + 1U; b += 2U; }
-        else { left = a++; right = b++; }
-        if (s->nodes[left].weight == UINT64_MAX || s->nodes[right].weight == UINT64_MAX ||
-            s->nodes[left].weight > UINT64_MAX - s->nodes[right].weight) return false;
+        if (s->nodes[a + 1U].weight < s->nodes[b].weight) {
+            left = a;
+            right = a + 1U;
+            a += 2U;
+        } else if (s->nodes[a].weight > s->nodes[b + 1U].weight) {
+            left = b;
+            right = b + 1U;
+            b += 2U;
+        } else {
+            left = a++;
+            right = b++;
+        }
+        if (s->nodes[left].weight == UINT64_MAX || s->nodes[right].weight == UINT64_MAX || s->nodes[left].weight > UINT64_MAX - s->nodes[right].weight) return false;
         s->nodes[end].weight = s->nodes[left].weight + s->nodes[right].weight;
-        s->nodes[end].left = (uint16_t)left; s->nodes[end].right = (uint16_t)right;
+        s->nodes[end].left = (uint16_t)left;
+        s->nodes[end].right = (uint16_t)right;
         ++end;
     }
     s->root = (uint16_t)b;
@@ -797,13 +817,13 @@ static bool fa_tor_symbol(fa_tor_state *s, uint32_t *symbol)
 
 static bool fa_tor(const uint8_t *input, size_t size, size_t limit, uint8_t **out, size_t *written, xx_pd_struct *pd)
 {
-    static const unsigned length_bits[16] = {0U,0U,0U,0U,0U,0U,0U,1U,1U,2U,2U,3U,3U,4U,8U,30U};
-    static const unsigned distance_bits[32] = {4U,4U,5U,5U,5U,6U,6U,7U,7U,8U,8U,9U,9U,10U,10U,11U,
-                                              11U,12U,12U,13U,13U,14U,14U,15U,15U,16U,17U,18U,19U,21U,23U,30U};
+    static const unsigned length_bits[16] = {0U, 0U, 0U, 0U, 0U, 0U, 0U, 1U, 1U, 2U, 2U, 3U, 3U, 4U, 8U, 30U};
+    static const unsigned distance_bits[32] = {4U,  4U,  5U,  5U,  5U,  6U,  6U,  7U,  7U,  8U,  8U,  9U,  9U,  10U, 10U, 11U,
+                                               11U, 12U, 12U, 13U, 13U, 14U, 14U, 15U, 15U, 16U, 17U, 18U, 19U, 21U, 23U, 30U};
     const uint32_t impossible = INT32_MAX / 2U;
     fa_tor_state *s = NULL;
     uint8_t *plain = NULL;
-    uint32_t lengths[16], distances[32], previous[4] = {0U,0U,0U,0U};
+    uint32_t lengths[16], distances[32], previous[4] = {0U, 0U, 0U, 0U};
     uint32_t window, ring, base = 0U;
     size_t produced = 0U, i;
     bool ok = false;
@@ -816,11 +836,19 @@ static bool fa_tor(const uint8_t *input, size_t size, size_t limit, uint8_t **ou
     plain = (uint8_t *)fa_alloc(limit);
     if (!s || !plain) goto done;
     xx_mem_zero(s, sizeof(*s));
-    s->input = input + 6U; s->size = size - 6U; s->pd = pd;
+    s->input = input + 6U;
+    s->size = size - 6U;
+    s->pd = pd;
     for (i = 0U; i < FA_TOR_CODES; ++i) s->counts[i] = 1U;
-    for (i = 0U; i < 16U; ++i) { lengths[i] = base; base += (uint32_t)1U << length_bits[i]; }
+    for (i = 0U; i < 16U; ++i) {
+        lengths[i] = base;
+        base += (uint32_t)1U << length_bits[i];
+    }
     base = 0U;
-    for (i = 0U; i < 32U; ++i) { distances[i] = base; base += (uint32_t)1U << distance_bits[i]; }
+    for (i = 0U; i < 32U; ++i) {
+        distances[i] = base;
+        base += (uint32_t)1U << distance_bits[i];
+    }
     if (!fa_tor_tree(s, 0U)) goto done;
     for (;;) {
         uint32_t symbol, extra, length, distance, slot;
@@ -830,8 +858,10 @@ static bool fa_tor(const uint8_t *input, size_t size, size_t limit, uint8_t **ou
             plain[produced++] = (uint8_t)symbol;
             continue;
         }
-        if (symbol == FA_TOR_REPCHAR) { length = 1U; distance = previous[0]; }
-        else {
+        if (symbol == FA_TOR_REPCHAR) {
+            length = 1U;
+            distance = previous[0];
+        } else {
             if (symbol >= FA_TOR_EOB) goto done; /* Reserved codes and unsupported future forms. */
             slot = symbol & 15U;
             if (!fa_tor_bits(s, length_bits[slot], &extra)) goto done;
@@ -842,25 +872,36 @@ static bool fa_tor(const uint8_t *input, size_t size, size_t limit, uint8_t **ou
             slot = (symbol - 256U) / 16U;
             if (slot < 4U) {
                 distance = previous[slot];
-                while (slot > 0U) { previous[slot] = previous[slot - 1U]; --slot; }
+                while (slot > 0U) {
+                    previous[slot] = previous[slot - 1U];
+                    --slot;
+                }
                 previous[0] = distance;
             } else {
                 slot -= 4U;
                 if (slot >= 32U || !fa_tor_bits(s, distance_bits[slot], &extra)) goto done;
                 distance = distances[slot] + extra + 1U;
-                previous[3] = previous[2]; previous[2] = previous[1]; previous[1] = previous[0]; previous[0] = distance;
+                previous[3] = previous[2];
+                previous[2] = previous[1];
+                previous[1] = previous[0];
+                previous[0] = distance;
             }
         }
         if (length == impossible && distance == impossible) {
             if ((s->bit + 7U) / 8U != s->size || fa_stopped(pd)) goto done;
-            *out = plain; *written = produced; plain = NULL; ok = true;
+            *out = plain;
+            *written = produced;
+            plain = NULL;
+            ok = true;
             goto done;
         }
-        if (!length || length >= impossible || !distance || distance > ring || distance > produced ||
-            (uint64_t)length > 2U * (uint64_t)window || length > limit - produced) goto done;
+        if (!length || length >= impossible || !distance || distance > ring || distance > produced || (uint64_t)length > 2U * (uint64_t)window ||
+            length > limit - produced)
+            goto done;
         for (i = 0U; i < length; ++i) {
             if (!fa_tor_charge(s)) goto done;
-            plain[produced] = plain[produced - distance]; ++produced;
+            plain[produced] = plain[produced - distance];
+            ++produced;
         }
     }
 done:
@@ -875,8 +916,7 @@ done:
  * followed by one raw LZ4 block, without standard LZ4 frame/length headers.
  * Framing policy: mirror/freearc 71f3ab36df26401fff4301b4c8600a31a90d8da9,
  * Compression/4x4/C_4x4.cpp and Compression/LZ4/C_LZ4.cpp. */
-static bool fa_4x4_record(const uint8_t *in, size_t size, size_t *cursor, const uint8_t **payload,
-                          size_t *packed, size_t *decoded, bool *stored)
+static bool fa_4x4_record(const uint8_t *in, size_t size, size_t *cursor, const uint8_t **payload, size_t *packed, size_t *decoded, bool *stored)
 {
     uint32_t raw, compressed;
     size_t at = *cursor;
@@ -899,8 +939,7 @@ static bool fa_4x4_lz4(const uint8_t *in, size_t in_size, size_t cap, uint8_t **
     size_t cursor = 4U, total = 0U, ceiling = 0U, produced = 0U;
     uint8_t *buffer;
     bool first = true;
-    if (in_size < 4U || in_size > (size_t)FA_MAX_STAGE || cap > (size_t)FA_MAX_STAGE ||
-        xx_data_get_u32(in, 4, 0, false) != 0U || fa_stopped(pd)) return false;
+    if (in_size < 4U || in_size > (size_t)FA_MAX_STAGE || cap > (size_t)FA_MAX_STAGE || xx_data_get_u32(in, 4, 0, false) != 0U || fa_stopped(pd)) return false;
     /* Check every record before allocation. Retain the historical first-buffer
      * ceiling as a compatibility policy, then allocate only the exact total. */
     while (cursor < in_size) {
@@ -1261,17 +1300,23 @@ static bool fa_legacy_password(const char *utf8, uint8_t *out, size_t *size)
     while (i < length) {
         uint32_t cp = p[i++];
         unsigned more = 0U, j;
-        if (cp >= 0xc2U && cp <= 0xdfU) { cp &= 31U; more = 1U; }
-        else if (cp >= 0xe0U && cp <= 0xefU) { cp &= 15U; more = 2U; }
-        else if (cp >= 0xf0U && cp <= 0xf4U) { cp &= 7U; more = 3U; }
-        else if (cp >= 0x80U) return false;
+        if (cp >= 0xc2U && cp <= 0xdfU) {
+            cp &= 31U;
+            more = 1U;
+        } else if (cp >= 0xe0U && cp <= 0xefU) {
+            cp &= 15U;
+            more = 2U;
+        } else if (cp >= 0xf0U && cp <= 0xf4U) {
+            cp &= 7U;
+            more = 3U;
+        } else if (cp >= 0x80U) return false;
         if (more > length - i) return false;
         for (j = 0U; j < more; ++j) {
             if ((p[i] & 0xc0U) != 0x80U) return false;
             cp = (cp << 6U) | (p[i++] & 63U);
         }
-        if ((more == 1U && cp < 0x80U) || (more == 2U && cp < 0x800U) || (more == 3U && cp < 0x10000U) ||
-            cp > 0x10ffffU || (cp >= 0xd800U && cp <= 0xdfffU)) return false;
+        if ((more == 1U && cp < 0x80U) || (more == 2U && cp < 0x800U) || (more == 3U && cp < 0x10000U) || cp > 0x10ffffU || (cp >= 0xd800U && cp <= 0xdfffU))
+            return false;
         out[n++] = (uint8_t)cp;
     }
     *size = n;
@@ -1334,11 +1379,15 @@ static bool fa_aes_decrypt(const fa_stage *stage, uint8_t *data, size_t size, co
         xx_aes_internal_encrypt_block(&aes, counter, mask);
         for (i = 0U; i < amount; ++i) data[at + i] ^= mask[i];
         at += amount;
-        for (i = 0U; i < sizeof(counter); ++i) if (++counter[i]) break;
+        for (i = 0U; i < sizeof(counter); ++i)
+            if (++counter[i]) break;
     }
     result = !fa_stopped(pd);
 done:
-    if (legacy) { fa_secure_clear(legacy, xx_str_len(password)); xx_mem_free(legacy); }
+    if (legacy) {
+        fa_secure_clear(legacy, xx_str_len(password));
+        xx_mem_free(legacy);
+    }
     fa_secure_clear(&h, sizeof(h));
     fa_secure_clear(&aes, sizeof(aes));
     fa_secure_clear(derived, sizeof(derived));
@@ -1349,8 +1398,8 @@ done:
     return result;
 }
 
-bool xx_freearc_decode_chain_password(const char *method, uint8_t *in, size_t in_size, int64_t expected, const char *password,
-                                      uint8_t **out, size_t *out_size, xx_pd_struct *pd)
+bool xx_freearc_decode_chain_password(const char *method, uint8_t *in, size_t in_size, int64_t expected, const char *password, uint8_t **out, size_t *out_size,
+                                      xx_pd_struct *pd)
 {
     fa_stage stages[FA_MAX_STAGES];
     size_t count = 0U, i, cur_size = in_size;
@@ -1798,7 +1847,10 @@ static fa_index *fa_index_get(Abstractformat *self, xx_pd_struct *pd)
         const fa_index *ix = (const fa_index *)archive->index;
         size_t i;
         for (i = 0U; i < ix->block_count; ++i) {
-            if (fa_method_encrypted(ix->blocks[i].method)) { self->is_crypted = true; break; }
+            if (fa_method_encrypted(ix->blocks[i].method)) {
+                self->is_crypted = true;
+                break;
+            }
         }
     }
     return (fa_index *)archive->index;
@@ -2053,8 +2105,7 @@ static bool fa_load_block(Abstractformat *self, fa_stream *s, size_t block, xx_p
     const char *password = xx_format_get_password(self);
     uint8_t fingerprint[32];
     fa_password_identity(password, fingerprint);
-    if (!s->password_fingerprint_set || s->password_present != (password != NULL) ||
-        xx_rt_memcmp(fingerprint, s->password_fingerprint, sizeof(fingerprint)) != 0) {
+    if (!s->password_fingerprint_set || s->password_present != (password != NULL) || xx_rt_memcmp(fingerprint, s->password_fingerprint, sizeof(fingerprint)) != 0) {
         s->cached_block = (size_t)-1;
         xx_rt_memcpy(s->password_fingerprint, fingerprint, sizeof(fingerprint));
         s->password_fingerprint_set = true;

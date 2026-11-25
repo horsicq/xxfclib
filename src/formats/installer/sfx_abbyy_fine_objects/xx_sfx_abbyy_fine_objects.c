@@ -293,7 +293,6 @@ static bool afo_scan(Abstractformat *format, afo_info *info, xx_pd_struct *pd)
 /* Windows-1251 0x80..0xFF.  The undefined 0x98 keeps its C1 code point; the
  * name check refuses it. */
 
-
 /* Upper case as Windows compares names, applied to Windows-1251 bytes:
  * ASCII, the Cyrillic alphabet and the extra Cyrillic letters of the
  * 0x80..0xBF block. */

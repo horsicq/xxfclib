@@ -38,14 +38,14 @@ XXFC_API bool xx_lzip_decode_device(xx_io_device *source, int64_t source_offset,
  * corrupt next Lzip header/member remains an error. The strict API above
  * continues to require an exact stream extent.
  */
-XXFC_API bool xx_lzip_decode_prefix_device(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination,
-                                           int64_t *output_size, size_t *member_count, int64_t *consumed_size, xx_pd_struct *pd);
+XXFC_API bool xx_lzip_decode_prefix_device(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination, int64_t *output_size,
+                                           size_t *member_count, int64_t *consumed_size, xx_pd_struct *pd);
 
 /* Integrity findings of the lenient walk (bit set). */
-#define XX_LZIP_ISSUE_DICTIONARY 0x01U    /* header dictionary code out of range */
-#define XX_LZIP_ISSUE_CRC 0x02U           /* trailer CRC-32 differs from the data */
-#define XX_LZIP_ISSUE_DATA_SIZE 0x04U     /* trailer data size differs */
-#define XX_LZIP_ISSUE_MEMBER_SIZE 0x08U   /* trailer member size differs */
+#define XX_LZIP_ISSUE_DICTIONARY 0x01U     /* header dictionary code out of range */
+#define XX_LZIP_ISSUE_CRC 0x02U            /* trailer CRC-32 differs from the data */
+#define XX_LZIP_ISSUE_DATA_SIZE 0x04U      /* trailer data size differs */
+#define XX_LZIP_ISSUE_MEMBER_SIZE 0x08U    /* trailer member size differs */
 #define XX_LZIP_ISSUE_VERSION0_CHAIN 0x10U /* a version 0 member inside a chain */
 
 /** As xx_lzip_decode_prefix_device, for damaged headers and trailers: an
@@ -55,9 +55,8 @@ XXFC_API bool xx_lzip_decode_prefix_device(xx_io_device *source, int64_t source_
  * fields that disagree with the data do not fail the decode; they are
  * reported in *issues (XX_LZIP_ISSUE_*) for the caller to surface.
  */
-XXFC_API bool xx_lzip_decode_prefix_device_lenient(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination,
-                                                   int64_t *output_size, size_t *member_count, int64_t *consumed_size, uint32_t *issues,
-                                                   xx_pd_struct *pd);
+XXFC_API bool xx_lzip_decode_prefix_device_lenient(xx_io_device *source, int64_t source_offset, int64_t source_size, xx_io_device *destination, int64_t *output_size,
+                                                   size_t *member_count, int64_t *consumed_size, uint32_t *issues, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

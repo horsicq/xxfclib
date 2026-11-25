@@ -41,8 +41,7 @@ static uint16_t pdump_u16(const uint8_t *data, size_t size, size_t offset)
 static uint32_t pdump_u32(const uint8_t *data, size_t size, size_t offset)
 {
     if (offset + 3 < size) {
-        return (uint32_t)data[offset] | ((uint32_t)data[offset + 1] << 8) |
-               ((uint32_t)data[offset + 2] << 16) | ((uint32_t)data[offset + 3] << 24);
+        return (uint32_t)data[offset] | ((uint32_t)data[offset + 1] << 8) | ((uint32_t)data[offset + 2] << 16) | ((uint32_t)data[offset + 3] << 24);
     }
     return 0;
 }
@@ -67,8 +66,7 @@ static void pdump_format_guid(char *out, size_t out_sz, const uint8_t *g)
     uint32_t d1 = (uint32_t)g[0] | ((uint32_t)g[1] << 8) | ((uint32_t)g[2] << 16) | ((uint32_t)g[3] << 24);
     uint16_t d2 = (uint16_t)((uint16_t)g[4] | ((uint16_t)g[5] << 8));
     uint16_t d3 = (uint16_t)((uint16_t)g[6] | ((uint16_t)g[7] << 8));
-    snprintf(out, out_sz, "{%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-             d1, d2, d3, g[8], g[9], g[10], g[11], g[12], g[13], g[14], g[15]);
+    snprintf(out, out_sz, "{%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}", d1, d2, d3, g[8], g[9], g[10], g[11], g[12], g[13], g[14], g[15]);
 }
 
 static int32_t pdump_read_compressed_uint(const uint8_t *data, size_t size, size_t offset, uint32_t *out_val)
@@ -270,28 +268,27 @@ static const struct {
     const char *name;
 } pdump_known_guids[] = {
     /* Hash algorithms */
-    { {0xEC, 0x16, 0x18, 0xFF, 0x5E, 0xAA, 0x10, 0x4D, 0x87, 0xF7, 0x6F, 0x49, 0x63, 0x83, 0x34, 0x60}, "SHA1" },
-    { {0x0F, 0xD0, 0x29, 0x88, 0xB8, 0x11, 0x13, 0x42, 0x87, 0x8B, 0x77, 0x0E, 0x85, 0x97, 0xAC, 0x16}, "SHA256" },
+    {{0xEC, 0x16, 0x18, 0xFF, 0x5E, 0xAA, 0x10, 0x4D, 0x87, 0xF7, 0x6F, 0x49, 0x63, 0x83, 0x34, 0x60}, "SHA1"},
+    {{0x0F, 0xD0, 0x29, 0x88, 0xB8, 0x11, 0x13, 0x42, 0x87, 0x8B, 0x77, 0x0E, 0x85, 0x97, 0xAC, 0x16}, "SHA256"},
 
     /* Languages */
-    { {0xF8, 0x62, 0x51, 0x3F, 0xC6, 0x07, 0xD3, 0x11, 0x90, 0x53, 0x00, 0xC0, 0x4F, 0xA3, 0x02, 0xA1}, "C#" },
-    { {0xB8, 0xD0, 0x12, 0x3A, 0x6C, 0xC2, 0xD0, 0x11, 0xB4, 0x42, 0x00, 0xA0, 0x24, 0x4A, 0x1D, 0xD2}, "VB" },
-    { {0xC9, 0x38, 0x4F, 0xAB, 0xE6, 0xB6, 0xBA, 0x43, 0xBE, 0x3B, 0x58, 0x08, 0x0B, 0x2C, 0xCC, 0xE3}, "F#" },
+    {{0xF8, 0x62, 0x51, 0x3F, 0xC6, 0x07, 0xD3, 0x11, 0x90, 0x53, 0x00, 0xC0, 0x4F, 0xA3, 0x02, 0xA1}, "C#"},
+    {{0xB8, 0xD0, 0x12, 0x3A, 0x6C, 0xC2, 0xD0, 0x11, 0xB4, 0x42, 0x00, 0xA0, 0x24, 0x4A, 0x1D, 0xD2}, "VB"},
+    {{0xC9, 0x38, 0x4F, 0xAB, 0xE6, 0xB6, 0xBA, 0x43, 0xBE, 0x3B, 0x58, 0x08, 0x0B, 0x2C, 0xCC, 0xE3}, "F#"},
 
     /* Custom Debug Info kinds */
-    { {0x56, 0x05, 0x11, 0xCC, 0x91, 0xA0, 0x38, 0x4D, 0x9F, 0xEC, 0x25, 0xAB, 0x9A, 0x35, 0x1A, 0x6A}, "SourceLink" },
-    { {0x1B, 0x57, 0x8A, 0x0E, 0x26, 0x69, 0x6E, 0x46, 0xB4, 0xAD, 0x8A, 0xB0, 0x46, 0x11, 0xF5, 0xFE}, "EmbeddedSource" },
-    { {0x08, 0x47, 0x4D, 0x7E, 0x6E, 0x09, 0x5C, 0x4C, 0xAE, 0xDA, 0xCB, 0x10, 0xBA, 0x6A, 0x74, 0x0D}, "CompilationMetadataReferences" },
-    { {0x05, 0xEC, 0xFE, 0xB5, 0xD0, 0x8C, 0x83, 0x4A, 0x96, 0xDA, 0x46, 0x62, 0x84, 0xBB, 0x4B, 0xD8}, "CompilationOptions" },
-    { {0xB6, 0xEA, 0xB2, 0x58, 0x9F, 0x20, 0x4E, 0x4E, 0xA2, 0x2C, 0xB2, 0xD0, 0xF9, 0x10, 0xC7, 0x82}, "DefaultNamespace" },
-    { {0xC4, 0x63, 0xC5, 0x83, 0xF3, 0xB4, 0xD5, 0x47, 0xB8, 0x24, 0xBA, 0x54, 0x41, 0x47, 0x7E, 0xA8}, "DynamicLocalVariables" },
-    { {0x71, 0xDF, 0x9F, 0xED, 0x79, 0x88, 0x47, 0x47, 0x8E, 0xD3, 0xFE, 0x5E, 0xDE, 0x3C, 0xE7, 0x10}, "TupleElementNames" },
-    { {0x1E, 0xA6, 0xA9, 0x6D, 0xC7, 0xF8, 0x74, 0x48, 0xBE, 0x62, 0x68, 0xBC, 0x56, 0x30, 0xDF, 0x71}, "StateMachineHoistedLocalScopes" },
-    { {0xA8, 0x52, 0x5F, 0x75, 0xC5, 0x91, 0xBE, 0x45, 0xB4, 0xB8, 0x20, 0x95, 0x71, 0xE5, 0x52, 0xBD}, "EncLocalSlotMap" },
-    { {0x4C, 0x00, 0x43, 0xA6, 0x40, 0x02, 0x6F, 0x49, 0xA7, 0x83, 0x30, 0xD6, 0x4F, 0x49, 0x79, 0xDE}, "EncLambdaAndClosureMap" },
-    { {0xBC, 0x74, 0x2E, 0x93, 0xA9, 0xDB, 0x78, 0x44, 0x8D, 0x46, 0x0F, 0x32, 0xA7, 0xBA, 0xB3, 0xD3}, "TypeDefinitionDocuments" },
-    { {0xC5, 0x2A, 0xFD, 0x54, 0x25, 0xE9, 0x1A, 0x40, 0x9C, 0x2A, 0xF9, 0x4F, 0x17, 0x10, 0x72, 0xF8}, "PrimaryConstructorInformationBlob" }
-};
+    {{0x56, 0x05, 0x11, 0xCC, 0x91, 0xA0, 0x38, 0x4D, 0x9F, 0xEC, 0x25, 0xAB, 0x9A, 0x35, 0x1A, 0x6A}, "SourceLink"},
+    {{0x1B, 0x57, 0x8A, 0x0E, 0x26, 0x69, 0x6E, 0x46, 0xB4, 0xAD, 0x8A, 0xB0, 0x46, 0x11, 0xF5, 0xFE}, "EmbeddedSource"},
+    {{0x08, 0x47, 0x4D, 0x7E, 0x6E, 0x09, 0x5C, 0x4C, 0xAE, 0xDA, 0xCB, 0x10, 0xBA, 0x6A, 0x74, 0x0D}, "CompilationMetadataReferences"},
+    {{0x05, 0xEC, 0xFE, 0xB5, 0xD0, 0x8C, 0x83, 0x4A, 0x96, 0xDA, 0x46, 0x62, 0x84, 0xBB, 0x4B, 0xD8}, "CompilationOptions"},
+    {{0xB6, 0xEA, 0xB2, 0x58, 0x9F, 0x20, 0x4E, 0x4E, 0xA2, 0x2C, 0xB2, 0xD0, 0xF9, 0x10, 0xC7, 0x82}, "DefaultNamespace"},
+    {{0xC4, 0x63, 0xC5, 0x83, 0xF3, 0xB4, 0xD5, 0x47, 0xB8, 0x24, 0xBA, 0x54, 0x41, 0x47, 0x7E, 0xA8}, "DynamicLocalVariables"},
+    {{0x71, 0xDF, 0x9F, 0xED, 0x79, 0x88, 0x47, 0x47, 0x8E, 0xD3, 0xFE, 0x5E, 0xDE, 0x3C, 0xE7, 0x10}, "TupleElementNames"},
+    {{0x1E, 0xA6, 0xA9, 0x6D, 0xC7, 0xF8, 0x74, 0x48, 0xBE, 0x62, 0x68, 0xBC, 0x56, 0x30, 0xDF, 0x71}, "StateMachineHoistedLocalScopes"},
+    {{0xA8, 0x52, 0x5F, 0x75, 0xC5, 0x91, 0xBE, 0x45, 0xB4, 0xB8, 0x20, 0x95, 0x71, 0xE5, 0x52, 0xBD}, "EncLocalSlotMap"},
+    {{0x4C, 0x00, 0x43, 0xA6, 0x40, 0x02, 0x6F, 0x49, 0xA7, 0x83, 0x30, 0xD6, 0x4F, 0x49, 0x79, 0xDE}, "EncLambdaAndClosureMap"},
+    {{0xBC, 0x74, 0x2E, 0x93, 0xA9, 0xDB, 0x78, 0x44, 0x8D, 0x46, 0x0F, 0x32, 0xA7, 0xBA, 0xB3, 0xD3}, "TypeDefinitionDocuments"},
+    {{0xC5, 0x2A, 0xFD, 0x54, 0x25, 0xE9, 0x1A, 0x40, 0x9C, 0x2A, 0xF9, 0x4F, 0x17, 0x10, 0x72, 0xF8}, "PrimaryConstructorInformationBlob"}};
 
 static const char *pdump_guid_name(const uint8_t *guid)
 {
@@ -306,33 +303,33 @@ static const char *pdump_guid_name(const uint8_t *guid)
 
 /* HasCustomDebugInformation tag mapping (5 bits) to ECMA-335 table IDs */
 static const uint32_t pdump_has_cdi_tables[32] = {
-    0x06, /* 0: MethodDef */
-    0x04, /* 1: Field */
-    0x01, /* 2: TypeRef */
-    0x02, /* 3: TypeDef */
-    0x08, /* 4: Param */
-    0x09, /* 5: InterfaceImpl */
-    0x0A, /* 6: MemberRef */
-    0x00, /* 7: Module */
-    0x0E, /* 8: DeclSecurity */
-    0x17, /* 9: Property */
-    0x14, /* 10: Event */
-    0x11, /* 11: StandAloneSig */
-    0x1A, /* 12: ModuleRef */
-    0x1B, /* 13: TypeSpec */
-    0x20, /* 14: Assembly */
-    0x23, /* 15: AssemblyRef */
-    0x26, /* 16: File */
-    0x27, /* 17: ExportedType */
-    0x28, /* 18: ManifestResource */
-    0x2A, /* 19: GenericParam */
-    0x2C, /* 20: GenericParamConstraint */
-    0x2B, /* 21: MethodSpec */
-    0x30, /* 22: Document */
-    0x32, /* 23: LocalScope */
-    0x33, /* 24: LocalVariable */
-    0x34, /* 25: LocalConstant */
-    0x35, /* 26: ImportScope */
+    0x06,                        /* 0: MethodDef */
+    0x04,                        /* 1: Field */
+    0x01,                        /* 2: TypeRef */
+    0x02,                        /* 3: TypeDef */
+    0x08,                        /* 4: Param */
+    0x09,                        /* 5: InterfaceImpl */
+    0x0A,                        /* 6: MemberRef */
+    0x00,                        /* 7: Module */
+    0x0E,                        /* 8: DeclSecurity */
+    0x17,                        /* 9: Property */
+    0x14,                        /* 10: Event */
+    0x11,                        /* 11: StandAloneSig */
+    0x1A,                        /* 12: ModuleRef */
+    0x1B,                        /* 13: TypeSpec */
+    0x20,                        /* 14: Assembly */
+    0x23,                        /* 15: AssemblyRef */
+    0x26,                        /* 16: File */
+    0x27,                        /* 17: ExportedType */
+    0x28,                        /* 18: ManifestResource */
+    0x2A,                        /* 19: GenericParam */
+    0x2C,                        /* 20: GenericParamConstraint */
+    0x2B,                        /* 21: MethodSpec */
+    0x30,                        /* 22: Document */
+    0x32,                        /* 23: LocalScope */
+    0x33,                        /* 24: LocalVariable */
+    0x34,                        /* 25: LocalConstant */
+    0x35,                        /* 26: ImportScope */
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF /* 27..31: unused */
 };
 
@@ -349,16 +346,16 @@ static uint32_t pdump_decode_has_cdi(uint32_t coded_index)
 static const char *pdump_import_kind_name(uint32_t kind)
 {
     switch (kind) {
-    case 1: return "ImportNamespace";
-    case 2: return "ImportAssemblyNamespace";
-    case 3: return "ImportType";
-    case 4: return "ImportXmlNamespace";
-    case 5: return "ImportAssemblyReferenceAlias";
-    case 6: return "AliasAssemblyReference";
-    case 7: return "AliasNamespace";
-    case 8: return "AliasAssemblyNamespace";
-    case 9: return "AliasType";
-    default: return "Unknown";
+        case 1: return "ImportNamespace";
+        case 2: return "ImportAssemblyNamespace";
+        case 3: return "ImportType";
+        case 4: return "ImportXmlNamespace";
+        case 5: return "ImportAssemblyReferenceAlias";
+        case 6: return "AliasAssemblyReference";
+        case 7: return "AliasNamespace";
+        case 8: return "AliasAssemblyNamespace";
+        case 9: return "AliasType";
+        default: return "Unknown";
     }
 }
 
@@ -366,25 +363,25 @@ static const char *pdump_import_kind_name(uint32_t kind)
 static const char *pdump_element_type_name(uint8_t et)
 {
     switch (et) {
-    case 0x01: return "Boolean";
-    case 0x02: return "Char";
-    case 0x03: return "I1";
-    case 0x04: return "U1";
-    case 0x05: return "I2";
-    case 0x06: return "U2";
-    case 0x07: return "I4";
-    case 0x08: return "U4";
-    case 0x09: return "I8";
-    case 0x0A: return "U8";
-    case 0x0B: return "R4";
-    case 0x0C: return "R8";
-    case 0x0E: return "String";
-    case 0x11: return "ValueType";
-    case 0x12: return "Class";
-    case 0x18: return "I";
-    case 0x19: return "U";
-    case 0x1C: return "Object";
-    default: return "Unknown";
+        case 0x01: return "Boolean";
+        case 0x02: return "Char";
+        case 0x03: return "I1";
+        case 0x04: return "U1";
+        case 0x05: return "I2";
+        case 0x06: return "U2";
+        case 0x07: return "I4";
+        case 0x08: return "U4";
+        case 0x09: return "I8";
+        case 0x0A: return "U8";
+        case 0x0B: return "R4";
+        case 0x0C: return "R8";
+        case 0x0E: return "String";
+        case 0x11: return "ValueType";
+        case 0x12: return "Class";
+        case 0x18: return "I";
+        case 0x19: return "U";
+        case 0x1C: return "Object";
+        default: return "Unknown";
     }
 }
 
@@ -439,7 +436,10 @@ static char *pdump_decode_doc_name(const uint8_t *blob_data, size_t blob_size, u
             if (len + 2 > cap) {
                 cap *= 2;
                 char *new_res = (char *)xx_mem_realloc(res, cap);
-                if (!new_res) { xx_mem_free(res); return NULL; }
+                if (!new_res) {
+                    xx_mem_free(res);
+                    return NULL;
+                }
                 res = new_res;
             }
             res[len++] = (char)sep;
@@ -455,7 +455,10 @@ static char *pdump_decode_doc_name(const uint8_t *blob_data, size_t blob_size, u
                     cap *= 2;
                 }
                 char *new_res = (char *)xx_mem_realloc(res, cap);
-                if (!new_res) { xx_mem_free(res); return NULL; }
+                if (!new_res) {
+                    xx_mem_free(res);
+                    return NULL;
+                }
                 res = new_res;
                 xx_mem_copy(res + len, part_data, part_len);
                 len += part_len;
@@ -534,10 +537,14 @@ XXFC_API bool xx_ms_pdb_portable_dump(xx_io_device *device, xx_ms_pdb_dump_fn fn
     const xx_ms_pdb_portable_stream *guid_stream = xx_ms_pdb_portable_get_stream(&info, XX_MS_PDB_PORTABLE_STREAM_GUID);
     const xx_ms_pdb_portable_stream *us_stream = xx_ms_pdb_portable_get_stream(&info, XX_MS_PDB_PORTABLE_STREAM_USERSTRINGS);
 
-    uint8_t *tbl_data = NULL; size_t tbl_size = 0;
-    uint8_t *str_data = NULL; size_t str_size = 0;
-    uint8_t *blob_data = NULL; size_t blob_size = 0;
-    uint8_t *guid_data = NULL; size_t guid_size = 0;
+    uint8_t *tbl_data = NULL;
+    size_t tbl_size = 0;
+    uint8_t *str_data = NULL;
+    size_t str_size = 0;
+    uint8_t *blob_data = NULL;
+    size_t blob_size = 0;
+    uint8_t *guid_data = NULL;
+    size_t guid_size = 0;
 
     int64_t dev_total = xx_io_total_size(device);
 
@@ -654,36 +661,18 @@ XXFC_API bool xx_ms_pdb_portable_dump(xx_io_device *device, xx_ms_pdb_dump_fn fn
                 uint32_t rows = info.table_rows[t];
                 int rsize = 0;
                 switch (t) {
-                case 0x30: /* Document */
-                    rsize = blob_idx_sz + guid_idx_sz + blob_idx_sz + guid_idx_sz;
-                    break;
-                case 0x31: /* MethodDebugInformation */
-                    rsize = (info.table_rows[0x30] < 65536 ? 2 : 4) + blob_idx_sz;
-                    break;
-                case 0x32: /* LocalScope */
-                    rsize = (info.table_rows[0x06] < 65536 ? 2 : 4) +
-                            (info.table_rows[0x35] < 65536 ? 2 : 4) +
-                            (info.table_rows[0x33] < 65536 ? 2 : 4) +
-                            (info.table_rows[0x34] < 65536 ? 2 : 4) + 8;
-                    break;
-                case 0x33: /* LocalVariable */
-                    rsize = 4 + str_idx_sz;
-                    break;
-                case 0x34: /* LocalConstant */
-                    rsize = str_idx_sz + blob_idx_sz;
-                    break;
-                case 0x35: /* ImportScope */
-                    rsize = (info.table_rows[0x35] < 65536 ? 2 : 4) + blob_idx_sz;
-                    break;
-                case 0x36: /* StateMachineMethod */
-                    rsize = (info.table_rows[0x06] < 65536 ? 2 : 4) * 2;
-                    break;
-                case 0x37: /* CustomDebugInformation */
-                    rsize = has_cdi_sz + guid_idx_sz + blob_idx_sz;
-                    break;
-                default:
-                    rsize = 0;
-                    break;
+                    case 0x30: /* Document */ rsize = blob_idx_sz + guid_idx_sz + blob_idx_sz + guid_idx_sz; break;
+                    case 0x31: /* MethodDebugInformation */ rsize = (info.table_rows[0x30] < 65536 ? 2 : 4) + blob_idx_sz; break;
+                    case 0x32: /* LocalScope */
+                        rsize = (info.table_rows[0x06] < 65536 ? 2 : 4) + (info.table_rows[0x35] < 65536 ? 2 : 4) + (info.table_rows[0x33] < 65536 ? 2 : 4) +
+                                (info.table_rows[0x34] < 65536 ? 2 : 4) + 8;
+                        break;
+                    case 0x33: /* LocalVariable */ rsize = 4 + str_idx_sz; break;
+                    case 0x34: /* LocalConstant */ rsize = str_idx_sz + blob_idx_sz; break;
+                    case 0x35: /* ImportScope */ rsize = (info.table_rows[0x35] < 65536 ? 2 : 4) + blob_idx_sz; break;
+                    case 0x36: /* StateMachineMethod */ rsize = (info.table_rows[0x06] < 65536 ? 2 : 4) * 2; break;
+                    case 0x37: /* CustomDebugInformation */ rsize = has_cdi_sz + guid_idx_sz + blob_idx_sz; break;
+                    default: rsize = 0; break;
                 }
                 cur_offset += (size_t)rows * (size_t)rsize;
             }
@@ -1059,14 +1048,12 @@ XXFC_API bool xx_ms_pdb_portable_dump(xx_io_device *device, xx_ms_pdb_dump_fn fn
                         uint32_t target_ns_idx = 0;
 
                         switch (kind) {
-                        case 1: /* ImportNamespace */
-                            off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_ns_idx);
-                            break;
-                        case 2: /* ImportAssemblyNamespace */
-                            off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_assembly_row);
-                            off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_ns_idx);
-                            break;
-                        case 3: /* ImportType */
+                            case 1: /* ImportNamespace */ off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_ns_idx); break;
+                            case 2: /* ImportAssemblyNamespace */
+                                off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_assembly_row);
+                                off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_ns_idx);
+                                break;
+                            case 3: /* ImportType */
                             {
                                 uint32_t coded = 0;
                                 off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &coded);
@@ -1074,29 +1061,26 @@ XXFC_API bool xx_ms_pdb_portable_dump(xx_io_device *device, xx_ms_pdb_dump_fn fn
                                 uint32_t r = coded >> 2;
                                 uint32_t tbl = (tag == 0 ? 0x02 : (tag == 1 ? 0x01 : 0x1B));
                                 target_type_token = (tbl << 24) | r;
-                            }
-                            break;
-                        case 4: /* ImportXmlNamespace */
-                            off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &alias_idx);
-                            off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_ns_idx);
-                            break;
-                        case 5: /* ImportAssemblyReferenceAlias */
-                            off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &alias_idx);
-                            break;
-                        case 6: /* AliasAssemblyReference */
-                            off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &alias_idx);
-                            off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_assembly_row);
-                            break;
-                        case 7: /* AliasNamespace */
-                            off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &alias_idx);
-                            off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_ns_idx);
-                            break;
-                        case 8: /* AliasAssemblyNamespace */
-                            off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &alias_idx);
-                            off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_assembly_row);
-                            off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_ns_idx);
-                            break;
-                        case 9: /* AliasType */
+                            } break;
+                            case 4: /* ImportXmlNamespace */
+                                off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &alias_idx);
+                                off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_ns_idx);
+                                break;
+                            case 5: /* ImportAssemblyReferenceAlias */ off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &alias_idx); break;
+                            case 6: /* AliasAssemblyReference */
+                                off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &alias_idx);
+                                off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_assembly_row);
+                                break;
+                            case 7: /* AliasNamespace */
+                                off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &alias_idx);
+                                off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_ns_idx);
+                                break;
+                            case 8: /* AliasAssemblyNamespace */
+                                off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &alias_idx);
+                                off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_assembly_row);
+                                off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &target_ns_idx);
+                                break;
+                            case 9: /* AliasType */
                             {
                                 off += (size_t)pdump_read_compressed_uint(imp_payload, imp_len, off, &alias_idx);
                                 uint32_t coded = 0;
@@ -1105,17 +1089,15 @@ XXFC_API bool xx_ms_pdb_portable_dump(xx_io_device *device, xx_ms_pdb_dump_fn fn
                                 uint32_t r = coded >> 2;
                                 uint32_t tbl = (tag == 0 ? 0x02 : (tag == 1 ? 0x01 : 0x1B));
                                 target_type_token = (tbl << 24) | r;
-                            }
-                            break;
-                        default:
-                            off = imp_len;
-                            break;
+                            } break;
+                            default: off = imp_len; break;
                         }
 
                         /* Extract string values for alias and namespace from blob heap */
                         char alias_buf[256] = "";
                         if (alias_idx > 0 && blob_data) {
-                            const uint8_t *ap = NULL; uint32_t al = 0;
+                            const uint8_t *ap = NULL;
+                            uint32_t al = 0;
                             if (pdump_get_blob(blob_data, blob_size, alias_idx, &ap, &al) && ap && al > 0) {
                                 size_t cplen = al < 255 ? al : 255;
                                 xx_mem_copy(alias_buf, ap, cplen);
@@ -1125,7 +1107,8 @@ XXFC_API bool xx_ms_pdb_portable_dump(xx_io_device *device, xx_ms_pdb_dump_fn fn
 
                         char ns_buf[512] = "";
                         if (target_ns_idx > 0 && blob_data) {
-                            const uint8_t *np = NULL; uint32_t nl = 0;
+                            const uint8_t *np = NULL;
+                            uint32_t nl = 0;
                             if (pdump_get_blob(blob_data, blob_size, target_ns_idx, &np, &nl) && np && nl > 0) {
                                 size_t cplen = nl < 511 ? nl : 511;
                                 xx_mem_copy(ns_buf, np, cplen);
@@ -1347,8 +1330,7 @@ XXFC_API bool xx_ms_pdb_portable_embedded_sources(xx_io_device *device, xx_ms_pd
     const xx_ms_pdb_portable_stream *blob_stream = xx_ms_pdb_portable_get_stream(&info, XX_MS_PDB_PORTABLE_STREAM_BLOB);
     const xx_ms_pdb_portable_stream *guid_stream = xx_ms_pdb_portable_get_stream(&info, XX_MS_PDB_PORTABLE_STREAM_GUID);
 
-    if (!tbl_stream || !blob_stream || !guid_stream ||
-        tbl_stream->size == 0 || blob_stream->size == 0 || guid_stream->size == 0 ||
+    if (!tbl_stream || !blob_stream || !guid_stream || tbl_stream->size == 0 || blob_stream->size == 0 || guid_stream->size == 0 ||
         tbl_stream->size > PDUMP_MAX_STREAM_SIZE || blob_stream->size > PDUMP_MAX_STREAM_SIZE || guid_stream->size > PDUMP_MAX_STREAM_SIZE) {
         xx_ms_pdb_portable_details_free(&info);
         return true;
@@ -1403,24 +1385,25 @@ XXFC_API bool xx_ms_pdb_portable_embedded_sources(xx_io_device *device, xx_ms_pd
             uint32_t rows = info.table_rows[t];
             int rsize = 0;
             switch (t) {
-            case 0x30: rsize = blob_idx_sz + guid_idx_sz + blob_idx_sz + guid_idx_sz; break;
-            case 0x31: rsize = (info.table_rows[0x30] < 65536 ? 2 : 4) + blob_idx_sz; break;
-            case 0x32: rsize = (info.table_rows[0x06] < 65536 ? 2 : 4) + (info.table_rows[0x35] < 65536 ? 2 : 4) + (info.table_rows[0x33] < 65536 ? 2 : 4) + (info.table_rows[0x34] < 65536 ? 2 : 4) + 8; break;
-            case 0x33: rsize = 4 + str_idx_sz; break;
-            case 0x34: rsize = str_idx_sz + blob_idx_sz; break;
-            case 0x35: rsize = (info.table_rows[0x35] < 65536 ? 2 : 4) + blob_idx_sz; break;
-            case 0x36: rsize = (info.table_rows[0x06] < 65536 ? 2 : 4) * 2; break;
-            case 0x37: rsize = has_cdi_sz + guid_idx_sz + blob_idx_sz; break;
-            default: rsize = 0; break;
+                case 0x30: rsize = blob_idx_sz + guid_idx_sz + blob_idx_sz + guid_idx_sz; break;
+                case 0x31: rsize = (info.table_rows[0x30] < 65536 ? 2 : 4) + blob_idx_sz; break;
+                case 0x32:
+                    rsize = (info.table_rows[0x06] < 65536 ? 2 : 4) + (info.table_rows[0x35] < 65536 ? 2 : 4) + (info.table_rows[0x33] < 65536 ? 2 : 4) +
+                            (info.table_rows[0x34] < 65536 ? 2 : 4) + 8;
+                    break;
+                case 0x33: rsize = 4 + str_idx_sz; break;
+                case 0x34: rsize = str_idx_sz + blob_idx_sz; break;
+                case 0x35: rsize = (info.table_rows[0x35] < 65536 ? 2 : 4) + blob_idx_sz; break;
+                case 0x36: rsize = (info.table_rows[0x06] < 65536 ? 2 : 4) * 2; break;
+                case 0x37: rsize = has_cdi_sz + guid_idx_sz + blob_idx_sz; break;
+                default: rsize = 0; break;
             }
             cur_offset += (size_t)rows * (size_t)rsize;
         }
     }
 
     /* EmbeddedSource GUID: 0E8A571B-6926-466E-B4AD-8AB04611F5FE */
-    static const uint8_t emb_guid[16] = {
-        0x1B, 0x57, 0x8A, 0x0E, 0x26, 0x69, 0x6E, 0x46, 0xB4, 0xAD, 0x8A, 0xB0, 0x46, 0x11, 0xF5, 0xFE
-    };
+    static const uint8_t emb_guid[16] = {0x1B, 0x57, 0x8A, 0x0E, 0x26, 0x69, 0x6E, 0x46, 0xB4, 0xAD, 0x8A, 0xB0, 0x46, 0x11, 0xF5, 0xFE};
 
     uint32_t cdi_rows = info.table_rows[0x37];
     int cdi_rsize = has_cdi_sz + guid_idx_sz + blob_idx_sz;

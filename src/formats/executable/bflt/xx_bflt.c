@@ -14,8 +14,8 @@ static bool bflt_read_header(const Abstractformat *format, xx_bflt_header *heade
 {
     uint8_t bytes[XX_BFLT_HEADER_SIZE];
     size_t index;
-    if (!format || !format->device || !header || format->base_address < 0 ||
-        !xx_io_read_at(format->device, format->base_address, bytes, sizeof(bytes)) || memcmp(bytes, "bFLT", 4) != 0) {
+    if (!format || !format->device || !header || format->base_address < 0 || !xx_io_read_at(format->device, format->base_address, bytes, sizeof(bytes)) ||
+        memcmp(bytes, "bFLT", 4) != 0) {
         return false;
     }
     header->revision = xx_data_get_u32(bytes, sizeof(bytes), 4, true);
@@ -114,8 +114,7 @@ static bool bflt_parse_relocations(xx_bflt *reader, uint64_t file_size)
         reader->relocations_complete = true;
         return true;
     }
-    if ((uint64_t)header->relocation_start > file_size ||
-        (uint64_t)header->relocation_count > (file_size - header->relocation_start) / 4U ||
+    if ((uint64_t)header->relocation_start > file_size || (uint64_t)header->relocation_count > (file_size - header->relocation_start) / 4U ||
         header->relocation_count > (UINT32_MAX - header->relocation_start) / 4U) {
         /* Radare accepts the bFLT itself but reports no relocations when this
          * table is truncated or hostile. Keep that useful distinction. */
@@ -230,7 +229,8 @@ bool xx_bflt_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_
     uint64_t data_end;
     uint64_t bss_end;
     if (!reader || !output || (mode != XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_REGIONS) ||
-        (!self->base_info_handled && !xx_bflt_handle_base_info(self, pd))) return false;
+        (!self->base_info_handled && !xx_bflt_handle_base_info(self, pd)))
+        return false;
     size = self->format_size;
     if (size < 0) return false;
     output->binary_offset = self->base_address;
@@ -250,12 +250,12 @@ bool xx_bflt_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_
     if (size >= XX_BFLT_HEADER_SIZE && data_end >= XX_BFLT_HEADER_SIZE && data_end <= (uint64_t)size && bss_end >= data_end && bss_end <= INT64_MAX) {
         if (!xx_memory_map_add_part(output, self->base_address, XX_BFLT_HEADER_SIZE, 0U, XX_BFLT_HEADER_SIZE, XX_FILE_PART_HEADER, 0, "bFLT header", false) ||
             !xx_memory_map_add_part(output, self->base_address + XX_BFLT_HEADER_SIZE, (int64_t)data_end - XX_BFLT_HEADER_SIZE, XX_BFLT_HEADER_SIZE,
-                                    (int64_t)bss_end - XX_BFLT_HEADER_SIZE, XX_FILE_PART_REGION, 0, "Load image", false)) return false;
-        if (data_end < (uint64_t)size &&
-            !xx_memory_map_add_part(output, self->base_address + (int64_t)data_end, size - (int64_t)data_end, XX_INVALID_ADDRESS,
-                                    size - (int64_t)data_end, XX_FILE_PART_TABLE, 0, "Relocations/trailer", false)) return false;
-    } else if (size > 0 &&
-               !xx_memory_map_add_part(output, self->base_address, size, 0U, size, XX_FILE_PART_REGION, 0, "bFLT image", false)) {
+                                    (int64_t)bss_end - XX_BFLT_HEADER_SIZE, XX_FILE_PART_REGION, 0, "Load image", false))
+            return false;
+        if (data_end < (uint64_t)size && !xx_memory_map_add_part(output, self->base_address + (int64_t)data_end, size - (int64_t)data_end, XX_INVALID_ADDRESS,
+                                                                 size - (int64_t)data_end, XX_FILE_PART_TABLE, 0, "Relocations/trailer", false))
+            return false;
+    } else if (size > 0 && !xx_memory_map_add_part(output, self->base_address, size, 0U, size, XX_FILE_PART_REGION, 0, "bFLT image", false)) {
         return false;
     }
     return xx_memory_map_finalize(output);

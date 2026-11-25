@@ -6,9 +6,7 @@
 
 #include "xx_die_engine_api_internal.h"
 
-static const ApiEntry g_com_api_table[] = {
-    {NULL, A_NONE, 0}
-};
+static const ApiEntry g_com_api_table[] = {{NULL, A_NONE, 0}};
 
 void die_engine_api_register_com(JSCtx *pCtx, JSVal object)
 {

@@ -36,8 +36,7 @@ typedef struct xx_archive_console_config {
  *
  * Process entry point: owns standard-console setup (including Windows UTF-8
  * arguments and SIGXFSZ handling). Invoke once from main, not concurrently. */
-int xx_archive_console_main(int argc, char **argv,
-                            const xx_archive_console_config *config);
+int xx_archive_console_main(int argc, char **argv, const xx_archive_console_config *config);
 
 #ifdef __cplusplus
 }

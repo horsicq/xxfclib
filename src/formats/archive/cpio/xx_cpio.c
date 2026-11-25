@@ -297,7 +297,6 @@ static bool cpio_read_name(Abstractformat *format, int64_t offset, uint64_t size
 
 static char *cpio_decode_cp437_name(const char *encoded)
 {
-
     size_t length, i, j = 0U;
     char *utf8;
     if (!encoded) return NULL;
@@ -481,9 +480,7 @@ static uint32_t cpio_afio_method(xx_io_device *source, int64_t offset, uint64_t 
     return 0U;
 }
 
-static bool cpio_parse_record(Abstractformat *format, int64_t relative_offset,
-                              bool names_cp437, bool pwb_binary_mode,
-                              cpio_member *member, xx_pd_struct *pd)
+static bool cpio_parse_record(Abstractformat *format, int64_t relative_offset, bool names_cp437, bool pwb_binary_mode, cpio_member *member, xx_pd_struct *pd)
 {
     uint8_t header[XX_CPIO_AFIO_HEADER_SIZE];
     xx_cpio_variant_t variant;
@@ -887,9 +884,7 @@ static bool cpio_parse(Abstractformat *format, cpio_stream **result, xx_pd_struc
         if (offset < 0 || offset >= limit || limit > archive_size) goto fail;
         while (offset < limit) {
             cpio_member member;
-            if ((pd && xx_pd_is_stopped(pd)) ||
-                !cpio_parse_record(source, offset, archive->read_names_cp437,
-                                   archive->read_pwb_binary_mode, &member, pd)) {
+            if ((pd && xx_pd_is_stopped(pd)) || !cpio_parse_record(source, offset, archive->read_names_cp437, archive->read_pwb_binary_mode, &member, pd)) {
                 goto fail;
             }
             if (stream->first_variant == XX_CPIO_VARIANT_UNKNOWN) {
@@ -1354,8 +1349,7 @@ void xx_cpio_free(xx_cpio *archive)
     xx_mem_free(archive);
 }
 
-bool xx_cpio_set_read_options(xx_cpio *archive, bool names_cp437,
-                              bool pwb_binary_mode)
+bool xx_cpio_set_read_options(xx_cpio *archive, bool names_cp437, bool pwb_binary_mode)
 {
     if (!archive) return false;
     archive->read_names_cp437 = names_cp437;

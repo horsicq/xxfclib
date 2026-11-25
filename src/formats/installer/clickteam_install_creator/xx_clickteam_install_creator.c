@@ -696,11 +696,11 @@ typedef struct cic_list {
     uint32_t capacity;
     uint32_t version;
     /* 1.x only */
-    uint32_t list_count;              /* file lists seen (one per component set) */
-    uint32_t mask_bits;               /* lists whose patches are XOR-masked */
-    int8_t key[CIC_KEY_SLOTS];        /* 0 unknown, k + 1 = key k, -1 none fits */
-    uint32_t sum_keys[CIC_SUM_KEYS];  /* checksum whitening candidates */
-    int32_t sum_key;                  /* the candidate in use, -1 until one fits */
+    uint32_t list_count;             /* file lists seen (one per component set) */
+    uint32_t mask_bits;              /* lists whose patches are XOR-masked */
+    int8_t key[CIC_KEY_SLOTS];       /* 0 unknown, k + 1 = key k, -1 none fits */
+    uint32_t sum_keys[CIC_SUM_KEYS]; /* checksum whitening candidates */
+    int32_t sum_key;                 /* the candidate in use, -1 until one fits */
 } cic_list;
 
 static void cic_list_free(cic_list *list)
@@ -716,7 +716,6 @@ static void cic_list_free(cic_list *list)
 }
 
 /* Windows-1252 bytes 0x80..0x9F; 0 marks an unassigned byte. */
-
 
 /* Converts the raw name (at most CIC_MAX_NAME bytes, no NUL) to UTF-8 with
  * '\' turned into '/'.  An unassigned byte becomes U+FFFD and makes the
@@ -1792,8 +1791,8 @@ static const cic_entry *cic1_patch_base(const cic_list *list, const cic_entry *e
 
 /* Decodes one member with the given mask keys (-1: unmasked) and verifies
  * its size and checksum. */
-static bool cic1_member_body(xx_io_device *device, const cic_scan *scan, cic_list *list, const cic_entry *e, cic_sink *sink, int member_key, int patch_key, uint32_t depth,
-                             xx_pd_struct *pd)
+static bool cic1_member_body(xx_io_device *device, const cic_scan *scan, cic_list *list, const cic_entry *e, cic_sink *sink, int member_key, int patch_key,
+                             uint32_t depth, xx_pd_struct *pd)
 {
     int64_t at = scan->region + (int64_t)e->offset;
     uint64_t used = 0U;
@@ -1847,7 +1846,8 @@ static bool cic1_member_body(xx_io_device *device, const cic_scan *scan, cic_lis
 
 /* Settles the mask key of slot @p slot by trial decodes of @p e into
  * nothing; the key is remembered for the slot. */
-static bool cic1_find_key(xx_io_device *device, const cic_scan *scan, cic_list *list, const cic_entry *e, uint32_t slot, bool member_masked, uint32_t depth, xx_pd_struct *pd)
+static bool cic1_find_key(xx_io_device *device, const cic_scan *scan, cic_list *list, const cic_entry *e, uint32_t slot, bool member_masked, uint32_t depth,
+                          xx_pd_struct *pd)
 {
     uint32_t k;
     if (list->key[slot] != 0) return list->key[slot] > 0;

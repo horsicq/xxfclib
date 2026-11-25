@@ -242,8 +242,7 @@ static void xx_aes_encrypt_block_ni(const xx_aes_context *context, const uint8_t
     for (round = 1U; round < context->rounds; ++round) {
         state = _mm_aesenc_si128(state, _mm_loadu_si128((const __m128i *)(const void *)(context->round_keys + ((size_t)round * XX_AES_BLOCK_SIZE))));
     }
-    state = _mm_aesenclast_si128(state,
-                                _mm_loadu_si128((const __m128i *)(const void *)(context->round_keys + ((size_t)context->rounds * XX_AES_BLOCK_SIZE))));
+    state = _mm_aesenclast_si128(state, _mm_loadu_si128((const __m128i *)(const void *)(context->round_keys + ((size_t)context->rounds * XX_AES_BLOCK_SIZE))));
     _mm_storeu_si128((__m128i *)(void *)output, state);
 }
 
@@ -253,8 +252,7 @@ static void xx_aes_decrypt_block_ni(const xx_aes_context *context, const uint8_t
     __m128i state = _mm_loadu_si128((const __m128i *)(const void *)input);
     unsigned int round;
 
-    state = _mm_xor_si128(state,
-                         _mm_loadu_si128((const __m128i *)(const void *)(context->round_keys + ((size_t)context->rounds * XX_AES_BLOCK_SIZE))));
+    state = _mm_xor_si128(state, _mm_loadu_si128((const __m128i *)(const void *)(context->round_keys + ((size_t)context->rounds * XX_AES_BLOCK_SIZE))));
     for (round = context->rounds - 1U; round > 0U; --round) {
         __m128i key = _mm_loadu_si128((const __m128i *)(const void *)(context->round_keys + ((size_t)round * XX_AES_BLOCK_SIZE)));
         state = _mm_aesdec_si128(state, _mm_aesimc_si128(key));

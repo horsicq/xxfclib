@@ -125,7 +125,6 @@ static uint32_t krz_advance(uint32_t state, uint64_t steps)
 /* Windows-1252 0x80..0x9F.  The five undefined bytes keep their C1 code
  * point, which the name check refuses. */
 
-
 static size_t krz_put_utf8(char *out, uint32_t code)
 {
     if (code < 0x80U) {

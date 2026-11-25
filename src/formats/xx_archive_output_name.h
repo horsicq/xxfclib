@@ -81,18 +81,19 @@ static inline bool xx_archive_relative_name_ok(const char *name)
 
 static bool xx_archive_name_device(const char *s, size_t n)
 {
-    char b[9]; size_t i = 0;
+    char b[9];
+    size_t i = 0;
     while (i < n && i < sizeof(b) - 1 && s[i] != '.') {
         unsigned char c = (unsigned char)s[i];
         b[i++] = (char)(c >= 'a' && c <= 'z' ? c - 32 : c);
     }
     while (i && (b[i - 1] == ' ' || b[i - 1] == '.')) --i;
     b[i] = 0;
-    return !xx_rt_strcmp(b, "CON") || !xx_rt_strcmp(b, "PRN") || !xx_rt_strcmp(b, "AUX") || !xx_rt_strcmp(b, "NUL") ||
-           !xx_rt_strcmp(b, "CLOCK$") || !xx_rt_strcmp(b, "CONIN$") || !xx_rt_strcmp(b, "CONOUT$") ||
+    return !xx_rt_strcmp(b, "CON") || !xx_rt_strcmp(b, "PRN") || !xx_rt_strcmp(b, "AUX") || !xx_rt_strcmp(b, "NUL") || !xx_rt_strcmp(b, "CLOCK$") ||
+           !xx_rt_strcmp(b, "CONIN$") || !xx_rt_strcmp(b, "CONOUT$") ||
            (i == 4 && (!xx_rt_memcmp(b, "COM", 3) || !xx_rt_memcmp(b, "LPT", 3)) && b[3] >= '1' && b[3] <= '9') ||
-           (i == 5 && (!xx_rt_memcmp(b, "COM", 3) || !xx_rt_memcmp(b, "LPT", 3)) &&
-               (unsigned char)b[3] == 0xc2 && ((unsigned char)b[4] == 0xb9 || (unsigned char)b[4] == 0xb2 || (unsigned char)b[4] == 0xb3));
+           (i == 5 && (!xx_rt_memcmp(b, "COM", 3) || !xx_rt_memcmp(b, "LPT", 3)) && (unsigned char)b[3] == 0xc2 &&
+            ((unsigned char)b[4] == 0xb9 || (unsigned char)b[4] == 0xb2 || (unsigned char)b[4] == 0xb3));
 }
 
 static char *xx_archive_output_name(const char *raw, unsigned codepage, unsigned flags)
@@ -131,11 +132,9 @@ static char *xx_archive_output_name(const char *raw, unsigned codepage, unsigned
     converted = (char *)xx_mem_alloc(length * 4 + 1);
     if (!converted) return NULL;
     /* A valid UTF-8 string wins over a historical single-byte fallback. */
-    if (utf8 && xx_codepage_to_utf8(utf8, (const unsigned char *)s, length,
-            (unsigned char *)converted, length * 4, &used, &written) == XX_CODEPAGE_OK) {
+    if (utf8 && xx_codepage_to_utf8(utf8, (const unsigned char *)s, length, (unsigned char *)converted, length * 4, &used, &written) == XX_CODEPAGE_OK) {
         converted[written] = 0;
-    } else if (cp && xx_codepage_to_utf8(cp, (const unsigned char *)s, length,
-            (unsigned char *)converted, length * 4, &used, &written) == XX_CODEPAGE_OK) {
+    } else if (cp && xx_codepage_to_utf8(cp, (const unsigned char *)s, length, (unsigned char *)converted, length * 4, &used, &written) == XX_CODEPAGE_OK) {
         converted[written] = 0;
     } else {
         /* Unknown/undefined historical bytes remain distinguishable. */
@@ -145,8 +144,14 @@ static char *xx_archive_output_name(const char *raw, unsigned codepage, unsigned
     s = converted;
     length = xx_rt_strlen(s);
     out = (char *)xx_mem_alloc(length * 3 + 4);
-    if (!out) { xx_mem_free(converted); return NULL; }
-    if (drive) { out[at++] = drive; out[at++] = '_'; }
+    if (!out) {
+        xx_mem_free(converted);
+        return NULL;
+    }
+    if (drive) {
+        out[at++] = drive;
+        out[at++] = '_';
+    }
     for (start = p = s;; ++p) {
         if (!*p || *p == '/' || *p == '\\') {
             size_t n = (size_t)(p - start), i;
@@ -157,15 +162,18 @@ static char *xx_archive_output_name(const char *raw, unsigned codepage, unsigned
                     unsigned char c = (unsigned char)start[i];
                     bool escape = !(flags & XX_ARCHIVE_NAME_NATIVE_TAR) && (c == '%' || c == '~');
 #ifdef _WIN32
-                    escape = escape || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' ||
-                        ((c == '.' || c == ' ') && i + 1 == n) || (device && i == 0);
+                    escape = escape || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' || ((c == '.' || c == ' ') && i + 1 == n) ||
+                             (device && i == 0);
 #else
                     (void)device;
 #endif
                     /* If neither codec accepted the name, escape high bytes. */
                     if (c >= 128 && !converted_valid) escape = true;
-                    if (escape) { out[at++] = '%'; out[at++] = hex[c >> 4]; out[at++] = hex[c & 15]; }
-                    else out[at++] = (char)c;
+                    if (escape) {
+                        out[at++] = '%';
+                        out[at++] = hex[c >> 4];
+                        out[at++] = hex[c & 15];
+                    } else out[at++] = (char)c;
                 }
             }
             if (!*p) break;
@@ -174,7 +182,10 @@ static char *xx_archive_output_name(const char *raw, unsigned codepage, unsigned
     }
     xx_mem_free(converted);
     out[at] = 0;
-    if (!at) { xx_mem_free(out); return NULL; }
+    if (!at) {
+        xx_mem_free(out);
+        return NULL;
+    }
     return out;
 }
 
@@ -183,9 +194,9 @@ static inline bool xx_archive_output_equal_prefix(const char *name, const char *
 #ifdef _WIN32
     wchar_t *a = xx_str_utf8_to_unicode(name), *b = xx_str_utf8_to_unicode(other);
     size_t n = a ? xx_str_wlen(a) : 0, m = b ? xx_str_wlen(b) : 0;
-    bool same = a && b && n <= m && (!b[n] || b[n] == '/') &&
-        CompareStringOrdinal(a, (int)n, b, (int)n, TRUE) == CSTR_EQUAL;
-    xx_str_wfree(a); xx_str_wfree(b);
+    bool same = a && b && n <= m && (!b[n] || b[n] == '/') && CompareStringOrdinal(a, (int)n, b, (int)n, TRUE) == CSTR_EQUAL;
+    xx_str_wfree(a);
+    xx_str_wfree(b);
     return same;
 #else
     size_t n = xx_rt_strlen(name), m = xx_rt_strlen(other);
@@ -202,18 +213,26 @@ static inline bool xx_archive_output_suffix(char **name, size_t index)
     xx_rt_snprintf(suffix, sizeof(suffix), "~xx-%08llu", (unsigned long long)index);
     next = xx_str_concat(*name, suffix);
     if (!next) return false;
-    xx_mem_free(*name); *name = next; return true;
+    xx_mem_free(*name);
+    *name = next;
+    return true;
 }
 
-#define XX_ARCHIVE_OUTPUT_RESOLVE(result, array, count, index, field, cp, flags) do { \
-    size_t xx_oni; bool xx_oncollision = (count) > 2048; \
-    for (xx_oni = 0; !xx_oncollision && (result) && xx_oni < (count); ++xx_oni) { \
-        char *xx_onother; if (xx_oni == (index)) continue; \
-        xx_onother = xx_archive_output_name((array)[xx_oni].field, cp, flags); \
-        if (xx_onother && xx_archive_output_equal_prefix(result, xx_onother)) xx_oncollision = true; \
-        xx_mem_free(xx_onother); \
-    } \
-    if (xx_oncollision && !xx_archive_output_suffix(&(result), index)) { xx_mem_free(result); (result) = NULL; } \
-} while (0)
+#define XX_ARCHIVE_OUTPUT_RESOLVE(result, array, count, index, field, cp, flags)                         \
+    do {                                                                                                 \
+        size_t xx_oni;                                                                                   \
+        bool xx_oncollision = (count) > 2048;                                                            \
+        for (xx_oni = 0; !xx_oncollision && (result) && xx_oni < (count); ++xx_oni) {                    \
+            char *xx_onother;                                                                            \
+            if (xx_oni == (index)) continue;                                                             \
+            xx_onother = xx_archive_output_name((array)[xx_oni].field, cp, flags);                       \
+            if (xx_onother && xx_archive_output_equal_prefix(result, xx_onother)) xx_oncollision = true; \
+            xx_mem_free(xx_onother);                                                                     \
+        }                                                                                                \
+        if (xx_oncollision && !xx_archive_output_suffix(&(result), index)) {                             \
+            xx_mem_free(result);                                                                         \
+            (result) = NULL;                                                                             \
+        }                                                                                                \
+    } while (0)
 
 #endif

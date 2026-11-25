@@ -9,8 +9,15 @@
 extern "C" {
 #endif
 typedef enum xx_byte_transform_kind {
-    XX_BYTE_FILL, XX_BYTE_XOR, XX_BYTE_AND, XX_BYTE_OR, XX_BYTE_NOT,
-    XX_BYTE_ADD, XX_BYTE_SUBTRACT, XX_BYTE_ROTATE_LEFT, XX_BYTE_ROTATE_RIGHT,
+    XX_BYTE_FILL,
+    XX_BYTE_XOR,
+    XX_BYTE_AND,
+    XX_BYTE_OR,
+    XX_BYTE_NOT,
+    XX_BYTE_ADD,
+    XX_BYTE_SUBTRACT,
+    XX_BYTE_ROTATE_LEFT,
+    XX_BYTE_ROTATE_RIGHT,
     XX_BYTE_SWAP_ENDIAN
 } xx_byte_transform_kind;
 typedef struct xx_byte_transform {
@@ -18,7 +25,8 @@ typedef struct xx_byte_transform {
     unsigned int width; /* 1, 2, 4 or 8 byte unsigned words. */
     bool big_endian;
     uint64_t operand;
-    const unsigned char *pattern; size_t pattern_length;
+    const unsigned char *pattern;
+    size_t pattern_length;
 } xx_byte_transform;
 /* Allocation-free and transactional argument validation. Non-fill lengths
  * must contain complete words. Fill phase permits streaming repeated patterns.

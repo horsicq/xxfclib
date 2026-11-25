@@ -196,8 +196,7 @@ static bool xx_cfl_handler(uint32_t flags, uint32_t *method, bool *encrypted)
 {
     *encrypted = (flags & UINT32_C(0xff000000)) == XX_CFL_TAAT_CIPHER;
     *method = flags & UINT32_C(0x00ffffff);
-    return ((flags & UINT32_C(0xff000000)) == 0U || *encrypted) &&
-           (*method == XX_CFL_METHOD_STORED || *method == XX_CFL_METHOD_ZLIB || *method == XX_CFL_METHOD_LZO1X);
+    return ((flags & UINT32_C(0xff000000)) == 0U || *encrypted) && (*method == XX_CFL_METHOD_STORED || *method == XX_CFL_METHOD_ZLIB || *method == XX_CFL_METHOD_LZO1X);
 }
 
 /* Forward declarations: the parse and the decode
@@ -306,8 +305,9 @@ static uint8_t *xx_cfl_read_block(Abstractformat *self, int64_t span, int64_t of
      * stream and is decoded as one. Its Adler-32 trailer is absent -- the
      * block size cuts the stream at the last DEFLATE byte -- which this
      * decoder tolerates, and a short decode is caught by the length test. */
-    if (!(method == XX_CFL_METHOD_LZO1X ? xx_lzo1x_decompress(packed, (size_t)packed_size, plain, (size_t)expanded, &written) :
-          xx_zlib_stream_decode_memory(packed, (size_t)packed_size, plain, (size_t)expanded, &written)) || written != (size_t)expanded) {
+    if (!(method == XX_CFL_METHOD_LZO1X ? xx_lzo1x_decompress(packed, (size_t)packed_size, plain, (size_t)expanded, &written)
+                                        : xx_zlib_stream_decode_memory(packed, (size_t)packed_size, plain, (size_t)expanded, &written)) ||
+        written != (size_t)expanded) {
         xx_mem_free(packed);
         xx_mem_free(plain);
         return NULL;
@@ -478,7 +478,8 @@ static xx_cfl_stream *xx_cfl_parse(Abstractformat *self, xx_pd_struct *pd)
                 goto fail;
             }
             packed_size = block_size - 4;
-            if (packed_size < (method == XX_CFL_METHOD_ZLIB ? XX_CFL_ZLIB_HEADER_SIZE : 1) || !xx_cfl_range_within(span, data_offset + XX_CFL_BLOCK_HEADER_SIZE, packed_size)) {
+            if (packed_size < (method == XX_CFL_METHOD_ZLIB ? XX_CFL_ZLIB_HEADER_SIZE : 1) ||
+                !xx_cfl_range_within(span, data_offset + XX_CFL_BLOCK_HEADER_SIZE, packed_size)) {
                 xx_str_free(name);
                 goto fail;
             }
@@ -594,8 +595,9 @@ static bool xx_cfl_decode(Abstractformat *self, const xx_cfl_member *member, uin
     /* Raw DEFLATE, not zlib: parse validated the two RFC 1950 header bytes and
      * then published the extent that starts after them, because the archive
      * stores no Adler-32 trailer for a zlib decoder to find. */
-    if (!(member->method == XX_CFL_METHOD_LZO1X ? xx_lzo1x_decompress(packed, (size_t)member->compressed_size, plain, (size_t)member->uncompressed_size, &written) :
-          xx_deflate_decompress_memory(packed, (size_t)member->compressed_size, plain, (size_t)member->uncompressed_size, &written, false)) ||
+    if (!(member->method == XX_CFL_METHOD_LZO1X
+              ? xx_lzo1x_decompress(packed, (size_t)member->compressed_size, plain, (size_t)member->uncompressed_size, &written)
+              : xx_deflate_decompress_memory(packed, (size_t)member->compressed_size, plain, (size_t)member->uncompressed_size, &written, false)) ||
         written != (size_t)member->uncompressed_size) {
         /* Short is a failure, never a success with fewer bytes: the container
          * states the exact decoded length, so anything else is corruption. */
@@ -731,7 +733,8 @@ static bool xx_cfl_set_record(xx_archive_record *record, const xx_cfl_member *me
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->uncompressed_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->method) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, member->encrypted);
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, member->encrypted);
 }
 
 static bool xx_cfl_copy_options(xx_list_s *target, const xx_list_s *options)

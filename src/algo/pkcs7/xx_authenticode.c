@@ -74,7 +74,8 @@ static bool parse_spc_string(const xx_asn1_tlv *tlv, xx_spc_string *out)
         return true;
     }
     if (tlv->tag_class == XX_ASN1_CLASS_CONTEXT && tlv->tag == 1U) {
-        for (i = 0U; i < tlv->content_size; ++i) if (tlv->content[i] > 0x7fU) return false;
+        for (i = 0U; i < tlv->content_size; ++i)
+            if (tlv->content[i] > 0x7fU) return false;
         out->kind = XX_SPC_STRING_IA5;
         out->bytes = tlv->content;
         out->size = tlv->content_size;
@@ -89,7 +90,8 @@ static bool parse_spc_link(const xx_asn1_tlv *tlv, xx_spc_link *out)
     if (!tlv) return false;
     if (tlv->tag_class == XX_ASN1_CLASS_CONTEXT && tlv->tag == 0U) {
         if (tlv->constructed) return false;
-        for (i = 0U; i < tlv->content_size; ++i) if (tlv->content[i] > 0x7fU) return false;
+        for (i = 0U; i < tlv->content_size; ++i)
+            if (tlv->content[i] > 0x7fU) return false;
         out->kind = XX_SPC_LINK_URL;
         out->bytes = tlv->content;
         out->size = tlv->content_size;
@@ -100,8 +102,11 @@ static bool parse_spc_link(const xx_asn1_tlv *tlv, xx_spc_link *out)
         xx_asn1_tlv class_id, serialized;
         const uint8_t *bytes;
         size_t bytes_size;
-        if (!xx_asn1_cursor_init(&cursor, tlv, 3U) || !xx_asn1_cursor_next(&cursor, &class_id) || !xx_asn1_read_octet_string_primitive(&class_id, &bytes, &bytes_size) || bytes_size != 16U) return false;
-        if (!xx_asn1_cursor_next(&cursor, &serialized) || !xx_asn1_read_octet_string_primitive(&serialized, &bytes, &bytes_size) || !xx_asn1_cursor_at_end(&cursor)) return false;
+        if (!xx_asn1_cursor_init(&cursor, tlv, 3U) || !xx_asn1_cursor_next(&cursor, &class_id) || !xx_asn1_read_octet_string_primitive(&class_id, &bytes, &bytes_size) ||
+            bytes_size != 16U)
+            return false;
+        if (!xx_asn1_cursor_next(&cursor, &serialized) || !xx_asn1_read_octet_string_primitive(&serialized, &bytes, &bytes_size) || !xx_asn1_cursor_at_end(&cursor))
+            return false;
         out->kind = XX_SPC_LINK_MONIKER;
         out->bytes = tlv->content;
         out->size = tlv->content_size;
@@ -111,7 +116,8 @@ static bool parse_spc_link(const xx_asn1_tlv *tlv, xx_spc_link *out)
         xx_asn1_cursor cursor;
         xx_asn1_tlv inner;
         xx_spc_string string;
-        if (!xx_asn1_cursor_init(&cursor, tlv, 3U) || !xx_asn1_cursor_next(&cursor, &inner) || !xx_asn1_cursor_at_end(&cursor) || !parse_spc_string(&inner, &string)) return false;
+        if (!xx_asn1_cursor_init(&cursor, tlv, 3U) || !xx_asn1_cursor_next(&cursor, &inner) || !xx_asn1_cursor_at_end(&cursor) || !parse_spc_string(&inner, &string))
+            return false;
         out->kind = XX_SPC_LINK_FILE; /* content is the inner SpcString's own TLV (re-parse with parse_spc_string if needed) */
         out->bytes = tlv->content;
         out->size = tlv->content_size;

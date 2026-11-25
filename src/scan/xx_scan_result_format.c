@@ -88,16 +88,18 @@ int xx_scan_type_to_prio(const char *pType)
     else if (xx_rt_strcmp(pClean, "compiler") == 0) nResult = 30;
     else if (xx_rt_strcmp(pClean, "language") == 0) nResult = 40;
     else if (xx_rt_strcmp(pClean, "library") == 0) nResult = 50;
-    else if ((xx_rt_strcmp(pClean, "tool") == 0) || (xx_rt_strcmp(pClean, "pe tool") == 0) || (xx_rt_strcmp(pClean, "sign tool") == 0) || (xx_rt_strcmp(pClean, "apk tool") == 0))
+    else if ((xx_rt_strcmp(pClean, "tool") == 0) || (xx_rt_strcmp(pClean, "pe tool") == 0) || (xx_rt_strcmp(pClean, "sign tool") == 0) ||
+             (xx_rt_strcmp(pClean, "apk tool") == 0))
         nResult = 60;
     else if ((xx_rt_strcmp(pClean, "protector") == 0) || (xx_rt_strcmp(pClean, "cryptor") == 0) || (xx_rt_strcmp(pClean, "crypter") == 0)) nResult = 70;
-    else if ((xx_rt_strcmp(pClean, ".net obfuscator") == 0) || (xx_rt_strcmp(pClean, "apk obfuscator") == 0) || (xx_rt_strcmp(pClean, "jar obfuscator") == 0)) nResult = 80;
+    else if ((xx_rt_strcmp(pClean, ".net obfuscator") == 0) || (xx_rt_strcmp(pClean, "apk obfuscator") == 0) || (xx_rt_strcmp(pClean, "jar obfuscator") == 0))
+        nResult = 80;
     else if ((xx_rt_strcmp(pClean, "dongle protection") == 0) || (xx_rt_strcmp(pClean, "protection") == 0)) nResult = 90;
     else if ((xx_rt_strcmp(pClean, "packer") == 0) || (xx_rt_strcmp(pClean, ".net compressor") == 0)) nResult = 100;
     else if (xx_rt_strcmp(pClean, "joiner") == 0) nResult = 110;
     else if ((xx_rt_strcmp(pClean, "sfx") == 0) || (xx_rt_strcmp(pClean, "installer") == 0)) nResult = 120;
-    else if ((xx_rt_strcmp(pClean, "virus") == 0) || (xx_rt_strcmp(pClean, "malware") == 0) || (xx_rt_strcmp(pClean, "trojan") == 0) || (xx_rt_strcmp(pClean, "corrupted data") == 0) ||
-             (xx_rt_strcmp(pClean, "personal data") == 0) || (xx_rt_strcmp(pClean, "author") == 0))
+    else if ((xx_rt_strcmp(pClean, "virus") == 0) || (xx_rt_strcmp(pClean, "malware") == 0) || (xx_rt_strcmp(pClean, "trojan") == 0) ||
+             (xx_rt_strcmp(pClean, "corrupted data") == 0) || (xx_rt_strcmp(pClean, "personal data") == 0) || (xx_rt_strcmp(pClean, "author") == 0))
         nResult = 70;
     else if (xx_rt_strcmp(pClean, "debug data") == 0) nResult = 200;
 
@@ -275,11 +277,10 @@ static const char *record_file_type(const xx_scan_result *result, const xx_scan_
 
 static int same_record_group(const xx_scan_record *left, const xx_scan_record *right)
 {
-    return left->file_type == right->file_type && left->offset == right->offset && left->size == right->size &&
-           left->scan_id == right->scan_id && left->parent_id == right->parent_id && left->scan_part == right->scan_part &&
+    return left->file_type == right->file_type && left->offset == right->offset && left->size == right->size && left->scan_id == right->scan_id &&
+           left->parent_id == right->parent_id && left->scan_part == right->scan_part &&
            (left->scan_part != XX_SCAN_PART_ARCHIVE ||
-            (left->archive_offset == right->archive_offset && left->archive_size == right->archive_size &&
-             left->archive_compressed == right->archive_compressed &&
+            (left->archive_offset == right->archive_offset && left->archive_size == right->archive_size && left->archive_compressed == right->archive_compressed &&
              xx_rt_strcmp(left->archive_member ? left->archive_member : "", right->archive_member ? right->archive_member : "") == 0));
 }
 
@@ -301,22 +302,18 @@ static void append_group_header(xx_buf_t *buf, const xx_scan_result *result, con
         scan_value_to_hex_ex((uint64_t)record->archive_offset, sOffset, sizeof(sOffset));
         scan_value_to_hex_ex((uint64_t)record->archive_size, sSize, sizeof(sSize));
         if (record->archive_member && record->archive_member[0]) {
-            xx_buf_appendf(buf, "Stream [%s]: %s (\"%s\") [Offset = 0x%s, Size = 0x%s]",
-                          method, record_file_type(result, record),
-                          record->archive_member, sOffset, sSize);
+            xx_buf_appendf(buf, "Stream [%s]: %s (\"%s\") [Offset = 0x%s, Size = 0x%s]", method, record_file_type(result, record), record->archive_member, sOffset,
+                           sSize);
         } else {
-            xx_buf_appendf(buf, "Stream [%s]: %s [Offset = 0x%s, Size = 0x%s]",
-                          method, record_file_type(result, record),
-                          sOffset, sSize);
+            xx_buf_appendf(buf, "Stream [%s]: %s [Offset = 0x%s, Size = 0x%s]", method, record_file_type(result, record), sOffset, sSize);
         }
     } else if (record && (record->scan_part == XX_SCAN_PART_OVERLAY || record->scan_part == XX_SCAN_PART_RESOURCE)) {
         char sOffset[32];
         char sSize[32];
         scan_value_to_hex_ex((uint64_t)record->offset, sOffset, sizeof(sOffset));
         scan_value_to_hex_ex((uint64_t)record->size, sSize, sizeof(sSize));
-        xx_buf_appendf(buf, "%s: %s [Offset = 0x%s, Size = 0x%s]",
-                      record->scan_part == XX_SCAN_PART_OVERLAY ? "Overlay" : "Resource",
-                      record_file_type(result, record), sOffset, sSize);
+        xx_buf_appendf(buf, "%s: %s [Offset = 0x%s, Size = 0x%s]", record->scan_part == XX_SCAN_PART_OVERLAY ? "Overlay" : "Resource", record_file_type(result, record),
+                       sOffset, sSize);
     } else {
         xx_buf_append_str(buf, record_file_type(result, record));
     }
@@ -392,15 +389,17 @@ char *xx_scan_format_text(xx_scan_result *pResult, xx_scan_options *pOptions)
     return xx_buf_detach(&buf, NULL);
 }
 
-xxfc_status_t xx_scan_print_text(xx_scan_result *result, xx_scan_options *options,
-    const xx_terminal_state *terminal, const xx_scan_color_options *colors)
+xxfc_status_t xx_scan_print_text(xx_scan_result *result, xx_scan_options *options, const xx_terminal_state *terminal, const xx_scan_color_options *colors)
 {
     xx_scan_color_options defaults;
     xxfc_status_t status;
     int i, j;
     if (!result || !options || !terminal) return XXFC_ERR_NULL_PARAM;
     if (result->nCount < 0 || (result->nCount && !result->pRecords)) return XXFC_ERR_INVALID_ARG;
-    if (!colors) { xx_scan_color_options_init(&defaults, 0); colors = &defaults; }
+    if (!colors) {
+        xx_scan_color_options_init(&defaults, 0);
+        colors = &defaults;
+    }
     status = XXFC_OK;
     if (!result->nCount) {
         status = xx_terminal_print(terminal, xx_scan_file_type_name(result->file_type));
@@ -439,8 +438,7 @@ xxfc_status_t xx_scan_print_text(xx_scan_result *result, xx_scan_options *option
             for (k = 0; k < depth + 1 && status == XXFC_OK; ++k) {
                 status = xx_terminal_print(terminal, "    ");
             }
-            if (status == XXFC_OK)
-                status = xx_terminal_write_color(terminal, text, size, color.foreground, color.background);
+            if (status == XXFC_OK) status = xx_terminal_write_color(terminal, text, size, color.foreground, color.background);
             xx_rt_free(text);
             if (status == XXFC_OK) status = xx_terminal_print(terminal, "\n");
         }
@@ -465,9 +463,7 @@ static int visible_count(xx_scan_result *pResult, xx_scan_options *pOptions)
     return nResult;
 }
 
-static xxfc_status_t structured_buffer_sink(void *pContext,
-                                            const char *pData,
-                                            size_t nSize)
+static xxfc_status_t structured_buffer_sink(void *pContext, const char *pData, size_t nSize)
 {
     xx_buf_append((xx_buf_t *)pContext, pData, nSize);
     return XXFC_OK;
@@ -530,8 +526,7 @@ char *xx_scan_format_json(xx_scan_result *pResult, xx_scan_options *pOptions)
         int nWritten = 0;
         if (header && !first_record_in_group(pResult, i)) continue;
         for (j = i; j < pResult->nCount; ++j) {
-            if (same_record_group(header, &pResult->pRecords[j]) &&
-                !(pResult->pRecords[j].is_unknown && pOptions->hide_unknown)) ++nVisible;
+            if (same_record_group(header, &pResult->pRecords[j]) && !(pResult->pRecords[j].is_unknown && pOptions->hide_unknown)) ++nVisible;
         }
         if (nGroups++) xx_buf_append_str(&buf, ",\n");
 
@@ -547,20 +542,22 @@ char *xx_scan_format_json(xx_scan_result *pResult, xx_scan_options *pOptions)
         json_string(&buf, record_file_type(pResult, header));
         xx_buf_append_str(&buf, ",\n            \"info\": \"\",\n");
         xx_buf_appendf(&buf, "            \"offset\": \"%lld\",\n            \"parentfilepart\": \"%s\",\n",
-                      (long long)(header->file_type == XX_FILE_TYPE_UNKNOWN ? 0 : header->offset),
-                      header->scan_part == XX_SCAN_PART_ARCHIVE ? "Archive" :
-                      header->scan_part == XX_SCAN_PART_RESOURCE ? "Resource" :
-                      header->scan_part == XX_SCAN_PART_OVERLAY ? "Overlay" : "Header");
+                       (long long)(header->file_type == XX_FILE_TYPE_UNKNOWN ? 0 : header->offset),
+                       header->scan_part == XX_SCAN_PART_ARCHIVE    ? "Archive"
+                       : header->scan_part == XX_SCAN_PART_RESOURCE ? "Resource"
+                       : header->scan_part == XX_SCAN_PART_OVERLAY  ? "Overlay"
+                                                                    : "Header");
         if (header->scan_part == XX_SCAN_PART_ARCHIVE) {
             xx_buf_append_str(&buf, "            \"archive_member\": ");
             json_string(&buf, header->archive_member);
-            xx_buf_appendf(&buf, ",\n            \"archive_offset\": \"%lld\",\n            \"archive_size\": \"%lld\",\n"
-                                "            \"archive_compressed\": %s,\n            \"offsetbasis\": \"%s\",\n",
-                          (long long)header->archive_offset, (long long)header->archive_size,
-                          header->archive_compressed ? "true" : "false", header->archive_compressed ? "member" : "input");
+            xx_buf_appendf(&buf,
+                           ",\n            \"archive_offset\": \"%lld\",\n            \"archive_size\": \"%lld\",\n"
+                           "            \"archive_compressed\": %s,\n            \"offsetbasis\": \"%s\",\n",
+                           (long long)header->archive_offset, (long long)header->archive_size, header->archive_compressed ? "true" : "false",
+                           header->archive_compressed ? "member" : "input");
         }
         xx_buf_appendf(&buf, "            \"size\": \"%lld\",\n            \"values\": [\n",
-                      (long long)(header->file_type == XX_FILE_TYPE_UNKNOWN ? pResult->nFileSize : header->size));
+                       (long long)(header->file_type == XX_FILE_TYPE_UNKNOWN ? pResult->nFileSize : header->size));
         for (j = i; j < pResult->nCount; ++j) {
             xx_scan_record *pRecord = &pResult->pRecords[j];
             xx_buf_t line;
@@ -701,4 +698,3 @@ char *xx_scan_format_csv(xx_scan_result *pResult, xx_scan_options *pOptions, cha
 
     return xx_buf_detach(&buf, NULL);
 }
-

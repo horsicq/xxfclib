@@ -663,11 +663,9 @@ bool xx_beospkg_unpack_current_archive_record(Abstractformat *format, xx_archive
     }
     if (!base) goto done;
     relative = xx_archive_output_name(member->name, 65001, 0);
-    if (relative)
-        XX_ARCHIVE_OUTPUT_RESOLVE(relative, stream->items, stream->count, stream->index, name, 65001, 0);
+    if (relative) XX_ARCHIVE_OUTPUT_RESOLVE(relative, stream->items, stream->count, stream->index, name, 65001, 0);
     if (!relative) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", relative)
-                                                                                                  : xx_str_concat(base, relative);
+    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", relative) : xx_str_concat(base, relative);
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;
     {
         xx_io_device *destination = xx_io_file_open(path, "wb");

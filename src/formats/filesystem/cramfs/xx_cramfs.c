@@ -579,7 +579,7 @@ static bool xx_cramfs_parse(Abstractformat *self, xx_cramfs_private *parsed, boo
         }
         parsed->image_end = total_size;
     } else if (image_size < (uint32_t)XX_CRAMFS_SUPERBLOCK_SIZE || (int64_t)image_size > XX_CRAMFS_MAX_IMAGE_SIZE ||
-        !xx_cramfs_add(self->base_address, image_size, &parsed->image_end) || parsed->image_end > total_size) {
+               !xx_cramfs_add(self->base_address, image_size, &parsed->image_end) || parsed->image_end > total_size) {
         goto fail;
     }
 
@@ -649,11 +649,9 @@ static void xx_cramfs_detect_block_size(Abstractformat *self, xx_cramfs_private 
     if (parsed->flags & XX_CRAMFS_FLAG_EXT_BLOCK_POINTERS) return;
     for (i = 0U; i < parsed->count; ++i) {
         const xx_cramfs_entry *candidate = &parsed->entries[i];
-        if ((candidate->mode & XX_CRAMFS_S_IFMT) == XX_CRAMFS_S_IFREG && candidate->data_offset >= 0 &&
-            (!entry || candidate->size > entry->size)) entry = candidate;
+        if ((candidate->mode & XX_CRAMFS_S_IFMT) == XX_CRAMFS_S_IFREG && candidate->data_offset >= 0 && (!entry || candidate->size > entry->size)) entry = candidate;
     }
-    if (!entry || entry->size <= XX_CRAMFS_BLOCK_SIZE ||
-        !xx_cramfs_read_at(self->device, entry->data_offset, pointer, sizeof(pointer))) return;
+    if (!entry || entry->size <= XX_CRAMFS_BLOCK_SIZE || !xx_cramfs_read_at(self->device, entry->data_offset, pointer, sizeof(pointer))) return;
     input = (uint8_t *)xx_mem_alloc(XX_CRAMFS_MAX_BLOCK_SIZE * 2U);
     output = (uint8_t *)xx_mem_alloc(XX_CRAMFS_MAX_BLOCK_SIZE);
     if (!input || !output) goto done;
@@ -661,10 +659,10 @@ static void xx_cramfs_detect_block_size(Abstractformat *self, xx_cramfs_private 
         uint64_t count = ((uint64_t)entry->size + page - 1U) / page;
         int64_t start = entry->data_offset + (int64_t)(count * 4U), end;
         if (pd && xx_pd_is_stopped(pd)) break;
-        if (!xx_cramfs_add(parsed->base, xx_data_get_u32(pointer, sizeof(pointer), 0U, parsed->big_endian), &end) ||
-            start >= end || end > parsed->image_end || end - start > (int64_t)page * 2) continue;
-        if (xx_cramfs_read_at(self->device, start, input, (size_t)(end - start)) &&
-            xx_cramfs_decode_block(input, (size_t)(end - start), output, page)) {
+        if (!xx_cramfs_add(parsed->base, xx_data_get_u32(pointer, sizeof(pointer), 0U, parsed->big_endian), &end) || start >= end || end > parsed->image_end ||
+            end - start > (int64_t)page * 2)
+            continue;
+        if (xx_cramfs_read_at(self->device, start, input, (size_t)(end - start)) && xx_cramfs_decode_block(input, (size_t)(end - start), output, page)) {
             parsed->block_size = page;
             break;
         }

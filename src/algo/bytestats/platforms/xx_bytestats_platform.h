@@ -35,24 +35,24 @@ void xx_bytestats_tables_add(const uint8_t *data, size_t size, uint32_t tables[4
 
 /* Count 16 bytes at p into four sub-tables (four 32-bit loads). The byte
  * order inside a word only changes which sub-table a byte lands in. */
-#define XX_BYTESTATS_COUNT_WORD(word, tables)    \
-    do {                                         \
-        ++(tables)[0][(word) & 0xFFU];           \
-        ++(tables)[1][((word) >> 8) & 0xFFU];    \
-        ++(tables)[2][((word) >> 16) & 0xFFU];   \
-        ++(tables)[3][(word) >> 24];             \
+#define XX_BYTESTATS_COUNT_WORD(word, tables)  \
+    do {                                       \
+        ++(tables)[0][(word) & 0xFFU];         \
+        ++(tables)[1][((word) >> 8) & 0xFFU];  \
+        ++(tables)[2][((word) >> 16) & 0xFFU]; \
+        ++(tables)[3][(word) >> 24];           \
     } while (0)
-#define XX_BYTESTATS_COUNT16(p, tables)          \
-    do {                                         \
+#define XX_BYTESTATS_COUNT16(p, tables)                  \
+    do {                                                 \
         uint32_t xx_bs_w0, xx_bs_w1, xx_bs_w2, xx_bs_w3; \
-        memcpy(&xx_bs_w0, (p), 4U);              \
-        memcpy(&xx_bs_w1, (p) + 4U, 4U);         \
-        memcpy(&xx_bs_w2, (p) + 8U, 4U);         \
-        memcpy(&xx_bs_w3, (p) + 12U, 4U);        \
-        XX_BYTESTATS_COUNT_WORD(xx_bs_w0, tables); \
-        XX_BYTESTATS_COUNT_WORD(xx_bs_w1, tables); \
-        XX_BYTESTATS_COUNT_WORD(xx_bs_w2, tables); \
-        XX_BYTESTATS_COUNT_WORD(xx_bs_w3, tables); \
+        memcpy(&xx_bs_w0, (p), 4U);                      \
+        memcpy(&xx_bs_w1, (p) + 4U, 4U);                 \
+        memcpy(&xx_bs_w2, (p) + 8U, 4U);                 \
+        memcpy(&xx_bs_w3, (p) + 12U, 4U);                \
+        XX_BYTESTATS_COUNT_WORD(xx_bs_w0, tables);       \
+        XX_BYTESTATS_COUNT_WORD(xx_bs_w1, tables);       \
+        XX_BYTESTATS_COUNT_WORD(xx_bs_w2, tables);       \
+        XX_BYTESTATS_COUNT_WORD(xx_bs_w3, tables);       \
     } while (0)
 
 /* Per-lane bound of the 32-bit serial-sum accumulators: each SIMD iteration

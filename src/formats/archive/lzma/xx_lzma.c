@@ -208,8 +208,7 @@ static bool xx_lzma_walk(xx_io_device *device, int64_t start, int64_t stop_at, x
              * either an end marker landing on the end of the input or the
              * declared size reached with at most a few bytes left unread,
              * which are then counted as part of the damaged stream. */
-            if (!first || header.declared_size == XX_LZMA_STREAM_UNKNOWN_SIZE || !xx_lzma_dictionary_is_canonical(header.dictionary_size) ||
-                stream.zero_data) {
+            if (!first || header.declared_size == XX_LZMA_STREAM_UNKNOWN_SIZE || !xx_lzma_dictionary_is_canonical(header.dictionary_size) || stream.zero_data) {
                 goto done;
             }
             if (stream.size_mismatch && !stream.end_marker) {
@@ -443,8 +442,8 @@ bool xx_lzma_unpack_to_device(xx_lzma *archive, xx_io_device *destination, xx_pd
         archive->stream_end < 0) {
         return false;
     }
-    return xx_lzma_walk(archive->format.device, archive->format.base_address, archive->stream_end, destination, 0U, archive->size_mismatch, pd, &info) && info.end == archive->stream_end &&
-           info.output_size == archive->uncompressed_size;
+    return xx_lzma_walk(archive->format.device, archive->format.base_address, archive->stream_end, destination, 0U, archive->size_mismatch, pd, &info) &&
+           info.end == archive->stream_end && info.output_size == archive->uncompressed_size;
 }
 
 xx_archive_record_state *xx_lzma_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)

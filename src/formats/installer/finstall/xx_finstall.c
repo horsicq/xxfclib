@@ -60,7 +60,6 @@ static const uint8_t fi_signature[11] = {0x01U, 'F', ' ', 'I', 'n', 's', 't', 'a
 
 /* Code page 437, 0x80..0xFF. */
 
-
 typedef struct fi_layout {
     int64_t available;     /**< Device bytes from the base on. */
     int64_t directory_end; /**< From the base. */

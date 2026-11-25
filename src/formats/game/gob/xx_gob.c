@@ -333,7 +333,8 @@ static xx_gob_stream *xx_gob_parse(Abstractformat *self, xx_pd_struct *pd)
          * Only the final, fully zero-padded marker has this interpretation. */
         if (flavour == XX_GOB_FLAVOUR_DF && index + 1U == count && size == 0 && offset == table_offset) {
             size_t i;
-            for (i = 0U; i < name_size && entry[8U + i] == 0U; ++i) {}
+            for (i = 0U; i < name_size && entry[8U + i] == 0U; ++i) {
+            }
             if (i == name_size) continue;
         }
         /* A member may not start inside the fixed header and may not run off

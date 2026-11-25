@@ -153,7 +153,10 @@ int js_debug_lookup(JSCtx *pCtx, size_t nFrame, const char *pIdentifier, JSVal *
     size_t nSize, i;
     if (pValue) *pValue = js_undefined();
     if (!pFrame || !pIdentifier || !*pIdentifier) return 0;
-    if (!xx_rt_strcmp(pIdentifier, "this")) { if (pValue) *pValue = js_dup(pFrame->thisVal); return 1; }
+    if (!xx_rt_strcmp(pIdentifier, "this")) {
+        if (pValue) *pValue = js_dup(pFrame->thisVal);
+        return 1;
+    }
     nSize = xx_rt_strlen(pIdentifier);
     for (i = 0; i < nSize; i++) {
         unsigned char c = (unsigned char)pIdentifier[i];
@@ -162,11 +165,17 @@ int js_debug_lookup(JSCtx *pCtx, size_t nFrame, const char *pIdentifier, JSVal *
     if (pFrame->pFunction && pFrame->pFunction->cls == JCLASS_NATIVE) return 0;
     for (pScope = pFrame->pScope; pScope; pScope = pScope->pParent) {
         JSProp *pProp = jsprops_find(&pScope->pVars->props, pIdentifier, nSize);
-        if (pProp) { if (pValue) *pValue = js_dup(pProp->value); return 1; }
+        if (pProp) {
+            if (pValue) *pValue = js_dup(pProp->value);
+            return 1;
+        }
     }
     {
         JSProp *pProp = jsprops_find(&pCtx->pGlobal->props, pIdentifier, nSize);
-        if (pProp) { if (pValue) *pValue = js_dup(pProp->value); return 1; }
+        if (pProp) {
+            if (pValue) *pValue = js_dup(pProp->value);
+            return 1;
+        }
     }
     return 0;
 }
@@ -472,8 +481,8 @@ static JSVal get_indexed_property(JSCtx *pCtx, JSVal base, JSVal key)
     size_t nKeySize = 0;
     char *pKey;
     JSVal result;
-    if (base.tag == JT_OBJ && key.tag == JT_NUM && key.u.n >= 0 && key.u.n <= 9007199254740991.0 &&
-        (double)(int64_t)key.u.n == key.u.n) return js_get_index(pCtx, base, (int64_t)key.u.n);
+    if (base.tag == JT_OBJ && key.tag == JT_NUM && key.u.n >= 0 && key.u.n <= 9007199254740991.0 && (double)(int64_t)key.u.n == key.u.n)
+        return js_get_index(pCtx, base, (int64_t)key.u.n);
     pKey = key_from_value(pCtx, key, &nKeySize, sScratch);
     result = get_property(pCtx, base, pKey, nKeySize);
     key_release(pKey, sScratch, key);
@@ -523,8 +532,7 @@ JSVal js_call_function(JSCtx *pCtx, JSObj *pFn, JSVal thisVal, int nArgc, JSVal 
         return js_throw(pCtx, "RangeError: invalid argument count");
     }
     if ((pFn->cls == JCLASS_NATIVE) && pFn->pBoundTarget && (pFn->nBoundArgs > 0)) {
-        if ((pFn->nBoundArgs > INT_MAX - nArgc) ||
-            ((size_t)(pFn->nBoundArgs + nArgc) > SIZE_MAX / sizeof(JSVal))) {
+        if ((pFn->nBoundArgs > INT_MAX - nArgc) || ((size_t)(pFn->nBoundArgs + nArgc) > SIZE_MAX / sizeof(JSVal))) {
             return js_throw(pCtx, "RangeError: too many arguments");
         }
     }
@@ -1118,8 +1126,7 @@ static JSVal eval_call(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, JSRef *pAppe
         }
     }
 
-    if (pAppendRef && pNode->nList == 1 && thisVal.tag == JT_STR && pArgv[0].tag == JT_STR &&
-        js_is_string_concat(fn.u.o) && pCtx->nCallDepth < pCtx->nMaxCallDepth &&
+    if (pAppendRef && pNode->nList == 1 && thisVal.tag == JT_STR && pArgv[0].tag == JT_STR && js_is_string_concat(fn.u.o) && pCtx->nCallDepth < pCtx->nMaxCallDepth &&
         ref_owns_string(pCtx, pAppendRef, pFrame, thisVal)) {
         result = js_concat_str_assign(pCtx, thisVal, pArgv[0]);
     }
@@ -1327,12 +1334,11 @@ static JSVal eval_assign(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
 
     if (pNode->op == OP_ASSIGN) {
         JSNode *pBinary = pNode->b;
-        if (pNode->a->type == N_IDENT && pBinary->type == N_BINARY && pBinary->op == OP_ADD &&
-            pBinary->a->type == N_IDENT && !xx_rt_strcmp(pNode->a->pStr, pBinary->a->pStr)) {
+        if (pNode->a->type == N_IDENT && pBinary->type == N_BINARY && pBinary->op == OP_ADD && pBinary->a->type == N_IDENT &&
+            !xx_rt_strcmp(pNode->a->pStr, pBinary->a->pStr)) {
             value = eval_add_assignment(pCtx, pBinary, pFrame, &ref);
-        } else if (pNode->a->type == N_IDENT && pBinary->type == N_CALL && pBinary->nList == 1 &&
-                   pBinary->a->type == N_MEMBER && !xx_rt_strcmp(pBinary->a->pStr, "concat") &&
-                   pBinary->a->a->type == N_IDENT && !xx_rt_strcmp(pNode->a->pStr, pBinary->a->a->pStr)) {
+        } else if (pNode->a->type == N_IDENT && pBinary->type == N_CALL && pBinary->nList == 1 && pBinary->a->type == N_MEMBER &&
+                   !xx_rt_strcmp(pBinary->a->pStr, "concat") && pBinary->a->a->type == N_IDENT && !xx_rt_strcmp(pNode->a->pStr, pBinary->a->a->pStr)) {
             value = eval_concat_assignment(pCtx, pBinary, pFrame, &ref);
         } else {
             value = eval_expr(pCtx, pBinary, pFrame);
@@ -1554,8 +1560,7 @@ static JSVal eval_expr_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
         case N_THIS: return js_dup(pFrame->thisVal);
         case N_EMPTY: return js_undefined();
 
-        case N_REGEXP:
-            return pNode->pRegExpLiteral ? js_new_regexp_shared_val(pCtx, pNode->pRegExpLiteral) : js_new_regexp_val(pCtx, pNode->pStr, pNode->pStr2);
+        case N_REGEXP: return pNode->pRegExpLiteral ? js_new_regexp_shared_val(pCtx, pNode->pRegExpLiteral) : js_new_regexp_val(pCtx, pNode->pStr, pNode->pStr2);
 
         case N_IDENT: {
             int bFound = 0;
@@ -1822,9 +1827,9 @@ static JSCompletion exec_stmt_labeled(JSCtx *pCtx, JSNode *pNode, JSFrame *pFram
     }
 
     if (pCtx->bDebugAborted) return completion_normal();
-    if (pNode && pNode->type != N_PROGRAM && pNode->type != N_BLOCK &&
-        pNode->type != N_FUNCTION && pNode->type != N_EMPTY && pNode->type != N_CASE &&
-        !pCtx->bException && !debug_checkpoint(pCtx, pNode, pFrame)) return completion_normal();
+    if (pNode && pNode->type != N_PROGRAM && pNode->type != N_BLOCK && pNode->type != N_FUNCTION && pNode->type != N_EMPTY && pNode->type != N_CASE &&
+        !pCtx->bException && !debug_checkpoint(pCtx, pNode, pFrame))
+        return completion_normal();
     pCtx->nEvalDepth++;
     completion = exec_stmt_node(pCtx, pNode, pFrame, pLabel);
     pCtx->nEvalDepth--;
@@ -2097,7 +2102,10 @@ static JSCompletion exec_stmt_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, 
                 JSCompletion body;
                 JSCompletion out;
 
-                if (i && !debug_checkpoint(pCtx, pNode, pFrame)) { js_release(pCtx, key); break; }
+                if (i && !debug_checkpoint(pCtx, pNode, pFrame)) {
+                    js_release(pCtx, key);
+                    break;
+                }
                 if (pVarDecl) {
                     scope_set_node(pCtx, pFrame->pScope, pVarDecl, js_dup(key));
                 } else if (pTarget && pTarget->type == N_IDENT) {

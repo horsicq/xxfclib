@@ -21,9 +21,7 @@ void xx_symbol_record_cleanup(xx_symbol_record *r)
     xx_symbol_record_init(r);
 }
 
-
 #include "xx_stream_runtime_internal.h"
-
 
 XX_STREAM_RUNTIME(symbol, symbols, StreamSymbols, xx_format_get_stream_symbols)
 #undef XX_STREAM_RUNTIME

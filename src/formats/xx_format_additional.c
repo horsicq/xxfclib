@@ -231,105 +231,135 @@ xx_file_type_t xx_format_detect_additional(xx_io_device *device)
     if (size <= 0) goto done;
     prefix_size = size < (int64_t)sizeof(prefix) ? (size_t)size : sizeof(prefix);
     if (xx_io_seek64(device, 0, SEEK_SET) != 0 || !probe_read_exact(device, prefix, prefix_size)) goto done;
-    if(size>=14 && (!xx_rt_memcmp(prefix,"tiz1",4) || !xx_rt_memcmp(prefix,"tiz2",4))) {
-        xx_tarma_installer *reader=xx_tarma_installer_create(device,0);
-        bool valid=reader && xx_tarma_installer_check_is_valid(&reader->format,NULL);
+    if (size >= 14 && (!xx_rt_memcmp(prefix, "tiz1", 4) || !xx_rt_memcmp(prefix, "tiz2", 4))) {
+        xx_tarma_installer *reader = xx_tarma_installer_create(device, 0);
+        bool valid = reader && xx_tarma_installer_check_is_valid(&reader->format, NULL);
         xx_tarma_installer_free(reader);
-        if(valid) { result=XX_FILE_TYPE_TARMA_INSTALLER;goto done; }
+        if (valid) {
+            result = XX_FILE_TYPE_TARMA_INSTALLER;
+            goto done;
+        }
     }
     if (size >= 512 && xx_installjammer_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_INSTALLJAMMER; goto done;
+        result = XX_FILE_TYPE_INSTALLJAMMER;
+        goto done;
     }
     if (size >= 18 && xx_patchwise_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_PATCHWISE; goto done;
+        result = XX_FILE_TYPE_PATCHWISE;
+        goto done;
     }
     if (size >= 18 && xx_secura_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_SECURA; goto done;
+        result = XX_FILE_TYPE_SECURA;
+        goto done;
     }
     if (size >= 18 && xx_self_unstuffer_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_SELF_UNSTUFFER; goto done;
+        result = XX_FILE_TYPE_SELF_UNSTUFFER;
+        goto done;
     }
     if (size >= 18 && xx_starforce_ovl_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_STARFORCE_OVL; goto done;
+        result = XX_FILE_TYPE_STARFORCE_OVL;
+        goto done;
     }
-    if (size >= 100 && ((prefix[0] == 'M' && prefix[1] == 'Z') || !xx_rt_memcmp(prefix, "\xbd\x05\xfe\xef", 4U)) &&
-        xx_stuffit5_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_STUFFIT5; goto done;
+    if (size >= 100 && ((prefix[0] == 'M' && prefix[1] == 'Z') || !xx_rt_memcmp(prefix, "\xbd\x05\xfe\xef", 4U)) && xx_stuffit5_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_STUFFIT5;
+        goto done;
     }
-    if (size >= 32 && (prefix[0]|((unsigned)prefix[1]<<8))>=1980U && (prefix[0]|((unsigned)prefix[1]<<8))<=2100U && prefix[3]==0 && prefix[2]>=1 && prefix[2]<=12 && xx_sod_installer_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_SOD_INSTALLER; goto done;
+    if (size >= 32 && (prefix[0] | ((unsigned)prefix[1] << 8)) >= 1980U && (prefix[0] | ((unsigned)prefix[1] << 8)) <= 2100U && prefix[3] == 0 && prefix[2] >= 1 &&
+        prefix[2] <= 12 && xx_sod_installer_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_SOD_INSTALLER;
+        goto done;
     }
     if (prefix_size >= 36U && xx_pftw_pkg_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_PFTW_PKG; goto done;
+        result = XX_FILE_TYPE_PFTW_PKG;
+        goto done;
     }
-    if (prefix_size >= 24U && (prefix[0] || prefix[1]) && prefix[2]>=0x21U && prefix[2]<=0x7eU &&
-        prefix[23]<=1U && xx_fury_dat_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_FURY_DAT; goto done;
+    if (prefix_size >= 24U && (prefix[0] || prefix[1]) && prefix[2] >= 0x21U && prefix[2] <= 0x7eU && prefix[23] <= 1U && xx_fury_dat_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_FURY_DAT;
+        goto done;
     }
     if (prefix_size >= 12U && !xx_rt_memcmp(prefix, "GLB2.0\0\0", 8U) && xx_demonstar_glb_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_DEMONSTAR_GLB; goto done;
+        result = XX_FILE_TYPE_DEMONSTAR_GLB;
+        goto done;
     }
     /* A MAS pack opens with its entry count (below 65536) and has no magic:
      * the reader validates the whole table. */
     if (prefix_size >= 40U && prefix[0] && !prefix[2] && !prefix[3] && xx_mas_pack_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_MAS_PACK; goto done;
+        result = XX_FILE_TYPE_MAS_PACK;
+        goto done;
     }
     /* CARMAN opens with a printable member name; its two CRC-32s per member
      * authenticate the whole archive. */
     if (prefix_size >= 19U && prefix[0] >= 0x20U && prefix[0] != 0x7fU && xx_carman_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_CARMAN; goto done;
+        result = XX_FILE_TYPE_CARMAN;
+        goto done;
     }
     /* A C64 ARK opens with its entry count and a CBM file-type byte. */
-    if (prefix_size >= 30U && prefix[0] && (prefix[1] & 0x80U) && !(prefix[1] & 0x38U) && (prefix[1] & 7U) <= 4U &&
-        xx_cbm_ark_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_CBM_ARK; goto done;
+    if (prefix_size >= 30U && prefix[0] && (prefix[1] & 0x80U) && !(prefix[1] & 0x38U) && (prefix[1] & 7U) <= 4U && xx_cbm_ark_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CBM_ARK;
+        goto done;
     }
     /* CauseWay Compressor data: "CWC", the position width, both sizes. */
     if (prefix_size >= 12U && !xx_rt_memcmp(prefix, "CWC", 3U) && prefix[3] >= 9U && prefix[3] <= 16U && xx_cwc_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_CWC; goto done;
+        result = XX_FILE_TYPE_CWC;
+        goto done;
     }
     /* IBM OS/2 service-pack member: "S" ? ? "S" and a word, one of six
      * magics; the reader decodes the whole stream to its end code. */
-    if (prefix_size >= 8U && prefix[0] == 0x53U && prefix[3] == 0x53U && xx_csdpack_header_key(prefix, prefix_size) &&
-        xx_csd_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_CSD; goto done;
+    if (prefix_size >= 8U && prefix[0] == 0x53U && prefix[3] == 0x53U && xx_csdpack_header_key(prefix, prefix_size) && xx_csd_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CSD;
+        goto done;
     }
     /* Consultant Plus database: an envelope chunk 0x00D2 of size 0xD2, or a
      * raw 0x819A chunk spanning the whole file. */
-    if (prefix_size >= 14U && ((prefix[0] == 0xD2U && !prefix[1] && prefix[2] == 0xD2U && !prefix[3] && !prefix[4] && !prefix[5]) ||
-                               (prefix[0] == 0x9AU && prefix[1] == 0x81U && xx_data_get_u32(prefix + 2, 4, 0, false) == (uint64_t)size)) &&
+    if (prefix_size >= 14U &&
+        ((prefix[0] == 0xD2U && !prefix[1] && prefix[2] == 0xD2U && !prefix[3] && !prefix[4] && !prefix[5]) ||
+         (prefix[0] == 0x9AU && prefix[1] == 0x81U && xx_data_get_u32(prefix + 2, 4, 0, false) == (uint64_t)size)) &&
         xx_consplus_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_CONSPLUS_DB; goto done;
+        result = XX_FILE_TYPE_CONSPLUS_DB;
+        goto done;
     }
     /* C64 self-dissolving archive: a PRG whose one BASIC line is SYS. */
     if (prefix_size >= 0x23U && prefix[1] && (prefix[1] == 0x04U || prefix[1] == 0x08U || prefix[1] == 0x1CU) && prefix[0] == 0x01U && prefix[6] == 0x9EU &&
         prefix[7] == 0x28U && xx_c64_sda_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_C64_SDA; goto done;
+        result = XX_FILE_TYPE_C64_SDA;
+        goto done;
     }
     if (prefix_size >= 16U && !xx_rt_memcmp(prefix, "CPFFLZW ", 8U) && xx_cpff_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_CPFF; goto done;
+        result = XX_FILE_TYPE_CPFF;
+        goto done;
     }
     /* Compaq MSGDATA: NUL-terminated 13-byte names and the first slice offset. */
     if (prefix_size >= 0x44U && prefix[0] > 0x20U && !prefix[12] && prefix[13] > 0x20U && !prefix[25] && xx_compaq_msgdata_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_COMPAQ_MSGDATA; goto done;
+        result = XX_FILE_TYPE_COMPAQ_MSGDATA;
+        goto done;
     }
     /* Chasm "CSid" resource archive (ahead of the generic "CS" readers). */
     if (prefix_size >= 27U && !xx_rt_memcmp(prefix, "CSid", 4U) && xx_chasm_csid_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_CHASM_CSID; goto done;
+        result = XX_FILE_TYPE_CHASM_CSID;
+        goto done;
     }
     /* CreateInstall package: three u16 1 at 8, or "xxx" at 0x39. */
-    if (prefix_size >= 64U && ((prefix[8] == 1U && !prefix[9] && prefix[10] == 1U && !prefix[11] && prefix[12] == 1U && !prefix[13]) ||
-                               (prefix[0x33] == 0x0AU && prefix[0x34] == 0x0AU && !xx_rt_memcmp(prefix + 0x39, "xxx", 3U))) &&
+    if (prefix_size >= 64U &&
+        ((prefix[8] == 1U && !prefix[9] && prefix[10] == 1U && !prefix[11] && prefix[12] == 1U && !prefix[13]) ||
+         (prefix[0x33] == 0x0AU && prefix[0x34] == 0x0AU && !xx_rt_memcmp(prefix + 0x39, "xxx", 3U))) &&
         xx_createinstall_pak_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_CREATEINSTALL_PAK; goto done;
+        result = XX_FILE_TYPE_CREATEINSTALL_PAK;
+        goto done;
     }
-    if (prefix_size >= 0x3DU && !xx_rt_memcmp(prefix, "\x0a\x04\x0d" "ChfLZ\x05\x06\x08", 11U) && xx_chieflz_v1_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_CHIEFLZ_V1; goto done;
+    if (prefix_size >= 0x3DU &&
+        !xx_rt_memcmp(prefix,
+                      "\x0a\x04\x0d"
+                      "ChfLZ\x05\x06\x08",
+                      11U) &&
+        xx_chieflz_v1_fast_detect(device, 0, false)) {
+        result = XX_FILE_TYPE_CHIEFLZ_V1;
+        goto done;
     }
     /* Impressions ".RES" resource archive (extension .gob; the reader validates
      * the exact directory-tail size relation). */
     if (prefix_size >= 12U && !xx_rt_memcmp(prefix, ".RES", 4U) && xx_impressions_res_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_IMPRESSIONS_RES; goto done;
+        result = XX_FILE_TYPE_IMPRESSIONS_RES;
+        goto done;
     }
     /* Instalit volume: trailer + "[PVM]" directory (before the numbered-split
      * fallback claims *.001 files). */
@@ -337,46 +367,63 @@ xx_file_type_t xx_format_detect_additional(xx_io_device *device)
         xx_instalit_data *reader = xx_instalit_data_create(device, 0);
         bool valid = reader && xx_instalit_data_check_is_valid(&reader->format, NULL);
         xx_instalit_data_free(reader);
-        if (valid) { result = XX_FILE_TYPE_INSTALIT_DATA; goto done; }
+        if (valid) {
+            result = XX_FILE_TYPE_INSTALIT_DATA;
+            goto done;
+        }
     }
     /* CORK installer member: "CORK" and version 1. */
     if (prefix_size >= 33U && !xx_rt_memcmp(prefix, "CORK\x01\x00", 6U) && xx_cork_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_CORK; goto done;
+        result = XX_FILE_TYPE_CORK;
+        goto done;
     }
     /* CVRB installer member: "CVRB", method 0 at +18; the plaintext CRC is
      * verified by the reader. */
     if (prefix_size >= 19U && !xx_rt_memcmp(prefix, "CVRB", 4U) && prefix[18] == 0U && xx_cvrb_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_CVRB; goto done;
+        result = XX_FILE_TYPE_CVRB;
+        goto done;
     }
     /* Central Point CPZ has no magic: a member count below 65536 and the
      * directory CRC-32 plus every member's packed CRC-32, checked by the
      * reader, identify it. */
     if (prefix_size >= 40U && (prefix[0] || prefix[1]) && !prefix[2] && !prefix[3] && xx_cpz_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_CPZ; goto done;
+        result = XX_FILE_TYPE_CPZ;
+        goto done;
     }
     /* CADC .CAR: a 03 01 record tag and a printable name; every member's
      * CRC-32 is verified by the reader. */
     if (prefix_size >= 24U && prefix[0] == 0x03U && prefix[1] == 0x01U && prefix[2] >= 0x20U && prefix[2] != 0x7FU && xx_cadc_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_CADC; goto done;
+        result = XX_FILE_TYPE_CADC;
+        goto done;
     }
     if (prefix_size >= 12U && !xx_rt_memcmp(prefix, "pOdA", 4U) && xx_installshield_obl_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_INSTALLSHIELD_OBL; goto done;
+        result = XX_FILE_TYPE_INSTALLSHIELD_OBL;
+        goto done;
     }
     if (prefix_size >= 8U && !xx_rt_memcmp(prefix, "STOR", 4U) && xx_stor_resource_fast_detect(device, 0, false)) {
-        result = XX_FILE_TYPE_STOR_RESOURCE; goto done;
+        result = XX_FILE_TYPE_STOR_RESOURCE;
+        goto done;
     }
-    if ((prefix_size >= 4U && !xx_rt_memcmp(prefix, "#1!#", 4U)) ||
-        (prefix_size >= 2U && prefix[0] == 'M' && prefix[1] == 'Z')) {
-        if (xx_natata_ebook_fast_detect(device, 0, false)) { result = XX_FILE_TYPE_NATATA_EBOOK; goto done; }
+    if ((prefix_size >= 4U && !xx_rt_memcmp(prefix, "#1!#", 4U)) || (prefix_size >= 2U && prefix[0] == 'M' && prefix[1] == 'Z')) {
+        if (xx_natata_ebook_fast_detect(device, 0, false)) {
+            result = XX_FILE_TYPE_NATATA_EBOOK;
+            goto done;
+        }
     }
     if (size >= 202 && prefix[0] < 104U && matches(device, prefix, prefix_size, size, 108, (const unsigned char *)"\x04\0\0\0\x04\0\0\0", 8U)) {
-        if (xx_eid_fast_detect(device, 0, false)) { result = XX_FILE_TYPE_EID; goto done; }
+        if (xx_eid_fast_detect(device, 0, false)) {
+            result = XX_FILE_TYPE_EID;
+            goto done;
+        }
     }
     if (prefix_size >= 12U && !xx_rt_memcmp(prefix, "|_|_", 4U)) {
         Abstractformat *reader = xx_apple_diags_create(device, 0);
         bool valid = reader && xx_format_is_valid(reader, NULL);
         xx_apple_diags_free(reader);
-        if (valid) { result = XX_FILE_TYPE_APPLE_DIAGS; goto done; }
+        if (valid) {
+            result = XX_FILE_TYPE_APPLE_DIAGS;
+            goto done;
+        }
     }
     if (prefix_size >= 30U && !xx_rt_memcmp(prefix, "SOFTWARE PIRATESRelease 3.02$0", 30U)) {
         xx_snatchit_cp2 *reader = xx_snatchit_cp2_create(device, 0);
@@ -1600,8 +1647,7 @@ xx_file_type_t xx_format_detect_additional(xx_io_device *device)
             if (valid) result = XX_FILE_TYPE_BYTEKILLER;
         }
     }
-    if (result == XX_FILE_TYPE_UNKNOWN && size >= 61 && size <= 64 * 1024 * 1024 &&
-        matches(device, prefix, prefix_size, size, -3, (const unsigned char *)"DWC", 3U)) {
+    if (result == XX_FILE_TYPE_UNKNOWN && size >= 61 && size <= 64 * 1024 * 1024 && matches(device, prefix, prefix_size, size, -3, (const unsigned char *)"DWC", 3U)) {
         xx_dwc *reader = xx_dwc_create(device, 0);
         bool valid = reader && xx_dwc_check_is_valid(&reader->format, NULL);
         xx_dwc_free(reader);
@@ -1611,9 +1657,8 @@ xx_file_type_t xx_format_detect_additional(xx_io_device *device)
      * its conservative parser to validate the complete stream: at least two
      * nonempty sectors, plausible per-sector geometry, and no trailing bytes.
      * The native reader separately bounds the file, record count and sizes. */
-    if (result == XX_FILE_TYPE_UNKNOWN && size >= 18 && size <= 64 * 1024 * 1024 && prefix_size >= 8U &&
-        prefix[0] <= 99U && prefix[1] <= 3U && prefix[2] <= 99U && prefix[3] <= 3U && prefix[4] <= 63U && prefix[5] <= 7U &&
-        ((unsigned)prefix[6] | ((unsigned)prefix[7] << 8U)) <= 16384U) {
+    if (result == XX_FILE_TYPE_UNKNOWN && size >= 18 && size <= 64 * 1024 * 1024 && prefix_size >= 8U && prefix[0] <= 99U && prefix[1] <= 3U && prefix[2] <= 99U &&
+        prefix[3] <= 3U && prefix[4] <= 63U && prefix[5] <= 7U && ((unsigned)prefix[6] | ((unsigned)prefix[7] << 8U)) <= 16384U) {
         xx_pce_anadisk *reader = xx_pce_anadisk_create(device, 0);
         bool valid = false;
         if (reader) {

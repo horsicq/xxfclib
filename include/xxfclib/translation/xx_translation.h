@@ -30,12 +30,10 @@ typedef enum xx_translation_status {
  * Catalogs support up to 16 plural forms and expressions of 256 nodes/64 levels.
  * Read-only lookups may run concurrently. Destruction requires exclusive access.
  */
-XXFC_API xx_translation_status xx_translation_load_po(const void *data,
-    size_t size, xx_translation **out, size_t *error_line);
+XXFC_API xx_translation_status xx_translation_load_po(const void *data, size_t size, xx_translation **out, size_t *error_line);
 
 /* Optional I/O adapter; the UTF-8 path is opened through xxfclib generic I/O. */
-XXFC_API xx_translation_status xx_translation_load_po_file(const char *path,
-    xx_translation **out, size_t *error_line);
+XXFC_API xx_translation_status xx_translation_load_po_file(const char *path, xx_translation **out, size_t *error_line);
 XXFC_API void xx_translation_destroy(xx_translation *catalog);
 
 /* Returned text is borrowed until destroy. Missing, fuzzy and empty
@@ -43,14 +41,10 @@ XXFC_API void xx_translation_destroy(xx_translation *catalog);
  * NULL context and "" context are distinct, as in gettext. NULL msgid returns
  * "". gettext uses no context; pgettext uses the exact supplied context.
  */
-XXFC_API const char *xx_translation_gettext(const xx_translation *catalog,
-    const char *msgid);
-XXFC_API const char *xx_translation_pgettext(const xx_translation *catalog,
-    const char *context, const char *msgid);
-XXFC_API const char *xx_translation_ngettext(const xx_translation *catalog,
-    const char *singular, const char *plural, uint64_t n);
-XXFC_API const char *xx_translation_npgettext(const xx_translation *catalog,
-    const char *context, const char *singular, const char *plural, uint64_t n);
+XXFC_API const char *xx_translation_gettext(const xx_translation *catalog, const char *msgid);
+XXFC_API const char *xx_translation_pgettext(const xx_translation *catalog, const char *context, const char *msgid);
+XXFC_API const char *xx_translation_ngettext(const xx_translation *catalog, const char *singular, const char *plural, uint64_t n);
+XXFC_API const char *xx_translation_npgettext(const xx_translation *catalog, const char *context, const char *singular, const char *plural, uint64_t n);
 
 #ifdef __cplusplus
 }

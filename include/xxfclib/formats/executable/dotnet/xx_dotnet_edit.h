@@ -20,16 +20,14 @@ extern "C" {
  * Input is bounded by XX_DOTNET_US_MAX_HEAP; empty input may be NULL.
  * Input/output overlap is rejected. No allocation
  * or Unicode normalization occurs. */
-XXFC_API bool xx_dotnet_utf8_to_utf16(const uint8_t *input, size_t input_size,
-    uint16_t *output, size_t capacity, size_t *units);
+XXFC_API bool xx_dotnet_utf8_to_utf16(const uint8_t *input, size_t input_size, uint16_t *output, size_t capacity, size_t *units);
 
 /* Encode one ECMA-335 #US entry: compressed byte count, little-endian UTF16
  * units and terminal special-character flag. Lone surrogates are preserved.
  * NULL output queries its full encoded size. Failure clears *encoded_size
  * and leaves output unchanged. Input/output overlap is rejected. The entry
  * is bounded by the #US token limit. */
-XXFC_API bool xx_dotnet_us_encode(const uint16_t *units, size_t count,
-    uint8_t *output, size_t capacity, size_t *encoded_size);
+XXFC_API bool xx_dotnet_us_encode(const uint16_t *units, size_t count, uint8_t *output, size_t capacity, size_t *encoded_size);
 
 /* Relocate PE/CLI metadata and replace its #US heap in a fresh owned buffer.
  * This independently validates the input file's complete editable structural
@@ -44,9 +42,8 @@ XXFC_API bool xx_dotnet_us_encode(const uint16_t *units, size_t count,
  * max_output is an explicit positive file-size bound, at most MAX_IMAGE.
  * On failure output/size are cleared; error, when supplied, is static text.
  * Input and pool are unchanged. Release success output with edit_free(). */
-XXFC_API bool xx_dotnet_rebuild_user_strings(const uint8_t *file, size_t file_size,
-    const uint8_t *pool, size_t pool_size, size_t max_output,
-    uint8_t **output, size_t *output_size, const char **error);
+XXFC_API bool xx_dotnet_rebuild_user_strings(const uint8_t *file, size_t file_size, const uint8_t *pool, size_t pool_size, size_t max_output, uint8_t **output,
+                                             size_t *output_size, const char **error);
 /* Explicitly remove a strong-name identity when producing edited output.
  * This changes assembly identity: the signed flag, signature directory/data,
  * and Assembly PublicKey flag/index are cleared in the owned output. It does
@@ -59,9 +56,8 @@ XXFC_API bool xx_dotnet_rebuild_user_strings(const uint8_t *file, size_t file_si
  * imports, load configuration and native exception/export tables) are rejected
  * on that strip path. The ordinary flags=0 path retains its prior scope. */
 #define XX_DOTNET_EDIT_STRIP_STRONG_NAME UINT32_C(1)
-XXFC_API bool xx_dotnet_rebuild_user_strings_ex(const uint8_t *file, size_t file_size,
-    const uint8_t *pool, size_t pool_size, size_t max_output, uint32_t flags,
-    uint8_t **output, size_t *output_size, const char **error);
+XXFC_API bool xx_dotnet_rebuild_user_strings_ex(const uint8_t *file, size_t file_size, const uint8_t *pool, size_t pool_size, size_t max_output, uint32_t flags,
+                                                uint8_t **output, size_t *output_size, const char **error);
 /* Turn an unsigned IL-only netmodule into an executable assembly using an
  * unsigned donor's Assembly identity and a validated static managed entry
  * MethodDef token. Existing-assembly input keeps its identity. Metadata and
@@ -70,9 +66,8 @@ XXFC_API bool xx_dotnet_rebuild_user_strings_ex(const uint8_t *file, size_t file
  * signatures are rejected. The same editable PE layout bounds as above apply.
  * A source _CorDllMain import is renamed _CorExeMain when promoting a module.
  * On failure output/size are cleared. Release output with edit_free(). */
-XXFC_API bool xx_dotnet_promote_module(const uint8_t *file, size_t file_size,
-    const uint8_t *donor, size_t donor_size, uint32_t entry_token, size_t max_output,
-    uint8_t **output, size_t *output_size, const char **error);
+XXFC_API bool xx_dotnet_promote_module(const uint8_t *file, size_t file_size, const uint8_t *donor, size_t donor_size, uint32_t entry_token, size_t max_output,
+                                       uint8_t **output, size_t *output_size, const char **error);
 XXFC_API void xx_dotnet_edit_free(void *buffer);
 
 #ifdef __cplusplus

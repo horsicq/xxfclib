@@ -126,8 +126,7 @@ bool xx_ms_pdb_read_named_stream(xx_ms_pdb *pdb, const char *name, uint8_t **dat
  * Embedded sources (/src/headerblock & /src/files/...)
  * ====================================================================== */
 
-bool xx_ms_pdb_get_embedded_sources(xx_ms_pdb *pdb, const xx_ms_pdb_names *names,
-                                     xx_ms_pdb_embedded_source_list *out)
+bool xx_ms_pdb_get_embedded_sources(xx_ms_pdb *pdb, const xx_ms_pdb_names *names, xx_ms_pdb_embedded_source_list *out)
 {
     xx_arena_t *arena = NULL;
     uint8_t *hb_data = NULL;
@@ -218,8 +217,7 @@ bool xx_ms_pdb_get_embedded_sources(xx_ms_pdb *pdb, const xx_ms_pdb_names *names
                             }
                         }
 
-                        snprintf(stream_name_buf, sizeof(stream_name_buf), "/src/files/%s",
-                                 virtual_name ? virtual_name : "");
+                        snprintf(stream_name_buf, sizeof(stream_name_buf), "/src/files/%s", virtual_name ? virtual_name : "");
                         for (p = stream_name_buf + 11; *p; p++) {
                             *p = (char)tolower((unsigned char)*p);
                         }
@@ -234,8 +232,7 @@ bool xx_ms_pdb_get_embedded_sources(xx_ms_pdb *pdb, const xx_ms_pdb_names *names
 
                         if (tmp_count >= tmp_cap) {
                             size_t new_cap = (tmp_cap == 0) ? 16 : tmp_cap * 2;
-                            xx_ms_pdb_embedded_source *n_items = (xx_ms_pdb_embedded_source *)xx_mem_realloc(
-                                tmp_items, new_cap * sizeof(xx_ms_pdb_embedded_source));
+                            xx_ms_pdb_embedded_source *n_items = (xx_ms_pdb_embedded_source *)xx_mem_realloc(tmp_items, new_cap * sizeof(xx_ms_pdb_embedded_source));
                             if (!n_items) {
                                 break;
                             }
@@ -274,9 +271,7 @@ bool xx_ms_pdb_get_embedded_sources(xx_ms_pdb *pdb, const xx_ms_pdb_names *names
             if (!sname) {
                 continue;
             }
-            if (srcs_strnicmp(sname, "/src/files/", 11) == 0 ||
-                srcs_strnicmp(sname, "/natvis/", 8) == 0 ||
-                srcs_stricmp(sname, "natvis") == 0 ||
+            if (srcs_strnicmp(sname, "/src/files/", 11) == 0 || srcs_strnicmp(sname, "/natvis/", 8) == 0 || srcs_stricmp(sname, "natvis") == 0 ||
                 srcs_stricmp(sname, "/natvis") == 0) {
                 is_match = true;
             }
@@ -295,8 +290,7 @@ bool xx_ms_pdb_get_embedded_sources(xx_ms_pdb *pdb, const xx_ms_pdb_names *names
             if (!already_have) {
                 if (tmp_count >= tmp_cap) {
                     size_t new_cap = (tmp_cap == 0) ? 16 : tmp_cap * 2;
-                    xx_ms_pdb_embedded_source *n_items = (xx_ms_pdb_embedded_source *)xx_mem_realloc(
-                        tmp_items, new_cap * sizeof(xx_ms_pdb_embedded_source));
+                    xx_ms_pdb_embedded_source *n_items = (xx_ms_pdb_embedded_source *)xx_mem_realloc(tmp_items, new_cap * sizeof(xx_ms_pdb_embedded_source));
                     if (!n_items) {
                         break;
                     }
@@ -350,10 +344,8 @@ void xx_ms_pdb_embedded_source_list_free(xx_ms_pdb_embedded_source_list *list)
  * Source Server (srcsrv)
  * ====================================================================== */
 
-static const char *srcs_lookup_var(const char *name,
-                                  const xx_ms_pdb_env_pair *variables, size_t var_count,
-                                  const char **file_vars, size_t file_var_count,
-                                  const char *targ)
+static const char *srcs_lookup_var(const char *name, const xx_ms_pdb_env_pair *variables, size_t var_count, const char **file_vars, size_t file_var_count,
+                                   const char *targ)
 {
     size_t i = 0;
 
@@ -381,10 +373,8 @@ static const char *srcs_lookup_var(const char *name,
     return NULL;
 }
 
-static char *srcs_expand_srcsrv(xx_arena_t *arena, const char *pattern,
-                                const xx_ms_pdb_env_pair *variables, size_t var_count,
-                                const char **file_vars, size_t file_var_count,
-                                const char *targ, int depth)
+static char *srcs_expand_srcsrv(xx_arena_t *arena, const char *pattern, const xx_ms_pdb_env_pair *variables, size_t var_count, const char **file_vars,
+                                size_t file_var_count, const char *targ, int depth)
 {
     char buf[4096];
     size_t len = 0;
@@ -406,17 +396,23 @@ static char *srcs_expand_srcsrv(xx_arena_t *arena, const char *pattern,
             size_t fn_prefix_len = 0;
 
             if (srcs_strnicmp(p, "%fnbksl%(", 9) == 0) {
-                fn_type = 1; fn_prefix_len = 9;
+                fn_type = 1;
+                fn_prefix_len = 9;
             } else if (srcs_strnicmp(p, "%fnbksl(", 8) == 0) {
-                fn_type = 1; fn_prefix_len = 8;
+                fn_type = 1;
+                fn_prefix_len = 8;
             } else if (srcs_strnicmp(p, "%fnfile%(", 9) == 0) {
-                fn_type = 2; fn_prefix_len = 9;
+                fn_type = 2;
+                fn_prefix_len = 9;
             } else if (srcs_strnicmp(p, "%fnfile(", 8) == 0) {
-                fn_type = 2; fn_prefix_len = 8;
+                fn_type = 2;
+                fn_prefix_len = 8;
             } else if (srcs_strnicmp(p, "%fnvar%(", 8) == 0) {
-                fn_type = 3; fn_prefix_len = 8;
+                fn_type = 3;
+                fn_prefix_len = 8;
             } else if (srcs_strnicmp(p, "%fnvar(", 7) == 0) {
-                fn_type = 3; fn_prefix_len = 7;
+                fn_type = 3;
+                fn_prefix_len = 7;
             }
 
             if (fn_type != 0) {
@@ -429,8 +425,7 @@ static char *srcs_expand_srcsrv(xx_arena_t *arena, const char *pattern,
                         char *exp_arg = NULL;
                         memcpy(arg_copy, arg_start, arg_len);
                         arg_copy[arg_len] = '\0';
-                        exp_arg = srcs_expand_srcsrv(arena, arg_copy, variables, var_count,
-                                                     file_vars, file_var_count, targ, depth + 1);
+                        exp_arg = srcs_expand_srcsrv(arena, arg_copy, variables, var_count, file_vars, file_var_count, targ, depth + 1);
                         xx_mem_free(arg_copy);
 
                         if (fn_type == 1) { /* fnbksl: '/' -> '\\' */
@@ -451,11 +446,9 @@ static char *srcs_expand_srcsrv(xx_arena_t *arena, const char *pattern,
                                 buf[len++] = *fname++;
                             }
                         } else if (fn_type == 3) { /* fnvar: value of variable named by exp_arg */
-                            const char *val = srcs_lookup_var(exp_arg, variables, var_count,
-                                                              file_vars, file_var_count, targ);
+                            const char *val = srcs_lookup_var(exp_arg, variables, var_count, file_vars, file_var_count, targ);
                             if (val) {
-                                char *exp_val = srcs_expand_srcsrv(arena, val, variables, var_count,
-                                                                   file_vars, file_var_count, targ, depth + 1);
+                                char *exp_val = srcs_expand_srcsrv(arena, val, variables, var_count, file_vars, file_var_count, targ, depth + 1);
                                 while (*exp_val && len + 1 < sizeof(buf)) {
                                     buf[len++] = *exp_val++;
                                 }
@@ -487,8 +480,7 @@ static char *srcs_expand_srcsrv(xx_arena_t *arena, const char *pattern,
                 var_name[var_name_len] = '\0';
                 val = srcs_lookup_var(var_name, variables, var_count, file_vars, file_var_count, targ);
                 if (val) {
-                    char *exp_val = srcs_expand_srcsrv(arena, val, variables, var_count,
-                                                       file_vars, file_var_count, targ, depth + 1);
+                    char *exp_val = srcs_expand_srcsrv(arena, val, variables, var_count, file_vars, file_var_count, targ, depth + 1);
                     while (*exp_val && len + 1 < sizeof(buf)) {
                         buf[len++] = *exp_val++;
                     }
@@ -511,7 +503,13 @@ static char *srcs_expand_srcsrv(xx_arena_t *arena, const char *pattern,
 bool xx_ms_pdb_parse_srcsrv(const char *text, size_t size, xx_ms_pdb_srcsrv *out)
 {
     xx_arena_t *arena = NULL;
-    enum { SEC_NONE, SEC_INI, SEC_VARS, SEC_FILES, SEC_END } sec = SEC_NONE;
+    enum {
+        SEC_NONE,
+        SEC_INI,
+        SEC_VARS,
+        SEC_FILES,
+        SEC_END
+    } sec = SEC_NONE;
     const char *p = text;
     const char *end = text ? text + size : NULL;
     xx_ms_pdb_env_pair *tmp_ini = NULL;
@@ -677,14 +675,10 @@ bool xx_ms_pdb_parse_srcsrv(const char *text, size_t size, xx_ms_pdb_srcsrv *out
     /* Expand target and command for each file */
     for (i = 0; i < file_count; i++) {
         if (srcsrvtrg && srcsrvtrg[0]) {
-            tmp_files[i].target = srcs_expand_srcsrv(arena, srcsrvtrg, tmp_vars, var_count,
-                                                    tmp_files[i].vars, tmp_files[i].var_count,
-                                                    NULL, 0);
+            tmp_files[i].target = srcs_expand_srcsrv(arena, srcsrvtrg, tmp_vars, var_count, tmp_files[i].vars, tmp_files[i].var_count, NULL, 0);
         }
         if (srcsrvcmd && srcsrvcmd[0]) {
-            tmp_files[i].command = srcs_expand_srcsrv(arena, srcsrvcmd, tmp_vars, var_count,
-                                                     tmp_files[i].vars, tmp_files[i].var_count,
-                                                     tmp_files[i].target, 0);
+            tmp_files[i].command = srcs_expand_srcsrv(arena, srcsrvcmd, tmp_vars, var_count, tmp_files[i].vars, tmp_files[i].var_count, tmp_files[i].target, 0);
         }
     }
 
@@ -763,15 +757,31 @@ static char *srcs_parse_json_string(xx_arena_t *arena, const char **pp)
     while (*p && *p != '"' && len + 5 < sizeof(buf)) {
         if (*p == '\\') {
             p++;
-            if (*p == '"') { buf[len++] = '"'; p++; }
-            else if (*p == '\\') { buf[len++] = '\\'; p++; }
-            else if (*p == '/') { buf[len++] = '/'; p++; }
-            else if (*p == 'b') { buf[len++] = '\b'; p++; }
-            else if (*p == 'f') { buf[len++] = '\f'; p++; }
-            else if (*p == 'n') { buf[len++] = '\n'; p++; }
-            else if (*p == 'r') { buf[len++] = '\r'; p++; }
-            else if (*p == 't') { buf[len++] = '\t'; p++; }
-            else if (*p == 'u') {
+            if (*p == '"') {
+                buf[len++] = '"';
+                p++;
+            } else if (*p == '\\') {
+                buf[len++] = '\\';
+                p++;
+            } else if (*p == '/') {
+                buf[len++] = '/';
+                p++;
+            } else if (*p == 'b') {
+                buf[len++] = '\b';
+                p++;
+            } else if (*p == 'f') {
+                buf[len++] = '\f';
+                p++;
+            } else if (*p == 'n') {
+                buf[len++] = '\n';
+                p++;
+            } else if (*p == 'r') {
+                buf[len++] = '\r';
+                p++;
+            } else if (*p == 't') {
+                buf[len++] = '\t';
+                p++;
+            } else if (*p == 'u') {
                 uint32_t cp = 0;
                 char hex[5] = {0};
                 p++;
@@ -821,8 +831,7 @@ static char *srcs_parse_json_string(xx_arena_t *arena, const char **pp)
     return xx_arena_strdup(arena, buf);
 }
 
-static void srcs_parse_sourcelink_json(xx_arena_t *arena, const char *json,
-                                       xx_ms_pdb_env_pair **docs, size_t *doc_cnt, size_t *doc_cap)
+static void srcs_parse_sourcelink_json(xx_arena_t *arena, const char *json, xx_ms_pdb_env_pair **docs, size_t *doc_cnt, size_t *doc_cap)
 {
     const char *p = strstr(json, "\"documents\"");
     if (!p) {
@@ -1105,8 +1114,7 @@ char *xx_ms_pdb_sourcelink_map(const xx_ms_pdb_sourcelink *sl, const char *path)
  * FPO and Frame Data
  * ====================================================================== */
 
-bool xx_ms_pdb_get_frame_info(xx_ms_pdb *pdb, const xx_ms_pdb_names *names,
-                               xx_ms_pdb_frame_info *out)
+bool xx_ms_pdb_get_frame_info(xx_ms_pdb *pdb, const xx_ms_pdb_names *names, xx_ms_pdb_frame_info *out)
 {
     xx_arena_t *arena = NULL;
     xx_ms_pdb_dbi_info dbi = {0};

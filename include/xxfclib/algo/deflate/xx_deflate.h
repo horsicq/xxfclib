@@ -62,10 +62,9 @@ typedef struct xx_deflate_pack_options_ex {
     size_t max_candidates;
     size_t lazy_match_limit;
     bool short_match_filter; /**< Reject length-3 matches beyond distance 4096; default false. */
-    size_t nice_match; /**< Stop main search at this length; zero disables. */
-    size_t good_match; /**< Quarter main candidate budget after reaching this length; zero disables. */
+    size_t nice_match;       /**< Stop main search at this length; zero disables. */
+    size_t good_match;       /**< Quarter main candidate budget after reaching this length; zero disables. */
 } xx_deflate_pack_options_ex;
-
 
 /* ========================================================================= */
 /* --- Deflate / Deflate64 Decompression (Unpacking)                     --- */
@@ -158,9 +157,8 @@ XXFC_API bool xx_deflate_decompress_memory_with_dictionary(const void *src_buf, 
 #define XX_DEFLATE_UNPACK_ZLIB_STRICT 0x1U
 
 /** xx_deflate_unpack_device_ex() with decoding flags. */
-XXFC_API bool xx_deflate_unpack_device_flags(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, bool is_deflate64,
-                                             size_t window_size, const void *dictionary, size_t dictionary_size, int64_t *out_consumed, unsigned flags,
-                                             xx_pd_struct *pd);
+XXFC_API bool xx_deflate_unpack_device_flags(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, xx_io_device *dst_dev, bool is_deflate64, size_t window_size,
+                                             const void *dictionary, size_t dictionary_size, int64_t *out_consumed, unsigned flags, xx_pd_struct *pd);
 /** xx_deflate_unpack_memory_to_device_ex() with decoding flags. */
 XXFC_API bool xx_deflate_unpack_memory_to_device_flags(const void *src_buf, size_t comp_size, xx_io_device *dst_dev, size_t *out_consumed, bool is_deflate64,
                                                        unsigned flags, xx_pd_struct *pd);
@@ -209,24 +207,23 @@ XXFC_API bool xx_deflate_compress_memory(const void *src_buf, size_t src_size, v
  * options. window_size follows xx_deflate_pack_device_ex(). A positive
  * candidate count selects the normal compression path regardless of level;
  * Deflate64 also uses its normal long-match limit instead of low-level caps. */
-XXFC_API bool xx_deflate_pack_device_with_options(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size, xx_io_device *dst_dev,
-                                                  int level, bool is_deflate64, size_t window_size, const xx_deflate_pack_options *options, xx_pd_struct *pd);
-XXFC_API bool xx_deflate_pack_source_with_options(xx_io_device *src_dev, const char *src_file_path, int64_t *out_uncomp_size, int64_t *out_comp_size,
-                                                  uint32_t *out_crc32, xx_io_device *dst_dev, int level, bool is_deflate64,
-                                                  const xx_deflate_pack_options *options, xx_pd_struct *pd);
-XXFC_API bool xx_deflate_compress_memory_with_options(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written,
-                                                      int level, bool is_deflate64, const xx_deflate_pack_options *options);
+XXFC_API bool xx_deflate_pack_device_with_options(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size, xx_io_device *dst_dev, int level, bool is_deflate64,
+                                                  size_t window_size, const xx_deflate_pack_options *options, xx_pd_struct *pd);
+XXFC_API bool xx_deflate_pack_source_with_options(xx_io_device *src_dev, const char *src_file_path, int64_t *out_uncomp_size, int64_t *out_comp_size, uint32_t *out_crc32,
+                                                  xx_io_device *dst_dev, int level, bool is_deflate64, const xx_deflate_pack_options *options, xx_pd_struct *pd);
+XXFC_API bool xx_deflate_compress_memory_with_options(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written, int level,
+                                                      bool is_deflate64, const xx_deflate_pack_options *options);
 
 /** Extended options-aware entry points. NULL options preserves the
  * original defaults. Old options-aware entry points always disable lazy
  * parsing and read only the original struct's max_candidates field. */
-XXFC_API bool xx_deflate_pack_device_with_options_ex(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size, xx_io_device *dst_dev,
-                                                     int level, bool is_deflate64, size_t window_size, const xx_deflate_pack_options_ex *options, xx_pd_struct *pd);
+XXFC_API bool xx_deflate_pack_device_with_options_ex(xx_io_device *src_dev, int64_t src_offset, int64_t uncomp_size, xx_io_device *dst_dev, int level, bool is_deflate64,
+                                                     size_t window_size, const xx_deflate_pack_options_ex *options, xx_pd_struct *pd);
 XXFC_API bool xx_deflate_pack_source_with_options_ex(xx_io_device *src_dev, const char *src_file_path, int64_t *out_uncomp_size, int64_t *out_comp_size,
-                                                     uint32_t *out_crc32, xx_io_device *dst_dev, int level, bool is_deflate64,
-                                                     const xx_deflate_pack_options_ex *options, xx_pd_struct *pd);
-XXFC_API bool xx_deflate_compress_memory_with_options_ex(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written,
-                                                         int level, bool is_deflate64, const xx_deflate_pack_options_ex *options);
+                                                     uint32_t *out_crc32, xx_io_device *dst_dev, int level, bool is_deflate64, const xx_deflate_pack_options_ex *options,
+                                                     xx_pd_struct *pd);
+XXFC_API bool xx_deflate_compress_memory_with_options_ex(const void *src_buf, size_t src_size, void *dst_buf, size_t dst_buf_size, size_t *out_written, int level,
+                                                         bool is_deflate64, const xx_deflate_pack_options_ex *options);
 
 /** The named DEFLATE packing settings of xx_deflate_pack_options_ex. Every
  * writer that offers them (ZIP per archive or per member, the raw codec tools
@@ -280,9 +277,7 @@ XXFC_API size_t xx_zlib_stream_compress_bound(size_t source_size);
  * big-endian Adler-32 trailer. Levels use the same 0..9 convention as the
  * Deflate encoder. Use xx_zlib_stream_compress_bound() to size @p output.
  */
-XXFC_API bool xx_zlib_stream_encode_memory(const uint8_t *input, size_t input_size,
-                                           uint8_t *output, size_t output_capacity,
-                                           size_t *written, int level);
+XXFC_API bool xx_zlib_stream_encode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_capacity, size_t *written, int level);
 
 /**
  * @brief Whether @p input opens with a well-formed zlib header.

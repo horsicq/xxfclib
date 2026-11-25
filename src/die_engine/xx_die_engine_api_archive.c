@@ -8,10 +8,7 @@
 #include "../regex/xx_regex_die.h"
 
 static const ApiEntry g_archive_api_table[] = {
-    {"isArchiveRecordPresent", A_isArchiveRecordPresent, 1},
-    {"isArchiveRecordPresentExp", A_isArchiveRecordPresentExp, 1},
-    {NULL, A_NONE, 0}
-};
+    {"isArchiveRecordPresent", A_isArchiveRecordPresent, 1}, {"isArchiveRecordPresentExp", A_isArchiveRecordPresentExp, 1}, {NULL, A_NONE, 0}};
 
 void die_engine_api_register_archive(JSCtx *pCtx, JSVal object)
 {
@@ -40,8 +37,7 @@ bool die_engine_api_dispatch_archive(DieEngine *pEngine, JSCtx *pCtx, ApiId id, 
             return true;
         }
 
-        default:
-            break;
+        default: break;
     }
 
     return false;

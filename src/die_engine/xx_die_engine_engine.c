@@ -35,8 +35,7 @@ static bool die_engine_supports_type(const xx_scan_engine *engine, xx_file_type_
     return type != XX_FILE_TYPE_UNKNOWN && die_engine_xft_from_native(type) != XFT_UNKNOWN;
 }
 
-static xx_scan_result *die_engine_scan_region(xx_scan_engine *engine, const xx_scan_region *region,
-                                              const xx_scan_options *options, xx_pd_struct *pd)
+static xx_scan_result *die_engine_scan_region(xx_scan_engine *engine, const xx_scan_region *region, const xx_scan_options *options, xx_pd_struct *pd)
 {
     xx_scan_options local;
     xx_scan_result *result;
@@ -49,8 +48,7 @@ static xx_scan_result *die_engine_scan_region(xx_scan_engine *engine, const xx_s
     if (xx_pd_is_stopped(pd)) return NULL;
     if (options) local = *options;
     else xx_scan_options_init(&local);
-    if (local.recursive_scan || local.first_wrapper_only || local.all_types_scan ||
-        local.overlay_scan || local.resources_scan || local.archives_scan) {
+    if (local.recursive_scan || local.first_wrapper_only || local.all_types_scan || local.overlay_scan || local.resources_scan || local.archives_scan) {
         xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "DIE region received traversal options");
         return NULL;
     }
@@ -160,23 +158,20 @@ static bool die_engine_list_tags(const xx_scan_engine *engine, xx_scan_catalog *
     return true;
 }
 
-static const xx_scan_engine_ops die_ops = {
-    XX_SCAN_ENGINE_ABI_VERSION,
-    sizeof(xx_scan_engine_ops),
-    XX_SCAN_ENGINE_DIE,
-    "die",
-    "Detect It Easy (DiE)",
-    XX_SCAN_CAP_EXTERNAL_DATABASE_REQUIRED | XX_SCAN_CAP_TAGS | XX_SCAN_CAP_DEEP |
-        XX_SCAN_CAP_AGGRESSIVE | XX_SCAN_CAP_VERBOSE | XX_SCAN_CAP_TYPE_QUERY |
-        XX_SCAN_CAP_THREAD_SAFE | XX_SCAN_CAP_REENTRANT,
-    die_engine_create,
-    die_engine_destroy,
-    die_engine_load_database,
-    die_engine_supports_type,
-    die_engine_scan_region,
-    die_engine_list_signatures,
-    die_engine_list_tags
-};
+static const xx_scan_engine_ops die_ops = {XX_SCAN_ENGINE_ABI_VERSION,
+                                           sizeof(xx_scan_engine_ops),
+                                           XX_SCAN_ENGINE_DIE,
+                                           "die",
+                                           "Detect It Easy (DiE)",
+                                           XX_SCAN_CAP_EXTERNAL_DATABASE_REQUIRED | XX_SCAN_CAP_TAGS | XX_SCAN_CAP_DEEP | XX_SCAN_CAP_AGGRESSIVE | XX_SCAN_CAP_VERBOSE |
+                                               XX_SCAN_CAP_TYPE_QUERY | XX_SCAN_CAP_THREAD_SAFE | XX_SCAN_CAP_REENTRANT,
+                                           die_engine_create,
+                                           die_engine_destroy,
+                                           die_engine_load_database,
+                                           die_engine_supports_type,
+                                           die_engine_scan_region,
+                                           die_engine_list_signatures,
+                                           die_engine_list_tags};
 
 const xx_scan_engine_ops *die_engine_get_ops(void)
 {

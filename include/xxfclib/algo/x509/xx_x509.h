@@ -33,7 +33,7 @@ typedef struct xx_x509_rdn_attr {
     const uint8_t *oid_der;
     size_t oid_der_size;
     char oid_text[96];
-    uint32_t value_tag;  /**< The value's own ASN.1 tag (e.g. PrintableString, UTF8String, ...). */
+    uint32_t value_tag; /**< The value's own ASN.1 tag (e.g. PrintableString, UTF8String, ...). */
     xx_asn1_class value_class;
     bool value_constructed;
     const uint8_t *value; /**< Raw content bytes of the value (not re-decoded by this layer). */
@@ -50,7 +50,7 @@ typedef struct xx_x509_algorithm_id {
     char oid_text[96];
     const uint8_t *oid_der;
     size_t oid_der_size;
-    const uint8_t *params_der;  /**< Complete raw TLV (header+content) of `parameters`, or NULL if absent. */
+    const uint8_t *params_der; /**< Complete raw TLV (header+content) of `parameters`, or NULL if absent. */
     size_t params_der_size;
 } xx_x509_algorithm_id;
 
@@ -65,12 +65,12 @@ typedef struct xx_x509_extension {
 } xx_x509_extension;
 
 typedef struct xx_x509_certificate {
-    const uint8_t *der;     /**< Whole Certificate SEQUENCE, header included. */
+    const uint8_t *der; /**< Whole Certificate SEQUENCE, header included. */
     size_t der_size;
     const uint8_t *tbs_der; /**< Whole TBSCertificate SEQUENCE, header included - this is what gets hashed and verified. */
     size_t tbs_der_size;
-    int64_t version;        /**< 0, 1 or 2 for v1/v2/v3 (the DEFAULT when absent is 0). */
-    const uint8_t *serial;  /**< Raw big-endian two's complement bytes. */
+    int64_t version;       /**< 0, 1 or 2 for v1/v2/v3 (the DEFAULT when absent is 0). */
+    const uint8_t *serial; /**< Raw big-endian two's complement bytes. */
     size_t serial_size;
     xx_x509_algorithm_id tbs_signature_alg; /**< tbsCertificate.signature. */
     xx_x509_name issuer;
@@ -84,8 +84,8 @@ typedef struct xx_x509_certificate {
     xx_x509_algorithm_id signature_alg; /**< Certificate.signatureAlgorithm (the outer one, actually used to sign). */
     const uint8_t *signature;           /**< Raw signature octets, excluding BIT STRING unused-bit count. */
     size_t signature_size;
-    unsigned signature_unused_bits;   /**< Retained for inspection; YARA-X verification uses the raw octets and ignores this count. */
-    bool signature_algorithms_match;   /**< Inner and outer AlgorithmIdentifiers agree byte-for-byte. */
+    unsigned signature_unused_bits;  /**< Retained for inspection; YARA-X verification uses the raw octets and ignores this count. */
+    bool signature_algorithms_match; /**< Inner and outer AlgorithmIdentifiers agree byte-for-byte. */
 } xx_x509_certificate;
 
 /** Parses a Certificate. Reports whether tbsCertificate.signature and the
@@ -153,12 +153,10 @@ XXFC_API bool xx_x509_name_equal(const xx_x509_name *a, const xx_x509_name *b);
  * SIZE_MAX starts an empty chain. The seen set initially excludes the start,
  * so a cycle can append the start twice; count+1 indices always suffice.
  * Returns false on invalid arguments/capacity; *out_size is written on success. */
-XXFC_API bool xx_x509_build_chain(const xx_x509_certificate *certs, size_t count, size_t start_index,
-                                 size_t *indices, size_t capacity, size_t *out_size);
+XXFC_API bool xx_x509_build_chain(const xx_x509_certificate *certs, size_t count, size_t start_index, size_t *indices, size_t capacity, size_t *out_size);
 /** Verifies adjacent pairs only. Empty/singleton chains succeed, and the
  * terminal self-issued certificate is not independently signature-checked. */
-XXFC_API bool xx_x509_verify_chain(const xx_x509_certificate *certs, size_t count,
-                                  const size_t *indices, size_t chain_size);
+XXFC_API bool xx_x509_verify_chain(const xx_x509_certificate *certs, size_t count, const size_t *indices, size_t chain_size);
 
 #ifdef __cplusplus
 }

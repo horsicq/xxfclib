@@ -424,12 +424,9 @@ static int xx_pswhsa_native_index(const xx_psw_nt_layout *parent, unsigned width
 }
 
 static const xx_psw_nt_layout xx_pswhsa_vs_profiles[] = {
-    {19045, 0x014c, "NT 10.0.19045 native I386 HEAP_VS_SUBSEGMENT symbol profile",
-        xx_pswhsa_vs32_19045, XX_PSW_COUNT(xx_pswhsa_vs32_19045), 0x18},
-    {19045, 0x8664, "NT 10.0.19045 native AMD64 HEAP_VS_SUBSEGMENT symbol profile",
-        xx_pswhsa_vs64_19045, XX_PSW_COUNT(xx_pswhsa_vs64_19045), 0x28},
-    {26100, 0x8664, "NT 10.0.26100 native AMD64 HEAP_VS_SUBSEGMENT symbol profile",
-        xx_pswhsa_vs64_19045, XX_PSW_COUNT(xx_pswhsa_vs64_19045), 0x28},
+    {19045, 0x014c, "NT 10.0.19045 native I386 HEAP_VS_SUBSEGMENT symbol profile", xx_pswhsa_vs32_19045, XX_PSW_COUNT(xx_pswhsa_vs32_19045), 0x18},
+    {19045, 0x8664, "NT 10.0.19045 native AMD64 HEAP_VS_SUBSEGMENT symbol profile", xx_pswhsa_vs64_19045, XX_PSW_COUNT(xx_pswhsa_vs64_19045), 0x28},
+    {26100, 0x8664, "NT 10.0.26100 native AMD64 HEAP_VS_SUBSEGMENT symbol profile", xx_pswhsa_vs64_19045, XX_PSW_COUNT(xx_pswhsa_vs64_19045), 0x28},
 };
 
 static const xx_psw_nt_layout *xx_pswhsa_native_vs(const xx_psw_nt_layout *parent, unsigned width)
@@ -439,12 +436,12 @@ static const xx_psw_nt_layout *xx_pswhsa_native_vs(const xx_psw_nt_layout *paren
 }
 
 static const xx_psw_nt_layout xx_pswhsa_lfh_subsegment_profiles[] = {
-    {19045, 0x014c, "NT 10.0.19045 native I386 HEAP_LFH_SUBSEGMENT symbol profile",
-        xx_pswhsa_lfh_subsegment32_19045, XX_PSW_COUNT(xx_pswhsa_lfh_subsegment32_19045), 0x24},
-    {19045, 0x8664, "NT 10.0.19045 native AMD64 HEAP_LFH_SUBSEGMENT symbol profile",
-        xx_pswhsa_lfh_subsegment64_19045, XX_PSW_COUNT(xx_pswhsa_lfh_subsegment64_19045), 0x38},
-    {26100, 0x8664, "NT 10.0.26100 native AMD64 HEAP_LFH_SUBSEGMENT symbol profile",
-        xx_pswhsa_lfh_subsegment64_26100, XX_PSW_COUNT(xx_pswhsa_lfh_subsegment64_26100), 0x48},
+    {19045, 0x014c, "NT 10.0.19045 native I386 HEAP_LFH_SUBSEGMENT symbol profile", xx_pswhsa_lfh_subsegment32_19045, XX_PSW_COUNT(xx_pswhsa_lfh_subsegment32_19045),
+     0x24},
+    {19045, 0x8664, "NT 10.0.19045 native AMD64 HEAP_LFH_SUBSEGMENT symbol profile", xx_pswhsa_lfh_subsegment64_19045, XX_PSW_COUNT(xx_pswhsa_lfh_subsegment64_19045),
+     0x38},
+    {26100, 0x8664, "NT 10.0.26100 native AMD64 HEAP_LFH_SUBSEGMENT symbol profile", xx_pswhsa_lfh_subsegment64_26100, XX_PSW_COUNT(xx_pswhsa_lfh_subsegment64_26100),
+     0x48},
 };
 
 static const xx_psw_nt_layout *xx_pswhsa_native_lfh_subsegment(const xx_psw_nt_layout *parent, unsigned width)
@@ -454,12 +451,9 @@ static const xx_psw_nt_layout *xx_pswhsa_native_lfh_subsegment(const xx_psw_nt_l
 }
 
 static const xx_psw_nt_layout xx_pswhsa_lfh_bucket_profiles[] = {
-    {19045, 0x014c, "NT 10.0.19045 native I386 HEAP_LFH_BUCKET symbol profile",
-        xx_pswhsa_lfh_bucket32_19045, XX_PSW_COUNT(xx_pswhsa_lfh_bucket32_19045), 0x38},
-    {19045, 0x8664, "NT 10.0.19045 native AMD64 HEAP_LFH_BUCKET symbol profile",
-        xx_pswhsa_lfh_bucket64_19045, XX_PSW_COUNT(xx_pswhsa_lfh_bucket64_19045), 0x68},
-    {26100, 0x8664, "NT 10.0.26100 native AMD64 HEAP_LFH_BUCKET symbol profile",
-        xx_pswhsa_lfh_bucket64_26100, XX_PSW_COUNT(xx_pswhsa_lfh_bucket64_26100), 0x68},
+    {19045, 0x014c, "NT 10.0.19045 native I386 HEAP_LFH_BUCKET symbol profile", xx_pswhsa_lfh_bucket32_19045, XX_PSW_COUNT(xx_pswhsa_lfh_bucket32_19045), 0x38},
+    {19045, 0x8664, "NT 10.0.19045 native AMD64 HEAP_LFH_BUCKET symbol profile", xx_pswhsa_lfh_bucket64_19045, XX_PSW_COUNT(xx_pswhsa_lfh_bucket64_19045), 0x68},
+    {26100, 0x8664, "NT 10.0.26100 native AMD64 HEAP_LFH_BUCKET symbol profile", xx_pswhsa_lfh_bucket64_26100, XX_PSW_COUNT(xx_pswhsa_lfh_bucket64_26100), 0x68},
 };
 
 static const xx_psw_nt_layout *xx_pswhsa_native_lfh_bucket(const xx_psw_nt_layout *parent, unsigned width)
@@ -469,12 +463,9 @@ static const xx_psw_nt_layout *xx_pswhsa_native_lfh_bucket(const xx_psw_nt_layou
 }
 
 static const xx_psw_nt_layout xx_pswhsa_lfh_slot_profiles[] = {
-    {19045, 0x014c, "NT 10.0.19045 native I386 HEAP_LFH_AFFINITY_SLOT symbol profile",
-        xx_pswhsa_lfh_slot32_19045, XX_PSW_COUNT(xx_pswhsa_lfh_slot32_19045), 0x20},
-    {19045, 0x8664, "NT 10.0.19045 native AMD64 HEAP_LFH_AFFINITY_SLOT symbol profile",
-        xx_pswhsa_lfh_slot64_19045, XX_PSW_COUNT(xx_pswhsa_lfh_slot64_19045), 0x40},
-    {26100, 0x8664, "NT 10.0.26100 native AMD64 HEAP_LFH_AFFINITY_SLOT symbol profile",
-        xx_pswhsa_lfh_slot64_26100, XX_PSW_COUNT(xx_pswhsa_lfh_slot64_26100), 0x40},
+    {19045, 0x014c, "NT 10.0.19045 native I386 HEAP_LFH_AFFINITY_SLOT symbol profile", xx_pswhsa_lfh_slot32_19045, XX_PSW_COUNT(xx_pswhsa_lfh_slot32_19045), 0x20},
+    {19045, 0x8664, "NT 10.0.19045 native AMD64 HEAP_LFH_AFFINITY_SLOT symbol profile", xx_pswhsa_lfh_slot64_19045, XX_PSW_COUNT(xx_pswhsa_lfh_slot64_19045), 0x40},
+    {26100, 0x8664, "NT 10.0.26100 native AMD64 HEAP_LFH_AFFINITY_SLOT symbol profile", xx_pswhsa_lfh_slot64_26100, XX_PSW_COUNT(xx_pswhsa_lfh_slot64_26100), 0x40},
 };
 
 static const xx_psw_nt_layout *xx_pswhsa_native_lfh_slot(const xx_psw_nt_layout *parent, unsigned width)
@@ -484,12 +475,9 @@ static const xx_psw_nt_layout *xx_pswhsa_native_lfh_slot(const xx_psw_nt_layout 
 }
 
 static const xx_psw_nt_layout xx_pswhsa_lfh_owner_profiles[] = {
-    {19045, 0x014c, "NT 10.0.19045 native I386 HEAP_LFH_SUBSEGMENT_OWNER symbol profile",
-        xx_pswhsa_lfh_owner32_19045, XX_PSW_COUNT(xx_pswhsa_lfh_owner32_19045), 0x1c},
-    {19045, 0x8664, "NT 10.0.19045 native AMD64 HEAP_LFH_SUBSEGMENT_OWNER symbol profile",
-        xx_pswhsa_lfh_owner64_19045, XX_PSW_COUNT(xx_pswhsa_lfh_owner64_19045), 0x38},
-    {26100, 0x8664, "NT 10.0.26100 native AMD64 HEAP_LFH_SUBSEGMENT_OWNER symbol profile",
-        xx_pswhsa_lfh_owner64_26100, XX_PSW_COUNT(xx_pswhsa_lfh_owner64_26100), 0x38},
+    {19045, 0x014c, "NT 10.0.19045 native I386 HEAP_LFH_SUBSEGMENT_OWNER symbol profile", xx_pswhsa_lfh_owner32_19045, XX_PSW_COUNT(xx_pswhsa_lfh_owner32_19045), 0x1c},
+    {19045, 0x8664, "NT 10.0.19045 native AMD64 HEAP_LFH_SUBSEGMENT_OWNER symbol profile", xx_pswhsa_lfh_owner64_19045, XX_PSW_COUNT(xx_pswhsa_lfh_owner64_19045), 0x38},
+    {26100, 0x8664, "NT 10.0.26100 native AMD64 HEAP_LFH_SUBSEGMENT_OWNER symbol profile", xx_pswhsa_lfh_owner64_26100, XX_PSW_COUNT(xx_pswhsa_lfh_owner64_26100), 0x38},
 };
 
 static const xx_psw_nt_layout *xx_pswhsa_native_lfh_owner(const xx_psw_nt_layout *parent, unsigned width)
@@ -499,4 +487,3 @@ static const xx_psw_nt_layout *xx_pswhsa_native_lfh_owner(const xx_psw_nt_layout
 }
 
 #endif /* XX_PROCESS_HEAP_SUBALLOCATOR_LAYOUTS_H */
-

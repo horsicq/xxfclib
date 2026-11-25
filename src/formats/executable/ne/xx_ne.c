@@ -96,9 +96,7 @@ static bool xx_ne_parse_entries(Abstractformat *format, xx_ne *parsed, uint64_t 
     uint16_t initial_segment;
     uint16_t initial_offset;
 
-    if (!format || !parsed || !format_end || !xx_ne_add_u64(parsed->ne_offset, parsed->entry_table_offset, &table_relative) ||
-        table_relative > available)
-        return true;
+    if (!format || !parsed || !format_end || !xx_ne_add_u64(parsed->ne_offset, parsed->entry_table_offset, &table_relative) || table_relative > available) return true;
     table_size = parsed->entry_table_size;
     if (table_size > available - table_relative) table_size = available - table_relative;
     parsed->parsed_entry_table_size = (uint32_t)table_size;
@@ -142,8 +140,7 @@ static bool xx_ne_parse_entries(Abstractformat *format, xx_ne *parsed, uint64_t 
             if (bundle_type == 0xffU) {
                 segment_index = xx_io_get_u8(format->device, absolute + (int64_t)current + 3);
                 segment_offset = xx_io_get_u16(format->device, absolute + (int64_t)current + 4, false);
-            }
-            else {
+            } else {
                 segment_index = bundle_type;
                 segment_offset = xx_io_get_u16(format->device, absolute + (int64_t)current + 1, false);
             }
@@ -328,8 +325,7 @@ static bool xx_ne_parse(Abstractformat *format, xx_ne *parsed, xx_pd_struct *pd)
     if (parsed->nonresident_name_table_offset != 0U && parsed->nonresident_name_table_offset < available) {
         uint64_t bounded_span = parsed->nonresident_name_table_size;
         uint64_t end;
-        if (bounded_span > available - parsed->nonresident_name_table_offset)
-            bounded_span = available - parsed->nonresident_name_table_offset;
+        if (bounded_span > available - parsed->nonresident_name_table_offset) bounded_span = available - parsed->nonresident_name_table_offset;
         parsed->parsed_nonresident_name_table_size = (uint32_t)bounded_span;
         end = (uint64_t)parsed->nonresident_name_table_offset + bounded_span;
         if (end > format_end) format_end = end;

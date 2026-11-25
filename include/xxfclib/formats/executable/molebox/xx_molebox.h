@@ -30,8 +30,7 @@ typedef struct xx_molebox_physical_metadata {
 /** Validates native identity, prepares metadata when necessary and preserves
  * the input cursor. Rejects foreign readers and out-of-range package indices.
  * The complete physical package header occupies 48 encrypted bytes. */
-XXFC_API bool xx_molebox_get_physical_metadata(Abstractformat *, uint32_t package_index,
-                                              xx_molebox_physical_metadata *, xx_pd_struct *);
+XXFC_API bool xx_molebox_get_physical_metadata(Abstractformat *, uint32_t package_index, xx_molebox_physical_metadata *, xx_pd_struct *);
 /** Cursor-preserving EOF catalog-key probe; validate before detection. */
 XXFC_API bool xx_molebox_has_candidate_device(xx_io_device *, int64_t);
 /** Validate a header-encrypted standalone package with a supplied password or

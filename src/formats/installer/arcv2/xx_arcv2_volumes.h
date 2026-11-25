@@ -36,9 +36,7 @@ static bool arcv2_volume_candidate(void *opaque, const char *name, bool director
     device = xx_io_file_open(path, "rb");
     xx_str_free(path);
     if (!device) return true;
-    if (!arcv2_read_at(device, 0, header, sizeof(header)) ||
-        xx_rt_memcmp(header, "ARCV\0\2\16\0", 8U) ||
-        xx_data_get_u32(header + 8U, 4, 0, false) == 1U) {
+    if (!arcv2_read_at(device, 0, header, sizeof(header)) || xx_rt_memcmp(header, "ARCV\0\2\16\0", 8U) || xx_data_get_u32(header + 8U, 4, 0, false) == 1U) {
         xx_io_close(device);
         return true;
     }
@@ -46,8 +44,7 @@ static bool arcv2_volume_candidate(void *opaque, const char *name, bool director
     size = xx_io_total_size(device);
     xx_rt_memset(&logical, 0, sizeof(logical));
     logical.device = device;
-    if (!number || number > ARCV2_VOLUME_LIMIT || scan->devices[number - 1U] ||
-        size <= 0 || size > ARCV2_SET_LIMIT - scan->bytes ||
+    if (!number || number > ARCV2_VOLUME_LIMIT || scan->devices[number - 1U] || size <= 0 || size > ARCV2_SET_LIMIT - scan->bytes ||
         !arcv2_parse_single(&logical, &stream, scan->pd)) {
         xx_io_close(device);
         return false;
@@ -72,22 +69,20 @@ static bool arcv2_volume_write(xx_io_device *out, const void *data, size_t size)
     while (size) {
         ssize_t n = xx_io_write(out, p, size);
         if (n <= 0 || (size_t)n > size) return false;
-        p += n; size -= (size_t)n;
+        p += n;
+        size -= (size_t)n;
     }
     return true;
 }
 
-static bool arcv2_volume_copy(xx_io_device *out, xx_io_device *in,
-                              const arcv2_member *member, xx_crc_context *crc, xx_pd_struct *pd)
+static bool arcv2_volume_copy(xx_io_device *out, xx_io_device *in, const arcv2_member *member, xx_crc_context *crc, xx_pd_struct *pd)
 {
     uint8_t buffer[32768];
     uint32_t done = 0;
     while (done < member->data_size) {
         size_t take = member->data_size - done;
         if (take > sizeof(buffer)) take = sizeof(buffer);
-        if ((pd && xx_pd_is_stopped(pd)) ||
-            !arcv2_read_at(in, member->data_offset + done, buffer, take) ||
-            !arcv2_volume_write(out, buffer, take)) return false;
+        if ((pd && xx_pd_is_stopped(pd)) || !arcv2_read_at(in, member->data_offset + done, buffer, take) || !arcv2_volume_write(out, buffer, take)) return false;
         xx_crc_context_update(crc, buffer, take);
         done += (uint32_t)take;
     }
@@ -103,19 +98,22 @@ static xx_io_device *arcv2_volume_view(Abstractformat *format, xx_pd_struct *pd)
     unsigned i;
     xx_io_device *out = NULL;
     bool ok = false;
-    static const uint8_t archive_header[14] = {'A','R','C','V',0,2,14,0,1,0,0,0,1,0};
-    if (format->base_address || !(source = xx_io_source_path(format->device)) ||
-        xx_str_len(source) > 4094U || (pd && xx_pd_is_stopped(pd))) return NULL;
+    static const uint8_t archive_header[14] = {'A', 'R', 'C', 'V', 0, 2, 14, 0, 1, 0, 0, 0, 1, 0};
+    if (format->base_address || !(source = xx_io_source_path(format->device)) || xx_str_len(source) > 4094U || (pd && xx_pd_is_stopped(pd))) return NULL;
     for (cursor = source; *cursor; ++cursor)
         if (*cursor == '/' || *cursor == '\\') prefix = (size_t)(cursor - source) + 1U;
     leaf = source + prefix;
     directory = prefix ? xx_str_create_len(prefix) : xx_str_dup(".");
     if (!directory) return NULL;
-    if (prefix) { xx_mem_copy(directory, source, prefix); directory[prefix] = 0; }
+    if (prefix) {
+        xx_mem_copy(directory, source, prefix);
+        directory[prefix] = 0;
+    }
     xx_rt_memset(&scan, 0, sizeof(scan));
-    scan.directory = directory; scan.selected_name = leaf; scan.pd = pd;
-    if (!xx_fs_platform_enumerate(directory, arcv2_volume_candidate, &scan) ||
-        !scan.selected_seen || scan.highest < 2U) goto done;
+    scan.directory = directory;
+    scan.selected_name = leaf;
+    scan.pd = pd;
+    if (!xx_fs_platform_enumerate(directory, arcv2_volume_candidate, &scan) || !scan.selected_seen || scan.highest < 2U) goto done;
     for (i = 0; i < scan.highest; ++i) {
         uint32_t flags = i == 0U ? 2U : i + 1U == scan.highest ? 8U : 4U;
         if (!scan.streams[i] || scan.streams[i]->volume_flags != flags) goto done;
@@ -141,13 +139,11 @@ static xx_io_device *arcv2_volume_view(Abstractformat *format, xx_pd_struct *pd)
                 if (j + 1U != stream->count || i + 1U >= scan.highest) goto done;
                 tail = &scan.streams[i + 1U]->items[0];
                 combined = (uint64_t)member->data_size + tail->data_size;
-                if (!(tail->flags & ARCV2_FLAG_SPLIT_TAIL) ||
-                    (member->flags & 0x30U) != (tail->flags & 0x30U) ||
-                    strcmp(member->name, tail->name) || member->header_size != tail->header_size ||
-                    combined != tail->compressed_size || combined > UINT32_MAX ||
-                    !arcv2_read_at(scan.devices[i + 1U], tail->header_offset, other, (size_t)tail->header_size) ||
-                    xx_rt_memcmp(header + a, other + a, 4U) ||
-                    xx_rt_memcmp(header + a + 8U, other + a + 8U, 16U)) goto done;
+                if (!(tail->flags & ARCV2_FLAG_SPLIT_TAIL) || (member->flags & 0x30U) != (tail->flags & 0x30U) || strcmp(member->name, tail->name) ||
+                    member->header_size != tail->header_size || combined != tail->compressed_size || combined > UINT32_MAX ||
+                    !arcv2_read_at(scan.devices[i + 1U], tail->header_offset, other, (size_t)tail->header_size) || xx_rt_memcmp(header + a, other + a, 4U) ||
+                    xx_rt_memcmp(header + a + 8U, other + a + 8U, 16U))
+                    goto done;
                 /* A head has no final size/checksum. Only the completed
                  * tail descriptor authorizes this synthesized whole record. */
                 arcv2_put32(header + 8U, (member->flags & 0x30U) | ARCV2_FLAG_WHOLE);
@@ -156,11 +152,10 @@ static xx_io_device *arcv2_volume_view(Abstractformat *format, xx_pd_struct *pd)
                 expected = tail->packed_crc32;
                 arcv2_put32(header + a + 24U, expected);
             } else if (!(member->flags & ARCV2_FLAG_WHOLE)) goto done;
-            if (!xx_crc_context_init_type(&crc, XX_CRC_TYPE_CRC32_JAMCRC) ||
-                !arcv2_volume_write(out, header, (size_t)member->header_size) ||
-                !arcv2_volume_copy(out, scan.devices[i], member, &crc, pd) ||
-                (tail && !arcv2_volume_copy(out, scan.devices[i + 1U], tail, &crc, pd)) ||
-                xx_crc_context_final(&crc) != expected) goto done;
+            if (!xx_crc_context_init_type(&crc, XX_CRC_TYPE_CRC32_JAMCRC) || !arcv2_volume_write(out, header, (size_t)member->header_size) ||
+                !arcv2_volume_copy(out, scan.devices[i], member, &crc, pd) || (tail && !arcv2_volume_copy(out, scan.devices[i + 1U], tail, &crc, pd)) ||
+                xx_crc_context_final(&crc) != expected)
+                goto done;
         }
         /* Every continuation starts with the tail consumed above. */
         if (i && !(stream->items[0].flags & ARCV2_FLAG_SPLIT_TAIL)) goto done;
@@ -173,7 +168,10 @@ done:
         if (scan.devices[i]) xx_io_close(scan.devices[i]);
     }
     xx_str_free(directory);
-    if (!ok && out) { xx_io_close(out); out = NULL; }
+    if (!ok && out) {
+        xx_io_close(out);
+        out = NULL;
+    }
     return out;
 }
 
@@ -188,18 +186,22 @@ static bool arcv2_parse(Abstractformat *format, arcv2_stream **result, xx_pd_str
     ok = arcv2_parse_single(format, result, pd);
     if (ok && (*result)->volume_flags != 1U && (view = arcv2_volume_view(format, pd)) != NULL) {
         arcv2_stream *joined = NULL;
-        logical = *format; logical.device = view; logical.base_address = 0;
+        logical = *format;
+        logical.device = view;
+        logical.base_address = 0;
         if (arcv2_parse_single(&logical, &joined, pd)) {
             joined->volumes = view;
             joined->archive_size = (*result)->archive_size;
             joined->volume_flags = (*result)->volume_flags;
             joined->disk_number = (*result)->disk_number;
-            arcv2_stream_free(*result); *result = joined;
+            arcv2_stream_free(*result);
+            *result = joined;
         } else xx_io_close(view);
     }
     if (xx_io_seek64(format->device, saved, SEEK_SET) != 0 || (pd && xx_pd_is_stopped(pd))) {
         if (ok) arcv2_stream_free(*result);
-        *result = NULL; ok = false;
+        *result = NULL;
+        ok = false;
     }
     return ok;
 }

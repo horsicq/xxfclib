@@ -16,11 +16,11 @@
 
 static const uint8_t k_anchor0[] = {0x4D, 0x5A};
 
-static const uint8_t k_anchor1[]={'t','i','z','1'};
-static const uint8_t k_anchor2[]={'t','i','z','2'};
+static const uint8_t k_anchor1[] = {'t', 'i', 'z', '1'};
+static const uint8_t k_anchor2[] = {'t', 'i', 'z', '2'};
 static const xx_format_search_anchor k_anchors[] = {
-    {k_anchor1,sizeof(k_anchor1),0U},
-    {k_anchor2,sizeof(k_anchor2),0U},
+    {k_anchor1, sizeof(k_anchor1), 0U},
+    {k_anchor2, sizeof(k_anchor2), 0U},
     {k_anchor0, sizeof(k_anchor0), 0U},
 };
 

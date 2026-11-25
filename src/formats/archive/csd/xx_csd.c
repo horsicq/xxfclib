@@ -241,8 +241,8 @@ static bool xx_csd_decode(Abstractformat *self, const xx_csd_member *member, uin
         return false;
     }
     /* Exactly the measured plaintext, or nothing. */
-    if (!xx_csdpack_decode_memory(input, packed, output, (size_t)member->uncompressed_size, &consumed, &written) ||
-        written != (size_t)member->uncompressed_size || consumed != packed) {
+    if (!xx_csdpack_decode_memory(input, packed, output, (size_t)member->uncompressed_size, &consumed, &written) || written != (size_t)member->uncompressed_size ||
+        consumed != packed) {
         xx_mem_free(output);
         xx_mem_free(input);
         return false;

@@ -45,7 +45,10 @@ static inline unsigned xx_byteset_first_bit(uint32_t bits)
 static inline unsigned xx_byteset_first_bit(uint32_t bits)
 {
     unsigned index = 0;
-    while (!(bits & 1U)) { bits >>= 1; ++index; }
+    while (!(bits & 1U)) {
+        bits >>= 1;
+        ++index;
+    }
     return index;
 }
 #endif
@@ -77,12 +80,10 @@ static inline unsigned xx_byteset_first_bit(uint32_t bits)
  * non-zero byte in member lanes and 0 elsewhere (nonzero form: the vectors
  * of one step are OR'ed before their single compare with zero). Every hit
  * test ends in movemask; vptest is avoided, it is slow on Zen 1. */
-#define XX_BYTESET_NEGATIVE(s)                                                                     \
-    ((s) == XX_BYTESET_STRATEGY_NE1 || (s) == XX_BYTESET_STRATEGY_NE2 || (s) == XX_BYTESET_STRATEGY_NE3 || \
-     (s) == XX_BYTESET_STRATEGY_NOT_RANGE)
-#define XX_BYTESET_NONZERO(s)                                                                    \
-    ((s) == XX_BYTESET_STRATEGY_SHUFTI || (s) == XX_BYTESET_STRATEGY_SHUFTI_FILTER ||                \
-     (s) == XX_BYTESET_STRATEGY_TRUFFLE_ASCII || (s) == XX_BYTESET_STRATEGY_TRUFFLE)
+#define XX_BYTESET_NEGATIVE(s) \
+    ((s) == XX_BYTESET_STRATEGY_NE1 || (s) == XX_BYTESET_STRATEGY_NE2 || (s) == XX_BYTESET_STRATEGY_NE3 || (s) == XX_BYTESET_STRATEGY_NOT_RANGE)
+#define XX_BYTESET_NONZERO(s) \
+    ((s) == XX_BYTESET_STRATEGY_SHUFTI || (s) == XX_BYTESET_STRATEGY_SHUFTI_FILTER || (s) == XX_BYTESET_STRATEGY_TRUFFLE_ASCII || (s) == XX_BYTESET_STRATEGY_TRUFFLE)
 /* Strategies that index tables with pshufb (SSSE3 in the SSE2 backend). */
 #define XX_BYTESET_SHUFFLES(s) ((s) == XX_BYTESET_STRATEGY_LOOKUP || XX_BYTESET_NONZERO(s))
 
@@ -93,8 +94,7 @@ static XX_BYTESET_INLINE bool xx_byteset_member(const xx_byteset *set, uint8_t v
 
 /* Lowest i in base + (the set bits of candidates) whose byte is a member,
  * or SIZE_MAX; confirms the candidates of SHUFTI_FILTER. */
-static XX_BYTESET_INLINE size_t xx_byteset_confirm(const xx_byteset *set, const uint8_t *data, size_t base,
-                                                   uint32_t candidates)
+static XX_BYTESET_INLINE size_t xx_byteset_confirm(const xx_byteset *set, const uint8_t *data, size_t base, uint32_t candidates)
 {
     do {
         size_t i = base + xx_byteset_first_bit(candidates);

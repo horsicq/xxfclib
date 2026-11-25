@@ -99,8 +99,7 @@ __declspec(dllimport) void *__stdcall GetProcAddress(void *module, const char *p
 
 typedef int(__cdecl *xx_vcrt_c_specific_handler)(void *, void *, void *, void *);
 
-int __cdecl __C_specific_handler(void *exception_record, void *establisher_frame, void *context_record,
-                                 void *dispatcher_context)
+int __cdecl __C_specific_handler(void *exception_record, void *establisher_frame, void *context_record, void *dispatcher_context)
 {
     static xx_vcrt_c_specific_handler volatile cached = NULL; /* every thread stores the same value */
     xx_vcrt_c_specific_handler handler = cached;

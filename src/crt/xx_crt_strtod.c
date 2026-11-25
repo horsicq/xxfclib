@@ -159,8 +159,7 @@ static uint64_t xx_crt_big_top64(const xx_crt_big *pBig, int *pbSticky, int *pnE
     return nTop;
 }
 
-static const double s_xx_crt_pow10[23] = {1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11,
-                                          1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22};
+static const double s_xx_crt_pow10[23] = {1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22};
 
 /* UCRT converts the integer and the fractional digits separately. When the
  * fraction has at most nine significant digits (its denominator 10^n fits in
@@ -321,7 +320,9 @@ static uint64_t xx_crt_strto_bits(const char *pString, const char *pLimit, char 
         if (XX_CRT_AT(p) == '(') {
             const char *pSequence = p + 1;
             const char *q = pSequence;
-            while ((XX_CRT_AT(q) >= '0' && XX_CRT_AT(q) <= '9') || (XX_CRT_AT(q) >= 'a' && XX_CRT_AT(q) <= 'z') || (XX_CRT_AT(q) >= 'A' && XX_CRT_AT(q) <= 'Z') || XX_CRT_AT(q) == '_') ++q;
+            while ((XX_CRT_AT(q) >= '0' && XX_CRT_AT(q) <= '9') || (XX_CRT_AT(q) >= 'a' && XX_CRT_AT(q) <= 'z') || (XX_CRT_AT(q) >= 'A' && XX_CRT_AT(q) <= 'Z') ||
+                   XX_CRT_AT(q) == '_')
+                ++q;
             if (XX_CRT_AT(q) == ')') {
                 size_t nLength = (size_t)(q - pSequence);
                 if (nLength == 3 && xx_crt_lower(pSequence[0]) == 'i' && xx_crt_lower(pSequence[1]) == 'n' && xx_crt_lower(pSequence[2]) == 'd') {

@@ -6,14 +6,12 @@
 
 #include "xx_die_engine_api_internal.h"
 
-static const ApiEntry g_jpeg_api_table[] = {
-    {"getComment", A_getComment, 0},
-    {"getDqtMD5", A_getDqtMD5, 0},
-    {"isChunkPresent", A_isChunkPresent, 1},
-    {"isExifPresent", A_isExifPresent, 0},
-    {"getExifCameraName", A_getExifCameraName, 0},
-    {NULL, A_NONE, 0}
-};
+static const ApiEntry g_jpeg_api_table[] = {{"getComment", A_getComment, 0},
+                                            {"getDqtMD5", A_getDqtMD5, 0},
+                                            {"isChunkPresent", A_isChunkPresent, 1},
+                                            {"isExifPresent", A_isExifPresent, 0},
+                                            {"getExifCameraName", A_getExifCameraName, 0},
+                                            {NULL, A_NONE, 0}};
 
 void die_engine_api_register_jpeg(JSCtx *pCtx, JSVal object)
 {
@@ -22,17 +20,11 @@ void die_engine_api_register_jpeg(JSCtx *pCtx, JSVal object)
 bool die_engine_api_dispatch_jpeg(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult)
 {
     switch (id) {
-        case A_getComment:
-            *pResult = js_str(pCtx, (pEngine->bHasJpeg && xx_jpeg_get_comment(&pEngine->jpeg)) ? xx_jpeg_get_comment(&pEngine->jpeg) : "");
-            return true;
+        case A_getComment: *pResult = js_str(pCtx, (pEngine->bHasJpeg && xx_jpeg_get_comment(&pEngine->jpeg)) ? xx_jpeg_get_comment(&pEngine->jpeg) : ""); return true;
 
-        case A_getDqtMD5:
-            *pResult = js_str(pCtx, (pEngine->bHasJpeg && xx_jpeg_get_dqt_md5(&pEngine->jpeg)) ? xx_jpeg_get_dqt_md5(&pEngine->jpeg) : "");
-            return true;
+        case A_getDqtMD5: *pResult = js_str(pCtx, (pEngine->bHasJpeg && xx_jpeg_get_dqt_md5(&pEngine->jpeg)) ? xx_jpeg_get_dqt_md5(&pEngine->jpeg) : ""); return true;
 
-        case A_isExifPresent:
-            *pResult = js_bool(pEngine->bHasJpeg && (xx_jpeg_get_exif_size(&pEngine->jpeg) > 0));
-            return true;
+        case A_isExifPresent: *pResult = js_bool(pEngine->bHasJpeg && (xx_jpeg_get_exif_size(&pEngine->jpeg) > 0)); return true;
 
         case A_isChunkPresent: {
             cd_i64 nId = arg_i64(pCtx, nArgc, pArgv, 0, 0);
@@ -45,8 +37,7 @@ bool die_engine_api_dispatch_jpeg(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int
             return true;
 
         /* ------------------------------------------------------- APK  */
-        default:
-            break;
+        default: break;
     }
 
     return false;

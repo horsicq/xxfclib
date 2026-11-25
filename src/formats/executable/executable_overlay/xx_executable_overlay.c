@@ -68,7 +68,8 @@ static bool xo_pe(Abstractformat *f, uint64_t base, uint64_t limit, uint32_t p, 
     option_size = xo_u16(h + 20);
     table = op + option_size;
     if (!count || count > 96 || option_size < 96 || !xo_range(limit, op, option_size) || !xo_range(limit, table, (uint64_t)count * 40) ||
-        !xo_read(f, base, limit, op, optional, 96)) return false;
+        !xo_read(f, base, limit, op, optional, 96))
+        return false;
     magic = xo_u16(optional);
     if (magic == 0x10b) {
         directories = xo_u32(optional + 92);
@@ -104,7 +105,8 @@ static bool xo_pe(Abstractformat *f, uint64_t base, uint64_t limit, uint32_t p, 
     if (directories > 4) {
         uint32_t at, size;
         if (!xo_read(f, base, limit, dd + 32, directory, 8)) return false;
-        at = xo_u32(directory); size = xo_u32(directory + 4);
+        at = xo_u32(directory);
+        size = xo_u32(directory + 4);
         if ((at == 0) != (size == 0) || (size && (at < headers || size < 8 || !xo_extend(limit, at, size, &end)))) return false;
     }
     /* COFF symbols are followed by their length-prefixed string table. */
@@ -124,13 +126,13 @@ static bool xo_pe(Abstractformat *f, uint64_t base, uint64_t limit, uint32_t p, 
         uint32_t rva, bytes;
         bool found = false;
         if (!xo_read(f, base, limit, dd + 48, directory, 8)) return false;
-        rva = xo_u32(directory); bytes = xo_u32(directory + 4);
+        rva = xo_u32(directory);
+        bytes = xo_u32(directory + 4);
         if ((rva == 0) != (bytes == 0) || bytes % 28 || bytes / 28 > 65536) return false;
         if (bytes) {
             uint64_t at = 0, j;
             for (i = 0; i < count; ++i) {
-                if (rva >= sections[i].rva && (uint64_t)rva - sections[i].rva < sections[i].size &&
-                    bytes <= sections[i].size - ((uint64_t)rva - sections[i].rva)) {
+                if (rva >= sections[i].rva && (uint64_t)rva - sections[i].rva < sections[i].size && bytes <= sections[i].size - ((uint64_t)rva - sections[i].rva)) {
                     at = (uint64_t)sections[i].raw + rva - sections[i].rva;
                     found = true;
                     break;
@@ -140,7 +142,8 @@ static bool xo_pe(Abstractformat *f, uint64_t base, uint64_t limit, uint32_t p, 
             for (j = 0; j < bytes; j += 28) {
                 uint32_t data, size;
                 if (xo_stopped(pd) || !xo_read(f, base, limit, at + j, debug, 28)) return false;
-                data = xo_u32(debug + 24); size = xo_u32(debug + 16);
+                data = xo_u32(debug + 24);
+                size = xo_u32(debug + 16);
                 if (size && (!data || !xo_extend(limit, data, size, &end))) return false;
             }
         }
@@ -158,24 +161,25 @@ static bool xo_ne(Abstractformat *f, uint64_t base, uint64_t limit, uint32_t p, 
     uint32_t resource_count = 0;
     bool resource_payload = false;
     if (!xo_read(f, base, limit, p, h, 64)) return false;
-    count = xo_u16(h + 28); shift = xo_u16(h + 50);
+    count = xo_u16(h + 28);
+    shift = xo_u16(h + 50);
     table = (uint64_t)p + xo_u16(h + 34);
-    if (count > 1024 || shift > 16 || (count && xo_u16(h + 34) < 64) ||
-        !xo_extend(limit, table, (uint64_t)count * 8, &end) || !xo_extend(limit, p, 64, &end) ||
-        !xo_extend(limit, (uint64_t)p + xo_u16(h + 4), xo_u16(h + 6), &end)) return false;
+    if (count > 1024 || shift > 16 || (count && xo_u16(h + 34) < 64) || !xo_extend(limit, table, (uint64_t)count * 8, &end) || !xo_extend(limit, p, 64, &end) ||
+        !xo_extend(limit, (uint64_t)p + xo_u16(h + 4), xo_u16(h + 6), &end))
+        return false;
     for (i = 0; i < count; ++i) {
         uint64_t at, size;
         uint16_t flags;
         if (xo_stopped(pd) || !xo_read(f, base, limit, table + i * 8, item, 8)) return false;
         at = (uint64_t)xo_u16(item) << shift;
-        size = xo_u16(item + 2); if (!size) size = 65536;
+        size = xo_u16(item + 2);
+        if (!size) size = 65536;
         flags = xo_u16(item + 4);
         if (!at) continue; /* Uninitialized segment has no physical bytes. */
         if (!xo_extend(limit, at, size, &end)) return false;
         if (flags & 0x100) {
             uint64_t relocation_at = at + size;
-            if (!xo_read(f, base, limit, relocation_at, word, 2) ||
-                !xo_extend(limit, relocation_at, 2U + (uint64_t)xo_u16(word) * 8, &end)) return false;
+            if (!xo_read(f, base, limit, relocation_at, word, 2) || !xo_extend(limit, relocation_at, 2U + (uint64_t)xo_u16(word) * 8, &end)) return false;
         }
     }
     {
@@ -183,22 +187,24 @@ static bool xo_ne(Abstractformat *f, uint64_t base, uint64_t limit, uint32_t p, 
         uint16_t bytes = xo_u16(h + 32);
         if (bytes && (!at || !xo_extend(limit, at, bytes, &end))) return false;
     }
-    resources = xo_u16(h + 36); resident = xo_u16(h + 38);
+    resources = xo_u16(h + 36);
+    resident = xo_u16(h + 38);
     if (resources && resources != resident) {
         uint64_t at = (uint64_t)p + resources, resource_end;
         uint32_t total = 0;
         uint16_t resource_shift;
-        if (resources < 64 || resident <= resources || !xo_range(limit, p, resident) ||
-            !xo_read(f, base, limit, at, word, 2)) return false;
+        if (resources < 64 || resident <= resources || !xo_range(limit, p, resident) || !xo_read(f, base, limit, at, word, 2)) return false;
         resource_end = (uint64_t)p + resident;
-        resource_shift = xo_u16(word); at += 2;
+        resource_shift = xo_u16(word);
+        at += 2;
         if (resource_shift > 16) return false;
         for (;;) {
             uint16_t n;
             if (xo_stopped(pd) || at > resource_end || resource_end - at < 2 || !xo_read(f, base, limit, at, word, 2)) return false;
             if (!xo_u16(word)) break;
             if (resource_end - at < 8 || !xo_read(f, base, limit, at, item, 8)) return false;
-            n = xo_u16(item + 2); at += 8;
+            n = xo_u16(item + 2);
+            at += 8;
             if (!n || n > XO_MAX_NE_RESOURCES - total || (uint64_t)n * 12 > resource_end - at) return false;
             total += n;
             resource_count += n;
@@ -228,17 +234,19 @@ static bool xo_image_at(Abstractformat *f, uint64_t base, uint64_t limit, xo_ima
     uint64_t header, end;
     uint32_t extended = 0;
     *opaque = false;
-    if (xo_stopped(pd) || !xo_read(f, base, limit, 0, h, 28) ||
-        !((h[0] == 'M' && h[1] == 'Z') || (h[0] == 'Z' && h[1] == 'M'))) return false;
-    pages = xo_u16(h + 4); last = xo_u16(h + 2);
+    if (xo_stopped(pd) || !xo_read(f, base, limit, 0, h, 28) || !((h[0] == 'M' && h[1] == 'Z') || (h[0] == 'Z' && h[1] == 'M'))) return false;
+    pages = xo_u16(h + 4);
+    last = xo_u16(h + 2);
     header = (uint64_t)xo_u16(h + 8) * 16;
-    reloc = xo_u16(h + 6); reloc_at = xo_u16(h + 24);
+    reloc = xo_u16(h + 6);
+    reloc_at = xo_u16(h + 24);
     if (!pages) {
         unsigned i;
         /* A legacy overlay record has an overlay number but no DOS load
          * extent. Preserve it as opaque data only, including its header. */
         if (limit < 32 || last || reloc || header != 32 || reloc_at != 28 || xo_u16(h + 26) != 1) return false;
-        for (i = 10; i < 24; ++i) if (h[i]) return false;
+        for (i = 10; i < 24; ++i)
+            if (h[i]) return false;
         *opaque = true;
         return true;
     }
@@ -293,8 +301,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
             at = limit;
             break;
         }
-        if (!image.size || image.size > limit - next || ++images > XO_MAX_IMAGES ||
-            !pm_add(f, s, image.label, (int64_t)next, (int64_t)image.size)) return false;
+        if (!image.size || image.size > limit - next || ++images > XO_MAX_IMAGES || !pm_add(f, s, image.label, (int64_t)next, (int64_t)image.size)) return false;
         at = next + image.size;
     }
     if (!images || xo_stopped(pd)) return false;
@@ -365,12 +372,21 @@ bool xx_executable_overlay_unpack_current_archive_record_to_device(Abstractforma
     cursor = xx_io_tell(f->device);
     while (remaining > 0) {
         size_t n = (uint64_t)remaining > capacity ? capacity : (size_t)remaining, written = 0;
-        if (xo_stopped(pd) || !pm_read(f, offset, buffer, n)) { result = false; break; }
+        if (xo_stopped(pd) || !pm_read(f, offset, buffer, n)) {
+            result = false;
+            break;
+        }
         while (destination && written < n) {
             ssize_t amount;
-            if (xo_stopped(pd)) { result = false; break; }
+            if (xo_stopped(pd)) {
+                result = false;
+                break;
+            }
             amount = xx_io_write(destination, buffer + written, n - written);
-            if (amount <= 0 || (size_t)amount > n - written) { result = false; break; }
+            if (amount <= 0 || (size_t)amount > n - written) {
+                result = false;
+                break;
+            }
             written += (size_t)amount;
         }
         if (!result) break;

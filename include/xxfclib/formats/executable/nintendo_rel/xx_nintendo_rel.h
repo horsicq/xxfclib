@@ -145,15 +145,13 @@ XXFC_API const xx_nintendo_rel_header *xx_nintendo_rel_get_header(xx_nintendo_re
 XXFC_API const xx_nintendo_rel_section *xx_nintendo_rel_get_section(xx_nintendo_rel *reader, uint32_t index, xx_pd_struct *pd);
 XXFC_API const xx_nintendo_rel_import *xx_nintendo_rel_get_import(xx_nintendo_rel *reader, uint32_t index, xx_pd_struct *pd);
 XXFC_API const xx_nintendo_rel_relocation *xx_nintendo_rel_get_relocation(xx_nintendo_rel *reader, uint32_t index, xx_pd_struct *pd);
-XXFC_API bool xx_nintendo_rel_get_special_symbol_address(xx_nintendo_rel *reader, xx_nintendo_rel_special_symbol symbol,
-                                                         uint32_t *address, xx_pd_struct *pd);
+XXFC_API bool xx_nintendo_rel_get_special_symbol_address(xx_nintendo_rel *reader, xx_nintendo_rel_special_symbol symbol, uint32_t *address, xx_pd_struct *pd);
 
 /**
  * Apply relocations targeting the main DOL or this REL to a mutable copy of
  * the module file. Imports from other REL modules are counted and skipped.
  */
-XXFC_API bool xx_nintendo_rel_apply_relocations(xx_nintendo_rel *reader, uint8_t *module, size_t module_size,
-                                                xx_nintendo_rel_apply_report *report, xx_pd_struct *pd);
+XXFC_API bool xx_nintendo_rel_apply_relocations(xx_nintendo_rel *reader, uint8_t *module, size_t module_size, xx_nintendo_rel_apply_report *report, xx_pd_struct *pd);
 
 static inline Abstractformat *xx_nintendo_rel_to_format(xx_nintendo_rel *reader)
 {

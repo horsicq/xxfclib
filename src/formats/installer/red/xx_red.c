@@ -292,7 +292,8 @@ static bool red_decode_member(Abstractformat *format, const red_member *member, 
         output = (uint8_t *)xx_mem_alloc(output_size ? output_size : 1U);
         if (!output) return false;
         xx_rt_memcpy(output, member->resolved_plain, output_size);
-        *plain = output; *plain_size = output_size;
+        *plain = output;
+        *plain_size = output_size;
         return true;
     }
     /* A fragment of a file split across volumes cannot be decoded alone. */

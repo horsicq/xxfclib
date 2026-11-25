@@ -157,8 +157,7 @@ struct xx_elf_dwarf {
 
 static uint16_t dwarf_u16(const uint8_t *data, bool big_endian)
 {
-    return big_endian ? (uint16_t)(((uint16_t)data[0] << 8) | data[1])
-                      : (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
+    return big_endian ? (uint16_t)(((uint16_t)data[0] << 8) | data[1]) : (uint16_t)((uint16_t)data[0] | ((uint16_t)data[1] << 8));
 }
 
 static uint32_t dwarf_u32(const uint8_t *data, bool big_endian)
@@ -371,43 +370,114 @@ static bool dwarf_relocation_shape(uint16_t machine, uint64_t type, unsigned *wi
     if (!width || !pc_relative) return false;
     *pc_relative = false;
     switch (machine) {
-    case 3U: /* EM_386 */
-        if (type == 1U) { *width = 4U; return true; }
-        if (type == 2U) { *width = 4U; *pc_relative = true; return true; }
-        break;
-    case 20U: /* EM_PPC */
-        if (type == 1U) { *width = 4U; return true; }
-        if (type == 26U) { *width = 4U; *pc_relative = true; return true; }
-        break;
-    case 21U: /* EM_PPC64 */
-        if (type == 38U) { *width = 8U; return true; }
-        if (type == 1U) { *width = 4U; return true; }
-        if (type == 44U) { *width = 8U; *pc_relative = true; return true; }
-        if (type == 26U) { *width = 4U; *pc_relative = true; return true; }
-        break;
-    case 40U: /* EM_ARM */
-        if (type == 2U) { *width = 4U; return true; }
-        if (type == 3U) { *width = 4U; *pc_relative = true; return true; }
-        break;
-    case 62U: /* EM_X86_64 */
-        if (type == 1U) { *width = 8U; return true; }
-        if (type == 10U || type == 11U) { *width = 4U; return true; }
-        if (type == 2U) { *width = 4U; *pc_relative = true; return true; }
-        break;
-    case 183U: /* EM_AARCH64 */
-        if (type == 257U) { *width = 8U; return true; }
-        if (type == 258U) { *width = 4U; return true; }
-        if (type == 259U) { *width = 2U; return true; }
-        if (type == 260U) { *width = 8U; *pc_relative = true; return true; }
-        if (type == 261U) { *width = 4U; *pc_relative = true; return true; }
-        if (type == 262U) { *width = 2U; *pc_relative = true; return true; }
-        break;
-    case 243U: /* EM_RISCV */
-        if (type == 1U) { *width = 4U; return true; }
-        if (type == 2U) { *width = 8U; return true; }
-        break;
-    default:
-        break;
+        case 3U: /* EM_386 */
+            if (type == 1U) {
+                *width = 4U;
+                return true;
+            }
+            if (type == 2U) {
+                *width = 4U;
+                *pc_relative = true;
+                return true;
+            }
+            break;
+        case 20U: /* EM_PPC */
+            if (type == 1U) {
+                *width = 4U;
+                return true;
+            }
+            if (type == 26U) {
+                *width = 4U;
+                *pc_relative = true;
+                return true;
+            }
+            break;
+        case 21U: /* EM_PPC64 */
+            if (type == 38U) {
+                *width = 8U;
+                return true;
+            }
+            if (type == 1U) {
+                *width = 4U;
+                return true;
+            }
+            if (type == 44U) {
+                *width = 8U;
+                *pc_relative = true;
+                return true;
+            }
+            if (type == 26U) {
+                *width = 4U;
+                *pc_relative = true;
+                return true;
+            }
+            break;
+        case 40U: /* EM_ARM */
+            if (type == 2U) {
+                *width = 4U;
+                return true;
+            }
+            if (type == 3U) {
+                *width = 4U;
+                *pc_relative = true;
+                return true;
+            }
+            break;
+        case 62U: /* EM_X86_64 */
+            if (type == 1U) {
+                *width = 8U;
+                return true;
+            }
+            if (type == 10U || type == 11U) {
+                *width = 4U;
+                return true;
+            }
+            if (type == 2U) {
+                *width = 4U;
+                *pc_relative = true;
+                return true;
+            }
+            break;
+        case 183U: /* EM_AARCH64 */
+            if (type == 257U) {
+                *width = 8U;
+                return true;
+            }
+            if (type == 258U) {
+                *width = 4U;
+                return true;
+            }
+            if (type == 259U) {
+                *width = 2U;
+                return true;
+            }
+            if (type == 260U) {
+                *width = 8U;
+                *pc_relative = true;
+                return true;
+            }
+            if (type == 261U) {
+                *width = 4U;
+                *pc_relative = true;
+                return true;
+            }
+            if (type == 262U) {
+                *width = 2U;
+                *pc_relative = true;
+                return true;
+            }
+            break;
+        case 243U: /* EM_RISCV */
+            if (type == 1U) {
+                *width = 4U;
+                return true;
+            }
+            if (type == 2U) {
+                *width = 8U;
+                return true;
+            }
+            break;
+        default: break;
     }
     return false;
 }
@@ -445,11 +515,11 @@ static bool dwarf_apply_relocations(const xx_elf *elf, uint64_t target_index, dw
         if ((relocations->type != ELF_SECTION_RELA && relocations->type != ELF_SECTION_REL) || relocations->info != target_index) continue;
         if (relocations->link >= elf->section_header_count) return false;
         symbols = &elf->section_headers[relocations->link];
-        canonical_relocation_size = wide ? (relocations->type == ELF_SECTION_RELA ? 24U : 16U)
-                                             : (relocations->type == ELF_SECTION_RELA ? 12U : 8U);
+        canonical_relocation_size = wide ? (relocations->type == ELF_SECTION_RELA ? 24U : 16U) : (relocations->type == ELF_SECTION_RELA ? 12U : 8U);
         canonical_symbol_size = wide ? 24U : 16U;
-        if (relocations->entry_size < canonical_relocation_size || symbols->entry_size < canonical_symbol_size ||
-            relocations->size % relocations->entry_size != 0U || symbols->size % symbols->entry_size != 0U) return false;
+        if (relocations->entry_size < canonical_relocation_size || symbols->entry_size < canonical_symbol_size || relocations->size % relocations->entry_size != 0U ||
+            symbols->size % symbols->entry_size != 0U)
+            return false;
         relocation_count = relocations->size / relocations->entry_size;
         if (relocation_count > DWARF_RELOCATION_LIMIT) return false;
         for (relocation_index = 0U; relocation_index < relocation_count; ++relocation_index) {
@@ -465,8 +535,7 @@ static bool dwarf_apply_relocations(const xx_elf *elf, uint64_t target_index, dw
             unsigned width;
             bool pc_relative;
             uint64_t entry_offset = relocations->offset + relocation_index * relocations->entry_size;
-            if (entry_offset < relocations->offset ||
-                !dwarf_read_device(elf, entry_offset, relocation_bytes, canonical_relocation_size)) return false;
+            if (entry_offset < relocations->offset || !dwarf_read_device(elf, entry_offset, relocation_bytes, canonical_relocation_size)) return false;
             if (wide) {
                 relocation_offset = dwarf_u64(relocation_bytes, big_endian);
                 relocation_info = dwarf_u64(relocation_bytes + 8U, big_endian);
@@ -480,16 +549,16 @@ static bool dwarf_apply_relocations(const xx_elf *elf, uint64_t target_index, dw
                 relocation_type = relocation_info & UINT8_MAX;
                 addend = relocations->type == ELF_SECTION_RELA ? dwarf_signed_uint(dwarf_u32(relocation_bytes + 8U, big_endian), 4U) : 0;
             }
-            if (!dwarf_relocation_shape(elf->machine, relocation_type, &width, &pc_relative) ||
-                relocation_offset > target->size || width > target->size - relocation_offset ||
-                symbol_index >= symbols->size / symbols->entry_size) return false;
+            if (!dwarf_relocation_shape(elf->machine, relocation_type, &width, &pc_relative) || relocation_offset > target->size ||
+                width > target->size - relocation_offset || symbol_index >= symbols->size / symbols->entry_size)
+                return false;
             entry_offset = symbols->offset + symbol_index * symbols->entry_size;
             if (entry_offset < symbols->offset || !dwarf_read_device(elf, entry_offset, symbol_bytes, canonical_symbol_size)) return false;
             symbol_value = wide ? dwarf_u64(symbol_bytes + 8U, big_endian) : dwarf_u32(symbol_bytes + 4U, big_endian);
             if (relocations->type == ELF_SECTION_REL) {
-                uint64_t raw = width == 8U ? dwarf_u64(target->data + relocation_offset, big_endian)
-                                          : width == 4U ? dwarf_u32(target->data + relocation_offset, big_endian)
-                                                        : dwarf_u16(target->data + relocation_offset, big_endian);
+                uint64_t raw = width == 8U   ? dwarf_u64(target->data + relocation_offset, big_endian)
+                               : width == 4U ? dwarf_u32(target->data + relocation_offset, big_endian)
+                                             : dwarf_u16(target->data + relocation_offset, big_endian);
                 addend = dwarf_signed_uint(raw, width);
             }
             if (!dwarf_add_signed(symbol_value, addend, &relocated_value)) return false;
@@ -538,20 +607,32 @@ static bool dwarf_load_section(const xx_elf *elf, const char *wanted, dwarf_sect
             uint8_t *decoded;
             size_t written = 0U;
             if (elf->elf_class == XX_ELF_CLASS_64) {
-                if (raw_size < 24U) { xx_mem_free(raw); return false; }
+                if (raw_size < 24U) {
+                    xx_mem_free(raw);
+                    return false;
+                }
                 type = dwarf_u32(raw, elf->data_encoding == XX_ELF_DATA_MSB);
                 decoded_size = dwarf_u64(raw + 8U, elf->data_encoding == XX_ELF_DATA_MSB);
                 header_size = 24U;
             } else {
-                if (raw_size < 12U) { xx_mem_free(raw); return false; }
+                if (raw_size < 12U) {
+                    xx_mem_free(raw);
+                    return false;
+                }
                 type = dwarf_u32(raw, elf->data_encoding == XX_ELF_DATA_MSB);
                 decoded_size = dwarf_u32(raw + 4U, elf->data_encoding == XX_ELF_DATA_MSB);
                 header_size = 12U;
             }
-            if (type != 1U || decoded_size == 0U || decoded_size > DWARF_SECTION_LIMIT || decoded_size > SIZE_MAX) { xx_mem_free(raw); return false; }
+            if (type != 1U || decoded_size == 0U || decoded_size > DWARF_SECTION_LIMIT || decoded_size > SIZE_MAX) {
+                xx_mem_free(raw);
+                return false;
+            }
             decoded = (uint8_t *)xx_mem_alloc((size_t)decoded_size);
-            if (!decoded || !xx_zlib_stream_decode_memory(raw + header_size, (size_t)(raw_size - header_size), decoded, (size_t)decoded_size, &written) || written != decoded_size) {
-                xx_mem_free(decoded); xx_mem_free(raw); return false;
+            if (!decoded || !xx_zlib_stream_decode_memory(raw + header_size, (size_t)(raw_size - header_size), decoded, (size_t)decoded_size, &written) ||
+                written != decoded_size) {
+                xx_mem_free(decoded);
+                xx_mem_free(raw);
+                return false;
             }
             xx_mem_free(raw);
             output->data = decoded;
@@ -562,12 +643,20 @@ static bool dwarf_load_section(const xx_elf *elf, const char *wanted, dwarf_sect
             uint64_t decoded_size;
             uint8_t *decoded;
             size_t written = 0U;
-            if (raw_size < 12U || memcmp(raw, "ZLIB", 4U) != 0) { xx_mem_free(raw); return false; }
+            if (raw_size < 12U || memcmp(raw, "ZLIB", 4U) != 0) {
+                xx_mem_free(raw);
+                return false;
+            }
             decoded_size = dwarf_u64(raw + 4U, true);
-            if (decoded_size == 0U || decoded_size > DWARF_SECTION_LIMIT || decoded_size > SIZE_MAX) { xx_mem_free(raw); return false; }
+            if (decoded_size == 0U || decoded_size > DWARF_SECTION_LIMIT || decoded_size > SIZE_MAX) {
+                xx_mem_free(raw);
+                return false;
+            }
             decoded = (uint8_t *)xx_mem_alloc((size_t)decoded_size);
             if (!decoded || !xx_zlib_stream_decode_memory(raw + 12U, (size_t)(raw_size - 12U), decoded, (size_t)decoded_size, &written) || written != decoded_size) {
-                xx_mem_free(decoded); xx_mem_free(raw); return false;
+                xx_mem_free(decoded);
+                xx_mem_free(raw);
+                return false;
             }
             xx_mem_free(raw);
             output->data = decoded;
@@ -622,8 +711,8 @@ static bool dwarf_parse_abbreviations(xx_elf_dwarf *dwarf)
             continue;
         }
         if (!dwarf_cursor_uleb(&cursor, &tag) || !dwarf_cursor_uint(&cursor, 1U, &children) || children > 1U ||
-            !dwarf_grow((void **)&dwarf->abbreviations, &dwarf->abbreviation_capacity, dwarf->abbreviation_count + 1U,
-                        sizeof(*dwarf->abbreviations), DWARF_ABBREV_LIMIT)) return false;
+            !dwarf_grow((void **)&dwarf->abbreviations, &dwarf->abbreviation_capacity, dwarf->abbreviation_count + 1U, sizeof(*dwarf->abbreviations), DWARF_ABBREV_LIMIT))
+            return false;
         abbreviation = &dwarf->abbreviations[dwarf->abbreviation_count++];
         abbreviation->table_offset = table_offset;
         abbreviation->offset = entry_offset;
@@ -638,8 +727,10 @@ static bool dwarf_parse_abbreviations(xx_elf_dwarf *dwarf)
             xx_elf_dwarf_attribute_spec *specification;
             if (!dwarf_cursor_uleb(&cursor, &name) || !dwarf_cursor_uleb(&cursor, &form)) return false;
             if (name == 0U && form == 0U) break;
-            if (name == 0U || form == 0U || !dwarf_grow((void **)&dwarf->specifications, &dwarf->specification_capacity,
-                                                        dwarf->specification_count + 1U, sizeof(*dwarf->specifications), DWARF_SPEC_LIMIT)) return false;
+            if (name == 0U || form == 0U ||
+                !dwarf_grow((void **)&dwarf->specifications, &dwarf->specification_capacity, dwarf->specification_count + 1U, sizeof(*dwarf->specifications),
+                            DWARF_SPEC_LIMIT))
+                return false;
             specification = &dwarf->specifications[dwarf->specification_count++];
             specification->name = name;
             specification->form = form;
@@ -662,8 +753,7 @@ static const xx_elf_dwarf_abbreviation *dwarf_find_abbreviation(const xx_elf_dwa
     return NULL;
 }
 
-static bool dwarf_parse_form(xx_elf_dwarf *dwarf, dwarf_cursor *cursor, const xx_elf_dwarf_unit *unit,
-                             uint64_t form, int64_t implicit_constant, unsigned recursion,
+static bool dwarf_parse_form(xx_elf_dwarf *dwarf, dwarf_cursor *cursor, const xx_elf_dwarf_unit *unit, uint64_t form, int64_t implicit_constant, unsigned recursion,
                              xx_elf_dwarf_attribute *attribute)
 {
     uint64_t value = 0U;
@@ -676,53 +766,38 @@ static bool dwarf_parse_form(xx_elf_dwarf *dwarf, dwarf_cursor *cursor, const xx
     attribute->kind = XX_ELF_DWARF_VALUE_NONE;
     attribute->data_offset = cursor->position;
     switch (form) {
-    case DW_FORM_ADDR:
-        width = unit->address_size;
-        attribute->kind = XX_ELF_DWARF_VALUE_UNSIGNED;
-        break;
-    case DW_FORM_DATA1:
-    case DW_FORM_FLAG:
-    case DW_FORM_REF1:
-    case DW_FORM_STRX1:
-    case DW_FORM_ADDRX1:
-        width = 1U;
-        break;
-    case DW_FORM_DATA2:
-    case DW_FORM_REF2:
-    case DW_FORM_STRX2:
-    case DW_FORM_ADDRX2:
-        width = 2U;
-        break;
-    case DW_FORM_DATA4:
-    case DW_FORM_REF4:
-    case DW_FORM_REF_SUP4:
-    case DW_FORM_STRX4:
-    case DW_FORM_ADDRX4:
-        width = 4U;
-        break;
-    case DW_FORM_DATA8:
-    case DW_FORM_REF8:
-    case DW_FORM_REF_SIG8:
-    case DW_FORM_REF_SUP8:
-        width = 8U;
-        break;
-    case DW_FORM_STRX3:
-    case DW_FORM_ADDRX3:
-        width = 3U;
-        break;
-    case DW_FORM_STRP:
-    case DW_FORM_STRP_SUP:
-    case DW_FORM_LINE_STRP:
-    case DW_FORM_SEC_OFFSET:
-    case DW_FORM_GNU_REF_ALT:
-    case DW_FORM_GNU_STRP_ALT:
-        width = unit->offset_size;
-        break;
-    case DW_FORM_REF_ADDR:
-        width = unit->version == 2U ? unit->address_size : unit->offset_size;
-        break;
-    default:
-        break;
+        case DW_FORM_ADDR:
+            width = unit->address_size;
+            attribute->kind = XX_ELF_DWARF_VALUE_UNSIGNED;
+            break;
+        case DW_FORM_DATA1:
+        case DW_FORM_FLAG:
+        case DW_FORM_REF1:
+        case DW_FORM_STRX1:
+        case DW_FORM_ADDRX1: width = 1U; break;
+        case DW_FORM_DATA2:
+        case DW_FORM_REF2:
+        case DW_FORM_STRX2:
+        case DW_FORM_ADDRX2: width = 2U; break;
+        case DW_FORM_DATA4:
+        case DW_FORM_REF4:
+        case DW_FORM_REF_SUP4:
+        case DW_FORM_STRX4:
+        case DW_FORM_ADDRX4: width = 4U; break;
+        case DW_FORM_DATA8:
+        case DW_FORM_REF8:
+        case DW_FORM_REF_SIG8:
+        case DW_FORM_REF_SUP8: width = 8U; break;
+        case DW_FORM_STRX3:
+        case DW_FORM_ADDRX3: width = 3U; break;
+        case DW_FORM_STRP:
+        case DW_FORM_STRP_SUP:
+        case DW_FORM_LINE_STRP:
+        case DW_FORM_SEC_OFFSET:
+        case DW_FORM_GNU_REF_ALT:
+        case DW_FORM_GNU_STRP_ALT: width = unit->offset_size; break;
+        case DW_FORM_REF_ADDR: width = unit->version == 2U ? unit->address_size : unit->offset_size; break;
+        default: break;
     }
     if (width != 0U) {
         if (!dwarf_cursor_uint(cursor, width, &value)) return false;
@@ -756,8 +831,7 @@ static bool dwarf_parse_form(xx_elf_dwarf *dwarf, dwarf_cursor *cursor, const xx
             attribute->unsigned_value = unit->offset + value;
             return true;
         }
-        if (form == DW_FORM_REF_ADDR || form == DW_FORM_REF_SUP4 || form == DW_FORM_REF_SUP8 ||
-            form == DW_FORM_REF_SIG8 || form == DW_FORM_GNU_REF_ALT) {
+        if (form == DW_FORM_REF_ADDR || form == DW_FORM_REF_SUP4 || form == DW_FORM_REF_SUP8 || form == DW_FORM_REF_SIG8 || form == DW_FORM_GNU_REF_ALT) {
             attribute->kind = XX_ELF_DWARF_VALUE_REFERENCE;
             return true;
         }
@@ -765,76 +839,73 @@ static bool dwarf_parse_form(xx_elf_dwarf *dwarf, dwarf_cursor *cursor, const xx
         return true;
     }
     switch (form) {
-    case DW_FORM_STRING:
-        attribute->data_offset = cursor->position;
-        string_value = dwarf_cursor_string(cursor);
-        if (!string_value) return false;
-        attribute->kind = XX_ELF_DWARF_VALUE_STRING;
-        attribute->string_value = string_value;
-        attribute->data_size = strlen(string_value) + 1U;
-        return true;
-    case DW_FORM_UDATA:
-    case DW_FORM_REF_UDATA:
-    case DW_FORM_STRX:
-    case DW_FORM_ADDRX:
-    case DW_FORM_LOCLISTX:
-    case DW_FORM_RNGLISTX:
-    case DW_FORM_GNU_ADDR_INDEX:
-    case DW_FORM_GNU_STR_INDEX:
-        if (!dwarf_cursor_uleb(cursor, &value)) return false;
-        attribute->unsigned_value = value;
-        if (form == DW_FORM_REF_UDATA) {
-            if (value > UINT64_MAX - unit->offset) return false;
-            attribute->unsigned_value = unit->offset + value;
-            attribute->kind = XX_ELF_DWARF_VALUE_REFERENCE;
-        } else if (form == DW_FORM_STRX || form == DW_FORM_GNU_STR_INDEX) {
-            attribute->kind = XX_ELF_DWARF_VALUE_STRING_INDEX;
-        } else if (form == DW_FORM_ADDRX || form == DW_FORM_GNU_ADDR_INDEX) {
-            attribute->kind = XX_ELF_DWARF_VALUE_ADDRESS_INDEX;
-        } else if (form == DW_FORM_LOCLISTX) {
-            attribute->kind = XX_ELF_DWARF_VALUE_LOCLIST_INDEX;
-        } else if (form == DW_FORM_RNGLISTX) {
-            attribute->kind = XX_ELF_DWARF_VALUE_RNGLIST_INDEX;
-        } else {
+        case DW_FORM_STRING:
+            attribute->data_offset = cursor->position;
+            string_value = dwarf_cursor_string(cursor);
+            if (!string_value) return false;
+            attribute->kind = XX_ELF_DWARF_VALUE_STRING;
+            attribute->string_value = string_value;
+            attribute->data_size = strlen(string_value) + 1U;
+            return true;
+        case DW_FORM_UDATA:
+        case DW_FORM_REF_UDATA:
+        case DW_FORM_STRX:
+        case DW_FORM_ADDRX:
+        case DW_FORM_LOCLISTX:
+        case DW_FORM_RNGLISTX:
+        case DW_FORM_GNU_ADDR_INDEX:
+        case DW_FORM_GNU_STR_INDEX:
+            if (!dwarf_cursor_uleb(cursor, &value)) return false;
+            attribute->unsigned_value = value;
+            if (form == DW_FORM_REF_UDATA) {
+                if (value > UINT64_MAX - unit->offset) return false;
+                attribute->unsigned_value = unit->offset + value;
+                attribute->kind = XX_ELF_DWARF_VALUE_REFERENCE;
+            } else if (form == DW_FORM_STRX || form == DW_FORM_GNU_STR_INDEX) {
+                attribute->kind = XX_ELF_DWARF_VALUE_STRING_INDEX;
+            } else if (form == DW_FORM_ADDRX || form == DW_FORM_GNU_ADDR_INDEX) {
+                attribute->kind = XX_ELF_DWARF_VALUE_ADDRESS_INDEX;
+            } else if (form == DW_FORM_LOCLISTX) {
+                attribute->kind = XX_ELF_DWARF_VALUE_LOCLIST_INDEX;
+            } else if (form == DW_FORM_RNGLISTX) {
+                attribute->kind = XX_ELF_DWARF_VALUE_RNGLIST_INDEX;
+            } else {
+                attribute->kind = XX_ELF_DWARF_VALUE_UNSIGNED;
+            }
+            attribute->data_size = cursor->position - attribute->data_offset;
+            return true;
+        case DW_FORM_SDATA:
+            if (!dwarf_cursor_sleb(cursor, &signed_value)) return false;
+            attribute->kind = XX_ELF_DWARF_VALUE_SIGNED;
+            attribute->signed_value = signed_value;
+            attribute->data_size = cursor->position - attribute->data_offset;
+            return true;
+        case DW_FORM_FLAG_PRESENT:
             attribute->kind = XX_ELF_DWARF_VALUE_UNSIGNED;
-        }
-        attribute->data_size = cursor->position - attribute->data_offset;
-        return true;
-    case DW_FORM_SDATA:
-        if (!dwarf_cursor_sleb(cursor, &signed_value)) return false;
-        attribute->kind = XX_ELF_DWARF_VALUE_SIGNED;
-        attribute->signed_value = signed_value;
-        attribute->data_size = cursor->position - attribute->data_offset;
-        return true;
-    case DW_FORM_FLAG_PRESENT:
-        attribute->kind = XX_ELF_DWARF_VALUE_UNSIGNED;
-        attribute->unsigned_value = 1U;
-        return true;
-    case DW_FORM_IMPLICIT_CONST:
-        attribute->kind = XX_ELF_DWARF_VALUE_SIGNED;
-        attribute->signed_value = implicit_constant;
-        return true;
-    case DW_FORM_BLOCK1:
-        if (!dwarf_cursor_uint(cursor, 1U, &count)) return false;
-        break;
-    case DW_FORM_BLOCK2:
-        if (!dwarf_cursor_uint(cursor, 2U, &count)) return false;
-        break;
-    case DW_FORM_BLOCK4:
-        if (!dwarf_cursor_uint(cursor, 4U, &count)) return false;
-        break;
-    case DW_FORM_BLOCK:
-    case DW_FORM_EXPRLOC:
-        if (!dwarf_cursor_uleb(cursor, &count)) return false;
-        break;
-    case DW_FORM_DATA16:
-        count = 16U;
-        break;
-    case DW_FORM_INDIRECT:
-        if (!dwarf_cursor_uleb(cursor, &value)) return false;
-        return dwarf_parse_form(dwarf, cursor, unit, value, 0, recursion + 1U, attribute);
-    default:
-        return false;
+            attribute->unsigned_value = 1U;
+            return true;
+        case DW_FORM_IMPLICIT_CONST:
+            attribute->kind = XX_ELF_DWARF_VALUE_SIGNED;
+            attribute->signed_value = implicit_constant;
+            return true;
+        case DW_FORM_BLOCK1:
+            if (!dwarf_cursor_uint(cursor, 1U, &count)) return false;
+            break;
+        case DW_FORM_BLOCK2:
+            if (!dwarf_cursor_uint(cursor, 2U, &count)) return false;
+            break;
+        case DW_FORM_BLOCK4:
+            if (!dwarf_cursor_uint(cursor, 4U, &count)) return false;
+            break;
+        case DW_FORM_BLOCK:
+        case DW_FORM_EXPRLOC:
+            if (!dwarf_cursor_uleb(cursor, &count)) return false;
+            break;
+        case DW_FORM_DATA16: count = 16U; break;
+        case DW_FORM_INDIRECT:
+            if (!dwarf_cursor_uleb(cursor, &value)) return false;
+            return dwarf_parse_form(dwarf, cursor, unit, value, 0, recursion + 1U, attribute);
+        default: return false;
     }
     attribute->data_offset = cursor->position;
     attribute->data_size = count;
@@ -851,28 +922,28 @@ static bool dwarf_parse_unit_header(dwarf_cursor *cursor, xx_elf_dwarf_unit *uni
     memset(unit, 0, sizeof(*unit));
     unit->offset = cursor->position;
     unit->statement_list = UINT64_MAX;
-    if (!dwarf_read_initial_length(cursor, unit_end, &offset_size, &length) ||
-        !dwarf_cursor_uint(cursor, 2U, &value) || value < 2U || value > 5U) return false;
+    if (!dwarf_read_initial_length(cursor, unit_end, &offset_size, &length) || !dwarf_cursor_uint(cursor, 2U, &value) || value < 2U || value > 5U) return false;
     unit->length = length;
     unit->offset_size = offset_size;
     unit->version = (uint16_t)value;
     if (unit->version >= 5U) {
         if (!dwarf_cursor_uint(cursor, 1U, &value)) return false;
         unit->unit_type = (uint8_t)value;
-        if (unit->unit_type < DW_UT_COMPILE || unit->unit_type > DW_UT_SPLIT_TYPE ||
-            !dwarf_cursor_uint(cursor, 1U, &value) || (value != 1U && value != 2U && value != 4U && value != 8U)) return false;
+        if (unit->unit_type < DW_UT_COMPILE || unit->unit_type > DW_UT_SPLIT_TYPE || !dwarf_cursor_uint(cursor, 1U, &value) ||
+            (value != 1U && value != 2U && value != 4U && value != 8U))
+            return false;
         unit->address_size = (uint8_t)value;
         if (!dwarf_cursor_uint(cursor, unit->offset_size, &unit->abbreviation_offset)) return false;
         if (unit->unit_type == DW_UT_TYPE || unit->unit_type == DW_UT_SPLIT_TYPE) {
-            if (!dwarf_cursor_uint(cursor, 8U, &unit->type_signature) ||
-                !dwarf_cursor_uint(cursor, unit->offset_size, &unit->type_offset)) return false;
+            if (!dwarf_cursor_uint(cursor, 8U, &unit->type_signature) || !dwarf_cursor_uint(cursor, unit->offset_size, &unit->type_offset)) return false;
         } else if (unit->unit_type == DW_UT_SKELETON || unit->unit_type == DW_UT_SPLIT_COMPILE) {
             if (!dwarf_cursor_uint(cursor, 8U, &unit->dwo_id)) return false;
         }
     } else {
         unit->unit_type = DW_UT_COMPILE;
-        if (!dwarf_cursor_uint(cursor, unit->offset_size, &unit->abbreviation_offset) ||
-            !dwarf_cursor_uint(cursor, 1U, &value) || (value != 1U && value != 2U && value != 4U && value != 8U)) return false;
+        if (!dwarf_cursor_uint(cursor, unit->offset_size, &unit->abbreviation_offset) || !dwarf_cursor_uint(cursor, 1U, &value) ||
+            (value != 1U && value != 2U && value != 4U && value != 8U))
+            return false;
         unit->address_size = (uint8_t)value;
     }
     return cursor->position <= *unit_end;
@@ -907,8 +978,8 @@ static bool dwarf_parse_information(xx_elf_dwarf *dwarf)
         uint32_t depth = 0U;
         uint32_t unit_index;
         if (!dwarf_parse_unit_header(&cursor, &parsed, &unit_end) || parsed.abbreviation_offset >= dwarf->abbrev.size ||
-            !dwarf_grow((void **)&dwarf->units, &dwarf->unit_capacity, dwarf->unit_count + 1U,
-                        sizeof(*dwarf->units), DWARF_UNIT_LIMIT)) return false;
+            !dwarf_grow((void **)&dwarf->units, &dwarf->unit_capacity, dwarf->unit_count + 1U, sizeof(*dwarf->units), DWARF_UNIT_LIMIT))
+            return false;
         parsed.die_index = dwarf->die_count;
         unit_index = dwarf->unit_count;
         dwarf->units[dwarf->unit_count++] = parsed;
@@ -919,44 +990,43 @@ static bool dwarf_parse_information(xx_elf_dwarf *dwarf)
             xx_elf_dwarf_die *die;
             uint32_t spec_index;
             {
-            uint64_t code_offset = cursor.position;
-            if (!dwarf_cursor_uleb(&cursor, &code)) return false;
-            if (code == 0U) {
-                if (depth > 0U) --depth;
-                continue;
+                uint64_t code_offset = cursor.position;
+                if (!dwarf_cursor_uleb(&cursor, &code)) return false;
+                if (code == 0U) {
+                    if (depth > 0U) --depth;
+                    continue;
+                }
+                abbreviation = dwarf_find_abbreviation(dwarf, unit->abbreviation_offset, code);
+                if (!abbreviation || !dwarf_grow((void **)&dwarf->dies, &dwarf->die_capacity, dwarf->die_count + 1U, sizeof(*dwarf->dies), DWARF_DIE_LIMIT)) return false;
+                die = &dwarf->dies[dwarf->die_count++];
+                memset(die, 0, sizeof(*die));
+                die->offset = code_offset;
+                die->abbreviation_code = code;
+                die->tag = abbreviation->tag;
+                die->unit_index = unit_index;
+                die->depth = depth;
+                die->has_children = abbreviation->has_children;
+                die->attribute_index = dwarf->attribute_count;
+                for (spec_index = 0U; spec_index < abbreviation->attribute_spec_count; ++spec_index) {
+                    const xx_elf_dwarf_attribute_spec *specification = &dwarf->specifications[abbreviation->attribute_spec_index + spec_index];
+                    xx_elf_dwarf_attribute *attribute;
+                    if (!dwarf_grow((void **)&dwarf->attributes, &dwarf->attribute_capacity, dwarf->attribute_count + 1U, sizeof(*dwarf->attributes),
+                                    DWARF_ATTRIBUTE_LIMIT))
+                        return false;
+                    attribute = &dwarf->attributes[dwarf->attribute_count];
+                    memset(attribute, 0, sizeof(*attribute));
+                    attribute->name = specification->name;
+                    if (!dwarf_parse_form(dwarf, &cursor, unit, specification->form, specification->implicit_constant, 0U, attribute) || cursor.position > unit_end)
+                        return false;
+                    ++dwarf->attribute_count;
+                    ++die->attribute_count;
+                    if (die->depth == 0U) dwarf_update_unit_from_attribute(unit, attribute);
+                }
+                if (abbreviation->has_children) {
+                    if (depth == UINT32_MAX) return false;
+                    ++depth;
+                }
             }
-            abbreviation = dwarf_find_abbreviation(dwarf, unit->abbreviation_offset, code);
-            if (!abbreviation || !dwarf_grow((void **)&dwarf->dies, &dwarf->die_capacity, dwarf->die_count + 1U,
-                                             sizeof(*dwarf->dies), DWARF_DIE_LIMIT)) return false;
-            die = &dwarf->dies[dwarf->die_count++];
-            memset(die, 0, sizeof(*die));
-            die->offset = code_offset;
-            die->abbreviation_code = code;
-            die->tag = abbreviation->tag;
-            die->unit_index = unit_index;
-            die->depth = depth;
-            die->has_children = abbreviation->has_children;
-            die->attribute_index = dwarf->attribute_count;
-            for (spec_index = 0U; spec_index < abbreviation->attribute_spec_count; ++spec_index) {
-                const xx_elf_dwarf_attribute_spec *specification =
-                    &dwarf->specifications[abbreviation->attribute_spec_index + spec_index];
-                xx_elf_dwarf_attribute *attribute;
-                if (!dwarf_grow((void **)&dwarf->attributes, &dwarf->attribute_capacity, dwarf->attribute_count + 1U,
-                                sizeof(*dwarf->attributes), DWARF_ATTRIBUTE_LIMIT)) return false;
-                attribute = &dwarf->attributes[dwarf->attribute_count];
-                memset(attribute, 0, sizeof(*attribute));
-                attribute->name = specification->name;
-                if (!dwarf_parse_form(dwarf, &cursor, unit, specification->form, specification->implicit_constant, 0U, attribute) ||
-                    cursor.position > unit_end) return false;
-                ++dwarf->attribute_count;
-                ++die->attribute_count;
-                if (die->depth == 0U) dwarf_update_unit_from_attribute(unit, attribute);
-            }
-            if (abbreviation->has_children) {
-                if (depth == UINT32_MAX) return false;
-                ++depth;
-            }
-        }
         }
         if (cursor.position != unit_end) return false;
         unit->die_count = dwarf->die_count - unit->die_index;
@@ -1061,8 +1131,7 @@ static bool dwarf_path_has_directory_prefix(const char *path, const char *direct
     if (!path || !directory || !directory[0]) return false;
     length = strlen(directory);
     while (length > 1U && (directory[length - 1U] == '/' || directory[length - 1U] == '\\')) --length;
-    return strncmp(path, directory, length) == 0 &&
-           (path[length] == '\0' || path[length] == '/' || path[length] == '\\');
+    return strncmp(path, directory, length) == 0 && (path[length] == '\0' || path[length] == '/' || path[length] == '\\');
 }
 
 static char *dwarf_join_path(const char *directory, const char *name)
@@ -1087,8 +1156,7 @@ static char *dwarf_join_path(const char *directory, const char *name)
     return result;
 }
 
-static bool dwarf_line_form_value(xx_elf_dwarf *dwarf, dwarf_cursor *cursor, uint64_t form,
-                                  uint8_t offset_size, uint8_t address_size, dwarf_line_value *output)
+static bool dwarf_line_form_value(xx_elf_dwarf *dwarf, dwarf_cursor *cursor, uint64_t form, uint8_t offset_size, uint8_t address_size, dwarf_line_value *output)
 {
     uint64_t width = 0U;
     uint64_t value;
@@ -1096,18 +1164,15 @@ static bool dwarf_line_form_value(xx_elf_dwarf *dwarf, dwarf_cursor *cursor, uin
     if (!dwarf || !cursor || !output) return false;
     memset(output, 0, sizeof(*output));
     switch (form) {
-    case DW_FORM_DATA1: width = 1U; break;
-    case DW_FORM_DATA2: width = 2U; break;
-    case DW_FORM_DATA4: width = 4U; break;
-    case DW_FORM_DATA8: width = 8U; break;
-    case DW_FORM_ADDR: width = address_size; break;
-    case DW_FORM_STRP:
-    case DW_FORM_LINE_STRP:
-    case DW_FORM_SEC_OFFSET:
-        width = offset_size;
-        break;
-    default:
-        break;
+        case DW_FORM_DATA1: width = 1U; break;
+        case DW_FORM_DATA2: width = 2U; break;
+        case DW_FORM_DATA4: width = 4U; break;
+        case DW_FORM_DATA8: width = 8U; break;
+        case DW_FORM_ADDR: width = address_size; break;
+        case DW_FORM_STRP:
+        case DW_FORM_LINE_STRP:
+        case DW_FORM_SEC_OFFSET: width = offset_size; break;
+        default: break;
     }
     if (width != 0U) {
         if (!dwarf_cursor_uint(cursor, (unsigned)width, &value)) return false;
@@ -1123,53 +1188,46 @@ static bool dwarf_line_form_value(xx_elf_dwarf *dwarf, dwarf_cursor *cursor, uin
         return true;
     }
     switch (form) {
-    case DW_FORM_STRING:
-        string = dwarf_cursor_string(cursor);
-        if (!string) return false;
-        output->string = string;
-        return true;
-    case DW_FORM_UDATA:
-        return dwarf_cursor_uleb(cursor, &output->number);
-    case DW_FORM_SDATA: {
-        int64_t signed_value;
-        if (!dwarf_cursor_sleb(cursor, &signed_value)) return false;
-        output->number = (uint64_t)signed_value;
-        return true;
-    }
-    case DW_FORM_FLAG_PRESENT:
-        output->number = 1U;
-        return true;
-    case DW_FORM_DATA16:
-        output->size = 16U;
-        return dwarf_cursor_bytes(cursor, 16U, &output->bytes);
-    case DW_FORM_BLOCK1:
-        if (!dwarf_cursor_uint(cursor, 1U, &output->size)) return false;
-        return dwarf_cursor_bytes(cursor, output->size, &output->bytes);
-    case DW_FORM_BLOCK2:
-        if (!dwarf_cursor_uint(cursor, 2U, &output->size)) return false;
-        return dwarf_cursor_bytes(cursor, output->size, &output->bytes);
-    case DW_FORM_BLOCK4:
-        if (!dwarf_cursor_uint(cursor, 4U, &output->size)) return false;
-        return dwarf_cursor_bytes(cursor, output->size, &output->bytes);
-    case DW_FORM_BLOCK:
-        if (!dwarf_cursor_uleb(cursor, &output->size)) return false;
-        return dwarf_cursor_bytes(cursor, output->size, &output->bytes);
-    default:
-        return false;
+        case DW_FORM_STRING:
+            string = dwarf_cursor_string(cursor);
+            if (!string) return false;
+            output->string = string;
+            return true;
+        case DW_FORM_UDATA: return dwarf_cursor_uleb(cursor, &output->number);
+        case DW_FORM_SDATA: {
+            int64_t signed_value;
+            if (!dwarf_cursor_sleb(cursor, &signed_value)) return false;
+            output->number = (uint64_t)signed_value;
+            return true;
+        }
+        case DW_FORM_FLAG_PRESENT: output->number = 1U; return true;
+        case DW_FORM_DATA16: output->size = 16U; return dwarf_cursor_bytes(cursor, 16U, &output->bytes);
+        case DW_FORM_BLOCK1:
+            if (!dwarf_cursor_uint(cursor, 1U, &output->size)) return false;
+            return dwarf_cursor_bytes(cursor, output->size, &output->bytes);
+        case DW_FORM_BLOCK2:
+            if (!dwarf_cursor_uint(cursor, 2U, &output->size)) return false;
+            return dwarf_cursor_bytes(cursor, output->size, &output->bytes);
+        case DW_FORM_BLOCK4:
+            if (!dwarf_cursor_uint(cursor, 4U, &output->size)) return false;
+            return dwarf_cursor_bytes(cursor, output->size, &output->bytes);
+        case DW_FORM_BLOCK:
+            if (!dwarf_cursor_uleb(cursor, &output->size)) return false;
+            return dwarf_cursor_bytes(cursor, output->size, &output->bytes);
+        default: return false;
     }
 }
 
-static bool dwarf_add_line_file(xx_elf_dwarf *dwarf, uint64_t program_offset, uint16_t version,
-                                const xx_elf_dwarf_unit *unit, char *const *directories, uint32_t directory_count,
-                                const char *name, uint64_t directory_index, uint64_t timestamp, uint64_t size,
-                                const uint8_t *md5)
+static bool dwarf_add_line_file(xx_elf_dwarf *dwarf, uint64_t program_offset, uint16_t version, const xx_elf_dwarf_unit *unit, char *const *directories,
+                                uint32_t directory_count, const char *name, uint64_t directory_index, uint64_t timestamp, uint64_t size, const uint8_t *md5)
 {
     xx_elf_dwarf_line_file *file;
     const char *directory = NULL;
     char *name_copy;
     char *path;
-    if (!dwarf || !name || !dwarf_grow((void **)&dwarf->line_files, &dwarf->line_file_capacity,
-                                        dwarf->line_file_count + 1U, sizeof(*dwarf->line_files), DWARF_LINE_FILE_LIMIT)) return false;
+    if (!dwarf || !name ||
+        !dwarf_grow((void **)&dwarf->line_files, &dwarf->line_file_capacity, dwarf->line_file_count + 1U, sizeof(*dwarf->line_files), DWARF_LINE_FILE_LIMIT))
+        return false;
     if (version >= 5U) {
         if (directory_index < directory_count) directory = directories[directory_index];
     } else if (directory_index == 0U) {
@@ -1199,12 +1257,11 @@ static bool dwarf_add_line_file(xx_elf_dwarf *dwarf, uint64_t program_offset, ui
     return true;
 }
 
-static bool dwarf_add_directory(char ***directories, uint32_t *count, uint32_t *capacity,
-                                const char *base, const char *path)
+static bool dwarf_add_directory(char ***directories, uint32_t *count, uint32_t *capacity, const char *base, const char *path)
 {
     char *copy;
-    if (!directories || !count || !capacity || !path ||
-        !dwarf_grow((void **)directories, capacity, *count + 1U, sizeof(**directories), DWARF_DIRECTORY_LIMIT)) return false;
+    if (!directories || !count || !capacity || !path || !dwarf_grow((void **)directories, capacity, *count + 1U, sizeof(**directories), DWARF_DIRECTORY_LIMIT))
+        return false;
     copy = dwarf_path_has_directory_prefix(path, base) ? dwarf_strdup(path) : dwarf_join_path(base, path);
     if (!copy) return false;
     (*directories)[(*count)++] = copy;
@@ -1227,8 +1284,7 @@ static void dwarf_line_state_reset(dwarf_line_state *state, bool default_is_stat
     state->is_statement = default_is_statement;
 }
 
-static bool dwarf_line_advance_address(dwarf_line_state *state, uint64_t operation_advance,
-                                       uint8_t minimum_instruction_length, uint8_t maximum_operations)
+static bool dwarf_line_advance_address(dwarf_line_state *state, uint64_t operation_advance, uint8_t minimum_instruction_length, uint8_t maximum_operations)
 {
     uint64_t total;
     uint64_t instruction_advance;
@@ -1244,15 +1300,14 @@ static bool dwarf_line_advance_address(dwarf_line_state *state, uint64_t operati
     return true;
 }
 
-static bool dwarf_append_line_row(xx_elf_dwarf *dwarf, uint64_t program_offset, uint16_t version,
-                                  uint32_t file_base, uint32_t local_file_count, const dwarf_line_state *state)
+static bool dwarf_append_line_row(xx_elf_dwarf *dwarf, uint64_t program_offset, uint16_t version, uint32_t file_base, uint32_t local_file_count,
+                                  const dwarf_line_state *state)
 {
     xx_elf_dwarf_line_row *row;
     uint64_t local_index;
-    if (!dwarf || !state || state->line < 0 || (uint64_t)state->line > UINT32_MAX || state->column > UINT32_MAX ||
-        state->isa > UINT32_MAX ||
-        !dwarf_grow((void **)&dwarf->line_rows, &dwarf->line_row_capacity, dwarf->line_row_count + 1U,
-                    sizeof(*dwarf->line_rows), DWARF_LINE_ROW_LIMIT)) return false;
+    if (!dwarf || !state || state->line < 0 || (uint64_t)state->line > UINT32_MAX || state->column > UINT32_MAX || state->isa > UINT32_MAX ||
+        !dwarf_grow((void **)&dwarf->line_rows, &dwarf->line_row_capacity, dwarf->line_row_count + 1U, sizeof(*dwarf->line_rows), DWARF_LINE_ROW_LIMIT))
+        return false;
     if (version >= 5U) local_index = state->file;
     else if (state->file != 0U) local_index = state->file - 1U;
     else local_index = UINT64_MAX;
@@ -1282,9 +1337,8 @@ static void dwarf_line_after_row(dwarf_line_state *state)
     state->discriminator = 0U;
 }
 
-static bool dwarf_parse_v5_table(xx_elf_dwarf *dwarf, dwarf_cursor *cursor, uint64_t program_offset,
-                                 const xx_elf_dwarf_unit *unit, uint16_t version, uint8_t offset_size, uint8_t address_size,
-                                 bool is_directory, char ***directories, uint32_t *directory_count, uint32_t *directory_capacity)
+static bool dwarf_parse_v5_table(xx_elf_dwarf *dwarf, dwarf_cursor *cursor, uint64_t program_offset, const xx_elf_dwarf_unit *unit, uint16_t version, uint8_t offset_size,
+                                 uint8_t address_size, bool is_directory, char ***directories, uint32_t *directory_count, uint32_t *directory_capacity)
 {
     dwarf_line_format formats[DWARF_TABLE_FORMAT_LIMIT];
     uint64_t format_count;
@@ -1308,25 +1362,24 @@ static bool dwarf_parse_v5_table(xx_elf_dwarf *dwarf, dwarf_cursor *cursor, uint
             dwarf_line_value value;
             if (!dwarf_line_form_value(dwarf, cursor, formats[format_index].form, offset_size, address_size, &value)) return false;
             switch (formats[format_index].content) {
-            case DW_LNCT_PATH: path = value.string; break;
-            case DW_LNCT_DIRECTORY_INDEX: directory_index = value.number; break;
-            case DW_LNCT_TIMESTAMP: timestamp = value.number; break;
-            case DW_LNCT_SIZE: size = value.number; break;
-            case DW_LNCT_MD5:
-                if (value.size != 16U || !value.bytes) return false;
-                memcpy(md5, value.bytes, sizeof(md5));
-                has_md5 = true;
-                break;
-            default:
-                break;
+                case DW_LNCT_PATH: path = value.string; break;
+                case DW_LNCT_DIRECTORY_INDEX: directory_index = value.number; break;
+                case DW_LNCT_TIMESTAMP: timestamp = value.number; break;
+                case DW_LNCT_SIZE: size = value.number; break;
+                case DW_LNCT_MD5:
+                    if (value.size != 16U || !value.bytes) return false;
+                    memcpy(md5, value.bytes, sizeof(md5));
+                    has_md5 = true;
+                    break;
+                default: break;
             }
         }
         if (!path) return false;
         if (is_directory) {
-            if (!dwarf_add_directory(directories, directory_count, directory_capacity,
-                                     unit ? unit->compilation_directory : NULL, path)) return false;
-        } else if (!dwarf_add_line_file(dwarf, program_offset, version, unit, *directories, *directory_count,
-                                        path, directory_index, timestamp, size, has_md5 ? md5 : NULL)) return false;
+            if (!dwarf_add_directory(directories, directory_count, directory_capacity, unit ? unit->compilation_directory : NULL, path)) return false;
+        } else if (!dwarf_add_line_file(dwarf, program_offset, version, unit, *directories, *directory_count, path, directory_index, timestamp, size,
+                                        has_md5 ? md5 : NULL))
+            return false;
     }
     return true;
 }
@@ -1359,8 +1412,9 @@ static bool dwarf_parse_line_program(xx_elf_dwarf *dwarf, dwarf_cursor *cursor)
     dwarf_line_state state;
     bool result = false;
     uint64_t index;
-    if (!dwarf_read_initial_length(cursor, &program_end, &offset_size, &declared_length) || declared_length == 0U ||
-        !dwarf_cursor_uint(cursor, 2U, &value) || value < 2U || value > 5U) goto cleanup;
+    if (!dwarf_read_initial_length(cursor, &program_end, &offset_size, &declared_length) || declared_length == 0U || !dwarf_cursor_uint(cursor, 2U, &value) ||
+        value < 2U || value > 5U)
+        goto cleanup;
     version = (uint16_t)value;
     address_size = unit ? unit->address_size : (dwarf->elf->elf_class == XX_ELF_CLASS_64 ? 8U : 4U);
     if (version >= 5U) {
@@ -1370,7 +1424,8 @@ static bool dwarf_parse_line_program(xx_elf_dwarf *dwarf, dwarf_cursor *cursor)
         segment_selector_size = (uint8_t)value;
     }
     if (!dwarf_cursor_uint(cursor, offset_size, &header_length) || !dwarf_add_u64(cursor->position, header_length, &header_end) || header_end > program_end ||
-        !dwarf_cursor_uint(cursor, 1U, &value) || value == 0U) goto cleanup;
+        !dwarf_cursor_uint(cursor, 1U, &value) || value == 0U)
+        goto cleanup;
     minimum_instruction_length = (uint8_t)value;
     if (version >= 4U) {
         if (!dwarf_cursor_uint(cursor, 1U, &value) || value == 0U) goto cleanup;
@@ -1390,15 +1445,14 @@ static bool dwarf_parse_line_program(xx_elf_dwarf *dwarf, dwarf_cursor *cursor)
         standard_lengths[index] = (uint8_t)value;
     }
     if (version >= 5U) {
-        if (!dwarf_parse_v5_table(dwarf, cursor, program_offset, unit, version, offset_size, address_size,
-                                  true, &directories, &directory_count, &directory_capacity) ||
-            !dwarf_parse_v5_table(dwarf, cursor, program_offset, unit, version, offset_size, address_size,
-                                  false, &directories, &directory_count, &directory_capacity)) goto cleanup;
+        if (!dwarf_parse_v5_table(dwarf, cursor, program_offset, unit, version, offset_size, address_size, true, &directories, &directory_count, &directory_capacity) ||
+            !dwarf_parse_v5_table(dwarf, cursor, program_offset, unit, version, offset_size, address_size, false, &directories, &directory_count, &directory_capacity))
+            goto cleanup;
     } else {
         while (cursor->position < header_end && cursor->data[cursor->position] != 0U) {
             const char *directory = dwarf_cursor_string(cursor);
-            if (!directory || !dwarf_add_directory(&directories, &directory_count, &directory_capacity,
-                                                    unit ? unit->compilation_directory : NULL, directory)) goto cleanup;
+            if (!directory || !dwarf_add_directory(&directories, &directory_count, &directory_capacity, unit ? unit->compilation_directory : NULL, directory))
+                goto cleanup;
         }
         if (cursor->position >= header_end) goto cleanup;
         ++cursor->position;
@@ -1407,10 +1461,9 @@ static bool dwarf_parse_line_program(xx_elf_dwarf *dwarf, dwarf_cursor *cursor)
             uint64_t directory_index;
             uint64_t timestamp;
             uint64_t size;
-            if (!name || !dwarf_cursor_uleb(cursor, &directory_index) || !dwarf_cursor_uleb(cursor, &timestamp) ||
-                !dwarf_cursor_uleb(cursor, &size) || !dwarf_add_line_file(dwarf, program_offset, version, unit,
-                                                                          directories, directory_count, name,
-                                                                          directory_index, timestamp, size, NULL)) goto cleanup;
+            if (!name || !dwarf_cursor_uleb(cursor, &directory_index) || !dwarf_cursor_uleb(cursor, &timestamp) || !dwarf_cursor_uleb(cursor, &size) ||
+                !dwarf_add_line_file(dwarf, program_offset, version, unit, directories, directory_count, name, directory_index, timestamp, size, NULL))
+                goto cleanup;
         }
         if (cursor->position >= header_end) goto cleanup;
         ++cursor->position;
@@ -1425,9 +1478,9 @@ static bool dwarf_parse_line_program(xx_elf_dwarf *dwarf, dwarf_cursor *cursor)
             uint64_t extended_length;
             uint64_t extended_end;
             uint8_t extended_opcode;
-            if (!dwarf_cursor_uleb(cursor, &extended_length) || extended_length == 0U ||
-                !dwarf_add_u64(cursor->position, extended_length, &extended_end) || extended_end > program_end ||
-                !dwarf_cursor_uint(cursor, 1U, &value)) goto cleanup;
+            if (!dwarf_cursor_uleb(cursor, &extended_length) || extended_length == 0U || !dwarf_add_u64(cursor->position, extended_length, &extended_end) ||
+                extended_end > program_end || !dwarf_cursor_uint(cursor, 1U, &value))
+                goto cleanup;
             extended_opcode = (uint8_t)value;
             if (extended_opcode == DW_LNE_END_SEQUENCE) {
                 state.end_sequence = true;
@@ -1442,10 +1495,9 @@ static bool dwarf_parse_line_program(xx_elf_dwarf *dwarf, dwarf_cursor *cursor)
                 uint64_t directory_index;
                 uint64_t timestamp;
                 uint64_t size;
-                if (!name || !dwarf_cursor_uleb(cursor, &directory_index) || !dwarf_cursor_uleb(cursor, &timestamp) ||
-                    !dwarf_cursor_uleb(cursor, &size) || !dwarf_add_line_file(dwarf, program_offset, version, unit,
-                                                                              directories, directory_count, name,
-                                                                              directory_index, timestamp, size, NULL)) goto cleanup;
+                if (!name || !dwarf_cursor_uleb(cursor, &directory_index) || !dwarf_cursor_uleb(cursor, &timestamp) || !dwarf_cursor_uleb(cursor, &size) ||
+                    !dwarf_add_line_file(dwarf, program_offset, version, unit, directories, directory_count, name, directory_index, timestamp, size, NULL))
+                    goto cleanup;
                 local_file_count = dwarf->line_file_count - file_base;
             } else if (extended_opcode == DW_LNE_SET_DISCRIMINATOR) {
                 if (!dwarf_cursor_uleb(cursor, &state.discriminator)) goto cleanup;
@@ -1454,63 +1506,55 @@ static bool dwarf_parse_line_program(xx_elf_dwarf *dwarf, dwarf_cursor *cursor)
             cursor->position = extended_end;
         } else if (opcode < opcode_base) {
             switch (opcode) {
-            case DW_LNS_COPY:
-                if (!dwarf_append_line_row(dwarf, program_offset, version, file_base, local_file_count, &state)) goto cleanup;
-                dwarf_line_after_row(&state);
-                break;
-            case DW_LNS_ADVANCE_PC:
-                if (!dwarf_cursor_uleb(cursor, &value) || !dwarf_line_advance_address(&state, value, minimum_instruction_length, maximum_operations)) goto cleanup;
-                break;
-            case DW_LNS_ADVANCE_LINE: {
-                int64_t delta;
-                if (!dwarf_cursor_sleb(cursor, &delta) || (delta > 0 && state.line > INT64_MAX - delta) ||
-                    (delta < 0 && state.line < INT64_MIN - delta)) goto cleanup;
-                state.line += delta;
-                break;
-            }
-            case DW_LNS_SET_FILE:
-                if (!dwarf_cursor_uleb(cursor, &state.file)) goto cleanup;
-                break;
-            case DW_LNS_SET_COLUMN:
-                if (!dwarf_cursor_uleb(cursor, &state.column)) goto cleanup;
-                break;
-            case DW_LNS_NEGATE_STMT:
-                state.is_statement = !state.is_statement;
-                break;
-            case DW_LNS_SET_BASIC_BLOCK:
-                state.basic_block = true;
-                break;
-            case DW_LNS_CONST_ADD_PC:
-                value = (UINT8_MAX - opcode_base) / line_range;
-                if (!dwarf_line_advance_address(&state, value, minimum_instruction_length, maximum_operations)) goto cleanup;
-                break;
-            case DW_LNS_FIXED_ADVANCE_PC:
-                if (!dwarf_cursor_uint(cursor, 2U, &value) || state.address > UINT64_MAX - value) goto cleanup;
-                state.address += value;
-                state.operation_index = 0U;
-                break;
-            case DW_LNS_SET_PROLOGUE_END:
-                state.prologue_end = true;
-                break;
-            case DW_LNS_SET_EPILOGUE_BEGIN:
-                state.epilogue_begin = true;
-                break;
-            case DW_LNS_SET_ISA:
-                if (!dwarf_cursor_uleb(cursor, &state.isa)) goto cleanup;
-                break;
-            default:
-                for (index = 0U; index < standard_lengths[opcode]; ++index) {
-                    if (!dwarf_cursor_uleb(cursor, &value)) goto cleanup;
+                case DW_LNS_COPY:
+                    if (!dwarf_append_line_row(dwarf, program_offset, version, file_base, local_file_count, &state)) goto cleanup;
+                    dwarf_line_after_row(&state);
+                    break;
+                case DW_LNS_ADVANCE_PC:
+                    if (!dwarf_cursor_uleb(cursor, &value) || !dwarf_line_advance_address(&state, value, minimum_instruction_length, maximum_operations)) goto cleanup;
+                    break;
+                case DW_LNS_ADVANCE_LINE: {
+                    int64_t delta;
+                    if (!dwarf_cursor_sleb(cursor, &delta) || (delta > 0 && state.line > INT64_MAX - delta) || (delta < 0 && state.line < INT64_MIN - delta))
+                        goto cleanup;
+                    state.line += delta;
+                    break;
                 }
-                break;
+                case DW_LNS_SET_FILE:
+                    if (!dwarf_cursor_uleb(cursor, &state.file)) goto cleanup;
+                    break;
+                case DW_LNS_SET_COLUMN:
+                    if (!dwarf_cursor_uleb(cursor, &state.column)) goto cleanup;
+                    break;
+                case DW_LNS_NEGATE_STMT: state.is_statement = !state.is_statement; break;
+                case DW_LNS_SET_BASIC_BLOCK: state.basic_block = true; break;
+                case DW_LNS_CONST_ADD_PC:
+                    value = (UINT8_MAX - opcode_base) / line_range;
+                    if (!dwarf_line_advance_address(&state, value, minimum_instruction_length, maximum_operations)) goto cleanup;
+                    break;
+                case DW_LNS_FIXED_ADVANCE_PC:
+                    if (!dwarf_cursor_uint(cursor, 2U, &value) || state.address > UINT64_MAX - value) goto cleanup;
+                    state.address += value;
+                    state.operation_index = 0U;
+                    break;
+                case DW_LNS_SET_PROLOGUE_END: state.prologue_end = true; break;
+                case DW_LNS_SET_EPILOGUE_BEGIN: state.epilogue_begin = true; break;
+                case DW_LNS_SET_ISA:
+                    if (!dwarf_cursor_uleb(cursor, &state.isa)) goto cleanup;
+                    break;
+                default:
+                    for (index = 0U; index < standard_lengths[opcode]; ++index) {
+                        if (!dwarf_cursor_uleb(cursor, &value)) goto cleanup;
+                    }
+                    break;
             }
         } else {
             uint8_t adjusted = (uint8_t)(opcode - opcode_base);
             uint64_t operation_advance = adjusted / line_range;
             int64_t line_increment = (int64_t)line_base + (adjusted % line_range);
             if (!dwarf_line_advance_address(&state, operation_advance, minimum_instruction_length, maximum_operations) ||
-                (line_increment > 0 && state.line > INT64_MAX - line_increment) ||
-                (line_increment < 0 && state.line < INT64_MIN - line_increment)) goto cleanup;
+                (line_increment > 0 && state.line > INT64_MAX - line_increment) || (line_increment < 0 && state.line < INT64_MIN - line_increment))
+                goto cleanup;
             state.line += line_increment;
             if (!dwarf_append_line_row(dwarf, program_offset, version, file_base, local_file_count, &state)) goto cleanup;
             dwarf_line_after_row(&state);
@@ -1581,8 +1625,7 @@ static bool dwarf_build_address_line_rows(xx_elf_dwarf *dwarf)
     if (!dwarf) return false;
     if (dwarf->line_row_count == 0U) return true;
     if (!dwarf_hash_capacity(dwarf->line_row_count, &capacity)) return false;
-    dwarf->address_line_row_indices = (uint32_t *)xx_mem_alloc((size_t)dwarf->line_row_count *
-                                                               sizeof(*dwarf->address_line_row_indices));
+    dwarf->address_line_row_indices = (uint32_t *)xx_mem_alloc((size_t)dwarf->line_row_count * sizeof(*dwarf->address_line_row_indices));
     slots = (uint32_t *)xx_mem_alloc((size_t)capacity * sizeof(*slots));
     if (!dwarf->address_line_row_indices || !slots) {
         xx_mem_free(slots);
@@ -1614,8 +1657,8 @@ static bool dwarf_add_source_file(xx_elf_dwarf *dwarf, uint32_t *slots, uint32_t
         if (strcmp(dwarf->source_files[slots[slot] - 1U], path) == 0) return true;
         slot = (slot + 1U) & mask;
     }
-    if (!dwarf_grow((void **)&dwarf->source_files, &dwarf->source_file_capacity,
-                    dwarf->source_file_count + 1U, sizeof(*dwarf->source_files), DWARF_SOURCE_FILE_LIMIT)) return false;
+    if (!dwarf_grow((void **)&dwarf->source_files, &dwarf->source_file_capacity, dwarf->source_file_count + 1U, sizeof(*dwarf->source_files), DWARF_SOURCE_FILE_LIMIT))
+        return false;
     copy = dwarf_strdup(path);
     if (!copy) return false;
     dwarf->source_files[dwarf->source_file_count] = copy;
@@ -1674,16 +1717,11 @@ xx_elf_dwarf *xx_elf_dwarf_create(const xx_elf *elf, xx_pd_struct *pd)
     memset(dwarf, 0, sizeof(*dwarf));
     dwarf->elf = elf;
     dwarf->big_endian = elf->data_encoding == XX_ELF_DATA_MSB;
-    if (!dwarf_load_section(elf, ".debug_info", &dwarf->info) ||
-        !dwarf_load_section(elf, ".debug_abbrev", &dwarf->abbrev) ||
-        !dwarf_load_section(elf, ".debug_str", &dwarf->strings) ||
-        !dwarf_load_section(elf, ".debug_line", &dwarf->line) ||
-        !dwarf_load_section(elf, ".debug_line_str", &dwarf->line_strings) ||
-        !dwarf_load_section(elf, ".debug_str_offsets", &dwarf->string_offsets) ||
-        !dwarf_load_section(elf, ".debug_addr", &dwarf->addresses) ||
-        (dwarf->info.data != NULL && dwarf->abbrev.data == NULL) ||
-        !dwarf_parse_abbreviations(dwarf) || !dwarf_parse_information(dwarf) ||
-        !dwarf_resolve_indexed_values(dwarf) || xx_pd_is_stopped(pd)) {
+    if (!dwarf_load_section(elf, ".debug_info", &dwarf->info) || !dwarf_load_section(elf, ".debug_abbrev", &dwarf->abbrev) ||
+        !dwarf_load_section(elf, ".debug_str", &dwarf->strings) || !dwarf_load_section(elf, ".debug_line", &dwarf->line) ||
+        !dwarf_load_section(elf, ".debug_line_str", &dwarf->line_strings) || !dwarf_load_section(elf, ".debug_str_offsets", &dwarf->string_offsets) ||
+        !dwarf_load_section(elf, ".debug_addr", &dwarf->addresses) || (dwarf->info.data != NULL && dwarf->abbrev.data == NULL) || !dwarf_parse_abbreviations(dwarf) ||
+        !dwarf_parse_information(dwarf) || !dwarf_resolve_indexed_values(dwarf) || xx_pd_is_stopped(pd)) {
         xx_elf_dwarf_free(dwarf);
         return NULL;
     }
@@ -1763,13 +1801,11 @@ const xx_elf_dwarf_abbreviation *xx_elf_dwarf_get_abbreviation(const xx_elf_dwar
     return dwarf && index < dwarf->abbreviation_count ? &dwarf->abbreviations[index] : NULL;
 }
 
-const xx_elf_dwarf_attribute_spec *xx_elf_dwarf_get_abbreviation_attribute(const xx_elf_dwarf *dwarf,
-                                                                            const xx_elf_dwarf_abbreviation *abbreviation,
-                                                                            uint64_t index)
+const xx_elf_dwarf_attribute_spec *xx_elf_dwarf_get_abbreviation_attribute(const xx_elf_dwarf *dwarf, const xx_elf_dwarf_abbreviation *abbreviation, uint64_t index)
 {
-    if (!dwarf || !abbreviation || index >= abbreviation->attribute_spec_count ||
-        abbreviation->attribute_spec_index > dwarf->specification_count ||
-        index >= dwarf->specification_count - abbreviation->attribute_spec_index) return NULL;
+    if (!dwarf || !abbreviation || index >= abbreviation->attribute_spec_count || abbreviation->attribute_spec_index > dwarf->specification_count ||
+        index >= dwarf->specification_count - abbreviation->attribute_spec_index)
+        return NULL;
     return &dwarf->specifications[abbreviation->attribute_spec_index + (uint32_t)index];
 }
 
@@ -1783,16 +1819,14 @@ const xx_elf_dwarf_die *xx_elf_dwarf_get_die(const xx_elf_dwarf *dwarf, uint64_t
     return dwarf && index < dwarf->die_count ? &dwarf->dies[index] : NULL;
 }
 
-const xx_elf_dwarf_attribute *xx_elf_dwarf_get_die_attribute(const xx_elf_dwarf *dwarf,
-                                                              const xx_elf_dwarf_die *die, uint64_t index)
+const xx_elf_dwarf_attribute *xx_elf_dwarf_get_die_attribute(const xx_elf_dwarf *dwarf, const xx_elf_dwarf_die *die, uint64_t index)
 {
-    if (!dwarf || !die || index >= die->attribute_count || die->attribute_index > dwarf->attribute_count ||
-        index >= dwarf->attribute_count - die->attribute_index) return NULL;
+    if (!dwarf || !die || index >= die->attribute_count || die->attribute_index > dwarf->attribute_count || index >= dwarf->attribute_count - die->attribute_index)
+        return NULL;
     return &dwarf->attributes[die->attribute_index + (uint32_t)index];
 }
 
-const xx_elf_dwarf_attribute *xx_elf_dwarf_find_die_attribute(const xx_elf_dwarf *dwarf,
-                                                               const xx_elf_dwarf_die *die, uint64_t name)
+const xx_elf_dwarf_attribute *xx_elf_dwarf_find_die_attribute(const xx_elf_dwarf *dwarf, const xx_elf_dwarf_die *die, uint64_t name)
 {
     uint32_t index;
     if (!dwarf || !die) return NULL;
@@ -1803,16 +1837,15 @@ const xx_elf_dwarf_attribute *xx_elf_dwarf_find_die_attribute(const xx_elf_dwarf
     return NULL;
 }
 
-const uint8_t *xx_elf_dwarf_get_attribute_block(const xx_elf_dwarf *dwarf,
-                                                 const xx_elf_dwarf_attribute *attribute)
+const uint8_t *xx_elf_dwarf_get_attribute_block(const xx_elf_dwarf *dwarf, const xx_elf_dwarf_attribute *attribute)
 {
-    if (!dwarf || !attribute || attribute->kind != XX_ELF_DWARF_VALUE_BLOCK ||
-        attribute->data_offset > dwarf->info.size || attribute->data_size > dwarf->info.size - attribute->data_offset) return NULL;
+    if (!dwarf || !attribute || attribute->kind != XX_ELF_DWARF_VALUE_BLOCK || attribute->data_offset > dwarf->info.size ||
+        attribute->data_size > dwarf->info.size - attribute->data_offset)
+        return NULL;
     return dwarf->info.data + attribute->data_offset;
 }
 
-const xx_elf_dwarf_die *xx_elf_dwarf_find_die(const xx_elf_dwarf *dwarf, uint64_t tag,
-                                               const char *name, uint64_t start_index)
+const xx_elf_dwarf_die *xx_elf_dwarf_find_die(const xx_elf_dwarf *dwarf, uint64_t tag, const char *name, uint64_t start_index)
 {
     uint64_t index;
     if (!dwarf) return NULL;
@@ -1868,8 +1901,7 @@ const char *xx_elf_dwarf_get_source_file(const xx_elf_dwarf *dwarf, uint64_t ind
     return dwarf && index < dwarf->source_file_count ? dwarf->source_files[index] : NULL;
 }
 
-const xx_elf_dwarf_line_row *xx_elf_dwarf_find_line_row(const xx_elf_dwarf *dwarf,
-                                                         uint64_t address, uint64_t address_bias)
+const xx_elf_dwarf_line_row *xx_elf_dwarf_find_line_row(const xx_elf_dwarf *dwarf, uint64_t address, uint64_t address_bias)
 {
     const xx_elf_dwarf_line_row *best = NULL;
     uint64_t best_address = 0U;

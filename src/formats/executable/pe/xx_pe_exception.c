@@ -147,8 +147,7 @@ static void pe_type_name(const xx_pe *pe, const xx_memory_map *map, uint32_t typ
         encoded[length++] = (char)ch;
     }
     encoded[length] = '\0';
-    if (length >= 6U && encoded[0] == '.' && encoded[1] == '?' && encoded[2] == 'A' &&
-        (encoded[3] == 'V' || encoded[3] == 'U' || encoded[3] == 'T')) {
+    if (length >= 6U && encoded[0] == '.' && encoded[1] == '?' && encoded[2] == 'A' && (encoded[3] == 'V' || encoded[3] == 'U' || encoded[3] == 'T')) {
         char *cursor = encoded + 4;
         while (*cursor && count < sizeof(parts) / sizeof(parts[0])) {
             char *at = strchr(cursor, '@');
@@ -177,8 +176,8 @@ static void pe_type_name(const xx_pe *pe, const xx_memory_map *map, uint32_t typ
     }
 }
 
-static bool pe_cxx_state_range(const uint32_t *ipmap, uint32_t count, uint64_t module, int32_t low, int32_t high,
-                               const pe_runtime_function *function, uint64_t *from, uint64_t *to)
+static bool pe_cxx_state_range(const uint32_t *ipmap, uint32_t count, uint64_t module, int32_t low, int32_t high, const pe_runtime_function *function, uint64_t *from,
+                               uint64_t *to)
 {
     uint32_t index;
     bool found = false;
@@ -197,17 +196,16 @@ static bool pe_cxx_state_range(const uint32_t *ipmap, uint32_t count, uint64_t m
     return found && pe_add_u64(module, function->end, to) && *to > *from;
 }
 
-static bool pe_cxx_trycatch(const xx_pe *pe, const xx_memory_map *map, pe_exception_stream *stream,
-                            const pe_runtime_function *function, uint32_t funcinfo, xx_pd_struct *pd)
+static bool pe_cxx_trycatch(const xx_pe *pe, const xx_memory_map *map, pe_exception_stream *stream, const pe_runtime_function *function, uint32_t funcinfo,
+                            xx_pd_struct *pd)
 {
     uint32_t try_count, try_map, ip_count, ip_map;
     uint32_t *ipmap;
     uint32_t index;
     uint64_t module = pe_module_address(pe);
-    if (!pe_read_u32(pe, map, (uint64_t)funcinfo + 12U, &try_count) ||
-        !pe_read_u32(pe, map, (uint64_t)funcinfo + 16U, &try_map) ||
-        !pe_read_u32(pe, map, (uint64_t)funcinfo + 20U, &ip_count) ||
-        !pe_read_u32(pe, map, (uint64_t)funcinfo + 24U, &ip_map)) return true;
+    if (!pe_read_u32(pe, map, (uint64_t)funcinfo + 12U, &try_count) || !pe_read_u32(pe, map, (uint64_t)funcinfo + 16U, &try_map) ||
+        !pe_read_u32(pe, map, (uint64_t)funcinfo + 20U, &ip_count) || !pe_read_u32(pe, map, (uint64_t)funcinfo + 24U, &ip_map))
+        return true;
     if (!try_count || !try_map || !ip_count || !ip_map || try_count > PE_TRY_LIMIT || ip_count > PE_IP_LIMIT) return true;
     ipmap = (uint32_t *)xx_mem_alloc((size_t)ip_count * 2U * sizeof(*ipmap));
     if (!ipmap) return false;
@@ -222,16 +220,17 @@ static bool pe_cxx_trycatch(const xx_pe *pe, const xx_memory_map *map, pe_except
         uint64_t entry = (uint64_t)try_map + (uint64_t)index * 20U;
         uint32_t low, high, catch_count, handlers, catch_index;
         uint64_t from = 0U, to = 0U;
-        if (!pe_read_u32(pe, map, entry, &low) || !pe_read_u32(pe, map, entry + 4U, &high) ||
-            !pe_read_u32(pe, map, entry + 12U, &catch_count) || !pe_read_u32(pe, map, entry + 16U, &handlers)) break;
+        if (!pe_read_u32(pe, map, entry, &low) || !pe_read_u32(pe, map, entry + 4U, &high) || !pe_read_u32(pe, map, entry + 12U, &catch_count) ||
+            !pe_read_u32(pe, map, entry + 16U, &handlers))
+            break;
         if (!catch_count || !handlers || catch_count > PE_CATCH_LIMIT || (int32_t)low > (int32_t)high ||
-            !pe_cxx_state_range(ipmap, ip_count, module, (int32_t)low, (int32_t)high, function, &from, &to)) continue;
+            !pe_cxx_state_range(ipmap, ip_count, module, (int32_t)low, (int32_t)high, function, &from, &to))
+            continue;
         for (catch_index = 0U; catch_index < catch_count; ++catch_index) {
             uint64_t handler_entry = (uint64_t)handlers + (uint64_t)catch_index * 20U;
             uint32_t type_rva, handler_rva;
             xx_pe_exception_region region;
-            if (!pe_read_u32(pe, map, handler_entry + 4U, &type_rva) ||
-                !pe_read_u32(pe, map, handler_entry + 12U, &handler_rva)) break;
+            if (!pe_read_u32(pe, map, handler_entry + 4U, &type_rva) || !pe_read_u32(pe, map, handler_entry + 12U, &handler_rva)) break;
             if (!handler_rva) continue;
             memset(&region, 0, sizeof(region));
             if (!pe_add_u64(module, function->begin, &region.source) || !pe_add_u64(module, handler_rva, &region.handler)) continue;
@@ -250,8 +249,8 @@ static bool pe_cxx_trycatch(const xx_pe *pe, const xx_memory_map *map, pe_except
     return !xx_pd_is_stopped(pd);
 }
 
-static bool pe_seh_trycatch(const xx_pe *pe, const xx_memory_map *map, pe_exception_stream *stream,
-                            const pe_runtime_function *function, uint64_t scope_rva, xx_pd_struct *pd)
+static bool pe_seh_trycatch(const xx_pe *pe, const xx_memory_map *map, pe_exception_stream *stream, const pe_runtime_function *function, uint64_t scope_rva,
+                            xx_pd_struct *pd)
 {
     uint32_t count, index;
     uint64_t module = pe_module_address(pe);
@@ -260,11 +259,12 @@ static bool pe_seh_trycatch(const xx_pe *pe, const xx_memory_map *map, pe_except
         uint64_t at = scope_rva + 4U + (uint64_t)index * 16U;
         uint32_t begin, end, handler, jump;
         xx_pe_exception_region region;
-        if (!pe_read_u32(pe, map, at, &begin) || !pe_read_u32(pe, map, at + 4U, &end) ||
-            !pe_read_u32(pe, map, at + 8U, &handler) || !pe_read_u32(pe, map, at + 12U, &jump)) return true;
-        if (!begin || !end || begin == UINT32_MAX || end == UINT32_MAX || begin > end ||
-            begin < function->begin - (function->begin != 0U) || begin >= function->end ||
-            end > function->end + (function->end != UINT32_MAX) || end <= function->begin) continue;
+        if (!pe_read_u32(pe, map, at, &begin) || !pe_read_u32(pe, map, at + 4U, &end) || !pe_read_u32(pe, map, at + 8U, &handler) ||
+            !pe_read_u32(pe, map, at + 12U, &jump))
+            return true;
+        if (!begin || !end || begin == UINT32_MAX || end == UINT32_MAX || begin > end || begin < function->begin - (function->begin != 0U) || begin >= function->end ||
+            end > function->end + (function->end != UINT32_MAX) || end <= function->begin)
+            continue;
         memset(&region, 0, sizeof(region));
         if (!pe_add_u64(module, function->begin, &region.source) || !pe_add_u64(module, begin, &region.from) || !pe_add_u64(module, end, &region.to)) continue;
         if (jump) {
@@ -313,7 +313,8 @@ static bool pe_collect_exceptions(xx_pe *pe, pe_exception_stream *stream, xx_pd_
         function.end = saved_end;
         unwind_rva = function.unwind;
         if (!pe_read_unwind(pe, map, unwind_rva, &info) || info.version != 1U ||
-            (!(info.flags & (PE_UNW_FLAG_EHANDLER | PE_UNW_FLAG_UHANDLER)) && !(info.flags & PE_UNW_FLAG_CHAININFO))) continue;
+            (!(info.flags & (PE_UNW_FLAG_EHANDLER | PE_UNW_FLAG_UHANDLER)) && !(info.flags & PE_UNW_FLAG_CHAININFO)))
+            continue;
         tail_rva = unwind_rva + 4U + (uint64_t)((info.code_count + 1U) & ~1U) * 2U;
         if (info.flags & PE_UNW_FLAG_CHAININFO) {
             unsigned int chained = 0U;
@@ -335,8 +336,7 @@ static bool pe_collect_exceptions(xx_pe *pe, pe_exception_stream *stream, xx_pd_
         tail_rva += 4U;
         if (handler != known_seh_handler) {
             uint32_t funcinfo, magic;
-            if (pe_read_u32(pe, map, tail_rva, &funcinfo) && pe_read_u32(pe, map, funcinfo, &magic) &&
-                magic >= PE_CXX_MAGIC_MIN && magic <= PE_CXX_MAGIC_MAX) {
+            if (pe_read_u32(pe, map, tail_rva, &funcinfo) && pe_read_u32(pe, map, funcinfo, &magic) && magic >= PE_CXX_MAGIC_MIN && magic <= PE_CXX_MAGIC_MAX) {
                 if (!pe_cxx_trycatch(pe, map, stream, &function, funcinfo, pd)) return false;
                 continue;
             }

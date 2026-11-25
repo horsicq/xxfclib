@@ -1723,8 +1723,7 @@ static void chd_digest_update(const chd_info *info, chd_digest_context *hash, co
 static bool chd_digest_matches(const chd_info *info, chd_digest_context *hash)
 {
     uint8_t digest[XX_SHA1_DIGEST_SIZE];
-    if (!(info->digest_size == XX_MD5_DIGEST_SIZE ? xx_md5_final(&hash->md5, digest, sizeof(digest)) :
-          xx_sha1_final(&hash->sha1, digest, sizeof(digest)))) return false;
+    if (!(info->digest_size == XX_MD5_DIGEST_SIZE ? xx_md5_final(&hash->md5, digest, sizeof(digest)) : xx_sha1_final(&hash->sha1, digest, sizeof(digest)))) return false;
     return info->digest_size == 0U || xx_rt_memcmp(digest, info->digest, info->digest_size) == 0;
 }
 

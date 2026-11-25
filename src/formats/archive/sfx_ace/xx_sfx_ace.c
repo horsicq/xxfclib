@@ -275,15 +275,21 @@ fail:
 
 /* The archive-member API exposes decoded inner files. Preserve a separate
  * physical extent query for tools inspecting carrier metadata. */
-bool xx_sfx_ace_get_payload_span(Abstractformat *format,int64_t *offset,int64_t *size,xx_pd_struct *pd)
+bool xx_sfx_ace_get_payload_span(Abstractformat *format, int64_t *offset, int64_t *size, xx_pd_struct *pd)
 {
-    pm_stream *stream;bool ok=false;
-    if(!format||!format->device||format->base_address<0||format->file_type!=XX_FILE_TYPE_SFX_ACE||!offset||!size||xx_pd_is_stopped(pd))return false;
-    stream=pm_open(format,pd);
-    if(stream){
-        if(stream->count==1U&&!xx_pd_is_stopped(pd)){
-            const pm_member *member=&stream->items[0];int64_t total=xx_io_total_size(format->device);
-            if(member->offset>=format->base_address&&member->offset<=total&&member->size>0&&member->size<=total-member->offset){*offset=member->offset;*size=member->size;ok=true;}
+    pm_stream *stream;
+    bool ok = false;
+    if (!format || !format->device || format->base_address < 0 || format->file_type != XX_FILE_TYPE_SFX_ACE || !offset || !size || xx_pd_is_stopped(pd)) return false;
+    stream = pm_open(format, pd);
+    if (stream) {
+        if (stream->count == 1U && !xx_pd_is_stopped(pd)) {
+            const pm_member *member = &stream->items[0];
+            int64_t total = xx_io_total_size(format->device);
+            if (member->offset >= format->base_address && member->offset <= total && member->size > 0 && member->size <= total - member->offset) {
+                *offset = member->offset;
+                *size = member->size;
+                ok = true;
+            }
         }
         pm_free_stream(stream);
     }

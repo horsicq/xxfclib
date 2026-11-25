@@ -347,8 +347,7 @@ static void sqx_copy(sqx_state *state, int64_t length, int32_t distance)
         const uint8_t *src = state->window + src_pos;
         if (distance == 1) {
             xx_rt_memset(dst, *src, (size_t)length);
-        } else if (distance >= length &&
-                   (src_pos + length <= position || position + length <= src_pos)) {
+        } else if (distance >= length && (src_pos + length <= position || position + length <= src_pos)) {
             xx_rt_memcpy(dst, src, (size_t)length);
         } else {
             for (int64_t i = 0; i < length; i++) {
@@ -471,8 +470,8 @@ static bool sqx_state_init(sqx_state *state)
     return true;
 }
 
-static bool sqx_unpack_member(sqx_state *state, const uint8_t *packed, size_t packed_size, int64_t unpacked_size, uint16_t flags, uint8_t filter, uint8_t method, uint8_t *out,
-                              size_t out_capacity)
+static bool sqx_unpack_member(sqx_state *state, const uint8_t *packed, size_t packed_size, int64_t unpacked_size, uint16_t flags, uint8_t filter, uint8_t method,
+                              uint8_t *out, size_t out_capacity)
 {
     const int32_t *dist_base;
     const int32_t *dist_extra;
@@ -789,8 +788,8 @@ XXFC_API bool xx_sqx_decode_memory(const uint8_t *input, size_t input_size, cons
         /* A failing member is not fatal to the replay: the reference keeps
          * the state as the failure left it and moves on.  Only the target
          * member's own result has to be complete. */
-        ok = sqx_unpack_member(&state, input + member->data_offset, (size_t)member->packed_size, (int64_t)member->unpacked_size, member->flags, member->filter, member->method,
-                               is_target ? output : 0, is_target ? (size_t)target_size : 0);
+        ok = sqx_unpack_member(&state, input + member->data_offset, (size_t)member->packed_size, (int64_t)member->unpacked_size, member->flags, member->filter,
+                               member->method, is_target ? output : 0, is_target ? (size_t)target_size : 0);
         if (member->method == 6U && !ok) {
             result = false;
             break;
@@ -833,8 +832,8 @@ XXFC_API void xx_sqx_decoder_free(xx_sqx_decoder *dec)
     xx_mem_free(dec);
 }
 
-XXFC_API bool xx_sqx_decoder_decode(xx_sqx_decoder *dec, const uint8_t *input, size_t input_size,
-                                    const xx_sqx_member *member, uint8_t *output, size_t output_size, size_t *written)
+XXFC_API bool xx_sqx_decoder_decode(xx_sqx_decoder *dec, const uint8_t *input, size_t input_size, const xx_sqx_member *member, uint8_t *output, size_t output_size,
+                                    size_t *written)
 {
     if (written) *written = 0;
     if (!dec || !input || !member || !written) return false;
@@ -844,9 +843,8 @@ XXFC_API bool xx_sqx_decoder_decode(xx_sqx_decoder *dec, const uint8_t *input, s
     if ((member->data_offset > (uint64_t)input_size) || (member->packed_size > ((uint64_t)input_size - member->data_offset))) return false;
     if ((member->method < 1) || (member->method > 4 && member->method != 6)) return false;
 
-    bool ok = sqx_unpack_member(&dec->state, input + member->data_offset, (size_t)member->packed_size,
-                                (int64_t)member->unpacked_size, member->flags, member->filter, member->method,
-                                output, output ? (size_t)target_size : 0);
+    bool ok = sqx_unpack_member(&dec->state, input + member->data_offset, (size_t)member->packed_size, (int64_t)member->unpacked_size, member->flags, member->filter,
+                                member->method, output, output ? (size_t)target_size : 0);
     if (!ok) return false;
     if (output && dec->state.produced < (int64_t)target_size) return false;
     *written = (size_t)target_size;

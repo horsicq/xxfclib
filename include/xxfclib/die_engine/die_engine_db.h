@@ -109,9 +109,7 @@ XXFC_API void db_sort(DBase *database);
 XXFC_API void db_free(DBase *database);
 XXFC_API int db_count_for_type(DBase *database, XFileType file_type);
 XXFC_API int db_signature_has_tag(const DBSignature *signature, const char *tag);
-XXFC_API int db_signature_matches_tag_filters(const DBSignature *signature,
-                                               const char *include_tags,
-                                               const char *exclude_tags);
+XXFC_API int db_signature_matches_tag_filters(const DBSignature *signature, const char *include_tags, const char *exclude_tags);
 XXFC_API char *db_get_used_tags(const DBase *database);
 
 /** Legacy detected-type set retained for existing DiE API callers. */

@@ -84,9 +84,9 @@ typedef struct xx_asn1_tlv {
     const uint8_t *header; /**< Start of the identifier octet. */
     size_t header_size;    /**< Identifier + length octets. */
     const uint8_t *content;
-    size_t content_size;   /**< For an indefinite-length TLV, resolved by scanning to the matching EOC; never includes the EOC octets themselves. */
-    size_t total_size;     /**< header_size + content_size (+2 EOC octets if indefinite). */
-    bool indefinite;       /**< True if the original encoding used the indefinite length form (0x80). */
+    size_t content_size; /**< For an indefinite-length TLV, resolved by scanning to the matching EOC; never includes the EOC octets themselves. */
+    size_t total_size;   /**< header_size + content_size (+2 EOC octets if indefinite). */
+    bool indefinite;     /**< True if the original encoding used the indefinite length form (0x80). */
 } xx_asn1_tlv;
 
 /** Walks the children of one constructed TLV, or an arbitrary byte span,
@@ -200,7 +200,8 @@ XXFC_API size_t xx_asn1_encode_header(xx_asn1_class cls, bool constructed, uint3
  * as a universal SET OF before hashing it, per RFC 5652 5.4. Input and output
  * may overlap. This retags the outer header only: it does not recursively
  * canonicalize BER content or sort SET OF elements. */
-XXFC_API bool xx_asn1_reencode(const xx_asn1_tlv *tlv, xx_asn1_class new_class, bool new_constructed, uint32_t new_tag, uint8_t *out, size_t out_capacity, size_t *out_size);
+XXFC_API bool xx_asn1_reencode(const xx_asn1_tlv *tlv, xx_asn1_class new_class, bool new_constructed, uint32_t new_tag, uint8_t *out, size_t out_capacity,
+                               size_t *out_size);
 
 #ifdef __cplusplus
 }

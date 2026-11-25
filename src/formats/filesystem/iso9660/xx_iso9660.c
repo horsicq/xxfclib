@@ -175,7 +175,10 @@ static void xx_iso9660_private_cleanup(xx_iso9660_private *parsed)
 static size_t xx_iso9660_output_hash(const char *key)
 {
     uint64_t value = UINT64_C(14695981039346656037);
-    while (*key) { value ^= (unsigned char)*key++; value *= UINT64_C(1099511628211); }
+    while (*key) {
+        value ^= (unsigned char)*key++;
+        value *= UINT64_C(1099511628211);
+    }
     return (size_t)value;
 }
 
@@ -187,14 +190,23 @@ static char *xx_iso9660_output_key(const char *name)
     int n;
     if (!wide) return NULL;
     n = LCMapStringEx(LOCALE_NAME_INVARIANT, LCMAP_UPPERCASE, wide, -1, NULL, 0, NULL, NULL, 0);
-    if (n <= 0) { xx_str_wfree(wide); return NULL; }
+    if (n <= 0) {
+        xx_str_wfree(wide);
+        return NULL;
+    }
     upper = (wchar_t *)xx_mem_alloc((size_t)n * sizeof(*upper));
-    if (!upper) { xx_str_wfree(wide); return NULL; }
+    if (!upper) {
+        xx_str_wfree(wide);
+        return NULL;
+    }
     if (LCMapStringEx(LOCALE_NAME_INVARIANT, LCMAP_UPPERCASE, wide, -1, upper, n, NULL, NULL, 0) != n) {
-        xx_str_wfree(wide); xx_mem_free(upper); return NULL;
+        xx_str_wfree(wide);
+        xx_mem_free(upper);
+        return NULL;
     }
     key = xx_str_unicode_to_utf8(upper);
-    xx_str_wfree(wide); xx_mem_free(upper);
+    xx_str_wfree(wide);
+    xx_mem_free(upper);
     return key;
 #else
     return xx_str_dup(name);
@@ -216,7 +228,9 @@ static bool xx_iso9660_output_unique(xx_iso9660_private *parsed, xx_iso9660_entr
             while (slots[slot]) slot = (slot + 1U) & (capacity - 1U);
             slots[slot] = i + 1U;
         }
-        xx_mem_free(parsed->output_slots); parsed->output_slots = slots; parsed->output_capacity = capacity;
+        xx_mem_free(parsed->output_slots);
+        parsed->output_slots = slots;
+        parsed->output_capacity = capacity;
     }
     entry->output_key = xx_iso9660_output_key(entry->output_name);
     if (!entry->output_key) return false;
@@ -224,7 +238,8 @@ static bool xx_iso9660_output_unique(xx_iso9660_private *parsed, xx_iso9660_entr
     while (parsed->output_slots[slot]) {
         const char *key = parsed->entries[parsed->output_slots[slot] - 1U].output_key;
         if (!xx_rt_strcmp(key, entry->output_key)) {
-            xx_str_free(entry->output_key); entry->output_key = NULL;
+            xx_str_free(entry->output_key);
+            entry->output_key = NULL;
             if (!xx_archive_output_suffix(&entry->output_name, parsed->count)) return false;
             entry->output_key = xx_iso9660_output_key(entry->output_name);
             if (!entry->output_key) return false;
@@ -420,8 +435,8 @@ static char *xx_iso9660_join_name(const char *prefix, const char *name)
     return combined;
 }
 
-static bool xx_iso9660_parse_directory(Abstractformat *self, xx_iso9660_private *parsed, uint32_t extent, uint32_t size, const char *prefix, const char *output_prefix, unsigned depth,
-                                       xx_pd_struct *pd)
+static bool xx_iso9660_parse_directory(Abstractformat *self, xx_iso9660_private *parsed, uint32_t extent, uint32_t size, const char *prefix, const char *output_prefix,
+                                       unsigned depth, xx_pd_struct *pd)
 {
     int64_t directory_offset;
     int64_t total_size;
@@ -500,7 +515,11 @@ static bool xx_iso9660_parse_directory(Abstractformat *self, xx_iso9660_private 
             output_name = safe_component ? xx_iso9660_join_name(output_prefix, safe_component) : NULL;
             xx_str_free(safe_component);
             xx_str_free(component);
-            if (!full_name || !output_name) { xx_str_free(full_name); xx_str_free(output_name); return false; }
+            if (!full_name || !output_name) {
+                xx_str_free(full_name);
+                xx_str_free(output_name);
+                return false;
+            }
             entry.name = full_name;
             entry.output_name = output_name;
             entry.header_offset = record_offset;

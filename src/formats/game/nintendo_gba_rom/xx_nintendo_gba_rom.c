@@ -80,8 +80,7 @@ static bool parse_data(Abstractformat *f, pm_stream *s, const uint8_t *b, uint64
     uint32_t branch, i;
     int64_t target, displacement;
     uint8_t check = 0;
-    if (n < 256 || n > 33554432 || b[0xb2] != 0x96 || b[0xb3] || (b[0xb4] & 0x7fU) || !zero(b + 0xb5, 7) ||
-        !zero(b + 0xbe, 2) ||
+    if (n < 256 || n > 33554432 || b[0xb2] != 0x96 || b[0xb3] || (b[0xb4] & 0x7fU) || !zero(b + 0xb5, 7) || !zero(b + 0xbe, 2) ||
         xx_crc32_calc(0U, b + 4, 156) != 0xd0beb55eU)
         return false;
     branch = xx_data_get_u32(b, 4, 0, false);
@@ -184,6 +183,6 @@ bool xx_nintendo_gba_rom_get_memory_map(Abstractformat *f, xx_memory_map_mode_t 
     /* The cartridge window is a 32 MiB executable/read-only ROM bank.  The
      * shared map API represents its permissions at format level; the second
      * record carries the explicit virtual-only marker. */
-    return xx_memory_map_add_part(output, f->base_address, size, XX_GBA_ROM_ADDRESS, (int64_t)XX_GBA_ROM_CAPACITY, XX_FILE_PART_REGION, 0, "ROM", false) &&
-           !stop(pd) && xx_memory_map_finalize(output);
+    return xx_memory_map_add_part(output, f->base_address, size, XX_GBA_ROM_ADDRESS, (int64_t)XX_GBA_ROM_CAPACITY, XX_FILE_PART_REGION, 0, "ROM", false) && !stop(pd) &&
+           xx_memory_map_finalize(output);
 }

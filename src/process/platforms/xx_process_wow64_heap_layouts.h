@@ -44,9 +44,7 @@
 #define XX_PROCESS_WOW64_HEAP_LAYOUTS_H
 
 #define XX_PSWH_WOW_HEAP32_19045_SIZE 0x258u
-static const unsigned char xx_pswh_wow_heap_guid_19045[16] = {
-    0x43, 0x5e, 0x21, 0x7c, 0x97, 0xaa, 0xff, 0x4f, 0x5c, 0x17, 0x3a, 0xb2, 0x9d, 0x5a, 0x5e, 0xfb
-};
+static const unsigned char xx_pswh_wow_heap_guid_19045[16] = {0x43, 0x5e, 0x21, 0x7c, 0x97, 0xaa, 0xff, 0x4f, 0x5c, 0x17, 0x3a, 0xb2, 0x9d, 0x5a, 0x5e, 0xfb};
 /* wntdll 19041.2965: _HEAP type index 0x1648, 59 physical top-level
  * members, 229 descriptors including complete inline value-object aliases. */
 static const xx_data_struct_field_desc xx_pswh_wow_heap32_19045[] = {
@@ -282,9 +280,7 @@ static const xx_data_struct_field_desc xx_pswh_wow_heap32_19045[] = {
 };
 
 #define XX_PSWH_WOW_HEAP32_26100_SIZE 0x258u
-static const unsigned char xx_pswh_wow_heap_guid_26100[16] = {
-    0xb8, 0x60, 0x91, 0x25, 0xd0, 0x22, 0xac, 0x32, 0x48, 0x62, 0x48, 0xba, 0xff, 0xe1, 0x5e, 0x01
-};
+static const unsigned char xx_pswh_wow_heap_guid_26100[16] = {0xb8, 0x60, 0x91, 0x25, 0xd0, 0x22, 0xac, 0x32, 0x48, 0x62, 0x48, 0xba, 0xff, 0xe1, 0x5e, 0x01};
 /* wntdll 26100.1591: _HEAP type index 0x1746, 63 physical top-level
  * members, 231 descriptors including complete inline value-object aliases. */
 static const xx_data_struct_field_desc xx_pswh_wow_heap32_26100[] = {
@@ -521,20 +517,16 @@ static const xx_data_struct_field_desc xx_pswh_wow_heap32_26100[] = {
     XX_PSW_FIELD("TuningParameters.MaxPreCommittThreshold", "ULONG", 0x254, 4, XX_PSW_SIZE),
 };
 
-static const xx_psw_nt_layout xx_pswh_wow_heap_profiles[] = {
-    {19045, 0x014c, "NT 10.0.19045 WOW64 HEAP; exact wntdll 19041.2965 PDB",
-        xx_pswh_wow_heap32_19045, XX_PSW_COUNT(xx_pswh_wow_heap32_19045), XX_PSWH_WOW_HEAP32_19045_SIZE},
-    {26100, 0x014c, "NT 10.0.26100 WOW64 HEAP; exact wntdll 26100.1591 PDB",
-        xx_pswh_wow_heap32_26100, XX_PSW_COUNT(xx_pswh_wow_heap32_26100), XX_PSWH_WOW_HEAP32_26100_SIZE}
-};
+static const xx_psw_nt_layout xx_pswh_wow_heap_profiles[] = {{19045, 0x014c, "NT 10.0.19045 WOW64 HEAP; exact wntdll 19041.2965 PDB", xx_pswh_wow_heap32_19045,
+                                                              XX_PSW_COUNT(xx_pswh_wow_heap32_19045), XX_PSWH_WOW_HEAP32_19045_SIZE},
+                                                             {26100, 0x014c, "NT 10.0.26100 WOW64 HEAP; exact wntdll 26100.1591 PDB", xx_pswh_wow_heap32_26100,
+                                                              XX_PSW_COUNT(xx_pswh_wow_heap32_26100), XX_PSWH_WOW_HEAP32_26100_SIZE}};
 
 static const xx_psw_nt_layout *xx_pswh_wow_heap_profile(const xx_psw_target *target, unsigned width)
 {
     if (!target || !target->version_available || target->major != 10 || target->minor != 0) return NULL;
-    if (target->build == 19045 && xx_pswh_wow_module_matches(target, width, xx_pswh_wow_heap_guid_19045, 1))
-        return xx_pswh_wow_heap_profiles;
-    if (target->build == 26100 && xx_pswh_wow_module_matches(target, width, xx_pswh_wow_heap_guid_26100, 1))
-        return xx_pswh_wow_heap_profiles + 1;
+    if (target->build == 19045 && xx_pswh_wow_module_matches(target, width, xx_pswh_wow_heap_guid_19045, 1)) return xx_pswh_wow_heap_profiles;
+    if (target->build == 26100 && xx_pswh_wow_module_matches(target, width, xx_pswh_wow_heap_guid_26100, 1)) return xx_pswh_wow_heap_profiles + 1;
     return NULL;
 }
 

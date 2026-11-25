@@ -536,27 +536,19 @@ static const xx_data_struct_field_desc xx_pswh_heap64_26100[] = {
 };
 
 static const xx_psw_nt_layout xx_pswh_heap_profiles[] = {
-    {19045, 0x014c, "NT 10.0.19045 native I386 HEAP symbol profile",
-        xx_pswh_heap32_19045, XX_PSW_COUNT(xx_pswh_heap32_19045), XX_PSWH_HEAP32_19045_SIZE},
-    {19045, 0x8664, "NT 10.0.19045 AMD64 HEAP symbol profile",
-        xx_pswh_heap64_19045, XX_PSW_COUNT(xx_pswh_heap64_19045), XX_PSWH_HEAP64_19045_SIZE},
-    {26100, 0x8664, "NT 10.0.26100 AMD64 HEAP symbol profile",
-        xx_pswh_heap64_26100, XX_PSW_COUNT(xx_pswh_heap64_26100), XX_PSWH_HEAP64_26100_SIZE}
-};
+    {19045, 0x014c, "NT 10.0.19045 native I386 HEAP symbol profile", xx_pswh_heap32_19045, XX_PSW_COUNT(xx_pswh_heap32_19045), XX_PSWH_HEAP32_19045_SIZE},
+    {19045, 0x8664, "NT 10.0.19045 AMD64 HEAP symbol profile", xx_pswh_heap64_19045, XX_PSW_COUNT(xx_pswh_heap64_19045), XX_PSWH_HEAP64_19045_SIZE},
+    {26100, 0x8664, "NT 10.0.26100 AMD64 HEAP symbol profile", xx_pswh_heap64_26100, XX_PSW_COUNT(xx_pswh_heap64_26100), XX_PSWH_HEAP64_26100_SIZE}};
 
 static const xx_psw_nt_layout *xx_pswh_heap_profile(const xx_psw_target *target, unsigned width)
 {
     USHORT machine;
     if (!target || !target->version_available || target->major != 10 || target->minor != 0) return NULL;
-    if (width == 4 && target->native_machine == 0x014c && target->process_machine == 0x014c)
-        machine = 0x014c;
-    else if (width == 8 && target->native_machine == 0x8664 &&
-            (target->process_machine == 0x8664 || target->process_machine == 0x014c))
-        machine = 0x8664;
+    if (width == 4 && target->native_machine == 0x014c && target->process_machine == 0x014c) machine = 0x014c;
+    else if (width == 8 && target->native_machine == 0x8664 && (target->process_machine == 0x8664 || target->process_machine == 0x014c)) machine = 0x8664;
     else return NULL;
     for (size_t i = 0; i < XX_PSW_COUNT(xx_pswh_heap_profiles); ++i)
-        if (xx_pswh_heap_profiles[i].build == target->build && xx_pswh_heap_profiles[i].machine == machine)
-            return xx_pswh_heap_profiles + i;
+        if (xx_pswh_heap_profiles[i].build == target->build && xx_pswh_heap_profiles[i].machine == machine) return xx_pswh_heap_profiles + i;
     return NULL;
 }
 

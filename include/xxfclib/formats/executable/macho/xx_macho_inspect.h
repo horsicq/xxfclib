@@ -54,7 +54,7 @@ typedef struct {
     int bExternal;
     int bUndefined;
     int bFromSymbolTable;
-    uint64_t nTableIndex; /* UINT64_MAX for trie-only entries. */
+    uint64_t nTableIndex;  /* UINT64_MAX for trie-only entries. */
     int64_t nRecordOffset; /* Relative to reader base, -1 for trie-only. */
     /* Explicit export metadata never overwrites the native nlist value/type.
      * Export addresses are virtual addresses, UINT64_MAX when unavailable.

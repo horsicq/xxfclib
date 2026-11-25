@@ -696,8 +696,8 @@ static bool vhddynamic_set_record(xx_archive_record *record, const vhddynamic_in
          * time stamp counts seconds from 2000-01-01 UTC and is reported as
          * Unix seconds. */
         !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, info->disk_type) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, (uint64_t)info->timestamp + 946684800U) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) ||
-        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, (uint64_t)info->timestamp + 946684800U) ||
+        !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false))
         return false;
     if (info->disk_type == VHDDYNAMIC_TYPE_DIFFERENCING) {
         char comment[VHDDYNAMIC_COMMENT_SIZE];

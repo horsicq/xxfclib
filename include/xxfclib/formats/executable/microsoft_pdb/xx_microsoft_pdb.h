@@ -101,8 +101,8 @@ typedef struct xx_ms_pdb_msf_header {
 
 typedef struct xx_ms_pdb_stream {
     int32_t index;
-    int64_t size;      /* -1 / 0xFFFFFFFF "nil" streams report -1 */
-    const char *name;  /* well known / named streams, else "" */
+    int64_t size;     /* -1 / 0xFFFFFFFF "nil" streams report -1 */
+    const char *name; /* well known / named streams, else "" */
 } xx_ms_pdb_stream;
 
 /* ---- streams ------------------------------------------------------------ */
@@ -212,14 +212,14 @@ typedef struct xx_ms_pdb_symbol {
     const char *kind_string;
     const char *name;
     uint32_t type_index;
-    uint32_t offset;      /* inside the segment */
-    uint16_t segment;     /* 1 based section number */
+    uint32_t offset;  /* inside the segment */
+    uint16_t segment; /* 1 based section number */
     uint32_t flags;
-    uint64_t address;     /* RVA, (uint64_t)-1 if unknown */
+    uint64_t address; /* RVA, (uint64_t)-1 if unknown */
     int32_t module_index;
-    int64_t value;        /* S_CONSTANT */
-    bool is_value_valid;  /* S_CONSTANT */
-    uint16_t value_leaf;  /* S_CONSTANT: numeric leaf the value was stored in */
+    int64_t value;       /* S_CONSTANT */
+    bool is_value_valid; /* S_CONSTANT */
+    uint16_t value_leaf; /* S_CONSTANT: numeric leaf the value was stored in */
     int64_t record_offset;
     int32_t record_size;
     /* S_GPROC32 / S_LPROC32 / S_GPROC32_ID / S_LPROC32_ID (and their JG 16t / ST
@@ -260,7 +260,7 @@ typedef struct xx_ms_pdb_cvtype {
     uint32_t this_type_index;
     uint32_t count;
     uint16_t property;
-    uint8_t udt_kind;  /* XX_MS_PDB_UDT_KIND_* */
+    uint8_t udt_kind; /* XX_MS_PDB_UDT_KIND_* */
     uint8_t calling_convention;
     uint8_t bit_position;
     uint8_t bit_size;
@@ -304,14 +304,38 @@ typedef struct xx_ms_pdb_cvfield {
  * xx_microsoft_pdb_def.h; an enum with the same names here does not compile. */
 
 /* Generic growable result arrays. */
-typedef struct xx_ms_pdb_symbol_list { xx_ms_pdb_symbol *items; size_t count; } xx_ms_pdb_symbol_list;
-typedef struct xx_ms_pdb_module_list { xx_ms_pdb_module *items; size_t count; } xx_ms_pdb_module_list;
-typedef struct xx_ms_pdb_cvfield_list { xx_ms_pdb_cvfield *items; size_t count; } xx_ms_pdb_cvfield_list;
-typedef struct xx_ms_pdb_u32_list { uint32_t *items; size_t count; } xx_ms_pdb_u32_list;
-typedef struct xx_ms_pdb_stream_list { xx_ms_pdb_stream *items; size_t count; } xx_ms_pdb_stream_list;
-typedef struct xx_ms_pdb_type_record_list { xx_ms_pdb_type_record *items; size_t count; } xx_ms_pdb_type_record_list;
-typedef struct xx_ms_pdb_section_header_list { xx_ms_pdb_section_header *items; size_t count; } xx_ms_pdb_section_header_list;
-typedef struct xx_ms_pdb_section_contrib_list { xx_ms_pdb_section_contrib *items; size_t count; } xx_ms_pdb_section_contrib_list;
+typedef struct xx_ms_pdb_symbol_list {
+    xx_ms_pdb_symbol *items;
+    size_t count;
+} xx_ms_pdb_symbol_list;
+typedef struct xx_ms_pdb_module_list {
+    xx_ms_pdb_module *items;
+    size_t count;
+} xx_ms_pdb_module_list;
+typedef struct xx_ms_pdb_cvfield_list {
+    xx_ms_pdb_cvfield *items;
+    size_t count;
+} xx_ms_pdb_cvfield_list;
+typedef struct xx_ms_pdb_u32_list {
+    uint32_t *items;
+    size_t count;
+} xx_ms_pdb_u32_list;
+typedef struct xx_ms_pdb_stream_list {
+    xx_ms_pdb_stream *items;
+    size_t count;
+} xx_ms_pdb_stream_list;
+typedef struct xx_ms_pdb_type_record_list {
+    xx_ms_pdb_type_record *items;
+    size_t count;
+} xx_ms_pdb_type_record_list;
+typedef struct xx_ms_pdb_section_header_list {
+    xx_ms_pdb_section_header *items;
+    size_t count;
+} xx_ms_pdb_section_header_list;
+typedef struct xx_ms_pdb_section_contrib_list {
+    xx_ms_pdb_section_contrib *items;
+    size_t count;
+} xx_ms_pdb_section_contrib_list;
 
 XXFC_API void xx_ms_pdb_symbol_list_free(xx_ms_pdb_symbol_list *list);
 XXFC_API void xx_ms_pdb_module_list_free(xx_ms_pdb_module_list *list);
@@ -394,7 +418,7 @@ XXFC_API const char *xx_ms_pdb_machine_to_string(uint32_t machine);
 /* One stream of a portable PDB (metadata heap or table stream), XPDB::MDSTREAM. */
 typedef struct xx_ms_pdb_md_stream {
     const char *name;
-    uint32_t offset;       /* from the start of the metadata root */
+    uint32_t offset; /* from the start of the metadata root */
     uint32_t size;
     int64_t header_offset; /* offset of the stream header itself */
 } xx_ms_pdb_md_stream;
@@ -461,10 +485,10 @@ XXFC_API bool xx_ms_pdb_get_hash_adjuster(xx_ms_pdb *pdb, const char *name, uint
  *   LF_BUILDINFO, LF_SUBSTR_LIST  count (the ids: xx_ms_pdb_get_id_list)
  * Every other kind comes back with is_valid, kind and the record location. */
 typedef struct xx_ms_pdb_id_record {
-    bool is_valid;          /* the index names a record of the IPI stream */
+    bool is_valid; /* the index names a record of the IPI stream */
     uint32_t id_index;
     uint16_t kind;
-    const char *name;       /* never NULL */
+    const char *name; /* never NULL */
     uint32_t scope_index;
     uint32_t parent_type_index;
     uint32_t type_index;
@@ -473,7 +497,7 @@ typedef struct xx_ms_pdb_id_record {
     uint32_t line;
     uint16_t module;
     uint32_t count;
-    int64_t record_offset;  /* in the IPI stream (header included) */
+    int64_t record_offset; /* in the IPI stream (header included) */
     int32_t record_size;
 } xx_ms_pdb_id_record;
 

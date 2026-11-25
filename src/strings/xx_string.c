@@ -451,8 +451,7 @@ bool xx_str_to_i64_radix(const char *text, size_t length, unsigned radix, int64_
         } else {
             return false;
         }
-        if (digit >= radix || magnitude > quotient ||
-            (magnitude == quotient && digit > remainder)) {
+        if (digit >= radix || magnitude > quotient || (magnitude == quotient && digit > remainder)) {
             return false;
         }
         magnitude = magnitude * radix + digit;

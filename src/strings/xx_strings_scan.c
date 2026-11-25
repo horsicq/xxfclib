@@ -401,8 +401,8 @@ xx_strings_scan_status xx_strings_decode_device(xx_io_device *device, unsigned e
 {
     return xx_strings_decode_device_ex(device, encoding, offset, byte_size, 0, pd, sink, user);
 }
-xx_strings_scan_status xx_strings_decode_device_ex(xx_io_device *device, unsigned encoding, uint64_t offset, uint64_t byte_size, unsigned flags,
-                                                   xx_pd_struct *pd, xx_strings_text_sink sink, void *user)
+xx_strings_scan_status xx_strings_decode_device_ex(xx_io_device *device, unsigned encoding, uint64_t offset, uint64_t byte_size, unsigned flags, xx_pd_struct *pd,
+                                                   xx_strings_text_sink sink, void *user)
 {
     unsigned char *input = NULL;
     char *output = NULL;
@@ -412,7 +412,8 @@ xx_strings_scan_status xx_strings_decode_device_ex(xx_io_device *device, unsigne
     int64_t size;
     xx_strings_scan_status status = XX_STRINGS_SCAN_OK;
     if ((flags & ~XX_STRINGS_DIE_ALPHABET) ||
-        (encoding != XX_STRINGS_ASCII && encoding != XX_STRINGS_UTF8 && encoding != XX_STRINGS_UTF16LE && encoding != XX_STRINGS_UTF16BE)) return XX_STRINGS_SCAN_INVALID;
+        (encoding != XX_STRINGS_ASCII && encoding != XX_STRINGS_UTF8 && encoding != XX_STRINGS_UTF16LE && encoding != XX_STRINGS_UTF16BE))
+        return XX_STRINGS_SCAN_INVALID;
     size = xx_io_total_size(device);
     if (size < 0) return XX_STRINGS_SCAN_IO;
     if (offset > (uint64_t)size || byte_size > (uint64_t)size - offset) return XX_STRINGS_SCAN_INVALID;

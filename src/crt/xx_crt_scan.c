@@ -55,8 +55,7 @@ static int xx_crt_scan_word(const char *s, long n, long *pAt, const char *pWord)
 /* A character that some floating-point form can contain. */
 static int xx_crt_scan_float_char(char c)
 {
-    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '.' || c == '+' || c == '-' || c == '(' || c == ')' ||
-           c == '_';
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '.' || c == '+' || c == '-' || c == '(' || c == ')' || c == '_';
 }
 
 /* The extent of the floating-point number UCRT's scanner accepts at the
@@ -234,8 +233,7 @@ int xx_crt_vsscanf(const char *pInput, const char *pFormat, int bSecure, va_list
 
         if (nConversion == 'n') {
             if (!bSuppress) {
-                xx_crt_scan_store_int(va_arg(args, void *), nLength == XX_CRT_SCAN_64 ? XX_CRT_SCAN_64 : nLength,
-                                      (uint64_t)(in - (const unsigned char *)pInput));
+                xx_crt_scan_store_int(va_arg(args, void *), nLength == XX_CRT_SCAN_64 ? XX_CRT_SCAN_64 : nLength, (uint64_t)(in - (const unsigned char *)pInput));
             }
             continue;
         }
@@ -458,8 +456,7 @@ int xx_crt_vsscanf(const char *pInput, const char *pFormat, int bSecure, va_list
                 in += pEnd - pText;
                 break;
             }
-            default:
-                return nAssigned;
+            default: return nAssigned;
         }
     }
     return nAssigned;

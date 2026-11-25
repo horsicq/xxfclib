@@ -43,7 +43,7 @@ typedef struct xxds_embedded {
     size_t size;
     const xx_file_type_t *types;
     size_t type_count;
-    int stub; /* placeholder: served only from a script directory */
+    int stub;      /* placeholder: served only from a script directory */
     size_t packed; /* bytes of `data` when it is a raw deflate stream of `size` bytes of text, else 0 */
 } xxds_embedded;
 
@@ -56,9 +56,9 @@ typedef struct xxds_entry {
     uint32_t id;
     char *name;
     char *description; /* what the structure is, or NULL */
-    char **aliases; /* further names string_to_id accepts */
+    char **aliases;    /* further names string_to_id accepts */
     size_t alias_count;
-    int endian; /* 0 LE, 1 BE, 2 FILE */
+    int endian;      /* 0 LE, 1 BE, 2 FILE */
     int fields_mode; /* 0 ask the script every time, 1 static list, 2 sizedFields function */
 } xxds_entry;
 
@@ -107,14 +107,13 @@ typedef struct xxds_call {
      * File.bytes) cost a copy instead of a device read each. Walkers alternate between regions (a PE
      * exception table and the unwind data it points to), so one window would be refilled on almost
      * every read: the least recently used window is refilled. Filled on demand, dropped by xxds_end. */
-    uint8_t *cache; /* XXDS_CACHE_SLOTS windows of XXDS_CACHE_WINDOW bytes */
-    int64_t cache_at[XXDS_CACHE_SLOTS]; /* format-relative offset of each window */
+    uint8_t *cache;                      /* XXDS_CACHE_SLOTS windows of XXDS_CACHE_WINDOW bytes */
+    int64_t cache_at[XXDS_CACHE_SLOTS];  /* format-relative offset of each window */
     size_t cache_size[XXDS_CACHE_SLOTS]; /* 0: empty */
     uint64_t cache_used[XXDS_CACHE_SLOTS], cache_tick;
     /* Counters of one scan, printed by xxds_end when the environment variable XXDS_PROFILE is set. */
     uint64_t prof_natives, prof_reads, prof_read_bytes, prof_device_reads, prof_device_bytes, prof_scanned;
 } xxds_call;
-
 
 struct xx_xxds_table {
     JSCtx *ctx;
@@ -453,11 +452,54 @@ static bool xxds_read_aliases(JSCtx *ctx, JSVal entry, xxds_entry *slot)
 /* ------------------------------------------------------------ File object */
 
 enum {
-    XF_SIZE, XF_VALID, XF_U8, XF_U16, XF_U32, XF_U64, XF_I8, XF_I16, XF_I32, XF_I64, XF_U64HI, XF_U64LO,
-    XF_BYTES, XF_CSTR, XF_CSTRSIZE, XF_FIND, XF_CRC32, XF_READ,
-    XM_TYPE, XM_SIZE, XM_BIG, XM_MAPPED, XM_VA2OFF, XM_RVA2OFF, XM_OFF2VA, XM_VAAT, XM_TABLE, XM_RVARANGE, XM_VARANGE, XM_VARANGEAT, XM_MAPRECORD, XM_IMAGEBASE, XM_ENSURE, XM_TYPENAME, XM_BASESHIFT, XM_VERSION, XM_EXTRA,
-    XS_ADD, XS_TABLE, XS_PUT, XS_RAW, XS_COUNT,
-    XU_UTC, XU_HEX, XU_INDEXOF, XU_CRC, XU_HEAPSORT, XG_INCLUDE
+    XF_SIZE,
+    XF_VALID,
+    XF_U8,
+    XF_U16,
+    XF_U32,
+    XF_U64,
+    XF_I8,
+    XF_I16,
+    XF_I32,
+    XF_I64,
+    XF_U64HI,
+    XF_U64LO,
+    XF_BYTES,
+    XF_CSTR,
+    XF_CSTRSIZE,
+    XF_FIND,
+    XF_CRC32,
+    XF_READ,
+    XM_TYPE,
+    XM_SIZE,
+    XM_BIG,
+    XM_MAPPED,
+    XM_VA2OFF,
+    XM_RVA2OFF,
+    XM_OFF2VA,
+    XM_VAAT,
+    XM_TABLE,
+    XM_RVARANGE,
+    XM_VARANGE,
+    XM_VARANGEAT,
+    XM_MAPRECORD,
+    XM_IMAGEBASE,
+    XM_ENSURE,
+    XM_TYPENAME,
+    XM_BASESHIFT,
+    XM_VERSION,
+    XM_EXTRA,
+    XS_ADD,
+    XS_TABLE,
+    XS_PUT,
+    XS_RAW,
+    XS_COUNT,
+    XU_UTC,
+    XU_HEX,
+    XU_INDEXOF,
+    XU_CRC,
+    XU_HEAPSORT,
+    XG_INCLUDE
 };
 
 static bool xxds_read_uint(JSCtx *ctx, xxds_call *call, int64_t offset, unsigned width, bool big, uint64_t *value)
@@ -937,7 +979,8 @@ static JSVal xxds_util(JSCtx *ctx, JSVal this_value, int argc, JSVal *argv, void
     if (op == XU_HEAPSORT) {
         xxds_sort sort;
         int64_t count = xxds_arg_i64(ctx, argc, argv, 2, 0), start, end;
-        if (argc < 4 || !js_is_array(argv[0]) || !js_is_callable(argv[3]) || count < 0 || count > (int64_t)XXDS_MAX_ITEMS * 4) return js_throw(ctx, "Util.heapSort: bad arguments");
+        if (argc < 4 || !js_is_array(argv[0]) || !js_is_callable(argv[3]) || count < 0 || count > (int64_t)XXDS_MAX_ITEMS * 4)
+            return js_throw(ctx, "Util.heapSort: bad arguments");
         sort.ctx = ctx;
         sort.array = argv[0];
         sort.compare = argv[3];
@@ -961,7 +1004,8 @@ static JSVal xxds_util(JSCtx *ctx, JSVal this_value, int argc, JSVal *argv, void
         int64_t seed = xxds_arg_i64(ctx, argc, argv, 1, 0), at = xxds_arg_i64(ctx, argc, argv, 3, 0), size = xxds_arg_i64(ctx, argc, argv, 4, 0);
         uint8_t *bytes = NULL;
         double result = -1.0;
-        if (kind && argc > 2 && js_is_array(argv[2]) && at >= 0 && size >= 0 && (uint64_t)size <= XXDS_MAX_SCRIPT && (bytes = (uint8_t *)xx_mem_alloc((size_t)size + 1U))) {
+        if (kind && argc > 2 && js_is_array(argv[2]) && at >= 0 && size >= 0 && (uint64_t)size <= XXDS_MAX_SCRIPT &&
+            (bytes = (uint8_t *)xx_mem_alloc((size_t)size + 1U))) {
             for (int64_t i = 0; i < size; ++i) {
                 JSVal item = js_get_index(ctx, argv[2], at + i);
                 bytes[i] = item.tag == JT_NUM ? (uint8_t)(int64_t)item.u.n : 0U;
@@ -990,8 +1034,8 @@ static JSVal xxds_util(JSCtx *ctx, JSVal this_value, int argc, JSVal *argv, void
         day = doy - (153 * mp + 2) / 5 + 1;
         month = mp < 10 ? mp + 3 : mp - 9;
         year = yoe + era * 400 + (month <= 2 ? 1 : 0);
-        xx_rt_snprintf(text, sizeof(text), "%04lld-%02lld-%02lld %02lld:%02lld:%02lld", (long long)year, (long long)month, (long long)day,
-                       (long long)(rest / 3600), (long long)(rest % 3600 / 60), (long long)(rest % 60));
+        xx_rt_snprintf(text, sizeof(text), "%04lld-%02lld-%02lld %02lld:%02lld:%02lld", (long long)year, (long long)month, (long long)day, (long long)(rest / 3600),
+                       (long long)(rest % 3600 / 60), (long long)(rest % 60));
         return js_str(ctx, text);
     }
     if (op == XU_HEX) {
@@ -1113,10 +1157,15 @@ static bool xxds_read_catalog(xxds_script *script)
 
 static bool xxds_load(xxds_script *script)
 {
-    static const char *const file_names[] = {"size", "valid", "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "u64hi", "u64lo", "bytes", "cstr", "cstrSize", "find", "crc32", "read"};
-    static const int file_ops[] = {XF_SIZE, XF_VALID, XF_U8, XF_U16, XF_U32, XF_U64, XF_I8, XF_I16, XF_I32, XF_I64, XF_U64HI, XF_U64LO, XF_BYTES, XF_CSTR, XF_CSTRSIZE, XF_FIND, XF_CRC32, XF_READ};
-    static const char *const format_names[] = {"type", "size", "isBigEndian", "isMapped", "vaToOffset", "rvaToOffset", "offsetToVa", "vaAt", "table", "rvaRange", "vaRange", "vaRangeAt", "mapRecord", "imageBase", "ensure", "typeName", "baseShift", "version", "extra"};
-    static const int format_ops[] = {XM_TYPE, XM_SIZE, XM_BIG, XM_MAPPED, XM_VA2OFF, XM_RVA2OFF, XM_OFF2VA, XM_VAAT, XM_TABLE, XM_RVARANGE, XM_VARANGE, XM_VARANGEAT, XM_MAPRECORD, XM_IMAGEBASE, XM_ENSURE, XM_TYPENAME, XM_BASESHIFT, XM_VERSION, XM_EXTRA};
+    static const char *const file_names[] = {"size", "valid", "u8",    "u16",   "u32",  "u64",      "i8",   "i16",   "i32",
+                                             "i64",  "u64hi", "u64lo", "bytes", "cstr", "cstrSize", "find", "crc32", "read"};
+    static const int file_ops[] = {XF_SIZE, XF_VALID, XF_U8,    XF_U16,   XF_U32,  XF_U64,      XF_I8,   XF_I16,   XF_I32,
+                                   XF_I64,  XF_U64HI, XF_U64LO, XF_BYTES, XF_CSTR, XF_CSTRSIZE, XF_FIND, XF_CRC32, XF_READ};
+    static const char *const format_names[] = {"type",   "size",     "isBigEndian", "isMapped", "vaToOffset", "rvaToOffset", "offsetToVa",
+                                               "vaAt",   "table",    "rvaRange",    "vaRange",  "vaRangeAt",  "mapRecord",   "imageBase",
+                                               "ensure", "typeName", "baseShift",   "version",  "extra"};
+    static const int format_ops[] = {XM_TYPE,    XM_SIZE,      XM_BIG,       XM_MAPPED,    XM_VA2OFF, XM_RVA2OFF,  XM_OFF2VA,    XM_VAAT,    XM_TABLE, XM_RVARANGE,
+                                     XM_VARANGE, XM_VARANGEAT, XM_MAPRECORD, XM_IMAGEBASE, XM_ENSURE, XM_TYPENAME, XM_BASESHIFT, XM_VERSION, XM_EXTRA};
     static const char *const structs_names[] = {"add", "table", "put", "raw", "count"};
     static const int structs_ops[] = {XS_ADD, XS_TABLE, XS_PUT, XS_RAW, XS_COUNT};
     static const char *const util_names[] = {"utc", "hex", "indexOf", "crc", "heapSort"};
@@ -1332,7 +1381,8 @@ static void xxds_profile_report(void)
     for (int rank = 0; rank < 12; ++rank) {
         size_t best = XXDS_PROFILE_SLOTS;
         for (size_t i = 0; i < XXDS_PROFILE_SLOTS; ++i) {
-            if (g_xxds_profile[i].name && g_xxds_profile[i].statements && (best == XXDS_PROFILE_SLOTS || g_xxds_profile[i].statements > g_xxds_profile[best].statements)) best = i;
+            if (g_xxds_profile[i].name && g_xxds_profile[i].statements && (best == XXDS_PROFILE_SLOTS || g_xxds_profile[i].statements > g_xxds_profile[best].statements))
+                best = i;
         }
         if (best == XXDS_PROFILE_SLOTS) break;
         fprintf(stderr, "xxds profile:   %12llu  %s\n", (unsigned long long)g_xxds_profile[best].statements, g_xxds_profile[best].name);
@@ -1372,9 +1422,9 @@ static void xxds_end(xxds_call *call)
     }
     if (call->collecting && getenv("XXDS_PROFILE")) {
         fprintf(stderr, "xxds profile: %s: File natives %llu, reads %llu (%llu bytes), device reads %llu (%llu bytes), Util.indexOf elements %llu, items %llu\n",
-                      call->script ? call->script->name : "?", (unsigned long long)call->prof_natives, (unsigned long long)call->prof_reads,
-                      (unsigned long long)call->prof_read_bytes, (unsigned long long)call->prof_device_reads, (unsigned long long)call->prof_device_bytes,
-                      (unsigned long long)call->prof_scanned, (unsigned long long)call->count);
+                call->script ? call->script->name : "?", (unsigned long long)call->prof_natives, (unsigned long long)call->prof_reads,
+                (unsigned long long)call->prof_read_bytes, (unsigned long long)call->prof_device_reads, (unsigned long long)call->prof_device_bytes,
+                (unsigned long long)call->prof_scanned, (unsigned long long)call->count);
     }
     xx_mem_free(call->cache);
     call->cache = NULL;
@@ -1554,9 +1604,7 @@ static JSVal xxds_record_value(JSCtx *ctx, const xx_data_struct_record *record)
         case XX_VAR_TYPE_STRING:
         case XX_VAR_TYPE_STRING_VIEW: return js_str(ctx, xx_var_get_str(&record->value));
         case XX_VAR_TYPE_BYTES:
-        case XX_VAR_TYPE_BYTES_VIEW:
-            bytes = xx_var_get_bytes(&record->value, &size);
-            return js_strn(ctx, (const char *)bytes, bytes ? size : 0U);
+        case XX_VAR_TYPE_BYTES_VIEW: bytes = xx_var_get_bytes(&record->value, &size); return js_strn(ctx, (const char *)bytes, bytes ? size : 0U);
         default: return js_undefined();
     }
 }
@@ -1837,8 +1885,7 @@ static xx_data_struct_record_state *xxds_create_records_on(Abstractformat *outer
          * entry, or the list of a sizedFields function for one entrySize/totalSize. */
         xxds_layout *slot = NULL;
         int64_t entry_size = entry->fields_mode == 2 ? ds->entry_size : 0, total_size = entry->fields_mode == 2 ? ds->total_size : 0;
-        if (entry->fields_mode && !call.script->layouts)
-            call.script->layouts = (xxds_layout *)xx_mem_calloc(XXDS_LAYOUT_SLOTS, sizeof(*call.script->layouts));
+        if (entry->fields_mode && !call.script->layouts) call.script->layouts = (xxds_layout *)xx_mem_calloc(XXDS_LAYOUT_SLOTS, sizeof(*call.script->layouts));
         if (entry->fields_mode && call.script->layouts) {
             slot = &call.script->layouts[xxds_layout_slot(index, entry_size, total_size)];
             if (slot->used && slot->entry == index && slot->entry_size == entry_size && slot->total_size == total_size) layout = slot;

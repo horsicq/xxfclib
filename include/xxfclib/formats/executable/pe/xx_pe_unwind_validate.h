@@ -38,9 +38,9 @@ typedef struct {
 } xx_pe_guard_cf_result;
 
 /* UNWIND_INFO flags, as the AMD64 exception data defines them. */
-#define XX_PE_AMD64_UNW_EHANDLER   0x01u
-#define XX_PE_AMD64_UNW_UHANDLER   0x02u
-#define XX_PE_AMD64_UNW_CHAININFO  0x04u
+#define XX_PE_AMD64_UNW_EHANDLER 0x01u
+#define XX_PE_AMD64_UNW_UHANDLER 0x02u
+#define XX_PE_AMD64_UNW_CHAININFO 0x04u
 
 typedef struct {
     uint32_t begin_rva;
@@ -48,14 +48,14 @@ typedef struct {
     uint32_t unwind_rva;
     /* What the entry's UNWIND_INFO declares, when it is readable:
      * unwind_read is 0 when it is not, and the fields below are then 0. */
-    uint32_t primary_begin_rva;  /* The entry this one continues, or its own begin. */
-    uint32_t frame_allocation;   /* Bytes the prologue subtracts from RSP. */
-    uint16_t prolog_size;        /* Bytes of prologue the unwind data covers. */
+    uint32_t primary_begin_rva; /* The entry this one continues, or its own begin. */
+    uint32_t frame_allocation;  /* Bytes the prologue subtracts from RSP. */
+    uint16_t prolog_size;       /* Bytes of prologue the unwind data covers. */
     uint8_t unwind_version;
-    uint8_t unwind_flags;        /* XX_PE_AMD64_UNW_*. */
-    uint8_t frame_register;      /* 0 when the frame is RSP-relative, else the register. */
-    uint8_t frame_offset;        /* Scaled by 16, as the format stores it. */
-    uint8_t pushed_registers;    /* Count of UWOP_PUSH_NONVOL in the prologue. */
+    uint8_t unwind_flags;     /* XX_PE_AMD64_UNW_*. */
+    uint8_t frame_register;   /* 0 when the frame is RSP-relative, else the register. */
+    uint8_t frame_offset;     /* Scaled by 16, as the format stores it. */
+    uint8_t pushed_registers; /* Count of UWOP_PUSH_NONVOL in the prologue. */
     uint8_t unwind_read;
 } xx_pe_amd64_function;
 
@@ -81,9 +81,7 @@ typedef struct {
  * was read, 0 when it is absent, not file-backed, or malformed (an entry whose
  * end does not follow its begin). This reports what the table says; use
  * xx_pe_inspect_validate_amd64_unwind to judge whether it is well formed. */
-XXFC_API int xx_pe_inspect_amd64_functions(const xx_pe_inspection *pe, xx_io_device *device,
-                                          xx_pe_amd64_function *functions, uint32_t capacity,
-                                          uint32_t *total);
+XXFC_API int xx_pe_inspect_amd64_functions(const xx_pe_inspection *pe, xx_io_device *device, xx_pe_amd64_function *functions, uint32_t capacity, uint32_t *total);
 
 /* Implements the AMD64 exception-table checks in DIE's generic heuristic,
  * including its permissive DWORD-aligned pointers and strict WORD-aligned
@@ -98,9 +96,8 @@ XXFC_API int xx_pe_inspect_amd64_functions(const xx_pe_inspection *pe, xx_io_dev
  * unsupported address precision, allocation or I/O failure); callers must
  * use their existing validator, not interpret this as valid metadata.
  * Entry fields are zero for VALID and INCOMPLETE_ENTRY. */
-XXFC_API int xx_pe_inspect_validate_amd64_unwind(const xx_pe_inspection *pe, xx_io_device *device,
-                                               uint32_t directory_rva, uint32_t directory_size,
-                                               xx_pe_amd64_unwind_result *result);
+XXFC_API int xx_pe_inspect_validate_amd64_unwind(const xx_pe_inspection *pe, xx_io_device *device, uint32_t directory_rva, uint32_t directory_size,
+                                                 xx_pe_amd64_unwind_result *result);
 
 /* Implements the Guard CF function-table checks in DIE's generic heuristic.
  * Each entry begins with a little-endian function RVA and may contain up to
@@ -112,12 +109,8 @@ XXFC_API int xx_pe_inspect_validate_amd64_unwind(const xx_pe_inspection *pe, xx_
  * the first failure in result. Returns 0 when native validation is unavailable
  * (invalid input, table mapping, address precision, allocation or I/O); script
  * callers must then use their existing validator. */
-XXFC_API int xx_pe_inspect_validate_guard_cf_function_table(const xx_pe_inspection *pe,
-                                                            xx_io_device *device,
-                                                            uint32_t table_rva,
-                                                            uint32_t entry_count,
-                                                            uint32_t entry_size,
-                                                            xx_pe_guard_cf_result *result);
+XXFC_API int xx_pe_inspect_validate_guard_cf_function_table(const xx_pe_inspection *pe, xx_io_device *device, uint32_t table_rva, uint32_t entry_count,
+                                                            uint32_t entry_size, xx_pe_guard_cf_result *result);
 
 #ifdef __cplusplus
 }

@@ -74,20 +74,13 @@ struct xx_literal_set {
     bool finalized;
 };
 
-bool xx_literal_verify(const xx_literal_set *set, const uint8_t *data, size_t size,
-                       size_t position, uint8_t buckets, xx_literal_match_fn match, void *context);
-bool xx_literal_scan_prepared(const xx_literal_set *set, const uint8_t *data, size_t size,
-                              size_t begin, size_t end, xx_literal_match_fn match, void *context);
-bool xx_literal_scan_ssse3(const xx_literal_set *set, const uint8_t *data, size_t size,
-                           size_t begin, size_t end, xx_literal_match_fn match, void *context);
-bool xx_literal_scan_avx2(const xx_literal_set *set, const uint8_t *data, size_t size,
-                          size_t begin, size_t end, xx_literal_match_fn match, void *context);
-bool xx_literal_scan_blocks_sse2(const xx_literal_set *set, const uint8_t *data, size_t size,
-                                 size_t begin, size_t end, xx_literal_match_fn match, void *context);
-bool xx_literal_scan_grams_sse2(const xx_literal_set *set, const uint8_t *data, size_t size,
-                                size_t begin, size_t end, xx_literal_match_fn match, void *context);
-bool xx_literal_verify_large_fast(const xx_literal_set *set, const uint8_t *data, size_t position,
-                                  uint8_t lengths, xx_literal_match_fn match, void *context);
+bool xx_literal_verify(const xx_literal_set *set, const uint8_t *data, size_t size, size_t position, uint8_t buckets, xx_literal_match_fn match, void *context);
+bool xx_literal_scan_prepared(const xx_literal_set *set, const uint8_t *data, size_t size, size_t begin, size_t end, xx_literal_match_fn match, void *context);
+bool xx_literal_scan_ssse3(const xx_literal_set *set, const uint8_t *data, size_t size, size_t begin, size_t end, xx_literal_match_fn match, void *context);
+bool xx_literal_scan_avx2(const xx_literal_set *set, const uint8_t *data, size_t size, size_t begin, size_t end, xx_literal_match_fn match, void *context);
+bool xx_literal_scan_blocks_sse2(const xx_literal_set *set, const uint8_t *data, size_t size, size_t begin, size_t end, xx_literal_match_fn match, void *context);
+bool xx_literal_scan_grams_sse2(const xx_literal_set *set, const uint8_t *data, size_t size, size_t begin, size_t end, xx_literal_match_fn match, void *context);
+bool xx_literal_verify_large_fast(const xx_literal_set *set, const uint8_t *data, size_t position, uint8_t lengths, xx_literal_match_fn match, void *context);
 
 #if !defined(XX_LITERAL_PORTABLE_ONLY) && !defined(_M_ARM64EC) && (defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__))
 #define XX_LITERAL_X86 1
@@ -129,7 +122,10 @@ static XX_LITERAL_INLINE unsigned xx_literal_first_bit(uint32_t bits)
     return (unsigned)__builtin_ctz(bits);
 #else
     unsigned index = 0;
-    while ((bits & 1U) == 0) { bits >>= 1; ++index; }
+    while ((bits & 1U) == 0) {
+        bits >>= 1;
+        ++index;
+    }
     return index;
 #endif
 }
@@ -183,14 +179,12 @@ static XX_LITERAL_INLINE size_t xx_literal_slot_index(const xx_literal_set *set,
  * candidate buckets in insertion order, one masked compare each; crowded
  * bucket combinations use the exact table (every item matching here is in
  * a candidate bucket, so looking up their lengths finds the same items). */
-static XX_LITERAL_INLINE bool xx_literal_verify_small_fast(const xx_literal_set *set, const uint8_t *data,
-                                                           size_t position, uint8_t buckets,
-                                                           xx_literal_match_fn match, void *context)
+static XX_LITERAL_INLINE bool xx_literal_verify_small_fast(const xx_literal_set *set, const uint8_t *data, size_t position, uint8_t buckets, xx_literal_match_fn match,
+                                                           void *context)
 {
     uint64_t items = set->bucket_items[buckets];
     uint64_t word = xx_literal_load64(data + position);
-    if (set->bucket_lengths[buckets] != 0)
-        return xx_literal_verify_large_fast(set, data, position, set->bucket_lengths[buckets], match, context);
+    if (set->bucket_lengths[buckets] != 0) return xx_literal_verify_large_fast(set, data, position, set->bucket_lengths[buckets], match, context);
     while (items != 0) {
         unsigned i = xx_literal_first_bit64(items);
         const xx_literal_item *item = &set->items[i];
@@ -228,8 +222,7 @@ static XX_LITERAL_INLINE uint8_t xx_literal_screen_lengths(const xx_literal_set 
 {
     uint8_t lengths = (uint8_t)(buckets & 3U);
     if ((buckets & XX_LITERAL_SCREEN_LEN3) != 0) lengths |= 4U;
-    if ((buckets & XX_LITERAL_SCREEN_LONG) != 0)
-        lengths |= xx_literal_screen(set, data, (uint8_t)(set->pair_lengths[xx_literal_load16(data)] & 248U));
+    if ((buckets & XX_LITERAL_SCREEN_LONG) != 0) lengths |= xx_literal_screen(set, data, (uint8_t)(set->pair_lengths[xx_literal_load16(data)] & 248U));
     return lengths;
 }
 #endif

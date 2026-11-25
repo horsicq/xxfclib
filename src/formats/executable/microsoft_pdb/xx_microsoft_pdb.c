@@ -83,9 +83,9 @@ typedef struct pdb_pmap {
 } pdb_pmap;
 
 typedef struct pdb_stream_rec {
-    uint32_t size;        /* a nil stream holds 0, as in XPDB */
+    uint32_t size; /* a nil stream holds 0, as in XPDB */
     uint32_t block_count;
-    uint32_t dir_offset;  /* offset of the block numbers inside the directory */
+    uint32_t dir_offset; /* offset of the block numbers inside the directory */
     bool is_nil;
 } pdb_stream_rec;
 
@@ -170,7 +170,7 @@ struct xx_ms_pdb {
     uint32_t *id_offsets; /* stream offsets of the records (header included) */
     uint32_t id_offset_count;
     uint32_t id_index_begin;
-    uint8_t *id_record;   /* one record, 0x10002 bytes at most */
+    uint8_t *id_record; /* one record, 0x10002 bytes at most */
 };
 
 static const char g_pdb_empty[1] = {0};
@@ -1023,9 +1023,8 @@ int32_t xx_ms_pdb_primitive_type_to_basic_type(uint32_t type_index)
                (type == XX_MS_PDB_T_INT8) || (type == XX_MS_PDB_T_INT16) || (type == XX_MS_PDB_T_QUAD) || (type == XX_MS_PDB_T_OCT)) {
         /* T_QUAD/T_OCT are __int64/__int128, DIA reports them as btInt with the matching length */
         result = XX_MS_PDB_btInt;
-    } else if ((type == XX_MS_PDB_T_UCHAR) || (type == XX_MS_PDB_T_USHORT) || (type == XX_MS_PDB_T_UINT1) || (type == XX_MS_PDB_T_UINT2) ||
-               (type == XX_MS_PDB_T_UINT4) || (type == XX_MS_PDB_T_UINT8) || (type == XX_MS_PDB_T_UINT16) || (type == XX_MS_PDB_T_UQUAD) ||
-               (type == XX_MS_PDB_T_UOCT)) {
+    } else if ((type == XX_MS_PDB_T_UCHAR) || (type == XX_MS_PDB_T_USHORT) || (type == XX_MS_PDB_T_UINT1) || (type == XX_MS_PDB_T_UINT2) || (type == XX_MS_PDB_T_UINT4) ||
+               (type == XX_MS_PDB_T_UINT8) || (type == XX_MS_PDB_T_UINT16) || (type == XX_MS_PDB_T_UQUAD) || (type == XX_MS_PDB_T_UOCT)) {
         result = XX_MS_PDB_btUInt;
     } else if (type == XX_MS_PDB_T_LONG) {
         result = XX_MS_PDB_btLong;
@@ -1065,22 +1064,22 @@ int32_t xx_ms_pdb_primitive_type_size(uint32_t type_index)
     if ((type == XX_MS_PDB_T_CHAR) || (type == XX_MS_PDB_T_RCHAR) || (type == XX_MS_PDB_T_UCHAR) || (type == XX_MS_PDB_T_INT1) || (type == XX_MS_PDB_T_UINT1) ||
         (type == XX_MS_PDB_T_BOOL08) || (type == XX_MS_PDB_T_CHAR8) || (type == XX_MS_PDB_T_BIT) || (type == XX_MS_PDB_T_PASCHAR)) {
         result = 1;
-    } else if ((type == XX_MS_PDB_T_SHORT) || (type == XX_MS_PDB_T_USHORT) || (type == XX_MS_PDB_T_INT2) || (type == XX_MS_PDB_T_UINT2) ||
-               (type == XX_MS_PDB_T_WCHAR) || (type == XX_MS_PDB_T_CHAR16) || (type == XX_MS_PDB_T_BOOL16) || (type == XX_MS_PDB_T_REAL16)) {
+    } else if ((type == XX_MS_PDB_T_SHORT) || (type == XX_MS_PDB_T_USHORT) || (type == XX_MS_PDB_T_INT2) || (type == XX_MS_PDB_T_UINT2) || (type == XX_MS_PDB_T_WCHAR) ||
+               (type == XX_MS_PDB_T_CHAR16) || (type == XX_MS_PDB_T_BOOL16) || (type == XX_MS_PDB_T_REAL16)) {
         result = 2;
-    } else if ((type == XX_MS_PDB_T_LONG) || (type == XX_MS_PDB_T_ULONG) || (type == XX_MS_PDB_T_INT4) || (type == XX_MS_PDB_T_UINT4) ||
-               (type == XX_MS_PDB_T_CHAR32) || (type == XX_MS_PDB_T_BOOL32) || (type == XX_MS_PDB_T_REAL32) || (type == XX_MS_PDB_T_REAL32PP) ||
-               (type == XX_MS_PDB_T_HRESULT) || (type == XX_MS_PDB_T_BOOL32FF)) {
+    } else if ((type == XX_MS_PDB_T_LONG) || (type == XX_MS_PDB_T_ULONG) || (type == XX_MS_PDB_T_INT4) || (type == XX_MS_PDB_T_UINT4) || (type == XX_MS_PDB_T_CHAR32) ||
+               (type == XX_MS_PDB_T_BOOL32) || (type == XX_MS_PDB_T_REAL32) || (type == XX_MS_PDB_T_REAL32PP) || (type == XX_MS_PDB_T_HRESULT) ||
+               (type == XX_MS_PDB_T_BOOL32FF)) {
         result = 4;
     } else if (type == XX_MS_PDB_T_REAL48) {
         result = 6;
-    } else if ((type == XX_MS_PDB_T_QUAD) || (type == XX_MS_PDB_T_UQUAD) || (type == XX_MS_PDB_T_INT8) || (type == XX_MS_PDB_T_UINT8) ||
-               (type == XX_MS_PDB_T_BOOL64) || (type == XX_MS_PDB_T_REAL64) || (type == XX_MS_PDB_T_CPLX32) || (type == XX_MS_PDB_T_CURRENCY)) {
+    } else if ((type == XX_MS_PDB_T_QUAD) || (type == XX_MS_PDB_T_UQUAD) || (type == XX_MS_PDB_T_INT8) || (type == XX_MS_PDB_T_UINT8) || (type == XX_MS_PDB_T_BOOL64) ||
+               (type == XX_MS_PDB_T_REAL64) || (type == XX_MS_PDB_T_CPLX32) || (type == XX_MS_PDB_T_CURRENCY)) {
         result = 8;
     } else if (type == XX_MS_PDB_T_REAL80) {
         result = 10;
-    } else if ((type == XX_MS_PDB_T_OCT) || (type == XX_MS_PDB_T_UOCT) || (type == XX_MS_PDB_T_INT16) || (type == XX_MS_PDB_T_UINT16) ||
-               (type == XX_MS_PDB_T_REAL128) || (type == XX_MS_PDB_T_CPLX64)) {
+    } else if ((type == XX_MS_PDB_T_OCT) || (type == XX_MS_PDB_T_UOCT) || (type == XX_MS_PDB_T_INT16) || (type == XX_MS_PDB_T_UINT16) || (type == XX_MS_PDB_T_REAL128) ||
+               (type == XX_MS_PDB_T_CPLX64)) {
         result = 16;
     } else if (type == XX_MS_PDB_T_CPLX80) {
         result = 20;
@@ -1242,11 +1241,17 @@ static xx_ms_pdb_type pdb_detect_type(xx_ms_pdb *pdb)
 
         if (pdb_file_read(pdb, 0, header, XX_MS_PDB_MAGIC_SIZE_PDB2) >= XX_MS_PDB_MAGIC_SIZE_PDB7) {
             if (xx_mem_compare(header, magic7, 24) == 0) {
-                if (xx_mem_compare(header + 24, "\x0D\x0A\x1A" "DS", 5) == 0) {
+                if (xx_mem_compare(header + 24,
+                                   "\x0D\x0A\x1A"
+                                   "DS",
+                                   5) == 0) {
                     result = XX_MS_PDB_TYPE_PDB7;
                 }
             } else if (xx_mem_compare(header, magic2, 37) == 0) {
-                if (xx_mem_compare(header + 37, "\x0D\x0A\x1A" "JG", 5) == 0) {
+                if (xx_mem_compare(header + 37,
+                                   "\x0D\x0A\x1A"
+                                   "JG",
+                                   5) == 0) {
                     result = XX_MS_PDB_TYPE_PDB2;
                 }
             }
@@ -3307,8 +3312,8 @@ static void pdb_parse_symbol_legacy(xx_ms_pdb *pdb, const uint8_t *data, int32_t
         record->offset = pdb_u32(data, data_size, 8);
         record->segment = pdb_u16(data, data_size, 12);
         record->name = pdb_string_st(pdb, data, data_size, 14);
-    } else if ((raw_kind == XX_MS_PDB_S_PUB32_16T) || (raw_kind == XX_MS_PDB_S_LDATA32_16T) || (raw_kind == XX_MS_PDB_S_GDATA32_16T) || (raw_kind == XX_MS_PDB_S_LTHREAD32_16T) ||
-               (raw_kind == XX_MS_PDB_S_GTHREAD32_16T)) {
+    } else if ((raw_kind == XX_MS_PDB_S_PUB32_16T) || (raw_kind == XX_MS_PDB_S_LDATA32_16T) || (raw_kind == XX_MS_PDB_S_GDATA32_16T) ||
+               (raw_kind == XX_MS_PDB_S_LTHREAD32_16T) || (raw_kind == XX_MS_PDB_S_GTHREAD32_16T)) {
         record->offset = pdb_u32(data, data_size, 4);
         record->segment = pdb_u16(data, data_size, 8);
         record->type_index = pdb_u16(data, data_size, 10);
@@ -5375,8 +5380,7 @@ static void pdb_load_ids(xx_ms_pdb *pdb)
             break;
         }
 
-        if ((pdb->id_offset_count == UINT32_MAX) ||
-            !pdb_list_reserve((void **)&pdb->id_offsets, &capacity, pdb->id_offset_count, sizeof(uint32_t))) {
+        if ((pdb->id_offset_count == UINT32_MAX) || !pdb_list_reserve((void **)&pdb->id_offsets, &capacity, pdb->id_offset_count, sizeof(uint32_t))) {
             break;
         }
 
@@ -5545,16 +5549,16 @@ bool xx_ms_pdb_get_id_list(xx_ms_pdb *pdb, uint32_t id_index, xx_ms_pdb_u32_list
 
 /* ---- result arrays ------------------------------------------------------------------------- */
 
-#define PDB_LIST_FREE(function_name, list_type)  \
-    void function_name(list_type *list)          \
-    {                                            \
-        if (list) {                              \
-            if (list->items) {                   \
-                xx_mem_free(list->items);        \
-            }                                    \
-            list->items = NULL;                  \
-            list->count = 0;                     \
-        }                                        \
+#define PDB_LIST_FREE(function_name, list_type) \
+    void function_name(list_type *list)         \
+    {                                           \
+        if (list) {                             \
+            if (list->items) {                  \
+                xx_mem_free(list->items);       \
+            }                                   \
+            list->items = NULL;                 \
+            list->count = 0;                    \
+        }                                       \
     }
 
 PDB_LIST_FREE(xx_ms_pdb_symbol_list_free, xx_ms_pdb_symbol_list)

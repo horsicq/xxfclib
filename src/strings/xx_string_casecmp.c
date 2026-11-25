@@ -55,9 +55,7 @@ static uint8_t xx_casecmp_ascii_lower(uint8_t ch)
  * for b >= 'A', b + 0x25 for b > 'Z'; neither sum carries for b < 0x80. */
 static uint64_t xx_casecmp_lower8(uint64_t word)
 {
-    uint64_t upper = (word + UINT64_C(0x3f3f3f3f3f3f3f3f)) &
-                     ~(word + UINT64_C(0x2525252525252525)) &
-                     XX_CASECMP_HIGH_BITS;
+    uint64_t upper = (word + UINT64_C(0x3f3f3f3f3f3f3f3f)) & ~(word + UINT64_C(0x2525252525252525)) & XX_CASECMP_HIGH_BITS;
     return word | (upper >> 2);
 }
 
@@ -76,8 +74,7 @@ static bool xx_casecmp_is_ascii(const uint8_t *bytes, size_t length)
 
 /* Width of the well-formed UTF-8 scalar that starts a non-ASCII byte
  * sequence, or 0, as bstr::decode_utf8 validates it. */
-static size_t xx_casecmp_decode(const uint8_t *bytes, size_t length,
-                                uint32_t *scalar)
+static size_t xx_casecmp_decode(const uint8_t *bytes, size_t length, uint32_t *scalar)
 {
     uint8_t lead = bytes[0];
     size_t width;
@@ -99,9 +96,7 @@ static size_t xx_casecmp_decode(const uint8_t *bytes, size_t length,
         if ((bytes[i] & 0xc0u) != 0x80u) return 0;
         value = (value << 6) | (bytes[i] & 0x3fu);
     }
-    if ((width == 3 && value < 0x800u) || (width == 4 && value < 0x10000u) ||
-        (value >= 0xd800u && value <= 0xdfffu) || value > 0x10ffffu)
-        return 0;
+    if ((width == 3 && value < 0x800u) || (width == 4 && value < 0x10000u) || (value >= 0xd800u && value <= 0xdfffu) || value > 0x10ffffu) return 0;
     *scalar = value;
     return width;
 }
@@ -173,41 +168,34 @@ static bool xx_casecmp_prev(xx_casecmp_backward *it, uint32_t *item)
 
 /* Number of leading byte pairs that are ASCII and equal ignoring ASCII
  * case (ascii_case_insensitive_mismatch). */
-static size_t xx_casecmp_ascii_prefix(const uint8_t *lhs, const uint8_t *rhs,
-                                      size_t length)
+static size_t xx_casecmp_ascii_prefix(const uint8_t *lhs, const uint8_t *rhs, size_t length)
 {
     size_t i = 0;
     for (; length - i >= 8; i += 8) {
         uint64_t a, b;
         memcpy(&a, lhs + i, sizeof(a));
         memcpy(&b, rhs + i, sizeof(b));
-        if (((a | b) & XX_CASECMP_HIGH_BITS) ||
-            xx_casecmp_lower8(a) != xx_casecmp_lower8(b)) break;
+        if (((a | b) & XX_CASECMP_HIGH_BITS) || xx_casecmp_lower8(a) != xx_casecmp_lower8(b)) break;
     }
     for (; i < length; ++i)
-        if (lhs[i] >= 0x80 ||
-            xx_casecmp_ascii_lower(lhs[i]) != xx_casecmp_ascii_lower(rhs[i]))
-            break;
+        if (lhs[i] >= 0x80 || xx_casecmp_ascii_lower(lhs[i]) != xx_casecmp_ascii_lower(rhs[i])) break;
     return i;
 }
 
 /* The same count over trailing byte pairs; ends point past the data. */
-static size_t xx_casecmp_ascii_suffix(const uint8_t *lhs_end,
-                                      const uint8_t *rhs_end, size_t length)
+static size_t xx_casecmp_ascii_suffix(const uint8_t *lhs_end, const uint8_t *rhs_end, size_t length)
 {
     size_t i = 0;
     for (; length - i >= 8; i += 8) {
         uint64_t a, b;
         memcpy(&a, lhs_end - i - 8, sizeof(a));
         memcpy(&b, rhs_end - i - 8, sizeof(b));
-        if (((a | b) & XX_CASECMP_HIGH_BITS) ||
-            xx_casecmp_lower8(a) != xx_casecmp_lower8(b)) break;
+        if (((a | b) & XX_CASECMP_HIGH_BITS) || xx_casecmp_lower8(a) != xx_casecmp_lower8(b)) break;
     }
     for (; i < length; ++i) {
         uint8_t a = lhs_end[-1 - (ptrdiff_t)i];
         uint8_t b = rhs_end[-1 - (ptrdiff_t)i];
-        if (a >= 0x80 || xx_casecmp_ascii_lower(a) != xx_casecmp_ascii_lower(b))
-            break;
+        if (a >= 0x80 || xx_casecmp_ascii_lower(a) != xx_casecmp_ascii_lower(b)) break;
     }
     return i;
 }
@@ -215,27 +203,20 @@ static size_t xx_casecmp_ascii_suffix(const uint8_t *lhs_end,
 /* Only U+212A KELVIN SIGN (lowercase "k") and U+0130 ("i" + U+0307) give
  * ASCII items from non-ASCII bytes. Without them an ASCII needle can only
  * match ASCII bytes, and the byte search below is exact. */
-static bool xx_casecmp_has_ascii_lowercase_source(const uint8_t *bytes,
-                                                  size_t length)
+static bool xx_casecmp_has_ascii_lowercase_source(const uint8_t *bytes, size_t length)
 {
     const uint8_t *at, *end = bytes + length;
     if (xx_casecmp_is_ascii(bytes, length)) return false;
-    for (at = bytes; (size_t)(end - at) >= 2 &&
-         (at = (const uint8_t *)memchr(at, 0xc4, (size_t)(end - at))) != NULL;
-         ++at)
+    for (at = bytes; (size_t)(end - at) >= 2 && (at = (const uint8_t *)memchr(at, 0xc4, (size_t)(end - at))) != NULL; ++at)
         if (end - at >= 2 && at[1] == 0xb0) return true;
-    for (at = bytes; (size_t)(end - at) >= 3 &&
-         (at = (const uint8_t *)memchr(at, 0xe2, (size_t)(end - at))) != NULL;
-         ++at)
+    for (at = bytes; (size_t)(end - at) >= 3 && (at = (const uint8_t *)memchr(at, 0xe2, (size_t)(end - at))) != NULL; ++at)
         if (end - at >= 3 && at[1] == 0x84 && at[2] == 0xaa) return true;
     return false;
 }
 
 /* Whether the haystack items from byte position at onwards start with the
  * needle's first item and continue with the rest of it. */
-static bool xx_casecmp_matches_at(const uint8_t *at, const uint8_t *end,
-                                  uint32_t first,
-                                  const xx_casecmp_forward *rest)
+static bool xx_casecmp_matches_at(const uint8_t *at, const uint8_t *end, uint32_t first, const xx_casecmp_forward *rest)
 {
     xx_casecmp_forward candidate = {at, end, 0}, expected = *rest;
     uint32_t item, want;
@@ -247,10 +228,7 @@ static bool xx_casecmp_matches_at(const uint8_t *at, const uint8_t *end,
 
 /* contains_unicode_case_insensitive: every item position of the haystack,
  * including the one inside the lowercase of U+0130. */
-static bool xx_casecmp_contains_items(const uint8_t *haystack,
-                                      size_t haystack_length,
-                                      const uint8_t *needle,
-                                      size_t needle_length)
+static bool xx_casecmp_contains_items(const uint8_t *haystack, size_t haystack_length, const uint8_t *needle, size_t needle_length)
 {
     xx_casecmp_forward position = {haystack, haystack + haystack_length, 0};
     xx_casecmp_forward rest = {needle, needle + needle_length, 0};
@@ -265,8 +243,7 @@ static bool xx_casecmp_contains_items(const uint8_t *haystack,
         uint8_t upper = lower >= 'a' && lower <= 'z' ? (uint8_t)(lower - 32) : lower;
         uint8_t lead = lower == 'k' ? 0xe2 : lower == 'i' ? 0xc4 : lower;
         for (const uint8_t *at = haystack; at < end; ++at)
-            if ((*at == lower || *at == upper || *at == lead) &&
-                xx_casecmp_matches_at(at, end, first, &rest)) return true;
+            if ((*at == lower || *at == upper || *at == lead) && xx_casecmp_matches_at(at, end, first, &rest)) return true;
         return false;
     }
     for (;;) {
@@ -298,10 +275,7 @@ static bool xx_casecmp_contains_items(const uint8_t *haystack,
  * one item (U+0130's two items take its two bytes), so needle_length bounds
  * the item count. Returns false, with no answer, only when the tables
  * cannot be allocated; the caller then keeps the allocation-free search. */
-static bool xx_casecmp_contains_kmp(const uint8_t *haystack,
-                                    size_t haystack_length,
-                                    const uint8_t *needle,
-                                    size_t needle_length, bool *result)
+static bool xx_casecmp_contains_kmp(const uint8_t *haystack, size_t haystack_length, const uint8_t *needle, size_t needle_length, bool *result)
 {
     size_t stack_fail[XX_CASECMP_KMP_STACK];
     uint32_t stack_items[XX_CASECMP_KMP_STACK];
@@ -314,15 +288,13 @@ static bool xx_casecmp_contains_kmp(const uint8_t *haystack,
     xx_byteset starts;
     bool skip;
     if (needle_length > XX_CASECMP_KMP_STACK) {
-        if (needle_length > SIZE_MAX / (sizeof(size_t) + sizeof(uint32_t)))
-            return false;
+        if (needle_length > SIZE_MAX / (sizeof(size_t) + sizeof(uint32_t))) return false;
         block = malloc(needle_length * (sizeof(size_t) + sizeof(uint32_t)));
         if (!block) return false;
         fail = (size_t *)block;
         items = (uint32_t *)(fail + needle_length);
     }
-    while (count < needle_length && xx_casecmp_next(&it, &item))
-        items[count++] = item;
+    while (count < needle_length && xx_casecmp_next(&it, &item)) items[count++] = item;
     fail[0] = 0;
     for (q = 1, k = 0; q < count; ++q) {
         while (k && items[q] != items[k]) k = fail[k - 1];
@@ -340,8 +312,7 @@ static bool xx_casecmp_contains_kmp(const uint8_t *haystack,
         uint8_t lower = (uint8_t)items[0];
         xx_byteset_clear(&starts);
         xx_byteset_add(&starts, lower);
-        if (lower >= 'a' && lower <= 'z')
-            xx_byteset_add(&starts, (uint8_t)(lower - ('a' - 'A')));
+        if (lower >= 'a' && lower <= 'z') xx_byteset_add(&starts, (uint8_t)(lower - ('a' - 'A')));
         if (lower == 'k') xx_byteset_add(&starts, 0xe2);
         if (lower == 'i') xx_byteset_add(&starts, 0xc4);
         xx_byteset_prepare(&starts);
@@ -368,14 +339,10 @@ static bool xx_casecmp_contains_kmp(const uint8_t *haystack,
     return true;
 }
 
-XXFC_API bool xx_string_unicode_icontains(const uint8_t *haystack,
-                                          size_t haystack_length,
-                                          const uint8_t *needle,
-                                          size_t needle_length)
+XXFC_API bool xx_string_unicode_icontains(const uint8_t *haystack, size_t haystack_length, const uint8_t *needle, size_t needle_length)
 {
     bool found;
-    if ((!haystack && haystack_length) || (!needle && needle_length))
-        return false;
+    if ((!haystack && haystack_length) || (!needle && needle_length)) return false;
     if (!needle_length) return true;
     if (!haystack) haystack = (const uint8_t *)"";
     if (xx_casecmp_is_ascii(needle, needle_length)) {
@@ -387,29 +354,20 @@ XXFC_API bool xx_string_unicode_icontains(const uint8_t *haystack,
          * the fast path (linear with a constant factor below the cap), long
          * ones go straight to KMP, which gives the same answer. */
         if (needle_length <= XX_CASECMP_LITERAL_MAX) {
-            if (xx_literal_nocase_find(haystack, haystack_length, 0, needle,
-                                       needle_length) != SIZE_MAX) return true;
-            if (!xx_casecmp_has_ascii_lowercase_source(haystack, haystack_length))
-                return false;
+            if (xx_literal_nocase_find(haystack, haystack_length, 0, needle, needle_length) != SIZE_MAX) return true;
+            if (!xx_casecmp_has_ascii_lowercase_source(haystack, haystack_length)) return false;
         }
     }
     /* Linear in the worst case; if its tables cannot be allocated, the
      * allocation-free search gives the same answer more slowly. */
-    if (xx_casecmp_contains_kmp(haystack, haystack_length, needle,
-                                needle_length, &found))
-        return found;
-    return xx_casecmp_contains_items(haystack, haystack_length, needle,
-                                     needle_length);
+    if (xx_casecmp_contains_kmp(haystack, haystack_length, needle, needle_length, &found)) return found;
+    return xx_casecmp_contains_items(haystack, haystack_length, needle, needle_length);
 }
 
-XXFC_API bool xx_string_unicode_istarts_with(const uint8_t *haystack,
-                                             size_t haystack_length,
-                                             const uint8_t *prefix,
-                                             size_t prefix_length)
+XXFC_API bool xx_string_unicode_istarts_with(const uint8_t *haystack, size_t haystack_length, const uint8_t *prefix, size_t prefix_length)
 {
     size_t shorter, at;
-    if ((!haystack && haystack_length) || (!prefix && prefix_length))
-        return false;
+    if ((!haystack && haystack_length) || (!prefix && prefix_length)) return false;
     if (!haystack) haystack = (const uint8_t *)"";
     if (!prefix) prefix = (const uint8_t *)"";
     shorter = haystack_length < prefix_length ? haystack_length : prefix_length;
@@ -426,24 +384,18 @@ XXFC_API bool xx_string_unicode_istarts_with(const uint8_t *haystack,
     return true;
 }
 
-XXFC_API bool xx_string_unicode_iends_with(const uint8_t *haystack,
-                                           size_t haystack_length,
-                                           const uint8_t *suffix,
-                                           size_t suffix_length)
+XXFC_API bool xx_string_unicode_iends_with(const uint8_t *haystack, size_t haystack_length, const uint8_t *suffix, size_t suffix_length)
 {
     size_t shorter, matched, haystack_end, suffix_end;
-    if ((!haystack && haystack_length) || (!suffix && suffix_length))
-        return false;
+    if ((!haystack && haystack_length) || (!suffix && suffix_length)) return false;
     if (!haystack) haystack = (const uint8_t *)"";
     if (!suffix) suffix = (const uint8_t *)"";
     shorter = haystack_length < suffix_length ? haystack_length : suffix_length;
-    matched = xx_casecmp_ascii_suffix(haystack + haystack_length,
-                                      suffix + suffix_length, shorter);
+    matched = xx_casecmp_ascii_suffix(haystack + haystack_length, suffix + suffix_length, shorter);
     if (matched == shorter) return haystack_length >= suffix_length;
     haystack_end = haystack_length - matched;
     suffix_end = suffix_length - matched;
-    if (haystack[haystack_end - 1] < 0x80 && suffix[suffix_end - 1] < 0x80)
-        return false;
+    if (haystack[haystack_end - 1] < 0x80 && suffix[suffix_end - 1] < 0x80) return false;
     {
         xx_casecmp_backward text = {haystack, haystack + haystack_end, 0};
         xx_casecmp_backward end = {suffix, suffix + suffix_end, 0};
@@ -454,8 +406,7 @@ XXFC_API bool xx_string_unicode_iends_with(const uint8_t *haystack,
     return true;
 }
 
-XXFC_API bool xx_string_unicode_iequals(const uint8_t *lhs, size_t lhs_length,
-                                        const uint8_t *rhs, size_t rhs_length)
+XXFC_API bool xx_string_unicode_iequals(const uint8_t *lhs, size_t lhs_length, const uint8_t *rhs, size_t rhs_length)
 {
     size_t shorter, at;
     if ((!lhs && lhs_length) || (!rhs && rhs_length)) return false;

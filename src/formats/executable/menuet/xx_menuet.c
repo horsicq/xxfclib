@@ -5,7 +5,10 @@
 #include "../../xx_payload_members.h"
 #include "xxfclib/data/xx_data.h"
 
-static bool menuet_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
+static bool menuet_stop(xx_pd_struct *pd)
+{
+    return pd && xx_pd_is_stopped(pd);
+}
 
 static bool menuet_parse(Abstractformat *format, pm_stream *stream, xx_pd_struct *pd)
 {
@@ -50,7 +53,10 @@ static bool menuet_parse(Abstractformat *format, pm_stream *stream, xx_pd_struct
     return !menuet_stop(pd);
 }
 
-static bool pm_parse(Abstractformat *format, pm_stream *stream, xx_pd_struct *pd) { return menuet_parse(format, stream, pd); }
+static bool pm_parse(Abstractformat *format, pm_stream *stream, xx_pd_struct *pd)
+{
+    return menuet_parse(format, stream, pd);
+}
 
 void xx_menuet_init(xx_menuet *reader, xx_io_device *device, int64_t base_address)
 {
@@ -70,10 +76,25 @@ xx_menuet *xx_menuet_create(xx_io_device *device, int64_t base_address)
     if (reader) xx_menuet_init(reader, device, base_address);
     return reader;
 }
-void xx_menuet_destroy(xx_menuet *reader) { if (reader) xx_format_cleanup_extra_parameters(&reader->format); }
-void xx_menuet_free(xx_menuet *reader) { if (reader) { xx_menuet_destroy(reader); xx_mem_free(reader); } }
-bool xx_menuet_check_is_valid(Abstractformat *format, xx_pd_struct *pd) { return pm_valid(format, pd); }
-bool xx_menuet_handle_base_info(Abstractformat *format, xx_pd_struct *pd) { return pm_handle(format, pd); }
+void xx_menuet_destroy(xx_menuet *reader)
+{
+    if (reader) xx_format_cleanup_extra_parameters(&reader->format);
+}
+void xx_menuet_free(xx_menuet *reader)
+{
+    if (reader) {
+        xx_menuet_destroy(reader);
+        xx_mem_free(reader);
+    }
+}
+bool xx_menuet_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
+    return pm_valid(format, pd);
+}
+bool xx_menuet_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
+    return pm_handle(format, pd);
+}
 
 bool xx_menuet_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_memory_map *map, xx_pd_struct *pd)
 {

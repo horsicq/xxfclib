@@ -24,8 +24,7 @@ static uint32_t crc_device(xx_io_device *device, int64_t offset, int64_t size, u
 
     whole = xx_io_buffer_whole(device, (uint64_t)size);
     if (whole && (uint64_t)size <= SIZE_MAX) {
-        value = crc16 ? xx_crc16_arc_calc((uint16_t)value, whole + offset, (size_t)size)
-                      : xx_crc32_calc(value, whole + offset, (size_t)size);
+        value = crc16 ? xx_crc16_arc_calc((uint16_t)value, whole + offset, (size_t)size) : xx_crc32_calc(value, whole + offset, (size_t)size);
     } else {
         while (size > 0) {
             size_t count = (uint64_t)size < capacity ? (size_t)size : capacity;

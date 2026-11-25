@@ -111,7 +111,6 @@ static bool pimp_zlib_header_ok(const uint8_t *header)
 /* Windows-1252 0x80..0x9F.  The five undefined bytes keep their C1 code
  * point, which the name check refuses. */
 
-
 static uint32_t pimp_cp1252(uint8_t c)
 {
     return (c >= 0x80U && c < 0xA0U) ? xx_codepage_decode_byte(xx_codepage_by_number(1252), (unsigned char)(c), c) : c;

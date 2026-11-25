@@ -36,8 +36,7 @@ static uint32_t xx_scan_type_u32le(const uint8_t *bytes)
 
 static uint32_t xx_scan_type_u32(const uint8_t *bytes, bool big_endian)
 {
-    return big_endian ? ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) | ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3] :
-                        xx_scan_type_u32le(bytes);
+    return big_endian ? ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) | ((uint32_t)bytes[2] << 8U) | (uint32_t)bytes[3] : xx_scan_type_u32le(bytes);
 }
 
 static uint64_t xx_scan_type_u64(const uint8_t *bytes, bool big_endian)
@@ -79,8 +78,7 @@ static bool xx_scan_has_com_suffix(const char *file_name, bool leading_dot_is_su
            (name[length - 1U] == 'm' || name[length - 1U] == 'M');
 }
 
-xx_file_type_t xx_scan_type_detect_pe(xx_io_device *device, const uint8_t head[64], size_t head_size, int64_t size,
-                                      bool *managed, xx_pd_struct *pd);
+xx_file_type_t xx_scan_type_detect_pe(xx_io_device *device, const uint8_t head[64], size_t head_size, int64_t size, bool *managed, xx_pd_struct *pd);
 xx_file_type_t xx_scan_type_detect_msdos(xx_io_device *device);
 xx_file_type_t xx_scan_type_detect_ne_le_lx(xx_io_device *device);
 xx_file_type_t xx_scan_type_detect_elf(const uint8_t *head, size_t head_size);

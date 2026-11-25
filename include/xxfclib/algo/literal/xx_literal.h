@@ -25,13 +25,11 @@ XXFC_API size_t xx_literal_set_count(const xx_literal_set *set);
  * for verification across range boundaries. Empty ranges accept NULL data.
  * False means invalid arguments/unfinalized set or a callback requested stop.
  * A finalized set is immutable and may be scanned concurrently. */
-XXFC_API bool xx_literal_set_scan(const xx_literal_set *set, const uint8_t *data, size_t size,
-                                 size_t start_begin, size_t start_end,
-                                 xx_literal_match_fn match, void *context);
+XXFC_API bool xx_literal_set_scan(const xx_literal_set *set, const uint8_t *data, size_t size, size_t start_begin, size_t start_end, xx_literal_match_fn match,
+                                  void *context);
 /* Independent, straightforward oracle and portable fallback. */
-XXFC_API bool xx_literal_set_scan_scalar(const xx_literal_set *set, const uint8_t *data, size_t size,
-                                        size_t start_begin, size_t start_end,
-                                        xx_literal_match_fn match, void *context);
+XXFC_API bool xx_literal_set_scan_scalar(const xx_literal_set *set, const uint8_t *data, size_t size, size_t start_begin, size_t start_end, xx_literal_match_fn match,
+                                         void *context);
 /* Describes the selected structure (Teddy or prefix hash), not CPU support. */
 XXFC_API const char *xx_literal_set_strategy(const xx_literal_set *set);
 

@@ -135,7 +135,6 @@ typedef struct mb_stream_s {
 /* Mac OS Roman, 0x80..0xFF, as Unicode code points (Apple's ROMAN.TXT with
  * the Mac OS 8.5 euro sign at 0xDB). */
 
-
 static bool mb_read_at(xx_io_device *device, int64_t offset, void *buffer, size_t size)
 {
     size_t done = 0U;
@@ -401,8 +400,8 @@ static bool mb_parse(Abstractformat *format, bool verified_only, mb_stream **res
     /* Zero lengths alone do not authenticate an unverified header. A
      * complete, tightly bounded legacy MacPaint document is the exception. */
     if (!verified && data_length == 0U && rsrc_length == 0U) {
-        if (version_written >= MB_VERSION_II || needs_exact_fit || xx_rt_memcmp(header + MB_OFF_TYPE, "PNTG", 4U) ||
-            !mb_macpaint_length(format, size, &data_length)) return false;
+        if (version_written >= MB_VERSION_II || needs_exact_fit || xx_rt_memcmp(header + MB_OFF_TYPE, "PNTG", 4U) || !mb_macpaint_length(format, size, &data_length))
+            return false;
     }
 
     /* Bound every region against the real file before it is used.  All the
@@ -420,9 +419,9 @@ static bool mb_parse(Abstractformat *format, bool verified_only, mb_stream **res
          * confined to CRC-verified II, nonzero reserved extension bytes,
          * plausible legacy metadata and an exact fork-only physical extent.
          * III headers and ordinary truncated secondary headers still fail. */
-        if (!verified || version_written != MB_VERSION_II || version_needed > MB_VERSION_II || secondary_length == 0U ||
-            mb_all_zero(header + MB_OFF_SIGNATURE, 14U) || !xx_rt_memcmp(header + MB_OFF_SIGNATURE, "mBIN", 4U) ||
-            !mb_header_is_plausible(header, name_length) || (data_length == 0U && rsrc_length == 0U)) return false;
+        if (!verified || version_written != MB_VERSION_II || version_needed > MB_VERSION_II || secondary_length == 0U || mb_all_zero(header + MB_OFF_SIGNATURE, 14U) ||
+            !xx_rt_memcmp(header + MB_OFF_SIGNATURE, "mBIN", 4U) || !mb_header_is_plausible(header, name_length) || (data_length == 0U && rsrc_length == 0U))
+            return false;
         data_offset = MB_HEADER_SIZE;
         end = data_offset + data_length;
         if (rsrc_length != 0U) {
@@ -515,7 +514,8 @@ static bool mb_set_record(xx_archive_record *record, const mb_stream *stream, co
     record->compressed_size = member->data_size;
     return xx_archive_record_set_original_name(record, member->name) && xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, (uint64_t)member->data_size) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, (uint64_t)member->data_size) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) && xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, stream->modified >= 2082844800U ? (uint64_t)(stream->modified - 2082844800U) : 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) &&
+           xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, stream->modified >= 2082844800U ? (uint64_t)(stream->modified - 2082844800U) : 0U) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, stream->finder_flags) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, stream->type) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);

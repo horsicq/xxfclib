@@ -7,13 +7,13 @@
 #include "xxfclib/scan/xx_scan.h"
 
 typedef struct xx_scan_archive_member {
-    xx_io_device *device;   /* Borrowed, read-only decoded contents, based at zero. */
-    const char *name;       /* Borrowed; no archive-derived pathname is opened. */
+    xx_io_device *device;  /* Borrowed, read-only decoded contents, based at zero. */
+    const char *name;      /* Borrowed; no archive-derived pathname is opened. */
     int64_t source_offset; /* Absolute compressed payload/slice offset in the parent. */
     int64_t source_size;   /* Stored source extent; decoded size may differ. */
     int64_t size;          /* Size of device. */
-    bool is_compressed;   /* Decoded offsets do not map to parent bytes when true. */
-    const char *method;   /* Static XBinary::getHandleMethods label; NULL: Deflate/Store by is_compressed. */
+    bool is_compressed;    /* Decoded offsets do not map to parent bytes when true. */
+    const char *method;    /* Static XBinary::getHandleMethods label; NULL: Deflate/Store by is_compressed. */
 } xx_scan_archive_member;
 
 /* The member, its device and name are lent only for this synchronous call.
@@ -58,12 +58,11 @@ typedef void (*xx_scan_archive_report_callback)(void *context, const char *messa
  * only stops a stream decoding past anything a ZIP entry can declare, no
  * total limit, 100,000 entries).
  * Decoder-internal buffers are independent of the output storage threshold. */
-bool xx_scan_visit_archives_ex(xx_io_device *device, const xx_scan_options *options, xx_scan_archive_callback callback,
-                               xx_scan_archive_report_callback report, void *context, xx_pd_struct *pd);
+bool xx_scan_visit_archives_ex(xx_io_device *device, const xx_scan_options *options, xx_scan_archive_callback callback, xx_scan_archive_report_callback report,
+                               void *context, xx_pd_struct *pd);
 
 /* xx_scan_visit_archives_ex without a report callback. */
-bool xx_scan_visit_archives(xx_io_device *device, const xx_scan_options *options,
-                            xx_scan_archive_callback callback, void *context, xx_pd_struct *pd);
+bool xx_scan_visit_archives(xx_io_device *device, const xx_scan_options *options, xx_scan_archive_callback callback, void *context, xx_pd_struct *pd);
 
 /* A complete TAR from offset 0, which XFormats types as an archive. The
  * device cursor is preserved. */

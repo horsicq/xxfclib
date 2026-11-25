@@ -165,7 +165,6 @@ typedef struct aprc_stream_s {
 
 /* Code page 437, 0x80..0xFF, as Unicode. */
 
-
 /* ---------------------------------------------------------------------- */
 /* Small helpers                                                           */
 

@@ -166,21 +166,16 @@ XXFC_API uint64_t xx_elf_dwarf_get_number_of_units(const xx_elf_dwarf *dwarf);
 XXFC_API const xx_elf_dwarf_unit *xx_elf_dwarf_get_unit(const xx_elf_dwarf *dwarf, uint64_t index);
 XXFC_API uint64_t xx_elf_dwarf_get_number_of_abbreviations(const xx_elf_dwarf *dwarf);
 XXFC_API const xx_elf_dwarf_abbreviation *xx_elf_dwarf_get_abbreviation(const xx_elf_dwarf *dwarf, uint64_t index);
-XXFC_API const xx_elf_dwarf_attribute_spec *xx_elf_dwarf_get_abbreviation_attribute(const xx_elf_dwarf *dwarf,
-                                                                                     const xx_elf_dwarf_abbreviation *abbreviation,
-                                                                                     uint64_t index);
+XXFC_API const xx_elf_dwarf_attribute_spec *xx_elf_dwarf_get_abbreviation_attribute(const xx_elf_dwarf *dwarf, const xx_elf_dwarf_abbreviation *abbreviation,
+                                                                                    uint64_t index);
 XXFC_API uint64_t xx_elf_dwarf_get_number_of_dies(const xx_elf_dwarf *dwarf);
 XXFC_API const xx_elf_dwarf_die *xx_elf_dwarf_get_die(const xx_elf_dwarf *dwarf, uint64_t index);
-XXFC_API const xx_elf_dwarf_attribute *xx_elf_dwarf_get_die_attribute(const xx_elf_dwarf *dwarf,
-                                                                       const xx_elf_dwarf_die *die, uint64_t index);
-XXFC_API const xx_elf_dwarf_attribute *xx_elf_dwarf_find_die_attribute(const xx_elf_dwarf *dwarf,
-                                                                        const xx_elf_dwarf_die *die, uint64_t name);
+XXFC_API const xx_elf_dwarf_attribute *xx_elf_dwarf_get_die_attribute(const xx_elf_dwarf *dwarf, const xx_elf_dwarf_die *die, uint64_t index);
+XXFC_API const xx_elf_dwarf_attribute *xx_elf_dwarf_find_die_attribute(const xx_elf_dwarf *dwarf, const xx_elf_dwarf_die *die, uint64_t name);
 /** Return a bounded view of an expression or block attribute.  The pointer is
  * owned by dwarf and remains valid until xx_elf_dwarf_free(). */
-XXFC_API const uint8_t *xx_elf_dwarf_get_attribute_block(const xx_elf_dwarf *dwarf,
-                                                          const xx_elf_dwarf_attribute *attribute);
-XXFC_API const xx_elf_dwarf_die *xx_elf_dwarf_find_die(const xx_elf_dwarf *dwarf, uint64_t tag,
-                                                        const char *name, uint64_t start_index);
+XXFC_API const uint8_t *xx_elf_dwarf_get_attribute_block(const xx_elf_dwarf *dwarf, const xx_elf_dwarf_attribute *attribute);
+XXFC_API const xx_elf_dwarf_die *xx_elf_dwarf_find_die(const xx_elf_dwarf *dwarf, uint64_t tag, const char *name, uint64_t start_index);
 
 XXFC_API uint64_t xx_elf_dwarf_get_number_of_line_files(const xx_elf_dwarf *dwarf);
 XXFC_API const xx_elf_dwarf_line_file *xx_elf_dwarf_get_line_file(const xx_elf_dwarf *dwarf, uint64_t index);
@@ -190,16 +185,14 @@ XXFC_API const xx_elf_dwarf_line_row *xx_elf_dwarf_get_line_row(const xx_elf_dwa
  * The first row for an address is retained, later rows with that address and
  * the same line are omitted, and rows for a different line are retained. */
 XXFC_API uint64_t xx_elf_dwarf_get_number_of_address_line_rows(const xx_elf_dwarf *dwarf);
-XXFC_API const xx_elf_dwarf_line_row *xx_elf_dwarf_get_address_line_row(const xx_elf_dwarf *dwarf,
-                                                                         uint64_t index);
+XXFC_API const xx_elf_dwarf_line_row *xx_elf_dwarf_get_address_line_row(const xx_elf_dwarf *dwarf, uint64_t index);
 /** Unique source paths referenced by address-line rows plus compilation-unit
  * source paths.  Strings are owned by dwarf. */
 XXFC_API uint64_t xx_elf_dwarf_get_number_of_source_files(const xx_elf_dwarf *dwarf);
 XXFC_API const char *xx_elf_dwarf_get_source_file(const xx_elf_dwarf *dwarf, uint64_t index);
 /** Locate the last source row whose address does not exceed address, stopping
  * at an end-of-sequence boundary.  address_bias is useful for ET_REL images. */
-XXFC_API const xx_elf_dwarf_line_row *xx_elf_dwarf_find_line_row(const xx_elf_dwarf *dwarf,
-                                                                  uint64_t address, uint64_t address_bias);
+XXFC_API const xx_elf_dwarf_line_row *xx_elf_dwarf_find_line_row(const xx_elf_dwarf *dwarf, uint64_t address, uint64_t address_bias);
 
 #ifdef __cplusplus
 }

@@ -29,7 +29,7 @@ static bool md_layout(const uint8_t *p, uint32_t n, bool wide)
     size1 = wide ? xx_data_get_u32(p + entry + 0x1E, 4, 0, false) : xx_data_get_u16(p + entry + 0x1E, 2, 0, false);
     if (first > 0x7FFFFFFFU || second > 0x7FFFFFFFU || size0 > 0x7FFFFFFFU || size1 > 0x7FFFFFFFU) return false;
     return first && first % entry == 0 && first < n && second < n && size0 && size1 && second == first + size0 && md_name_ok(p) && md_name_ok(p + 0x0D) &&
-        md_name_ok(p + entry) && md_name_ok(p + entry + 0x0D);
+           md_name_ok(p + entry) && md_name_ok(p + entry + 0x0D);
 }
 static bool md_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
 {

@@ -199,8 +199,8 @@ static bool sil_byterun(sil_source *source, int64_t stream_size, int64_t unpacke
     /* A complete, exact token stream may retain one six-byte header-sized
      * tail, as observed in CIEL1.CO. Do not extend this to arbitrary tails
      * or a final token whose declared output overshoots the raw size. */
-    return out == unpacked_size && (claimed == (uint64_t)stream_size ||
-           (!overshot && claimed < (uint64_t)stream_size && (uint64_t)stream_size - claimed == SIL_SHORT_HEADER_SIZE));
+    return out == unpacked_size &&
+           (claimed == (uint64_t)stream_size || (!overshot && claimed < (uint64_t)stream_size && (uint64_t)stream_size - claimed == SIL_SHORT_HEADER_SIZE));
 }
 
 /* MSB-first bit reader over big-endian 16-bit words (both builds store the
@@ -365,8 +365,8 @@ static bool sil_parse(Abstractformat *format, sil_context *out)
      * decodes to a whole number of eight-byte resource units.  It is a cheap,
      * very discriminating extra constraint on a header this thin. */
     if ((context.unpacked_size % 8) != 0) return false;
-    context.header_size = (context.method == SIL_METHOD_BITSTREAM ? SIL_LONG_HEADER_SIZE : SIL_SHORT_HEADER_SIZE) +
-                          (main_script ? SIL_MAIN_HEADER_SIZE - SIL_SHORT_HEADER_SIZE : 0);
+    context.header_size =
+        (context.method == SIL_METHOD_BITSTREAM ? SIL_LONG_HEADER_SIZE : SIL_SHORT_HEADER_SIZE) + (main_script ? SIL_MAIN_HEADER_SIZE - SIL_SHORT_HEADER_SIZE : 0);
     if (main_script && (size <= context.header_size || !sil_read_at(format->device, format->base_address, header, (size_t)context.header_size))) return false;
     context.stream_offset = context.header_size;
     context.stream_size = size - context.header_size;

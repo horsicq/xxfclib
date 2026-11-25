@@ -474,8 +474,7 @@ static bool mb_info(Abstractformat *f, xx_pd_struct *pd)
     f->format_size = ix->records.size;
     return true;
 }
-bool xx_molebox_get_physical_metadata(Abstractformat *f, uint32_t package_index,
-                                     xx_molebox_physical_metadata *out, xx_pd_struct *pd)
+bool xx_molebox_get_physical_metadata(Abstractformat *f, uint32_t package_index, xx_molebox_physical_metadata *out, xx_pd_struct *pd)
 {
     mb_index *ix;
     mb_package *p;
@@ -486,8 +485,7 @@ bool xx_molebox_get_physical_metadata(Abstractformat *f, uint32_t package_index,
     xx_mem_zero(out, sizeof(*out));
     out->package_offset = out->tree_offset = out->header_offset = out->catalog_offset = -1;
     /* Check the native callback before accessing its extended allocation. */
-    if (!f || !f->device || f->file_type != MB_TYPE || f->handle_base_info != mb_info ||
-        (pd && xx_pd_is_stopped(pd))) return false;
+    if (!f || !f->device || f->file_type != MB_TYPE || f->handle_base_info != mb_info || (pd && xx_pd_is_stopped(pd))) return false;
     saved = xx_io_tell(f->device);
     if ((!f->base_info_handled && !mb_info(f, pd)) || !f->is_valid) goto done;
     ix = ((xx_molebox *)f)->index;
@@ -504,8 +502,7 @@ bool xx_molebox_get_physical_metadata(Abstractformat *f, uint32_t package_index,
      * without it still has valid tree/header spans; its prefix remains raw. */
     if (p->tree_at - p->base >= 12 && ue2_read(f, p->base, prefix, sizeof(prefix))) {
         mb_decrypt8(&p->cipher, prefix);
-        out->has_verified_prefix = !xx_rt_memcmp(prefix, "QUICKBOX", 8) &&
-            xx_data_get_u32(prefix + 8, 4, 0, false) == (uint64_t)(p->base - f->base_address);
+        out->has_verified_prefix = !xx_rt_memcmp(prefix, "QUICKBOX", 8) && xx_data_get_u32(prefix + 8, 4, 0, false) == (uint64_t)(p->base - f->base_address);
     }
     ok = true;
 done:

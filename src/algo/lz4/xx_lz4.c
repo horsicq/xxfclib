@@ -382,85 +382,126 @@ static bool xx_lz4_decompress_frames_impl(const void *source, size_t source_size
  * are independent and <=4 MiB. No external codec dependency. */
 #include "../xx_pack_memory_internal.h"
 #include "xxfclib/rt/xx_rt.h"
-#define XX_LZ4_ENC_BLOCK (4U*1024U*1024U)
+#define XX_LZ4_ENC_BLOCK (4U * 1024U * 1024U)
 static uint32_t xx_lz4_encode_hash(const uint8_t *p)
 {
-    return (xx_data_get_u32(p,4,0,false)*UINT32_C(2654435761))>>16;
+    return (xx_data_get_u32(p, 4, 0, false) * UINT32_C(2654435761)) >> 16;
 }
-static void xx_lz4_encode_length(uint8_t *out,size_t *position,size_t length)
+static void xx_lz4_encode_length(uint8_t *out, size_t *position, size_t length)
 {
-    while(length>=255U){out[(*position)++]=255;length-=255U;}
-    out[(*position)++]=(uint8_t)length;
-}
-bool xx_lz4_compress_block(const void *source,size_t size,void *destination,size_t capacity,size_t *written)
-{
-    static const uint8_t empty=0;
-    if(written)*written=0;
-    if((!source&&size)||!destination||size>UINT32_MAX-1U || size>SIZE_MAX-16U || size/255U>SIZE_MAX-size-16U)return false;
-    const uint8_t *src=source ? source : &empty;uint8_t *out=destination;
-    uint32_t *table=xx_mem_alloc(65536U*sizeof(*table));if(!table)return false;
-    for(size_t i=0;i<65536U;i++)table[i]=UINT32_MAX;
-    size_t position=0,anchor=0,output=0;bool ok=true;
-    while(position<=size && size-position>=12U) {
-        uint32_t hash=xx_lz4_encode_hash(src+position),candidate=table[hash];table[hash]=(uint32_t)position;
-        if(candidate==UINT32_MAX || position-candidate>65535U || xx_rt_memcmp(src+candidate,src+position,4)!=0){position++;continue;}
-        size_t length=4,limit=size-position-5U;
-        while(length<limit && src[candidate+length]==src[position+length])length++;
-        size_t literals=position-anchor,match=length-4U;
-        size_t need=1U+literals+2U+(literals>=15U?(literals-15U)/255U+1U:0U)+(match>=15U?(match-15U)/255U+1U:0U);
-        if(need>capacity-output){ok=false;break;}
-        out[output++]=(uint8_t)(((literals<15U?literals:15U)<<4)|(match<15U?match:15U));
-        if(literals>=15U)xx_lz4_encode_length(out,&output,literals-15U);
-        if(literals)xx_rt_memcpy(out+output,src+anchor,literals);output+=literals;
-        size_t distance=position-candidate;out[output++]=(uint8_t)distance;out[output++]=(uint8_t)(distance>>8);
-        if(match>=15U)xx_lz4_encode_length(out,&output,match-15U);
-        position+=length;anchor=position;
-        if(position>=2U && size-position>=2U)table[xx_lz4_encode_hash(src+position-2U)]=(uint32_t)(position-2U);
+    while (length >= 255U) {
+        out[(*position)++] = 255;
+        length -= 255U;
     }
-    if(ok) {
-        size_t literals=size-anchor,need=1U+literals+(literals>=15U?(literals-15U)/255U+1U:0U);
-        if(need>capacity-output)ok=false;
+    out[(*position)++] = (uint8_t)length;
+}
+bool xx_lz4_compress_block(const void *source, size_t size, void *destination, size_t capacity, size_t *written)
+{
+    static const uint8_t empty = 0;
+    if (written) *written = 0;
+    if ((!source && size) || !destination || size > UINT32_MAX - 1U || size > SIZE_MAX - 16U || size / 255U > SIZE_MAX - size - 16U) return false;
+    const uint8_t *src = source ? source : &empty;
+    uint8_t *out = destination;
+    uint32_t *table = xx_mem_alloc(65536U * sizeof(*table));
+    if (!table) return false;
+    for (size_t i = 0; i < 65536U; i++) table[i] = UINT32_MAX;
+    size_t position = 0, anchor = 0, output = 0;
+    bool ok = true;
+    while (position <= size && size - position >= 12U) {
+        uint32_t hash = xx_lz4_encode_hash(src + position), candidate = table[hash];
+        table[hash] = (uint32_t)position;
+        if (candidate == UINT32_MAX || position - candidate > 65535U || xx_rt_memcmp(src + candidate, src + position, 4) != 0) {
+            position++;
+            continue;
+        }
+        size_t length = 4, limit = size - position - 5U;
+        while (length < limit && src[candidate + length] == src[position + length]) length++;
+        size_t literals = position - anchor, match = length - 4U;
+        size_t need = 1U + literals + 2U + (literals >= 15U ? (literals - 15U) / 255U + 1U : 0U) + (match >= 15U ? (match - 15U) / 255U + 1U : 0U);
+        if (need > capacity - output) {
+            ok = false;
+            break;
+        }
+        out[output++] = (uint8_t)(((literals < 15U ? literals : 15U) << 4) | (match < 15U ? match : 15U));
+        if (literals >= 15U) xx_lz4_encode_length(out, &output, literals - 15U);
+        if (literals) xx_rt_memcpy(out + output, src + anchor, literals);
+        output += literals;
+        size_t distance = position - candidate;
+        out[output++] = (uint8_t)distance;
+        out[output++] = (uint8_t)(distance >> 8);
+        if (match >= 15U) xx_lz4_encode_length(out, &output, match - 15U);
+        position += length;
+        anchor = position;
+        if (position >= 2U && size - position >= 2U) table[xx_lz4_encode_hash(src + position - 2U)] = (uint32_t)(position - 2U);
+    }
+    if (ok) {
+        size_t literals = size - anchor, need = 1U + literals + (literals >= 15U ? (literals - 15U) / 255U + 1U : 0U);
+        if (need > capacity - output) ok = false;
         else {
-            out[output++]=(uint8_t)((literals<15U?literals:15U)<<4);
-            if(literals>=15U)xx_lz4_encode_length(out,&output,literals-15U);
-            if(literals)xx_rt_memcpy(out+output,src+anchor,literals);output+=literals;
+            out[output++] = (uint8_t)((literals < 15U ? literals : 15U) << 4);
+            if (literals >= 15U) xx_lz4_encode_length(out, &output, literals - 15U);
+            if (literals) xx_rt_memcpy(out + output, src + anchor, literals);
+            output += literals;
         }
     }
-    xx_mem_free(table);if(ok && written)*written=output;return ok;
+    xx_mem_free(table);
+    if (ok && written) *written = output;
+    return ok;
 }
 size_t xx_lz4_compress_bound(size_t size)
 {
-    size_t blocks=size/XX_LZ4_ENC_BLOCK+(size%XX_LZ4_ENC_BLOCK!=0U);
-    if(size>SIZE_MAX-23U || blocks>(SIZE_MAX-size-23U)/4U)return 0U;
-    return size+blocks*4U+23U;
+    size_t blocks = size / XX_LZ4_ENC_BLOCK + (size % XX_LZ4_ENC_BLOCK != 0U);
+    if (size > SIZE_MAX - 23U || blocks > (SIZE_MAX - size - 23U) / 4U) return 0U;
+    return size + blocks * 4U + 23U;
 }
-bool xx_lz4_compress_memory(const void *source,size_t size,void *destination,size_t capacity,size_t *written)
+bool xx_lz4_compress_memory(const void *source, size_t size, void *destination, size_t capacity, size_t *written)
 {
-    static const uint8_t empty=0;
-    if(written)*written=0;
-    if((!source&&size)||!destination||!xx_lz4_compress_bound(size)||capacity<23U)return false;
-    const uint8_t *src=source ? source : &empty;uint8_t *out=destination;
-    size_t block_cap=XX_LZ4_ENC_BLOCK+XX_LZ4_ENC_BLOCK/255U+16U;
-    uint8_t *block=size ? xx_mem_alloc(block_cap) : NULL;if(size&&!block)return false;
-    xx_data_set_u32(out,capacity,0,XX_LZ4_FRAME_MAGIC,false);out[4]=0x6c;out[5]=0x70;
-    xx_data_set_u64(out,capacity,6,(uint64_t)size,false);out[14]=(uint8_t)(xx_lz4_xxh32(out+4,10)>>8);
-    size_t output=15U,position=0;bool ok=true;
-    while(position<size) {
-        size_t amount=size-position;if(amount>XX_LZ4_ENC_BLOCK)amount=XX_LZ4_ENC_BLOCK;
-        size_t n=0;if(!xx_lz4_compress_block(src+position,amount,block,block_cap,&n)){ok=false;break;}
-        bool compressed=n<amount;size_t payload=compressed?n:amount;
-        if(capacity-output<12U || payload>capacity-output-12U){ok=false;break;}
-        xx_data_set_u32(out,capacity,output,(uint32_t)payload|(compressed?0U:UINT32_C(0x80000000)),false);output+=4U;
-        xx_rt_memcpy(out+output,compressed?block:src+position,payload);output+=payload;position+=amount;
+    static const uint8_t empty = 0;
+    if (written) *written = 0;
+    if ((!source && size) || !destination || !xx_lz4_compress_bound(size) || capacity < 23U) return false;
+    const uint8_t *src = source ? source : &empty;
+    uint8_t *out = destination;
+    size_t block_cap = XX_LZ4_ENC_BLOCK + XX_LZ4_ENC_BLOCK / 255U + 16U;
+    uint8_t *block = size ? xx_mem_alloc(block_cap) : NULL;
+    if (size && !block) return false;
+    xx_data_set_u32(out, capacity, 0, XX_LZ4_FRAME_MAGIC, false);
+    out[4] = 0x6c;
+    out[5] = 0x70;
+    xx_data_set_u64(out, capacity, 6, (uint64_t)size, false);
+    out[14] = (uint8_t)(xx_lz4_xxh32(out + 4, 10) >> 8);
+    size_t output = 15U, position = 0;
+    bool ok = true;
+    while (position < size) {
+        size_t amount = size - position;
+        if (amount > XX_LZ4_ENC_BLOCK) amount = XX_LZ4_ENC_BLOCK;
+        size_t n = 0;
+        if (!xx_lz4_compress_block(src + position, amount, block, block_cap, &n)) {
+            ok = false;
+            break;
+        }
+        bool compressed = n < amount;
+        size_t payload = compressed ? n : amount;
+        if (capacity - output < 12U || payload > capacity - output - 12U) {
+            ok = false;
+            break;
+        }
+        xx_data_set_u32(out, capacity, output, (uint32_t)payload | (compressed ? 0U : UINT32_C(0x80000000)), false);
+        output += 4U;
+        xx_rt_memcpy(out + output, compressed ? block : src + position, payload);
+        output += payload;
+        position += amount;
     }
-    if(ok) {
-        xx_data_set_u32(out,capacity,output,0,false);output+=4U;
-        xx_data_set_u32(out,capacity,output,xx_lz4_xxh32(src,size),false);output+=4U;
-        if(written)*written=output;
+    if (ok) {
+        xx_data_set_u32(out, capacity, output, 0, false);
+        output += 4U;
+        xx_data_set_u32(out, capacity, output, xx_lz4_xxh32(src, size), false);
+        output += 4U;
+        if (written) *written = output;
     }
-    xx_mem_free(block);return ok;
+    xx_mem_free(block);
+    return ok;
 }
-bool xx_lz4_pack_device(xx_io_device *source,int64_t offset,int64_t size,xx_io_device *destination,xx_pd_struct *pd)
+bool xx_lz4_pack_device(xx_io_device *source, int64_t offset, int64_t size, xx_io_device *destination, xx_pd_struct *pd)
 {
-    return xx_codec_pack_memory_device(source,offset,size,destination,pd,xx_lz4_compress_bound,xx_lz4_compress_memory);
+    return xx_codec_pack_memory_device(source, offset, size, destination, pd, xx_lz4_compress_bound, xx_lz4_compress_memory);
 }

@@ -88,7 +88,7 @@ typedef struct adfc_state_s {
     uint64_t tests; /**< PowerPacker trailer positions examined so far. */
     uint8_t *scratch;
     size_t scratch_size;
-    uint32_t key;   /**< ProPack key of this image, once found. */
+    uint32_t key; /**< ProPack key of this image, once found. */
     bool key_known;
     unsigned key_searches; /**< Searches for the key made so far. */
 } adfc_state;
@@ -1242,8 +1242,8 @@ static uint64_t adfc_out_made(const adfc_out *out)
 static bool adfc_ice_tag(const uint8_t *tag)
 {
     uint32_t id = adfc_be32(tag);
-    return id == UINT32_C(0x49636521) /* Ice! */ || id == UINT32_C(0x49434521) /* ICE! */ || id == UINT32_C(0x544D4D21) /* TMM! */ || id == UINT32_C(0x54534D21) /* TSM! */ ||
-           id == UINT32_C(0x53484521) /* SHE! */;
+    return id == UINT32_C(0x49636521) /* Ice! */ || id == UINT32_C(0x49434521) /* ICE! */ || id == UINT32_C(0x544D4D21) /* TMM! */ ||
+           id == UINT32_C(0x54534D21) /* TSM! */ || id == UINT32_C(0x53484521) /* SHE! */;
 }
 
 static bool adfc_ice_sizes(const uint8_t *data, size_t limit, uint32_t *raw_size, uint32_t *total)
@@ -1516,7 +1516,7 @@ static uint32_t adfc_sc_symbol(adfc_bits *bits, const uint8_t (*rows)[3], unsign
 /* 4.10: read backwards in words, high bit first. */
 static void adfc_sc_run8(adfc_bits *bits, adfc_out *out, unsigned mode_bits)
 {
-    static const uint8_t count_rows[9][3] = {{1U, 0x00U, 0x80U}, {2U, 0x03U, 1U}, {3U, 0x05U, 2U}, {4U, 0x08U, 7U},  {5U, 0x12U, 3U},
+    static const uint8_t count_rows[9][3] = {{1U, 0x00U, 0x80U}, {2U, 0x03U, 1U}, {3U, 0x05U, 2U}, {4U, 0x08U, 7U},   {5U, 0x12U, 3U},
                                              {6U, 0x26U, 4U},    {7U, 0x4EU, 5U}, {8U, 0x9EU, 6U}, {8U, 0x9FU, 0x8BU}};
     static const uint8_t distance_rows[3][3] = {{1U, 0x01U, 2U}, {2U, 0x00U, 1U}, {2U, 0x01U, 0U}};
     static const uint8_t count_bits[12] = {0U, 1U, 2U, 3U, 2U, 1U, 0U, 8U, 3U, 2U, 0U, 5U};
@@ -1707,28 +1707,23 @@ static bool adfc_rnc_old_decode(const uint8_t *data, uint32_t total, uint8_t *ra
 static unsigned adfc_tag(const uint8_t *tag)
 {
     switch (tag[0]) {
-        case 'P':
-            return tag[1] == 'P' && tag[2] == '2' && tag[3] == '0' ? ADFC_PP20 : ADFC_NONE;
-        case 'R':
-            return tag[1] == 'N' && tag[2] == 'C' && (tag[3] == 1U || tag[3] == 2U) ? ADFC_RNC : ADFC_NONE;
+        case 'P': return tag[1] == 'P' && tag[2] == '2' && tag[3] == '0' ? ADFC_PP20 : ADFC_NONE;
+        case 'R': return tag[1] == 'N' && tag[2] == 'C' && (tag[3] == 1U || tag[3] == 2U) ? ADFC_RNC : ADFC_NONE;
         case 'C':
             if (tag[1] == 'r' && (tag[2] == 'M' || tag[2] == 'm') && (tag[3] == '!' || tag[3] == '2')) return ADFC_CRM;
             return adfc_imp_addition(tag) ? ADFC_IMP : ADFC_NONE;
         case 'I':
             if (adfc_ice_tag(tag)) return ADFC_ICE;
             return adfc_imp_addition(tag) ? ADFC_IMP : ADFC_NONE;
-        case 'T':
-            return adfc_ice_tag(tag) ? ADFC_ICE : ADFC_NONE;
+        case 'T': return adfc_ice_tag(tag) ? ADFC_ICE : ADFC_NONE;
         case 'S':
             if (adfc_ice_tag(tag)) return ADFC_ICE;
             return adfc_sc_generation(tag) ? ADFC_SC : ADFC_NONE;
         case 'A':
         case 'E':
         case 'M':
-        case 'B':
-            return adfc_imp_addition(tag) ? ADFC_IMP : ADFC_NONE;
-        default:
-            return ADFC_NONE;
+        case 'B': return adfc_imp_addition(tag) ? ADFC_IMP : ADFC_NONE;
+        default: return ADFC_NONE;
     }
 }
 
@@ -1746,16 +1741,11 @@ static bool adfc_sizes(unsigned kind, const uint8_t *data, size_t limit, uint32_
             if (!adfc_crm_sizes(data, limit, raw_size, &packed)) return false;
             *total = packed + ADFC_CRM_HEADER;
             return true;
-        case ADFC_IMP:
-            return adfc_imp_sizes(data, limit, raw_size, total);
-        case ADFC_ICE:
-            return adfc_ice_sizes(data, limit, raw_size, total);
-        case ADFC_SC:
-            return adfc_sc_sizes(data, limit, raw_size, total);
-        case ADFC_RNC_OLD:
-            return adfc_rnc_old_sizes(data, limit, raw_size, total);
-        default:
-            return false;
+        case ADFC_IMP: return adfc_imp_sizes(data, limit, raw_size, total);
+        case ADFC_ICE: return adfc_ice_sizes(data, limit, raw_size, total);
+        case ADFC_SC: return adfc_sc_sizes(data, limit, raw_size, total);
+        case ADFC_RNC_OLD: return adfc_rnc_old_sizes(data, limit, raw_size, total);
+        default: return false;
     }
 }
 
@@ -1812,7 +1802,8 @@ static uint32_t adfc_open(const uint8_t *data, size_t limit, unsigned *kind, uin
             if (good) return total;
             /* A method 1 file that is sound but for the CRC of its result may be keyed. */
             if (*kind == ADFC_RNC && data[3] == 1U && made == *raw_size && *raw_size <= ADFC_KEY_MAX_RAW &&
-                adfc_crc16(data + ADFC_RNC_HEADER, total - ADFC_RNC_HEADER) == adfc_be16(data + 14U) && (state->key_known || (state->key_searches < ADFC_KEY_SEARCHES && adfc_rnc_find_key(data, limit, state)))) {
+                adfc_crc16(data + ADFC_RNC_HEADER, total - ADFC_RNC_HEADER) == adfc_be16(data + 14U) &&
+                (state->key_known || (state->key_searches < ADFC_KEY_SEARCHES && adfc_rnc_find_key(data, limit, state)))) {
                 good = adfc_decode(ADFC_RNC_KEY, data, total, *plain, *raw_size, &made, state->key);
                 state->work += made;
                 if (good) {

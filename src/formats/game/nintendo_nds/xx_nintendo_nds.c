@@ -47,8 +47,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     uint64_t total, declared_total, fnt, fns, fat, fas, metadata_at[4], metadata_size[4];
     uint32_t files, dirs, i, j;
     char label[40];
-    if (!pm_read(f, 0, h, 512) ||
-        (xx_rt_memcmp(h + 0xc0, "\x24\xff\xae\x51\x69\x9a", 6U) != 0 && xx_rt_memcmp(h + 0xc0, "\xc8\x60\x4f\xe2\x01\x70", 6U) != 0) ||
+    if (!pm_read(f, 0, h, 512) || (xx_rt_memcmp(h + 0xc0, "\x24\xff\xae\x51\x69\x9a", 6U) != 0 && xx_rt_memcmp(h + 0xc0, "\xc8\x60\x4f\xe2\x01\x70", 6U) != 0) ||
         h[0x12] || h[0x13] || h[0x14] > 15 || xx_crc16_modbus_calc(0xffffU, h + 0xc0, 156) != xx_data_get_u16(h + 0x15c, 2, 0, false) ||
         xx_crc16_modbus_calc(0xffffU, h, 0x15e) != xx_data_get_u16(h + 0x15e, 2, 0, false))
         return false;

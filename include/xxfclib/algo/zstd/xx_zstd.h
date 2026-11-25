@@ -99,8 +99,8 @@ XXFC_API bool xx_zstd_unpack_device_to_device(xx_io_device *source, int64_t sour
  * bounds compressed blocks too, and the frame header's Unused_bit is ignored,
  * as in libzstd.
  */
-XXFC_API bool xx_zstd_unpack_device_streaming(xx_io_device *source, int64_t source_offset, int64_t compressed_size, xx_io_device *destination,
-                                              uint64_t expected_size, uint64_t window_limit, xx_pd_struct *progress);
+XXFC_API bool xx_zstd_unpack_device_streaming(xx_io_device *source, int64_t source_offset, int64_t compressed_size, xx_io_device *destination, uint64_t expected_size,
+                                              uint64_t window_limit, xx_pd_struct *progress);
 
 /** Decompresses one standard Zstandard frame into a file. */
 XXFC_API bool xx_zstd_unpack_device_to_file(xx_io_device *source, int64_t source_offset, int64_t compressed_size, const char *destination_path,

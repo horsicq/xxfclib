@@ -26,10 +26,10 @@ typedef struct xx_sort_movement_s {
 /* Select once for a sorting operation; honors the global CPU switches. */
 xx_sort_movement xx_sort_select_movement(size_t nSize);
 
-#define XX_SORT_DECLARE_BACKEND(suffix) \
-    void xx_sort_swap_##suffix(char *pLeft, char *pRight, size_t nSize); \
+#define XX_SORT_DECLARE_BACKEND(suffix)                                                                                            \
+    void xx_sort_swap_##suffix(char *pLeft, char *pRight, size_t nSize);                                                           \
     void xx_sort_context_##suffix(void *pBase, size_t nCount, size_t nSize, xx_sort_compare_context_fn fnCompare, void *pContext); \
-    void xx_sort_quick_##suffix(void *pBase, size_t nCount, size_t nSize, xx_sort_compare_fn fnCompare); \
+    void xx_sort_quick_##suffix(void *pBase, size_t nCount, size_t nSize, xx_sort_compare_fn fnCompare);                           \
     void xx_sort_stable_##suffix(void *pBase, size_t nCount, size_t nSize, xx_sort_compare_fn fnCompare)
 
 XX_SORT_DECLARE_BACKEND(scalar);

@@ -825,8 +825,8 @@ static bool xx_ibmpack_set_record(xx_archive_record *record, const xx_ibmpack_me
            /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
            xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (member->timestamp >> 16) & 0xFFFFU) &&
            xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->timestamp & 0xFFFFU) &&
-           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->variant) &&
-           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
+           xx_archive_record_set_meta_u64(record, XX_META_ID_FLAGS, member->variant) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, false) &&
+           xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
 static bool xx_ibmpack_copy_options(xx_list_s *target, const xx_list_s *options)
@@ -946,11 +946,11 @@ bool xx_ibmpack_unpack_current_archive_record(Abstractformat *self, xx_archive_r
         return false;
     }
     relative = xx_archive_output_name(member->name, 0, 0);
-    if (relative)
-        XX_ARCHIVE_OUTPUT_RESOLVE(relative, stream->items, stream->count, stream->index, name, 0, 0);
+    if (relative) XX_ARCHIVE_OUTPUT_RESOLVE(relative, stream->items, stream->count, stream->index, name, 0, 0);
     target = relative ? ((base_path[0] != '\0' && base_path[xx_str_len(base_path) - 1U] != '/' && base_path[xx_str_len(base_path) - 1U] != '\\')
-                 ? xx_str_concat3(base_path, "/", relative)
-                 : xx_str_concat(base_path, relative)) : NULL;
+                             ? xx_str_concat3(base_path, "/", relative)
+                             : xx_str_concat(base_path, relative))
+                      : NULL;
     xx_mem_free(relative);
     xx_str_free(converted);
     if (!target) return false;

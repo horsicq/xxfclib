@@ -321,8 +321,8 @@ static bool arcv4_decode_member(Abstractformat *format, const arcv4_member *memb
     if (!format || !member || !plain || !plain_size || xx_pd_is_stopped(pd)) return false;
     if (member->spanned) {
         if (member->crc32) return false;
-        return xx_arcv4_recover_split_prefix(format,member->data_offset,member->packed_size,member->original_size,
-                                             member->method,member->name,plain,plain_size,pd);
+        return xx_arcv4_recover_split_prefix(format, member->data_offset, member->packed_size, member->original_size, member->method, member->name, plain, plain_size,
+                                             pd);
     }
     packed = (uint8_t *)xx_mem_alloc(member->packed_size != 0U ? member->packed_size : 1U);
     output = (uint8_t *)xx_mem_alloc(member->original_size != 0U ? member->original_size : 1U);

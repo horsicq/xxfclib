@@ -345,8 +345,7 @@ bool xx_squirrel_handle_base_info(Abstractformat *f, xx_pd_struct *pd)
         xx_io_device *view = NULL;
         int64_t size = 0;
         uint64_t n;
-        if (s->items[i].offset < f->base_address ||
-            !sq_zip_open(f, s->items[i].offset - f->base_address, s->items[i].size, &zip, &view, &size, pd)) {
+        if (s->items[i].offset < f->base_address || !sq_zip_open(f, s->items[i].offset - f->base_address, s->items[i].size, &zip, &view, &size, pd)) {
             sq_bundle_free(bundle);
             pm_free_stream(s);
             return false;

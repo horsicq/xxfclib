@@ -486,20 +486,62 @@ wchar_t *__cdecl wcscat(wchar_t *pDestination, const wchar_t *pSource)
 
 /* ------------------------------------------------------------------ ctype -- */
 
-int __cdecl isalpha(int c) { return xx_crt_ctype(c) & 0x103; }
-int __cdecl isupper(int c) { return xx_crt_ctype(c) & 0x1; }
-int __cdecl islower(int c) { return xx_crt_ctype(c) & 0x2; }
-int __cdecl isdigit(int c) { return xx_crt_ctype(c) & 0x4; }
-int __cdecl isxdigit(int c) { return xx_crt_ctype(c) & 0x80; }
-int __cdecl isspace(int c) { return xx_crt_ctype(c) & 0x8; }
-int __cdecl ispunct(int c) { return xx_crt_ctype(c) & 0x10; }
-int __cdecl isalnum(int c) { return xx_crt_ctype(c) & 0x107; }
-int __cdecl isprint(int c) { return xx_crt_ctype(c) & 0x157; }
-int __cdecl isgraph(int c) { return xx_crt_ctype(c) & 0x117; }
-int __cdecl iscntrl(int c) { return xx_crt_ctype(c) & 0x20; }
-int __cdecl isblank(int c) { return c == '\t' ? 0x40 : (xx_crt_ctype(c) & 0x40); }
-int __cdecl tolower(int c) { return xx_crt_tolower(c); }
-int __cdecl toupper(int c) { return xx_crt_toupper(c); }
+int __cdecl isalpha(int c)
+{
+    return xx_crt_ctype(c) & 0x103;
+}
+int __cdecl isupper(int c)
+{
+    return xx_crt_ctype(c) & 0x1;
+}
+int __cdecl islower(int c)
+{
+    return xx_crt_ctype(c) & 0x2;
+}
+int __cdecl isdigit(int c)
+{
+    return xx_crt_ctype(c) & 0x4;
+}
+int __cdecl isxdigit(int c)
+{
+    return xx_crt_ctype(c) & 0x80;
+}
+int __cdecl isspace(int c)
+{
+    return xx_crt_ctype(c) & 0x8;
+}
+int __cdecl ispunct(int c)
+{
+    return xx_crt_ctype(c) & 0x10;
+}
+int __cdecl isalnum(int c)
+{
+    return xx_crt_ctype(c) & 0x107;
+}
+int __cdecl isprint(int c)
+{
+    return xx_crt_ctype(c) & 0x157;
+}
+int __cdecl isgraph(int c)
+{
+    return xx_crt_ctype(c) & 0x117;
+}
+int __cdecl iscntrl(int c)
+{
+    return xx_crt_ctype(c) & 0x20;
+}
+int __cdecl isblank(int c)
+{
+    return c == '\t' ? 0x40 : (xx_crt_ctype(c) & 0x40);
+}
+int __cdecl tolower(int c)
+{
+    return xx_crt_tolower(c);
+}
+int __cdecl toupper(int c)
+{
+    return xx_crt_toupper(c);
+}
 
 /* ------------------------------------------------------------ conversions -- */
 
@@ -626,10 +668,22 @@ void *__cdecl bsearch(const void *pKey, const void *pBase, size_t nCount, size_t
 
 /* ------------------------------------------------------------------- math -- */
 
-double __cdecl floor(double nValue) { return xx_crt_floor(nValue); }
-double __cdecl ceil(double nValue) { return xx_crt_ceil(nValue); }
-double __cdecl trunc(double nValue) { return xx_crt_trunc(nValue); }
-double __cdecl fabs(double nValue) { return xx_crt_fabs(nValue); }
+double __cdecl floor(double nValue)
+{
+    return xx_crt_floor(nValue);
+}
+double __cdecl ceil(double nValue)
+{
+    return xx_crt_ceil(nValue);
+}
+double __cdecl trunc(double nValue)
+{
+    return xx_crt_trunc(nValue);
+}
+double __cdecl fabs(double nValue)
+{
+    return xx_crt_fabs(nValue);
+}
 /* sqrt and log2 report errors like UCRT: EDOM for a negative argument,
  * ERANGE for log2(+-0); nothing for a NaN argument. */
 double __cdecl sqrt(double nValue)
@@ -647,15 +701,42 @@ double __cdecl log2(double nValue)
     if (nError) errno = nError;
     return xx_ms_log2(nValue);
 }
-short __cdecl _dclass(double nValue) { return xx_crt_dclass(nValue); }
-int __cdecl _dsign(double nValue) { return xx_crt_dsign(nValue); }
-short __cdecl _ldclass(long double nValue) { return xx_crt_dclass((double)nValue); }
-int __cdecl _ldsign(long double nValue) { return xx_crt_dsign((double)nValue); }
-short __cdecl _fdclass(float nValue) { return xx_crt_fdclass(nValue); }
-int __cdecl _fdsign(float nValue) { return xx_crt_fdsign(nValue); }
-short __cdecl _dtest(double *pValue) { return xx_crt_dclass(*pValue); }
-short __cdecl _ldtest(long double *pValue) { return xx_crt_dclass((double)*pValue); }
-short __cdecl _fdtest(float *pValue) { return xx_crt_fdclass(*pValue); }
+short __cdecl _dclass(double nValue)
+{
+    return xx_crt_dclass(nValue);
+}
+int __cdecl _dsign(double nValue)
+{
+    return xx_crt_dsign(nValue);
+}
+short __cdecl _ldclass(long double nValue)
+{
+    return xx_crt_dclass((double)nValue);
+}
+int __cdecl _ldsign(long double nValue)
+{
+    return xx_crt_dsign((double)nValue);
+}
+short __cdecl _fdclass(float nValue)
+{
+    return xx_crt_fdclass(nValue);
+}
+int __cdecl _fdsign(float nValue)
+{
+    return xx_crt_fdsign(nValue);
+}
+short __cdecl _dtest(double *pValue)
+{
+    return xx_crt_dclass(*pValue);
+}
+short __cdecl _ldtest(long double *pValue)
+{
+    return xx_crt_dclass((double)*pValue);
+}
+short __cdecl _fdtest(float *pValue)
+{
+    return xx_crt_fdclass(*pValue);
+}
 
 /* ----------------------------------------------------------------- locale -- */
 
@@ -892,8 +973,7 @@ static xx_crt_env_entry **xx_crt_env_find(const wchar_t *pName, size_t nLength)
 {
     xx_crt_env_entry **ppEntry;
     for (ppEntry = &s_xx_crt_env; *ppEntry; ppEntry = &(*ppEntry)->pNext) {
-        if ((size_t)(*ppEntry)->nNameLength == nLength &&
-            CompareStringOrdinal((*ppEntry)->pName, (int)nLength, pName, (int)nLength, TRUE) == CSTR_EQUAL) {
+        if ((size_t)(*ppEntry)->nNameLength == nLength && CompareStringOrdinal((*ppEntry)->pName, (int)nLength, pName, (int)nLength, TRUE) == CSTR_EQUAL) {
             return ppEntry;
         }
     }
@@ -1210,8 +1290,8 @@ static unsigned short xx_crt_stat_mode(const wchar_t *pPath, DWORD nAttributes)
 
 /* Fills the structure from attributes, size and times; -1 with EOVERFLOW
  * when the size does not fit the 32-bit st_size, as UCRT. */
-static int xx_crt_stat_fill(struct _stat64i32 *pStat, const wchar_t *pPath, DWORD nAttributes, DWORD nSizeHigh, DWORD nSizeLow, FILETIME created,
-                            FILETIME accessed, FILETIME written)
+static int xx_crt_stat_fill(struct _stat64i32 *pStat, const wchar_t *pPath, DWORD nAttributes, DWORD nSizeHigh, DWORD nSizeLow, FILETIME created, FILETIME accessed,
+                            FILETIME written)
 {
     if (nSizeHigh != 0 || nSizeLow > 0x7FFFFFFFu) {
         errno = EOVERFLOW;
@@ -1240,13 +1320,11 @@ int __cdecl _wstat64i32(const wchar_t *pPath, struct _stat64i32 *pStat)
         return -1;
     }
     xx_crt_memset(pStat, 0, sizeof(*pStat));
-    if (!*pPath || wcschr(pPath, L'*') || wcschr(pPath, L'?') ||
-        (((pPath[0] | 0x20) >= L'a' && (pPath[0] | 0x20) <= L'z') && pPath[1] == L':' && pPath[2] == 0)) {
+    if (!*pPath || wcschr(pPath, L'*') || wcschr(pPath, L'?') || (((pPath[0] | 0x20) >= L'a' && (pPath[0] | 0x20) <= L'z') && pPath[1] == L':' && pPath[2] == 0)) {
         errno = ENOENT;
         return -1;
     }
-    hHandle = CreateFileW(pPath, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
-                          FILE_FLAG_BACKUP_SEMANTICS, NULL);
+    hHandle = CreateFileW(pPath, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
     if (hHandle != INVALID_HANDLE_VALUE) {
         DWORD nType = GetFileType(hHandle);
         BY_HANDLE_FILE_INFORMATION information;

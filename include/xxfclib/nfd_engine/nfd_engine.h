@@ -39,8 +39,7 @@ XXFC_API const xx_scan_engine_ops *nfd_engine_get_ops(void);
 /** Initialise one NFD implementation of xx_scan_engine.
  * NFD uses built-in tables and never accepts an external database. config may
  * be NULL for defaults. The engine is released with xx_scan_engine_cleanup(). */
-XXFC_API bool nfd_engine_init(xx_scan_engine *engine, const nfd_engine_config *config,
-                              xx_pd_struct *pd);
+XXFC_API bool nfd_engine_init(xx_scan_engine *engine, const nfd_engine_config *config, xx_pd_struct *pd);
 
 #ifdef __cplusplus
 }

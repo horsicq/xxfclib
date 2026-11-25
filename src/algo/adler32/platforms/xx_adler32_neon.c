@@ -13,10 +13,7 @@
 uint32_t xx_adler32_neon(uint32_t adler, const void *data, size_t size)
 {
 #ifdef XX_ADLER32_ARM64
-    static const uint8_t weights_data[16] = {
-        16U, 15U, 14U, 13U, 12U, 11U, 10U, 9U,
-        8U, 7U, 6U, 5U, 4U, 3U, 2U, 1U
-    };
+    static const uint8_t weights_data[16] = {16U, 15U, 14U, 13U, 12U, 11U, 10U, 9U, 8U, 7U, 6U, 5U, 4U, 3U, 2U, 1U};
     const uint8_t *p = (const uint8_t *)data;
     uint32_t a = adler & 0xFFFFU;
     uint32_t b = adler >> 16;

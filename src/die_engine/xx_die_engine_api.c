@@ -73,10 +73,8 @@ void die_engine_profile_text(DieEngine *pEngine, const char *pText)
         return;
     }
 
-    if (pEngine->pDebug && pEngine->pDebug->log)
-        die_engine_debug_log_line(pEngine, "[WARNING] ", pText, "\n");
-    else
-        x_printf("[WARNING] %s\n", pText);
+    if (pEngine->pDebug && pEngine->pDebug->log) die_engine_debug_log_line(pEngine, "[WARNING] ", pText, "\n");
+    else x_printf("[WARNING] %s\n", pText);
 }
 
 X_PRINTF_LIKE(3, 4) void die_engine_profile_end(DieEngine *pEngine, cd_i64 nStart, const char *pFormat, ...)
@@ -249,8 +247,7 @@ char *die_engine_api_clean_string(const char *pString)
 
 int die_engine_api_has_legacy_script_map(const xx_memory_map *map)
 {
-    return map->file_type == XX_FILE_TYPE_NE ||
-           (map->file_type == XX_FILE_TYPE_MSDOS && map->mode == XX_MEMORY_MAP_MODE_SEGMENTS);
+    return map->file_type == XX_FILE_TYPE_NE || (map->file_type == XX_FILE_TYPE_MSDOS && map->mode == XX_MEMORY_MAP_MODE_SEGMENTS);
 }
 
 /* Script maps whose overlay is the file after the last mapped part: the
@@ -379,7 +376,6 @@ static JSVal api_dispatch(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv, v
     return js_undefined();
 }
 
-
 void die_engine_api_register_entries(JSCtx *pCtx, JSVal object, const ApiEntry *pEntries)
 {
     int i = 0;
@@ -388,7 +384,6 @@ void die_engine_api_register_entries(JSCtx *pCtx, JSVal object, const ApiEntry *
         js_def_method(pCtx, object, pEntries[i].pName, api_dispatch, pEntries[i].nArgc, (void *)(size_t)pEntries[i].id);
     }
 }
-
 
 /* ------------------------------------------------------- global helpers  */
 
@@ -545,8 +540,7 @@ static JSVal fn_include_script(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pAr
         DBSignature *pRecord = &pEngine->pDb->pRecords[i];
 
         if ((pRecord->fileType == XFT_UNKNOWN) && (cd_stricmp_ascii(pRecord->pName, pScript) == 0)) {
-            const char *source_name = pEngine->pDebug && pRecord->pFilePath && pRecord->pFilePath[0]
-                ? pRecord->pFilePath : pRecord->pName;
+            const char *source_name = pEngine->pDebug && pRecord->pFilePath && pRecord->pFilePath[0] ? pRecord->pFilePath : pRecord->pName;
             if (js_is_bytecode(pRecord->pText, pRecord->nSize)) {
                 js_eval_nested_bytecode(pCtx, pRecord->pText, pRecord->nSize, source_name);
             } else {
@@ -698,8 +692,6 @@ static void engine_add_result(DieEngine *pEngine, const char *pType, const char 
 }
 
 /* ------------------------------------------------------------- install  */
-
-
 
 void die_engine_install_api(DieEngine *pEngine)
 {

@@ -69,8 +69,7 @@ XXFC_API int xx_codepage_sjis_trail_byte(unsigned char);
 /* Strict, allocation-free conversion without a terminator. On failure, used
  * and written describe the successfully converted prefix; a partial UTF-8
  * character is never written. Input and output must not overlap. */
-XXFC_API xx_codepage_status xx_codepage_to_utf8(const xx_codepage *, const unsigned char *, size_t, unsigned char *, size_t, size_t *used,
-                                                size_t *written);
+XXFC_API xx_codepage_status xx_codepage_to_utf8(const xx_codepage *, const unsigned char *, size_t, unsigned char *, size_t, size_t *used, size_t *written);
 XXFC_API xx_codepage_status xx_codepage_decode(const xx_codepage *, const unsigned char *, size_t, size_t *, uint32_t *);
 XXFC_API xx_codepage_status xx_codepage_encode(const xx_codepage *, uint32_t, unsigned char *, size_t, size_t *);
 /* Decode a complete buffer with WHATWG replacement semantics, matching
@@ -85,8 +84,8 @@ XXFC_API xx_codepage_status xx_codepage_encode(const xx_codepage *, uint32_t, un
  * receives a complete UTF-8 prefix and returns BUFFER_TOO_SMALL. No terminator
  * is added. Unsupported labels return UNMAPPABLE. Input/output must not overlap.
  * Available when XXFC_CODEPAGE_ALL is enabled. */
-XXFC_API xx_codepage_status xx_codepage_decode_whatwg(const char *label, const unsigned char *input, size_t input_size,
-                                                    unsigned char *output, size_t capacity, size_t *written, int *had_errors);
+XXFC_API xx_codepage_status xx_codepage_decode_whatwg(const char *label, const unsigned char *input, size_t input_size, unsigned char *output, size_t capacity,
+                                                      size_t *written, int *had_errors);
 #ifdef __cplusplus
 }
 #endif

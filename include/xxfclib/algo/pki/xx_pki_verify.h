@@ -12,8 +12,14 @@
 extern "C" {
 #endif
 typedef enum xx_pki_hash {
-    XX_PKI_HASH_NONE = 0, XX_PKI_HASH_MD2, XX_PKI_HASH_MD5, XX_PKI_HASH_SHA1, XX_PKI_HASH_SHA224,
-    XX_PKI_HASH_SHA256, XX_PKI_HASH_SHA384, XX_PKI_HASH_SHA512
+    XX_PKI_HASH_NONE = 0,
+    XX_PKI_HASH_MD2,
+    XX_PKI_HASH_MD5,
+    XX_PKI_HASH_SHA1,
+    XX_PKI_HASH_SHA224,
+    XX_PKI_HASH_SHA256,
+    XX_PKI_HASH_SHA384,
+    XX_PKI_HASH_SHA512
 } xx_pki_hash;
 /* Copyable caller-owned runtime-selected hash. Final consumes the context.
  * Failed calls preserve it. NULL data is permitted only with size zero. */
@@ -28,7 +34,10 @@ typedef struct xx_pki_hash_context {
         xx_sha512_context sha512;
     } state;
 } xx_pki_hash_context;
-typedef struct xx_pki_hash_part { const void *data; size_t size; } xx_pki_hash_part;
+typedef struct xx_pki_hash_part {
+    const void *data;
+    size_t size;
+} xx_pki_hash_part;
 XXFC_API size_t xx_pki_hash_size(xx_pki_hash alg);
 XXFC_API bool xx_pki_hash_init(xx_pki_hash_context *context, xx_pki_hash alg);
 XXFC_API bool xx_pki_hash_update(xx_pki_hash_context *context, const void *data, size_t size);
@@ -43,11 +52,8 @@ XXFC_API xx_pki_hash xx_pki_hash_from_oid(const char *dotted_oid);
  * RSA keys <=8192 bits; DSA p 1024..3072/q 160,224,256; EC P-256/P-384.
  * False includes unsupported algorithms/keys, malformed input and bad signatures.
  * Verification only: timing is not constant; no private keys are supported. */
-XXFC_API bool xx_pki_verify_digest(const uint8_t *spki_der, size_t spki_size,
-                                   const char *sig_alg_oid,
-                                   const uint8_t *sig_alg_params_der, size_t sig_alg_params_size,
-                                   xx_pki_hash digest_alg, const uint8_t *digest, size_t digest_size,
-                                   const uint8_t *signature, size_t signature_size);
+XXFC_API bool xx_pki_verify_digest(const uint8_t *spki_der, size_t spki_size, const char *sig_alg_oid, const uint8_t *sig_alg_params_der, size_t sig_alg_params_size,
+                                   xx_pki_hash digest_alg, const uint8_t *digest, size_t digest_size, const uint8_t *signature, size_t signature_size);
 #ifdef __cplusplus
 }
 #endif

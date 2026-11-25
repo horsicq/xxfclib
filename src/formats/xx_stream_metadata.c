@@ -21,9 +21,7 @@ void xx_metadata_record_cleanup(xx_metadata_record *r)
     xx_metadata_record_init(r);
 }
 
-
 #include "xx_stream_runtime_internal.h"
-
 
 XX_STREAM_RUNTIME(metadata, metadata, StreamMetadata, xx_format_get_stream_metadata)
 #undef XX_STREAM_RUNTIME

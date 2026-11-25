@@ -66,44 +66,12 @@ void xx_scan_sort_records(xx_scan_record *pRecords, int nCount)
 static int signature_file_type_order(XFileType fileType)
 {
     static const int order[XFT_COUNT] = {
-        [XFT_UNKNOWN] = 0,
-        [XFT_BINARY] = 4,
-        [XFT_COM] = 8,
-        [XFT_MSDOS] = 9,
-        [XFT_NE] = 12,
-        [XFT_LE] = 13,
-        [XFT_LX] = 14,
-        [XFT_PE] = 15,
-        [XFT_PE32] = 16,
-        [XFT_PE64] = 17,
-        [XFT_ELF] = 18,
-        [XFT_ELF32] = 19,
-        [XFT_ELF64] = 20,
-        [XFT_MACHO] = 21,
-        [XFT_MACHO32] = 22,
-        [XFT_MACHO64] = 23,
-        [XFT_ZIP] = 68,
-        [XFT_JAR] = 52,
-        [XFT_APK] = 30,
-        [XFT_IPA] = 51,
-        [XFT_DEX] = 44,
-        [XFT_NPM] = 84,
-        [XFT_MACHOFAT] = 54,
-        [XFT_ARCHIVE] = 42,
-        [XFT_PDF] = 55,
-        [XFT_CFBF] = 90,
-        [XFT_IMAGE] = 48,
-        [XFT_JPEG] = 53,
-        [XFT_PNG] = 58,
-        [XFT_RAR] = 59,
-        [XFT_ISO9660] = 102,
-        [XFT_AMIGAHUNK] = 24,
-        [XFT_ATARIST] = 25,
-        [XFT_JAVACLASS] = 88,
-        [XFT_PYC] = 89,
-        [XFT_DOS16M] = 10,
-        [XFT_DOS4G] = 11,
-        [XFT_CLI_ASSEMBLY] = 26,
+        [XFT_UNKNOWN] = 0,  [XFT_BINARY] = 4,    [XFT_COM] = 8,           [XFT_MSDOS] = 9,      [XFT_NE] = 12,      [XFT_LE] = 13,        [XFT_LX] = 14,
+        [XFT_PE] = 15,      [XFT_PE32] = 16,     [XFT_PE64] = 17,         [XFT_ELF] = 18,       [XFT_ELF32] = 19,   [XFT_ELF64] = 20,     [XFT_MACHO] = 21,
+        [XFT_MACHO32] = 22, [XFT_MACHO64] = 23,  [XFT_ZIP] = 68,          [XFT_JAR] = 52,       [XFT_APK] = 30,     [XFT_IPA] = 51,       [XFT_DEX] = 44,
+        [XFT_NPM] = 84,     [XFT_MACHOFAT] = 54, [XFT_ARCHIVE] = 42,      [XFT_PDF] = 55,       [XFT_CFBF] = 90,    [XFT_IMAGE] = 48,     [XFT_JPEG] = 53,
+        [XFT_PNG] = 58,     [XFT_RAR] = 59,      [XFT_ISO9660] = 102,     [XFT_AMIGAHUNK] = 24, [XFT_ATARIST] = 25, [XFT_JAVACLASS] = 88, [XFT_PYC] = 89,
+        [XFT_DOS16M] = 10,  [XFT_DOS4G] = 11,    [XFT_CLI_ASSEMBLY] = 26,
     };
 
     return ((int)fileType >= 0 && fileType < XFT_COUNT) ? order[fileType] : (int)fileType;
@@ -266,4 +234,3 @@ void db_sort(DBase *pDb)
     /* Sorting happens per database in db_load; kept for API symmetry. */
     (void)pDb;
 }
-

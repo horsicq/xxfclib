@@ -8,10 +8,7 @@
 #include "xxfclib/formats/installer/apk/xx_apk.h"
 
 static const ApiEntry g_apk_api_table[] = {
-    {"getAndroidManifestRecord", A_getAndroidManifestRecord, 1},
-    {"getAndroidManifest", A_getAndroidManifest, 0},
-    {NULL, A_NONE, 0}
-};
+    {"getAndroidManifestRecord", A_getAndroidManifestRecord, 1}, {"getAndroidManifest", A_getAndroidManifest, 0}, {NULL, A_NONE, 0}};
 
 void die_engine_api_register_apk(JSCtx *pCtx, JSVal object)
 {
@@ -37,8 +34,7 @@ bool die_engine_api_dispatch_apk(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int 
             return true;
 
         /* ------------------------------------------------------- PDF  */
-        default:
-            break;
+        default: break;
     }
 
     return false;

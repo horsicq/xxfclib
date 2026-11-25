@@ -29,20 +29,17 @@ extern "C" {
 #endif
 
 /* Hash-update callback, matching YARA-X's AuthenticodeHasher::update. */
-typedef void (*xx_msi_yx_update_fn)(void *state, const uint8_t *data,
-                                    size_t size);
+typedef void (*xx_msi_yx_update_fn)(void *state, const uint8_t *data, size_t size);
 
 /* Feeds the MSI Authenticode hash input of an OLECF file to `update`.
  * False for non-OLECF input or invalid arguments. */
-XXFC_API bool xx_msi_yx_hash_input(const uint8_t *data, size_t size,
-                                   xx_msi_yx_update_fn update, void *state);
+XXFC_API bool xx_msi_yx_hash_input(const uint8_t *data, size_t size, xx_msi_yx_update_fn update, void *state);
 
 /* The OLECF reader removed one leading control character from each stream
  * name; the msi module trims every remaining leading character below U+0020
  * (trim_start_matches) and compares with eq_ignore_ascii_case. Such
  * characters are single bytes in UTF-8, so trimming bytes is equivalent. */
-XXFC_API bool xx_msi_yx_name_is(const xx_olecf_yx_stream *entry,
-                                const char *expected);
+XXFC_API bool xx_msi_yx_name_is(const xx_olecf_yx_stream *entry, const char *expected);
 
 #ifdef __cplusplus
 }

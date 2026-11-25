@@ -21,8 +21,8 @@
 
 static void xx_tar_zstd_vtable_destroy(Abstractformat *self);
 
-static bool xx_tar_zstd_take(const uint8_t **cursor, const uint8_t *end,
-                             size_t count) {
+static bool xx_tar_zstd_take(const uint8_t **cursor, const uint8_t *end, size_t count)
+{
     if (!cursor || !*cursor || !end || (size_t)(end - *cursor) < count) {
         return false;
     }
@@ -30,13 +30,11 @@ static bool xx_tar_zstd_take(const uint8_t **cursor, const uint8_t *end,
     return true;
 }
 
-static bool xx_tar_zstd_read_variable(const uint8_t **cursor,
-                                      const uint8_t *end, unsigned count,
-                                      uint64_t *value) {
+static bool xx_tar_zstd_read_variable(const uint8_t **cursor, const uint8_t *end, unsigned count, uint64_t *value)
+{
     uint64_t result = 0U;
     unsigned index;
-    if (!cursor || !value || count > 8U ||
-        (size_t)(end - *cursor) < count) {
+    if (!cursor || !value || count > 8U || (size_t)(end - *cursor) < count) {
         return false;
     }
     for (index = 0U; index < count; ++index) {
@@ -124,17 +122,11 @@ static bool xx_tar_zstd_declared_size(const uint8_t *source, size_t size, xx_tar
         if (!single_segment && !xx_tar_zstd_take(&cursor, end, 1U)) {
             XX_TAR_ZSTD_ENDED();
         }
-        dictionary_size = dictionary_flag == 0U ? 0U :
-                          dictionary_flag == 1U ? 1U :
-                          dictionary_flag == 2U ? 2U : 4U;
-        if (!xx_tar_zstd_read_variable(&cursor, end, dictionary_size,
-                                       &ignored)) {
+        dictionary_size = dictionary_flag == 0U ? 0U : dictionary_flag == 1U ? 1U : dictionary_flag == 2U ? 2U : 4U;
+        if (!xx_tar_zstd_read_variable(&cursor, end, dictionary_size, &ignored)) {
             XX_TAR_ZSTD_ENDED();
         }
-        content_size_bytes = content_size_flag == 0U ?
-                                 (single_segment ? 1U : 0U) :
-                             content_size_flag == 1U ? 2U :
-                             content_size_flag == 2U ? 4U : 8U;
+        content_size_bytes = content_size_flag == 0U ? (single_segment ? 1U : 0U) : content_size_flag == 1U ? 2U : content_size_flag == 2U ? 4U : 8U;
         if (content_size_bytes == 0U) {
             walk->unsized = true;
         } else {
@@ -204,12 +196,11 @@ static bool xx_tar_zstd_may_end_cut(const uint8_t *frame, size_t frame_size, siz
     return result;
 }
 
-static bool xx_tar_zstd_read_all_at(xx_io_device *device, int64_t offset,
-                                    void *data, size_t size) {
+static bool xx_tar_zstd_read_all_at(xx_io_device *device, int64_t offset, void *data, size_t size)
+{
     uint8_t *bytes = (uint8_t *)data;
     size_t done = 0U;
-    if (!device || (!data && size != 0U) || offset < 0 ||
-        xx_io_seek64(device, offset, SEEK_SET) != 0) {
+    if (!device || (!data && size != 0U) || offset < 0 || xx_io_seek64(device, offset, SEEK_SET) != 0) {
         return false;
     }
     while (done < size) {
@@ -234,8 +225,8 @@ static bool xx_tar_zstd_write_all(xx_io_device *device, const uint8_t *data, siz
     return true;
 }
 
-xx_tar_common *xx_tar_zstd_common(xx_tar_zstd *tar_zstd,
-                                         bool create) {
+xx_tar_common *xx_tar_zstd_common(xx_tar_zstd *tar_zstd, bool create)
+{
     xx_tar_common *common;
     if (!tar_zstd) return NULL;
     common = (xx_tar_common *)tar_zstd->internal;
@@ -248,8 +239,8 @@ xx_tar_common *xx_tar_zstd_common(xx_tar_zstd *tar_zstd,
     return common;
 }
 
-static void xx_tar_zstd_sync(xx_tar_zstd *tar_zstd,
-                             const xx_tar_common *common) {
+static void xx_tar_zstd_sync(xx_tar_zstd *tar_zstd, const xx_tar_common *common)
+{
     if (!tar_zstd || !common || !common->valid || !common->tar) return;
     tar_zstd->number_of_records = xx_tar_get_number_of_records(common->tar);
     tar_zstd->number_of_members = xx_tar_get_number_of_members(common->tar);
@@ -257,10 +248,8 @@ static void xx_tar_zstd_sync(xx_tar_zstd *tar_zstd,
     tar_zstd->compressed_size = common->compressed_size;
 }
 
-bool xx_tar_zstd_decode(Abstractformat *outer,
-                               xx_io_device *destination,
-                               int64_t *compressed_size,
-                               xx_pd_struct *pd) {
+bool xx_tar_zstd_decode(Abstractformat *outer, xx_io_device *destination, int64_t *compressed_size, xx_pd_struct *pd)
+{
     int64_t total_size;
     int64_t transport_size;
     uint8_t *transport = NULL;
@@ -272,15 +261,13 @@ bool xx_tar_zstd_decode(Abstractformat *outer,
     bool result = false;
 
     if (compressed_size) *compressed_size = -1;
-    if (!outer || !outer->device || !destination || !compressed_size ||
-        outer->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
+    if (!outer || !outer->device || !destination || !compressed_size || outer->base_address < 0 || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     total_size = xx_io_total_size(outer->device);
     if (total_size <= outer->base_address) return false;
     transport_size = total_size - outer->base_address;
-    if ((uint64_t)transport_size > (uint64_t)XX_TAR_ZSTD_MAX_BUFFER ||
-        (uint64_t)transport_size > (uint64_t)SIZE_MAX) {
+    if ((uint64_t)transport_size > (uint64_t)XX_TAR_ZSTD_MAX_BUFFER || (uint64_t)transport_size > (uint64_t)SIZE_MAX) {
         return false;
     }
     transport = (uint8_t *)xx_mem_alloc((size_t)transport_size);
@@ -321,21 +308,20 @@ cleanup:
     return result;
 }
 
-static const xx_var *xx_tar_zstd_find_option(const xx_list_s *options,
-                                              uint32_t meta_id) {
+static const xx_var *xx_tar_zstd_find_option(const xx_list_s *options, uint32_t meta_id)
+{
     size_t index;
     if (!options) return NULL;
     for (index = 0U; index < options->count; ++index) {
-        const xx_meta *item = (const xx_meta *)xx_list_at(
-            (const xx_list_t *)options, index);
+        const xx_meta *item = (const xx_meta *)xx_list_at((const xx_list_t *)options, index);
         if (item && item->meta_id == meta_id) return &item->var;
     }
     return NULL;
 }
 
-static int xx_tar_zstd_compression_level(const xx_list_s *options) {
-    const xx_var *value = xx_tar_zstd_find_option(
-        options, XX_META_ID_OPT_COMPRESSION_LEVEL);
+static int xx_tar_zstd_compression_level(const xx_list_s *options)
+{
+    const xx_var *value = xx_tar_zstd_find_option(options, XX_META_ID_OPT_COMPRESSION_LEVEL);
     int64_t requested;
     if (!value) return XX_ZSTD_LEVEL_DEFAULT;
     requested = xx_var_get_i64(value);
@@ -344,27 +330,20 @@ static int xx_tar_zstd_compression_level(const xx_list_s *options) {
     return (int)requested;
 }
 
-static bool xx_tar_zstd_encode(Abstractformat *outer,
-                               const xx_list_s *options,
-                               xx_io_device *tar_source, int64_t tar_size,
-                               int64_t *compressed_size,
-                               xx_pd_struct *pd) {
+static bool xx_tar_zstd_encode(Abstractformat *outer, const xx_list_s *options, xx_io_device *tar_source, int64_t tar_size, int64_t *compressed_size, xx_pd_struct *pd)
+{
     int64_t end_position;
     int level;
     if (compressed_size) *compressed_size = -1;
-    if (!outer || !outer->device || !outer->device->write ||
-        !outer->device->seek || !tar_source || !compressed_size ||
-        tar_size <= 0 || outer->base_address < 0 ||
-        (uint64_t)tar_size > (uint64_t)XX_TAR_ZSTD_MAX_BUFFER ||
-        (pd && xx_pd_is_stopped(pd))) {
+    if (!outer || !outer->device || !outer->device->write || !outer->device->seek || !tar_source || !compressed_size || tar_size <= 0 || outer->base_address < 0 ||
+        (uint64_t)tar_size > (uint64_t)XX_TAR_ZSTD_MAX_BUFFER || (pd && xx_pd_is_stopped(pd))) {
         return false;
     }
     if (xx_io_seek64(outer->device, outer->base_address, SEEK_SET) != 0) {
         return false;
     }
     level = xx_tar_zstd_compression_level(options);
-    if (!xx_zstd_pack_device(tar_source, 0, tar_size, outer->device, level,
-                             pd)) {
+    if (!xx_zstd_pack_device(tar_source, 0, tar_size, outer->device, level, pd)) {
         return false;
     }
     end_position = xx_io_tell(outer->device);
@@ -375,8 +354,8 @@ static bool xx_tar_zstd_encode(Abstractformat *outer,
     return true;
 }
 
-void xx_tar_zstd_init(xx_tar_zstd *tar_zstd, xx_io_device *dev,
-                      int64_t base_address) {
+void xx_tar_zstd_init(xx_tar_zstd *tar_zstd, xx_io_device *dev, int64_t base_address)
+{
     if (!tar_zstd) return;
     xx_mem_zero(tar_zstd, sizeof(*tar_zstd));
     xx_format_init(&tar_zstd->format, dev, base_address);
@@ -385,42 +364,34 @@ void xx_tar_zstd_init(xx_tar_zstd *tar_zstd, xx_io_device *dev,
     tar_zstd->format.handle_type = XX_FILE_TYPE_TAR_ZSTD;
     tar_zstd->format.format_type = XX_TYPE_ARCHIVE;
     tar_zstd->format.is_archive = true;
-    xx_format_set_mime_type(&tar_zstd->format,
-                            "application/zstd-compressed-tar");
+    xx_format_set_mime_type(&tar_zstd->format, "application/zstd-compressed-tar");
     xx_format_set_extension(&tar_zstd->format, "tar.zst");
     tar_zstd->format.check_is_valid = xx_tar_zstd_check_is_valid;
     tar_zstd->format.handle_base_info = xx_tar_zstd_handle_base_info;
     tar_zstd->format.get_format_size = xx_tar_zstd_get_format_size;
-    tar_zstd->format.get_number_of_archive_records =
-        xx_tar_zstd_get_number_of_archive_records;
-    tar_zstd->format.create_archive_records_reading =
-        xx_tar_zstd_create_archive_records_reading;
-    tar_zstd->format.get_current_archive_record =
-        xx_tar_zstd_get_current_archive_record;
-    tar_zstd->format.unpack_current_archive_record =
-        xx_tar_zstd_unpack_current_archive_record;
-    tar_zstd->format.archive_record_move_to_next =
-        xx_tar_zstd_archive_record_move_to_next;
-    tar_zstd->format.free_archive_records_reading =
-        xx_tar_zstd_free_archive_records_reading;
-    tar_zstd->format.create_archive_records_writing =
-        xx_tar_zstd_create_archive_records_writing;
+    tar_zstd->format.get_number_of_archive_records = xx_tar_zstd_get_number_of_archive_records;
+    tar_zstd->format.create_archive_records_reading = xx_tar_zstd_create_archive_records_reading;
+    tar_zstd->format.get_current_archive_record = xx_tar_zstd_get_current_archive_record;
+    tar_zstd->format.unpack_current_archive_record = xx_tar_zstd_unpack_current_archive_record;
+    tar_zstd->format.archive_record_move_to_next = xx_tar_zstd_archive_record_move_to_next;
+    tar_zstd->format.free_archive_records_reading = xx_tar_zstd_free_archive_records_reading;
+    tar_zstd->format.create_archive_records_writing = xx_tar_zstd_create_archive_records_writing;
     tar_zstd->format.pack_archive_record = xx_tar_zstd_pack_archive_record;
-    tar_zstd->format.finalize_archive_records_writing =
-        xx_tar_zstd_finalize_archive_records_writing;
-    tar_zstd->format.free_archive_records_writing =
-        xx_tar_zstd_free_archive_records_writing;
+    tar_zstd->format.finalize_archive_records_writing = xx_tar_zstd_finalize_archive_records_writing;
+    tar_zstd->format.free_archive_records_writing = xx_tar_zstd_free_archive_records_writing;
     tar_zstd->format.destroy = xx_tar_zstd_vtable_destroy;
     tar_zstd->compressed_size = -1;
 }
 
-xx_tar_zstd *xx_tar_zstd_create(xx_io_device *dev, int64_t base_address) {
+xx_tar_zstd *xx_tar_zstd_create(xx_io_device *dev, int64_t base_address)
+{
     xx_tar_zstd *tar_zstd = (xx_tar_zstd *)xx_mem_alloc(sizeof(*tar_zstd));
     if (tar_zstd) xx_tar_zstd_init(tar_zstd, dev, base_address);
     return tar_zstd;
 }
 
-void xx_tar_zstd_destroy(xx_tar_zstd *tar_zstd) {
+void xx_tar_zstd_destroy(xx_tar_zstd *tar_zstd)
+{
     xx_tar_common *common;
     if (!tar_zstd) return;
     common = xx_tar_zstd_common(tar_zstd, false);
@@ -433,17 +404,20 @@ void xx_tar_zstd_destroy(xx_tar_zstd *tar_zstd) {
     xx_format_cleanup_extra_parameters(&tar_zstd->format);
 }
 
-static void xx_tar_zstd_vtable_destroy(Abstractformat *self) {
+static void xx_tar_zstd_vtable_destroy(Abstractformat *self)
+{
     xx_tar_zstd_destroy((xx_tar_zstd *)self);
 }
 
-void xx_tar_zstd_free(xx_tar_zstd *tar_zstd) {
+void xx_tar_zstd_free(xx_tar_zstd *tar_zstd)
+{
     if (!tar_zstd) return;
     xx_tar_zstd_destroy(tar_zstd);
     xx_mem_free(tar_zstd);
 }
 
-bool xx_tar_zstd_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_tar_zstd_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_tar_zstd *tar_zstd = (xx_tar_zstd *)self;
     xx_tar_common *common = xx_tar_zstd_common(tar_zstd, true);
     bool result;
@@ -453,12 +427,11 @@ bool xx_tar_zstd_check_is_valid(Abstractformat *self, xx_pd_struct *pd) {
     return result;
 }
 
-bool xx_tar_zstd_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
+bool xx_tar_zstd_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_tar_zstd *tar_zstd = (xx_tar_zstd *)self;
     xx_tar_common *common = xx_tar_zstd_common(tar_zstd, true);
-    if (!self || !common ||
-        !xx_tar_common_handle_base_info(common, self, xx_tar_zstd_decode,
-                                        pd)) {
+    if (!self || !common || !xx_tar_common_handle_base_info(common, self, xx_tar_zstd_decode, pd)) {
         if (self) self->is_valid = false;
         return false;
     }
@@ -471,73 +444,66 @@ bool xx_tar_zstd_handle_base_info(Abstractformat *self, xx_pd_struct *pd) {
     return true;
 }
 
-int64_t xx_tar_zstd_get_format_size(Abstractformat *self, xx_pd_struct *pd) {
+int64_t xx_tar_zstd_get_format_size(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_tar_zstd *tar_zstd = (xx_tar_zstd *)self;
     xx_tar_common *common = xx_tar_zstd_common(tar_zstd, true);
     int64_t result;
     if (!self || !common) return -1;
-    result = xx_tar_common_get_format_size(common, self, xx_tar_zstd_decode,
-                                           pd);
+    result = xx_tar_common_get_format_size(common, self, xx_tar_zstd_decode, pd);
     if (common->valid) xx_tar_zstd_sync(tar_zstd, common);
     return result;
 }
 
-uint64_t xx_tar_zstd_get_number_of_archive_records(Abstractformat *self,
-                                                    xx_pd_struct *pd) {
+uint64_t xx_tar_zstd_get_number_of_archive_records(Abstractformat *self, xx_pd_struct *pd)
+{
     xx_tar_zstd *tar_zstd = (xx_tar_zstd *)self;
     xx_tar_common *common = xx_tar_zstd_common(tar_zstd, true);
     uint64_t result;
     if (!self || !common) return 0U;
-    result = xx_tar_common_get_number_of_archive_records(
-        common, self, xx_tar_zstd_decode, pd);
+    result = xx_tar_common_get_number_of_archive_records(common, self, xx_tar_zstd_decode, pd);
     if (common->valid) xx_tar_zstd_sync(tar_zstd, common);
     return result;
 }
 
-xx_archive_record_state *xx_tar_zstd_create_archive_records_reading(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_record_state *xx_tar_zstd_create_archive_records_reading(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_tar_common *common = xx_tar_zstd_common((xx_tar_zstd *)self, true);
     if (!self || !common) return NULL;
-    return xx_tar_common_create_archive_records_reading(
-        common, self, xx_tar_zstd_decode, options, pd);
+    return xx_tar_common_create_archive_records_reading(common, self, xx_tar_zstd_decode, options, pd);
 }
 
-const xx_archive_record *xx_tar_zstd_get_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state) {
+const xx_archive_record *xx_tar_zstd_get_current_archive_record(Abstractformat *self, xx_archive_record_state *state)
+{
     xx_tar_common *common = xx_tar_zstd_common((xx_tar_zstd *)self, false);
-    return common
-               ? xx_tar_common_get_current_archive_record(common, state)
-               : NULL;
+    return common ? xx_tar_common_get_current_archive_record(common, state) : NULL;
 }
 
-bool xx_tar_zstd_unpack_current_archive_record(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_tar_zstd_unpack_current_archive_record(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_tar_common *common = xx_tar_zstd_common((xx_tar_zstd *)self, false);
-    return common && xx_tar_common_unpack_current_archive_record(
-                         common, state, pd);
+    return common && xx_tar_common_unpack_current_archive_record(common, state, pd);
 }
 
-bool xx_tar_zstd_archive_record_move_to_next(
-    Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd) {
+bool xx_tar_zstd_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd)
+{
     xx_tar_common *common = xx_tar_zstd_common((xx_tar_zstd *)self, false);
-    return common && xx_tar_common_archive_record_move_to_next(common, state,
-                                                                 pd);
+    return common && xx_tar_common_archive_record_move_to_next(common, state, pd);
 }
 
-void xx_tar_zstd_free_archive_records_reading(
-    Abstractformat *self, xx_archive_record_state *state) {
+void xx_tar_zstd_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state)
+{
     xx_tar_common *common = xx_tar_zstd_common((xx_tar_zstd *)self, false);
     if (common) xx_tar_common_free_archive_records_reading(common, state);
 }
 
-xx_archive_write_state *xx_tar_zstd_create_archive_records_writing(
-    Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd) {
+xx_archive_write_state *xx_tar_zstd_create_archive_records_writing(Abstractformat *self, const xx_list_s *options, xx_pd_struct *pd)
+{
     xx_tar_zstd *tar_zstd = (xx_tar_zstd *)self;
     xx_archive_write_state *state;
     xx_tar_common *common;
     if (!self) return NULL;
-    state = xx_tar_common_create_archive_records_writing(
-        self, options, xx_tar_zstd_encode, pd);
+    state = xx_tar_common_create_archive_records_writing(self, options, xx_tar_zstd_encode, pd);
     if (!state) return NULL;
     common = xx_tar_zstd_common(tar_zstd, false);
     if (common) xx_tar_common_cleanup(common);
@@ -548,21 +514,16 @@ xx_archive_write_state *xx_tar_zstd_create_archive_records_writing(
     return state;
 }
 
-bool xx_tar_zstd_pack_archive_record(Abstractformat *self,
-                                     xx_archive_write_state *state,
-                                     const xx_archive_record *record,
-                                     xx_io_device *source_dev,
-                                     xx_pd_struct *pd) {
-    return xx_tar_common_pack_archive_record(self, state, record, source_dev,
-                                              pd);
+bool xx_tar_zstd_pack_archive_record(Abstractformat *self, xx_archive_write_state *state, const xx_archive_record *record, xx_io_device *source_dev, xx_pd_struct *pd)
+{
+    return xx_tar_common_pack_archive_record(self, state, record, source_dev, pd);
 }
 
-bool xx_tar_zstd_finalize_archive_records_writing(
-    Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd) {
+bool xx_tar_zstd_finalize_archive_records_writing(Abstractformat *self, xx_archive_write_state *state, xx_pd_struct *pd)
+{
     xx_tar_zstd *tar_zstd = (xx_tar_zstd *)self;
     xx_tar_common *common;
-    if (!self || !xx_tar_common_finalize_archive_records_writing(self, state,
-                                                                   pd)) {
+    if (!self || !xx_tar_common_finalize_archive_records_writing(self, state, pd)) {
         return false;
     }
     common = xx_tar_zstd_common(tar_zstd, false);
@@ -573,23 +534,27 @@ bool xx_tar_zstd_finalize_archive_records_writing(
     return true;
 }
 
-void xx_tar_zstd_free_archive_records_writing(
-    Abstractformat *self, xx_archive_write_state *state) {
+void xx_tar_zstd_free_archive_records_writing(Abstractformat *self, xx_archive_write_state *state)
+{
     xx_tar_common_free_archive_records_writing(self, state);
 }
 
-uint64_t xx_tar_zstd_get_number_of_records(const xx_tar_zstd *tar_zstd) {
+uint64_t xx_tar_zstd_get_number_of_records(const xx_tar_zstd *tar_zstd)
+{
     return tar_zstd ? tar_zstd->number_of_records : 0U;
 }
 
-uint64_t xx_tar_zstd_get_number_of_members(const xx_tar_zstd *tar_zstd) {
+uint64_t xx_tar_zstd_get_number_of_members(const xx_tar_zstd *tar_zstd)
+{
     return tar_zstd ? tar_zstd->number_of_members : 0U;
 }
 
-uint64_t xx_tar_zstd_get_uncompressed_size(const xx_tar_zstd *tar_zstd) {
+uint64_t xx_tar_zstd_get_uncompressed_size(const xx_tar_zstd *tar_zstd)
+{
     return tar_zstd ? tar_zstd->uncompressed_size : 0U;
 }
 
-int64_t xx_tar_zstd_get_compressed_size(const xx_tar_zstd *tar_zstd) {
+int64_t xx_tar_zstd_get_compressed_size(const xx_tar_zstd *tar_zstd)
+{
     return tar_zstd ? tar_zstd->compressed_size : -1;
 }

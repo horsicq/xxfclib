@@ -116,20 +116,20 @@ typedef struct c64s_lzw {
 static bool c64s_chunk(c64s_lzw *t, const uint8_t *in, uint32_t avail, uint32_t *pos, uint8_t *out, uint32_t n)
 {
     uint32_t at = 0, acc = 0, cnt = 0, p = *pos;
-#define C64S_GET(w, v)                                         \
-    do {                                                       \
-        uint32_t k_, r_ = 0;                                   \
-        for (k_ = 0; k_ < (w); ++k_) {                         \
-            if (!cnt) {                                        \
-                if (p >= avail) return false;                  \
-                acc = in[p++];                                 \
-                cnt = 8;                                       \
-            }                                                  \
-            r_ |= (acc & 1U) << k_;                            \
-            acc >>= 1;                                         \
-            --cnt;                                             \
-        }                                                      \
-        (v) = r_;                                              \
+#define C64S_GET(w, v)                        \
+    do {                                      \
+        uint32_t k_, r_ = 0;                  \
+        for (k_ = 0; k_ < (w); ++k_) {        \
+            if (!cnt) {                       \
+                if (p >= avail) return false; \
+                acc = in[p++];                \
+                cnt = 8;                      \
+            }                                 \
+            r_ |= (acc & 1U) << k_;           \
+            acc >>= 1;                        \
+            --cnt;                            \
+        }                                     \
+        (v) = r_;                             \
     } while (0)
     for (;;) {
         uint32_t next = 256, width = 9, code, old, c;

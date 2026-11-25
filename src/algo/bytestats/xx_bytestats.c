@@ -36,8 +36,7 @@ void xx_bytestats_histogram_scalar(const uint8_t *data, size_t size, uint64_t co
         unsigned value;
         memset(tables, 0, sizeof(tables));
         xx_bytestats_tables_add(data, part, tables);
-        for (value = 0U; value < 256U; ++value)
-            counts[value] += (uint64_t)tables[0][value] + tables[1][value] + tables[2][value] + tables[3][value];
+        for (value = 0U; value < 256U; ++value) counts[value] += (uint64_t)tables[0][value] + tables[1][value] + tables[2][value] + tables[3][value];
         data += part;
         size -= part;
     }
@@ -252,8 +251,7 @@ double xx_bytestats_mean_counts(const uint64_t counts[256], uint64_t total)
 {
     double sum = 0.0;
     if (!counts || !total) return 0.0;
-    for (size_t i = 0; i < 256; ++i)
-        sum += (double)i * (double)counts[i];
+    for (size_t i = 0; i < 256; ++i) sum += (double)i * (double)counts[i];
     return sum / (double)total;
 }
 
@@ -261,8 +259,7 @@ double xx_bytestats_deviation_counts(const uint64_t counts[256], uint64_t total,
 {
     double sum = 0.0;
     if (!counts || !total) return 0.0;
-    for (size_t i = 0; i < 256; ++i)
-        sum += fabs((double)i - mean) * (double)counts[i];
+    for (size_t i = 0; i < 256; ++i) sum += fabs((double)i - mean) * (double)counts[i];
     return sum / (double)total;
 }
 
@@ -289,8 +286,7 @@ double xx_bytestats_serial_correlation(const void *data, size_t size)
     if ((uint64_t)size <= XX_BYTESTATS_EXACT_SERIAL_LENGTH) {
         xx_bytestats_serial sums;
         xx_bytestats_serial_sums(bytes, size, &sums);
-        product_sum = (double)(sums.adjacent_sum +
-                               (uint64_t)bytes[0] * bytes[size - 1]);
+        product_sum = (double)(sums.adjacent_sum + (uint64_t)bytes[0] * bytes[size - 1]);
         byte_sum = (double)sums.byte_sum;
         square_sum = (double)sums.square_sum;
     } else {

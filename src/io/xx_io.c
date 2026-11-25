@@ -87,8 +87,7 @@ static int xx_io_multivolume_read_write_at_capability(xx_io_device *device);
 bool xx_io_can_read_write_at(xx_io_device *device)
 {
     int capability;
-    if (!device || !device->read || !device->write ||
-        (!device->seek && !device->seek64) || !device->tell || xx_io_total_size(device) < 0) return false;
+    if (!device || !device->read || !device->write || (!device->seek && !device->seek64) || !device->tell || xx_io_total_size(device) < 0) return false;
     capability = xx_io_file_read_write_at_capability(device);
     if (capability >= 0) return capability != 0;
     capability = xx_io_mem_read_write_at_capability(device);

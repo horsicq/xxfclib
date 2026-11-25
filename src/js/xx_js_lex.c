@@ -37,37 +37,37 @@ typedef struct {
 #define JS_LEX_LITERAL(text, token) {text, sizeof(text) - 1, token}
 
 static const JSLexLiteral g_keywords[] = {JS_LEX_LITERAL("debugger", T_DEBUGGER),
-                                         JS_LEX_LITERAL("break", T_BREAK),
-                                         JS_LEX_LITERAL("case", T_CASE),
-                                         JS_LEX_LITERAL("catch", T_CATCH),
-                                         JS_LEX_LITERAL("continue", T_CONTINUE),
-                                         JS_LEX_LITERAL("default", T_DEFAULT),
-                                         JS_LEX_LITERAL("delete", T_DELETE),
-                                         JS_LEX_LITERAL("do", T_DO),
-                                         JS_LEX_LITERAL("else", T_ELSE),
-                                         JS_LEX_LITERAL("finally", T_FINALLY),
-                                         JS_LEX_LITERAL("for", T_FOR),
-                                         JS_LEX_LITERAL("function", T_FUNCTION),
-                                         JS_LEX_LITERAL("if", T_IF),
-                                         JS_LEX_LITERAL("in", T_IN),
-                                         JS_LEX_LITERAL("instanceof", T_INSTANCEOF),
-                                         JS_LEX_LITERAL("new", T_NEW),
-                                         JS_LEX_LITERAL("return", T_RETURN),
-                                         JS_LEX_LITERAL("switch", T_SWITCH),
-                                         JS_LEX_LITERAL("this", T_THIS),
-                                         JS_LEX_LITERAL("throw", T_THROW),
-                                         JS_LEX_LITERAL("try", T_TRY),
-                                         JS_LEX_LITERAL("typeof", T_TYPEOF),
-                                         JS_LEX_LITERAL("var", T_VAR),
-                                         JS_LEX_LITERAL("void", T_VOID),
-                                         JS_LEX_LITERAL("while", T_WHILE),
-                                         JS_LEX_LITERAL("with", T_WITH),
-                                         JS_LEX_LITERAL("null", T_NULL),
-                                         JS_LEX_LITERAL("true", T_TRUE),
-                                         JS_LEX_LITERAL("false", T_FALSE),
-                                         JS_LEX_LITERAL("const", T_VAR),
-                                         JS_LEX_LITERAL("let", T_VAR),
-                                         {NULL, 0, T_EOF}};
+                                          JS_LEX_LITERAL("break", T_BREAK),
+                                          JS_LEX_LITERAL("case", T_CASE),
+                                          JS_LEX_LITERAL("catch", T_CATCH),
+                                          JS_LEX_LITERAL("continue", T_CONTINUE),
+                                          JS_LEX_LITERAL("default", T_DEFAULT),
+                                          JS_LEX_LITERAL("delete", T_DELETE),
+                                          JS_LEX_LITERAL("do", T_DO),
+                                          JS_LEX_LITERAL("else", T_ELSE),
+                                          JS_LEX_LITERAL("finally", T_FINALLY),
+                                          JS_LEX_LITERAL("for", T_FOR),
+                                          JS_LEX_LITERAL("function", T_FUNCTION),
+                                          JS_LEX_LITERAL("if", T_IF),
+                                          JS_LEX_LITERAL("in", T_IN),
+                                          JS_LEX_LITERAL("instanceof", T_INSTANCEOF),
+                                          JS_LEX_LITERAL("new", T_NEW),
+                                          JS_LEX_LITERAL("return", T_RETURN),
+                                          JS_LEX_LITERAL("switch", T_SWITCH),
+                                          JS_LEX_LITERAL("this", T_THIS),
+                                          JS_LEX_LITERAL("throw", T_THROW),
+                                          JS_LEX_LITERAL("try", T_TRY),
+                                          JS_LEX_LITERAL("typeof", T_TYPEOF),
+                                          JS_LEX_LITERAL("var", T_VAR),
+                                          JS_LEX_LITERAL("void", T_VOID),
+                                          JS_LEX_LITERAL("while", T_WHILE),
+                                          JS_LEX_LITERAL("with", T_WITH),
+                                          JS_LEX_LITERAL("null", T_NULL),
+                                          JS_LEX_LITERAL("true", T_TRUE),
+                                          JS_LEX_LITERAL("false", T_FALSE),
+                                          JS_LEX_LITERAL("const", T_VAR),
+                                          JS_LEX_LITERAL("let", T_VAR),
+                                          {NULL, 0, T_EOF}};
 
 static int is_ident_start(int nChar)
 {
@@ -237,8 +237,7 @@ int js_lex_run(JSLexer *pLexer, const char *pSource, char **ppError)
             nSize = (size_t)(p - pStart);
             token.type = T_IDENT;
             for (i = 0; g_keywords[i].pText; i++) {
-                if ((g_keywords[i].nSize == nSize) && (g_keywords[i].pText[0] == pStart[0]) &&
-                    (xx_rt_memcmp(g_keywords[i].pText, pStart, nSize) == 0)) {
+                if ((g_keywords[i].nSize == nSize) && (g_keywords[i].pText[0] == pStart[0]) && (xx_rt_memcmp(g_keywords[i].pText, pStart, nSize) == 0)) {
                     token.type = g_keywords[i].type;
                     token.pText = (char *)g_keywords[i].pText;
                     break;

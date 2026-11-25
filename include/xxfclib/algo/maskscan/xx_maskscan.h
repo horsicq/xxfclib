@@ -50,14 +50,12 @@ XXFC_API bool xx_maskscan_backend_available(int backend);
  * Returns SIZE_MAX when no position qualifies, when first > last, or when
  * the arguments are invalid (no probes, more than XX_MASKSCAN_MAX_PROBES,
  * a probe outside data, or a value bit outside its mask). */
-XXFC_API size_t xx_maskscan_find(const void *data, size_t size, size_t first, size_t last,
-                                 const xx_maskscan_probe *probes, size_t count);
+XXFC_API size_t xx_maskscan_find(const void *data, size_t size, size_t first, size_t last, const xx_maskscan_probe *probes, size_t count);
 
 /** xx_maskscan_find with an explicit backend, for differential tests.
  * Returns false and leaves *found untouched when the backend is not
  * available. */
-XXFC_API bool xx_maskscan_find_backend(int backend, const void *data, size_t size, size_t first,
-                                       size_t last, const xx_maskscan_probe *probes, size_t count,
+XXFC_API bool xx_maskscan_find_backend(int backend, const void *data, size_t size, size_t first, size_t last, const xx_maskscan_probe *probes, size_t count,
                                        size_t *found);
 
 #ifdef __cplusplus

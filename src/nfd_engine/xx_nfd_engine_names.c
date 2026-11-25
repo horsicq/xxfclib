@@ -9,8 +9,7 @@
 
 #include "generated/xx_nfd_engine_names.inc"
 
-static const xx_nfd_name_entry *find_name(const xx_nfd_name_entry *entries,
-                                          size_t count, const char *token)
+static const xx_nfd_name_entry *find_name(const xx_nfd_name_entry *entries, size_t count, const char *token)
 {
     size_t i;
     if (!token) return NULL;
@@ -22,22 +21,19 @@ static const xx_nfd_name_entry *find_name(const xx_nfd_name_entry *entries,
 
 const char *xx_nfd_record_type_name(const char *token)
 {
-    const xx_nfd_name_entry *entry = find_name(xx_nfd_record_types,
-                                                XX_NFD_RECORD_TYPE_COUNT, token);
+    const xx_nfd_name_entry *entry = find_name(xx_nfd_record_types, XX_NFD_RECORD_TYPE_COUNT, token);
     return entry ? entry->display : "Unknown";
 }
 
 const char *xx_nfd_record_name(const char *token)
 {
-    const xx_nfd_name_entry *entry = find_name(xx_nfd_record_names,
-                                                XX_NFD_RECORD_NAME_COUNT, token);
+    const xx_nfd_name_entry *entry = find_name(xx_nfd_record_names, XX_NFD_RECORD_NAME_COUNT, token);
     return entry ? entry->display : "Unknown";
 }
 
 uint32_t xx_nfd_record_name_order(const char *token)
 {
-    const xx_nfd_name_entry *entry = find_name(xx_nfd_record_names,
-                                                XX_NFD_RECORD_NAME_COUNT, token);
+    const xx_nfd_name_entry *entry = find_name(xx_nfd_record_names, XX_NFD_RECORD_NAME_COUNT, token);
     return entry ? entry->order : UINT32_MAX;
 }
 

@@ -303,8 +303,7 @@ static xx_bigaf_stream *xx_bigaf_parse(Abstractformat *self, xx_pd_struct *pd)
             uint8_t terminator[2];
             int64_t terminator_offset = offset + XX_BIGAF_MEMBER_HEADER + name_length;
             if (terminator_offset & 1) ++terminator_offset;
-            if (!xx_bigaf_read_at(self, self->base_address + terminator_offset, terminator, 2) ||
-                terminator[0] != '`' || terminator[1] != '\n') {
+            if (!xx_bigaf_read_at(self, self->base_address + terminator_offset, terminator, 2) || terminator[0] != '`' || terminator[1] != '\n') {
                 xx_str_free(name);
                 goto partial;
             }
@@ -536,8 +535,9 @@ const xx_archive_record *xx_bigaf_get_current_archive_record(Abstractformat *sel
     xx_bigaf_stream *stream;
     if (!self || !state || state->format != self || !state->has_record) return NULL;
     stream = (xx_bigaf_stream *)state->internal_state;
-    if (stream && !stream->complete && !xx_archive_record_set_meta_str(&state->current_record, XX_META_ID_COMMENT,
-            "Incomplete BIGAF member chain; only complete bounded members are available")) return NULL;
+    if (stream && !stream->complete &&
+        !xx_archive_record_set_meta_str(&state->current_record, XX_META_ID_COMMENT, "Incomplete BIGAF member chain; only complete bounded members are available"))
+        return NULL;
     return &state->current_record;
 }
 

@@ -104,10 +104,14 @@ bool fead_bcj2_decode(const uint8_t *const inputs[4], const size_t sizes[4], uin
         sizes[3] < 5 || (sizes[1] & 3U) || (sizes[2] & 3U) || xx_pd_is_stopped(pd))
         return false;
 
-    main_data = inputs[0]; main_size = sizes[0];
-    call_data = inputs[1]; call_size = sizes[1];
-    jump_data = inputs[2]; jump_size = sizes[2];
-    range_data = inputs[3]; range_size = sizes[3];
+    main_data = inputs[0];
+    main_size = sizes[0];
+    call_data = inputs[1];
+    call_size = sizes[1];
+    jump_data = inputs[2];
+    jump_size = sizes[2];
+    range_data = inputs[3];
+    range_size = sizes[3];
 
     for (i = 0; i < 258; ++i) probabilities[i] = 1024;
     first = range_data[range_pos++];
@@ -181,8 +185,7 @@ bool fead_bcj2_decode(const uint8_t *const inputs[4], const size_t sizes[4], uin
 #elif (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
                 uint32_t value = __builtin_bswap32(*(const uint32_t *)(const void *)target);
 #else
-                uint32_t value = ((uint32_t)target[0] << 24U) | ((uint32_t)target[1] << 16U) |
-                                 ((uint32_t)target[2] << 8U)  | (uint32_t)target[3];
+                uint32_t value = ((uint32_t)target[0] << 24U) | ((uint32_t)target[1] << 16U) | ((uint32_t)target[2] << 8U) | (uint32_t)target[3];
 #endif
                 *position += 4;
                 ip += 4;

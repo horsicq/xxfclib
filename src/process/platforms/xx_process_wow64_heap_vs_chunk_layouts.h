@@ -123,21 +123,16 @@ static const xx_data_struct_field_desc xx_pswhvw_free32_26100[] = {
 };
 
 static const xx_psw_nt_layout xx_pswhvw_profiles_19045[] = {
-    {19045, 0x014c, "WOW64 HEAP_VS_CHUNK_HEADER32; stored encoded aliases, not decoded",
-        xx_pswhvw_header32_19045, XX_PSW_COUNT(xx_pswhvw_header32_19045), 0x8u},
-    {19045, 0x014c, "WOW64 HEAP_VS_CHUNK_FREE_HEADER32; stored encoded aliases, not decoded",
-        xx_pswhvw_free32_19045, XX_PSW_COUNT(xx_pswhvw_free32_19045), 0x10u},
+    {19045, 0x014c, "WOW64 HEAP_VS_CHUNK_HEADER32; stored encoded aliases, not decoded", xx_pswhvw_header32_19045, XX_PSW_COUNT(xx_pswhvw_header32_19045), 0x8u},
+    {19045, 0x014c, "WOW64 HEAP_VS_CHUNK_FREE_HEADER32; stored encoded aliases, not decoded", xx_pswhvw_free32_19045, XX_PSW_COUNT(xx_pswhvw_free32_19045), 0x10u},
 };
 
 static const xx_psw_nt_layout xx_pswhvw_profiles_26100[] = {
-    {26100, 0x014c, "WOW64 HEAP_VS_CHUNK_HEADER32; stored encoded aliases, not decoded",
-        xx_pswhvw_header32_26100, XX_PSW_COUNT(xx_pswhvw_header32_26100), 0x8u},
-    {26100, 0x014c, "WOW64 HEAP_VS_CHUNK_FREE_HEADER32; stored encoded aliases, not decoded",
-        xx_pswhvw_free32_26100, XX_PSW_COUNT(xx_pswhvw_free32_26100), 0x10u},
+    {26100, 0x014c, "WOW64 HEAP_VS_CHUNK_HEADER32; stored encoded aliases, not decoded", xx_pswhvw_header32_26100, XX_PSW_COUNT(xx_pswhvw_header32_26100), 0x8u},
+    {26100, 0x014c, "WOW64 HEAP_VS_CHUNK_FREE_HEADER32; stored encoded aliases, not decoded", xx_pswhvw_free32_26100, XX_PSW_COUNT(xx_pswhvw_free32_26100), 0x10u},
 };
 
-static const xx_psw_nt_layout *xx_pswhvw_profile(const xx_psw_nt_layout *parent,
-    unsigned width, size_t kind)
+static const xx_psw_nt_layout *xx_pswhvw_profile(const xx_psw_nt_layout *parent, unsigned width, size_t kind)
 {
     if (!parent || width != 4 || kind >= XX_PSW_COUNT(xx_pswhvw_profiles_19045)) return NULL;
     if (parent->fields == xx_pswh_wow_segment32_19045) return xx_pswhvw_profiles_19045 + kind;

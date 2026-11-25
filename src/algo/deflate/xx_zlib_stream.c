@@ -23,22 +23,18 @@
 
 size_t xx_zlib_stream_compress_bound(size_t source_size)
 {
-    size_t overhead = (source_size >> 12) + (source_size >> 14) +
-                      (source_size >> 25) + 13U;
+    size_t overhead = (source_size >> 12) + (source_size >> 14) + (source_size >> 25) + 13U;
     if (source_size > SIZE_MAX - overhead) return SIZE_MAX;
     return source_size + overhead;
 }
 
-bool xx_zlib_stream_encode_memory(const uint8_t *input, size_t input_size,
-                                  uint8_t *output, size_t output_capacity,
-                                  size_t *written, int level)
+bool xx_zlib_stream_encode_memory(const uint8_t *input, size_t input_size, uint8_t *output, size_t output_capacity, size_t *written, int level)
 {
     size_t payload_size = 0U;
     uint32_t adler;
 
     if (written) *written = 0U;
-    if ((!input && input_size != 0U) || !output || output_capacity <
-        XX_ZLIB_HEADER_SIZE + XX_ZLIB_TRAILER_SIZE) return false;
+    if ((!input && input_size != 0U) || !output || output_capacity < XX_ZLIB_HEADER_SIZE + XX_ZLIB_TRAILER_SIZE) return false;
 
     /* CM=Deflate, CINFO=7 (32 KiB window). 0x9c advertises the normal
      * compression class and satisfies the RFC 1950 multiple-of-31 check. */
@@ -47,19 +43,15 @@ bool xx_zlib_stream_encode_memory(const uint8_t *input, size_t input_size,
     if (input_size == 0U) {
         /* A raw Deflate stream still needs a final block when its input is
          * empty. Emit one stored BFINAL block explicitly. */
-        if (output_capacity < XX_ZLIB_HEADER_SIZE + 5U + XX_ZLIB_TRAILER_SIZE)
-            return false;
+        if (output_capacity < XX_ZLIB_HEADER_SIZE + 5U + XX_ZLIB_TRAILER_SIZE) return false;
         output[XX_ZLIB_HEADER_SIZE] = 0x01U;
         output[XX_ZLIB_HEADER_SIZE + 1U] = 0x00U;
         output[XX_ZLIB_HEADER_SIZE + 2U] = 0x00U;
         output[XX_ZLIB_HEADER_SIZE + 3U] = 0xffU;
         output[XX_ZLIB_HEADER_SIZE + 4U] = 0xffU;
         payload_size = 5U;
-    } else if (!xx_deflate_compress_memory(input, input_size,
-                                           output + XX_ZLIB_HEADER_SIZE,
-                                           output_capacity - XX_ZLIB_HEADER_SIZE -
-                                               XX_ZLIB_TRAILER_SIZE,
-                                           &payload_size, level, false)) {
+    } else if (!xx_deflate_compress_memory(input, input_size, output + XX_ZLIB_HEADER_SIZE, output_capacity - XX_ZLIB_HEADER_SIZE - XX_ZLIB_TRAILER_SIZE, &payload_size,
+                                           level, false)) {
         return false;
     }
     adler = xx_zlib_stream_adler32(input ? input : (const uint8_t *)"", input_size);

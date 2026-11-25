@@ -128,7 +128,8 @@ static bool iss_read_all(Abstractformat *f, pm_member *m, xx_io_device *device, 
  * member, else a known signature, text or UTF-16 text? */
 static bool iss_plausible(const uint8_t *b, size_t n, bool compressed)
 {
-    static const char *const signatures[] = {"MZ", "\xD0\xCF\x11\xE0", "PK\x03\x04", "MSCF", "7z\xBC\xAF", "\x89PNG", "RIFF", "BM", "{\\rtf", "<?xml", "\xFF\xFE", "\xEF\xBB\xBF"};
+    static const char *const signatures[] = {"MZ", "\xD0\xCF\x11\xE0", "PK\x03\x04", "MSCF",     "7z\xBC\xAF",  "\x89PNG", "RIFF",
+                                             "BM", "{\\rtf",           "<?xml",      "\xFF\xFE", "\xEF\xBB\xBF"};
     size_t i;
     if (n < 2) return false;
     if (compressed) return b[0] == 0x78U && ((unsigned)b[0] * 256U + b[1]) % 31U == 0U;

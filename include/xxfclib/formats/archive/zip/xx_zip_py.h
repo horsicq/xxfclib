@@ -154,8 +154,7 @@ XXFC_API bool xx_zip_py_info_is_dir(const xx_zip_py_info *info);
  * also when a later check fails (CPython emits a UserWarning and goes on).
  * Methods other than stored, Deflate, bzip2 and LZMA (XZ and Deflate64
  * among them) are XX_ZIP_PY_NOT_IMPLEMENTED, as in zipfile. */
-XXFC_API xx_zip_py_status xx_zip_py_open_entry(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t *data_offset,
-                                               char **warning, char **error);
+XXFC_API xx_zip_py_status xx_zip_py_open_entry(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t *data_offset, char **warning, char **error);
 
 /** ZipExtFile.read() on a member opened by xx_zip_py_open_entry(), from the
  * member's start: limit = 0 is read(), a positive limit is read(limit).
@@ -176,9 +175,8 @@ XXFC_API xx_zip_py_status xx_zip_py_open_entry(const xx_zip_py *zip, const xx_zi
  * which must outlive it, and *owner is XX_ZIP_PY_BORROWED. Large output is
  * written into reserved address space on 64-bit Windows (XX_ZIP_PY_MAPPED).
  * Release *out with xx_zip_py_free(*out, *owner). */
-XXFC_API xx_zip_py_status xx_zip_py_read(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t data_offset,
-                                         size_t limit, uint8_t **out, size_t *out_size, bool *complete,
-                                         xx_zip_py_owner *owner, char **error);
+XXFC_API xx_zip_py_status xx_zip_py_read(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t data_offset, size_t limit, uint8_t **out, size_t *out_size,
+                                         bool *complete, xx_zip_py_owner *owner, char **error);
 
 /** ZipExtFile.read(first) followed by read() on the same ZipExtFile: the
  * whole member (both results, one after the other), for a program that
@@ -187,9 +185,8 @@ XXFC_API xx_zip_py_status xx_zip_py_read(const xx_zip_py *zip, const xx_zip_py_i
  * ends early or lies about its size can give another result than
  * xx_zip_py_read() with limit 0; everything else about xx_zip_py_read()
  * applies. first = 0 is read() alone. */
-XXFC_API xx_zip_py_status xx_zip_py_read_rest(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t data_offset,
-                                              size_t first, uint8_t **out, size_t *out_size, xx_zip_py_owner *owner,
-                                              char **error);
+XXFC_API xx_zip_py_status xx_zip_py_read_rest(const xx_zip_py *zip, const xx_zip_py_info *info, uint64_t data_offset, size_t first, uint8_t **out, size_t *out_size,
+                                              xx_zip_py_owner *owner, char **error);
 
 /** Release bytes from xx_zip_py_read(), xx_zip_py_read_rest() or xx_zip_py_xz_decompress()
  * (nothing for borrowed ones). */

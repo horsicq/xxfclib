@@ -525,7 +525,10 @@ xx_archive_record_state *xx_arcv2_create_archive_records_reading(Abstractformat 
     Abstractformat logical;
     if (!arcv2_parse(format, &stream, pd)) return NULL;
     logical = *format;
-    if (stream->volumes) { logical.device = stream->volumes; logical.base_address = 0; }
+    if (stream->volumes) {
+        logical.device = stream->volumes;
+        logical.base_address = 0;
+    }
     arcv2_probe_scramble(&logical, stream);
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
@@ -581,7 +584,10 @@ bool xx_arcv2_unpack_current_archive_record(Abstractformat *format, xx_archive_r
         return false;
     member = &stream->items[stream->index];
     logical = *format;
-    if (stream->volumes) { logical.device = stream->volumes; logical.base_address = 0; }
+    if (stream->volumes) {
+        logical.device = stream->volumes;
+        logical.base_address = 0;
+    }
     if (!arcv2_safe_output_name(member->name) || !arcv2_decode_member(&logical, member, stream->scramble, &plain, &plain_size)) goto done;
     path_option = arcv2_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {

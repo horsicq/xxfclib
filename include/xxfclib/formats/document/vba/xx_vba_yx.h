@@ -30,7 +30,6 @@
 extern "C" {
 #endif
 
-
 /* Values of the public vba.ModuleType enum. */
 enum {
     XX_VBA_YX_MODULE_STANDARD = 1,
@@ -72,7 +71,6 @@ void xx_vba_yx_result_free(xx_vba_yx_result *result);
 /* Decode an MS-OVBA compressed stream. Exposed for focused conformance tests.
  * Caller owns *output and must free it. False means invalid or truncated data,
  * or a resource limit was reached. */
-bool xx_vba_yx_decompress(const uint8_t *data, size_t size,
-                       uint8_t **output, size_t *output_size);
+bool xx_vba_yx_decompress(const uint8_t *data, size_t size, uint8_t **output, size_t *output_size);
 
 #endif

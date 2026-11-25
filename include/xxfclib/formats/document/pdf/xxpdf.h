@@ -42,8 +42,7 @@ XXFC_API int64_t xx_pdf_get_format_size(Abstractformat *format, xx_pd_struct *pd
 /** Decode the current stream to a caller-owned device without opening an
  * archive-derived output path. Honors cursor size/memory limits and validates
  * the decoded extent. The destination may be partially written on failure. */
-XXFC_API bool xx_pdf_unpack_current_archive_record_to_device(Abstractformat *format,
-    xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
+XXFC_API bool xx_pdf_unpack_current_archive_record_to_device(Abstractformat *format, xx_archive_record_state *state, xx_io_device *destination, xx_pd_struct *pd);
 
 /* Inspection uses the same bounded object parser as extraction. If the xref
  * is damaged or absent it recovers directly readable objects, stopping at

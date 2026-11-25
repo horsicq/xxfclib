@@ -39,8 +39,8 @@ typedef struct xfu_entry {
     int64_t packed_size;
     int64_t unpacked_size; /* -1 when the format does not report a size. */
     bool is_directory;
-    char modified[20]; /* Display timestamp, or empty when not reported. */
-    char attributes[24]; /* Format attributes as hexadecimal, or empty. */
+    char modified[20];              /* Display timestamp, or empty when not reported. */
+    char attributes[24];            /* Format attributes as hexadecimal, or empty. */
     const xfu_property *properties; /* All reader metadata and record fields. */
     size_t property_count;
     /* Optional raw NUL-terminated credential bytes recovered and validated
@@ -60,15 +60,13 @@ typedef struct xfu_callbacks {
     void (*log)(void *user, bool error, const char *line);
     void (*entry)(void *user, const xfu_entry *entry);
     /* total == 0 means that the member count is not known yet. */
-    void (*progress)(void *user, uint64_t completed, uint64_t total,
-                     const char *name);
+    void (*progress)(void *user, uint64_t completed, uint64_t total, const char *name);
     bool (*cancelled)(void *user);
     /* Detected interpretations, generic first, and the type used to open.
      * Called before parsing; the array is borrowed for this call. A read
      * inside an envelope or outer stream lists those layers first; any type
      * listed can be selected through file_type. */
-    void (*file_types)(void *user, const xx_file_type_t *types, size_t count,
-                       xx_file_type_t selected);
+    void (*file_types)(void *user, const xx_file_type_t *types, size_t count, xx_file_type_t selected);
     /* TEST only: the result of decoding/verifying one member in memory.
      * Arguments are borrowed for this call. The native readers do not report
      * a member cut short by Cancel here (the log says "-- cancelled" for it);
@@ -92,16 +90,14 @@ typedef struct xfu_callbacks {
     /* Actionable unpack interpretations, outer layers first.
      * Ordinary Binary/PE/COM inspection types are never offered. Borrowed
      * for this call. */
-    void (*unpack_handle_types)(void *user, const xx_unpack_handle_t *types,
-                                size_t count, xx_unpack_handle_t selected);
+    void (*unpack_handle_types)(void *user, const xx_unpack_handle_t *types, size_t count, xx_unpack_handle_t selected);
     /* Reader-confirmed encryption, independent of localized log text.
      * DETECTED does not imply failure: an encrypted archive can be listed.
      * REQUIRED/REJECTED mean an attempted operation could not read encrypted
      * metadata or a member. member_name is NULL for archive metadata.
      * Notifications are bounded per archive layer; member flags remain on
      * every entry. Arguments are borrowed, and callbacks run on the worker. */
-    void (*encryption)(void *user, xfu_encryption_status status,
-                       const char *member_name);
+    void (*encryption)(void *user, xfu_encryption_status status, const char *member_name);
 } xfu_callbacks;
 
 typedef struct xfu_request {
@@ -168,7 +164,6 @@ int xfu_run(const xfu_request *request);
 /* archive_options helpers: whether `pair` is one of its pairs, and the first
  * pair outside `known` (its length in *length), or NULL. */
 bool xfu_option_listed(const char *options, const char *pair);
-const char *xfu_option_unknown(const char *options, const char *const *known,
-                               size_t count, size_t *length);
+const char *xfu_option_unknown(const char *options, const char *const *known, size_t count, size_t *length);
 
 #endif

@@ -36,7 +36,7 @@ typedef struct xx_omf_segment_s {
 /** One LEDATA/LEDATA32 block, corresponding to one Radare2 OMF section. */
 typedef struct xx_omf_section_s {
     char name[XX_OMF_SECTION_NAME_SIZE];
-    int64_t offset;       /**< Absolute device offset of the data bytes. */
+    int64_t offset; /**< Absolute device offset of the data bytes. */
     uint64_t address;
     uint32_t size;
     uint32_t virtual_size;
@@ -50,10 +50,10 @@ typedef struct xx_omf_section_s {
 /** One PUBDEF/PUBDEF32 or LPUBDEF/LPUBDEF32 public symbol. */
 typedef struct xx_omf_public_symbol_s {
     char name[XX_OMF_NAME_SIZE];
-    int64_t offset;       /**< Absolute device offset, or -1 when not backed. */
+    int64_t offset; /**< Absolute device offset, or -1 when not backed. */
     uint64_t address;
     uint32_t value;
-    uint32_t ordinal;     /**< One based public-symbol ordinal. */
+    uint32_t ordinal; /**< One based public-symbol ordinal. */
     uint16_t segment_index;
     uint8_t bits;
 } xx_omf_public_symbol;

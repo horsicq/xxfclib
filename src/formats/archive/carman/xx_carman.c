@@ -82,8 +82,7 @@ static bool cm_read_lzss(Abstractformat *f, pm_member *m, xx_io_device *device, 
         xx_mem_free(plain);
         return false;
     }
-    ok = pm_read(f, m->offset - f->base_address, packed, (size_t)m->packed_size) &&
-         cm_lzss(packed, (size_t)m->packed_size, plain, (size_t)m->size) &&
+    ok = pm_read(f, m->offset - f->base_address, packed, (size_t)m->packed_size) && cm_lzss(packed, (size_t)m->packed_size, plain, (size_t)m->size) &&
          xx_crc32_calc(0, plain, (size_t)m->size) == expected_crc && !(pd && xx_pd_is_stopped(pd));
     xx_mem_free(packed);
     while (ok && device && done < (size_t)m->size) {
@@ -154,16 +153,15 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
         if (!pm_read(f, at, head, n)) return false;
         /* The terminator: an empty name, and nothing after it. */
         if (!head[0]) return at + 1 == total && s->count > 0;
-        for (name_n = 0; name_n < n && head[name_n]; ++name_n) {}
+        for (name_n = 0; name_n < n && head[name_n]; ++name_n) {
+        }
         if (name_n >= n || name_n + 1U + 1U + CM_HEADER + 4U > n || !cm_name(head, name_n, name)) return false;
         method = head[name_n + 1U];
         original = cm_u32(head + name_n + 2U);
         packed = cm_u32(head + name_n + 6U);
         crc = cm_u32(head + name_n + 10U);
         header_crc = cm_u32(head + name_n + 14U);
-        if ((method != 1U && method != 2U) || (method == 1U && original != packed) ||
-            (uint64_t)packed > (uint64_t)(total - at) - (name_n + 18U))
-            return false;
+        if ((method != 1U && method != 2U) || (method == 1U && original != packed) || (uint64_t)packed > (uint64_t)(total - at) - (name_n + 18U)) return false;
         if (xx_crc32_calc(0, head, name_n + 1U + CM_HEADER) != header_crc) return false;
         if (!pm_add(f, s, name, at + (int64_t)name_n + 18, (int64_t)packed)) return false;
         m = &s->items[s->count - 1U];

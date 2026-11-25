@@ -180,7 +180,6 @@ static char spoon_upper(char c)
 
 /* Windows-1252 0x80..0x9F; zero marks the five unassigned bytes. */
 
-
 static bool spoon_word_is(const uint8_t *name, size_t stem, const char *word)
 {
     size_t index;

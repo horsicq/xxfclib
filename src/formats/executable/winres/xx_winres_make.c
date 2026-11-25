@@ -114,9 +114,8 @@ static bool winres_version_string(xx_buf_t *out, const char *key, const char *va
     size_t start;
     bool ok;
     xx_buf_init(&text);
-    ok = winres_utf16(&text, value, &units) && winres_u16(&text, 0U) && units < 0xFFFFU &&
-         winres_version_begin(out, key, 1U, (uint16_t)(units + 1U), &start) && xx_buf_append(out, text.data, text.size) &&
-         winres_version_end(out, start);
+    ok = winres_utf16(&text, value, &units) && winres_u16(&text, 0U) && units < 0xFFFFU && winres_version_begin(out, key, 1U, (uint16_t)(units + 1U), &start) &&
+         xx_buf_append(out, text.data, text.size) && winres_version_end(out, start);
     xx_buf_free(&text);
     return ok;
 }
@@ -136,24 +135,21 @@ bool xx_winres_make_version(xx_buf_t *out, const xx_winres_version_info *info)
     if (!winres_version_begin(out, "VS_VERSION_INFO", 0U, 52U, &root)) return false;
     /* VS_FIXEDFILEINFO */
     if (!winres_u32(out, 0xFEEF04BDU) || !winres_u32(out, 0x00010000U) || !winres_u32(out, ((uint32_t)fv[0] << 16) | fv[1]) ||
-        !winres_u32(out, ((uint32_t)fv[2] << 16) | fv[3]) || !winres_u32(out, ((uint32_t)pv[0] << 16) | pv[1]) ||
-        !winres_u32(out, ((uint32_t)pv[2] << 16) | pv[3]) || !winres_u32(out, info->file_flags_mask) || !winres_u32(out, info->file_flags) ||
-        !winres_u32(out, info->file_os) || !winres_u32(out, info->file_type) || !winres_u32(out, info->file_subtype) || !winres_u32(out, 0U) ||
-        !winres_u32(out, 0U))
+        !winres_u32(out, ((uint32_t)fv[2] << 16) | fv[3]) || !winres_u32(out, ((uint32_t)pv[0] << 16) | pv[1]) || !winres_u32(out, ((uint32_t)pv[2] << 16) | pv[3]) ||
+        !winres_u32(out, info->file_flags_mask) || !winres_u32(out, info->file_flags) || !winres_u32(out, info->file_os) || !winres_u32(out, info->file_type) ||
+        !winres_u32(out, info->file_subtype) || !winres_u32(out, 0U) || !winres_u32(out, 0U))
         return false;
 
     pair = ((uint32_t)info->language << 16) | info->code_page;
     for (index = 0U; index < 8U; ++index) table[index] = hex[(pair >> (28U - 4U * index)) & 0xFU];
     table[8] = '\0';
-    if (!winres_version_begin(out, "StringFileInfo", 1U, 0U, &string_info) || !winres_version_begin(out, table, 1U, 0U, &string_table))
-        return false;
+    if (!winres_version_begin(out, "StringFileInfo", 1U, 0U, &string_info) || !winres_version_begin(out, table, 1U, 0U, &string_table)) return false;
     for (index = 0U; index < info->string_count; ++index)
         if (!winres_version_string(out, info->strings[index].key, info->strings[index].value)) return false;
     if (!winres_version_end(out, string_table) || !winres_version_end(out, string_info)) return false;
 
     if (!winres_version_begin(out, "VarFileInfo", 1U, 0U, &var_info) || !winres_version_begin(out, "Translation", 0U, 4U, &translation) ||
-        !winres_u16(out, info->language) || !winres_u16(out, info->code_page) || !winres_version_end(out, translation) ||
-        !winres_version_end(out, var_info))
+        !winres_u16(out, info->language) || !winres_u16(out, info->code_page) || !winres_version_end(out, translation) || !winres_version_end(out, var_info))
         return false;
     return winres_version_end(out, root);
 }
@@ -192,16 +188,15 @@ bool xx_winres_make_dialog(xx_buf_t *out, const xx_winres_dialog_template *dialo
     if (!out || !dialog || dialog->control_count > 0xFFFFU || (dialog->control_count && !dialog->controls)) return false;
     if (!winres_u32(out, dialog->style) || !winres_u32(out, dialog->ex_style) || !winres_u16(out, (uint16_t)dialog->control_count) ||
         !winres_u16(out, (uint16_t)dialog->x) || !winres_u16(out, (uint16_t)dialog->y) || !winres_u16(out, (uint16_t)dialog->cx) ||
-        !winres_u16(out, (uint16_t)dialog->cy) || !winres_u16(out, 0U) /* menu */ || !winres_u16(out, 0U) /* class */ ||
-        !winres_utf16z(out, dialog->caption))
+        !winres_u16(out, (uint16_t)dialog->cy) || !winres_u16(out, 0U) /* menu */ || !winres_u16(out, 0U) /* class */ || !winres_utf16z(out, dialog->caption))
         return false;
     if ((dialog->style & 0x40U) && (!winres_u16(out, dialog->point_size) || !winres_utf16z(out, dialog->face))) return false;
     for (index = 0U; index < dialog->control_count; ++index) {
         const xx_winres_dialog_control *control = dialog->controls + index;
-        if (!winres_align4(out) || !winres_u32(out, control->style) || !winres_u32(out, control->ex_style) ||
-            !winres_u16(out, (uint16_t)control->x) || !winres_u16(out, (uint16_t)control->y) || !winres_u16(out, (uint16_t)control->cx) ||
-            !winres_u16(out, (uint16_t)control->cy) || !winres_u16(out, control->id) || !winres_u16(out, 0xFFFFU) ||
-            !winres_u16(out, control->class_atom) || !winres_utf16z(out, control->text) || !winres_u16(out, 0U) /* no creation data */)
+        if (!winres_align4(out) || !winres_u32(out, control->style) || !winres_u32(out, control->ex_style) || !winres_u16(out, (uint16_t)control->x) ||
+            !winres_u16(out, (uint16_t)control->y) || !winres_u16(out, (uint16_t)control->cx) || !winres_u16(out, (uint16_t)control->cy) ||
+            !winres_u16(out, control->id) || !winres_u16(out, 0xFFFFU) || !winres_u16(out, control->class_atom) || !winres_utf16z(out, control->text) ||
+            !winres_u16(out, 0U) /* no creation data */)
             return false;
     }
     return xx_buf_ok(out);
@@ -214,8 +209,7 @@ bool xx_winres_make_accelerators(xx_buf_t *out, const xx_winres_accelerator *ent
     for (index = 0U; index < count; ++index) {
         uint16_t flags = (uint16_t)(entries[index].flags & 0x7FU);
         if (index + 1U == count) flags |= 0x80U;
-        if (!winres_u16(out, flags) || !winres_u16(out, entries[index].key) || !winres_u16(out, entries[index].id) || !winres_u16(out, 0U))
-            return false;
+        if (!winres_u16(out, flags) || !winres_u16(out, entries[index].key) || !winres_u16(out, entries[index].id) || !winres_u16(out, 0U)) return false;
     }
     return xx_buf_ok(out);
 }

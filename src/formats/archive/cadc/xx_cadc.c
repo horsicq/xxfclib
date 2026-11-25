@@ -147,7 +147,8 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
         /* The terminator: a lone zero byte, and nothing after it. */
         if (!head[0]) return at + 1 == total && s->count > 0;
         if (n < 2U || head[0] != 0x03U || head[1] != 0x01U) return false;
-        for (name_n = 0; 2U + name_n < n && head[2U + name_n]; ++name_n) {}
+        for (name_n = 0; 2U + name_n < n && head[2U + name_n]; ++name_n) {
+        }
         if (2U + name_n >= n || 2U + name_n + 1U + CD_FIXED > n || !cd_name(head + 2, name_n, name)) return false;
         method = head[2U + name_n + 1U];
         original = cd_u32(head + 2U + name_n + 2U);

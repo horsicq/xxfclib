@@ -38,7 +38,6 @@ XXFC_API bool xx_fss_unpack_current_archive_record(Abstractformat *self, xx_arch
 XXFC_API bool xx_fss_archive_record_move_to_next(Abstractformat *self, xx_archive_record_state *state, xx_pd_struct *pd);
 XXFC_API void xx_fss_free_archive_records_reading(Abstractformat *self, xx_archive_record_state *state);
 
-
 #ifdef __cplusplus
 }
 #endif

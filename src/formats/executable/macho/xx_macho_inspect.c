@@ -71,7 +71,8 @@ static char *mach_inspect_string(xx_executable_input *file, uint64_t offset, uin
     while (maximum && buffer.size < 65536U) {
         size_t amount = maximum < sizeof(bytes) ? (size_t)maximum : sizeof(bytes), i;
         if (!xx_exec_read(file, (int64_t)offset, bytes, amount)) goto invalid;
-        for (i = 0; i < amount && bytes[i]; ++i) {}
+        for (i = 0; i < amount && bytes[i]; ++i) {
+        }
         if (!xx_exec_account_string(file, i) || !xx_buf_append(&buffer, bytes, i)) {
             mach_inspect_error(file, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate Mach-O table string");
             xx_buf_free(&buffer);
@@ -127,9 +128,7 @@ static uint32_t mach_export_symbol_slot(MachExportTrie *trie, const char *name, 
     for (uint32_t probes = 0; probes < trie->symbol_slot_capacity; ++probes) {
         const MachExportSymbolSlot *entry = &trie->symbol_slots[slot];
         if ((probes & 1023U) == 0 && xx_pd_is_stopped(trie->file->pd)) break;
-        if (!entry->symbol_index_plus_one ||
-            (entry->hash == hash &&
-             !xx_rt_strcmp(trie->state->pSymbols[entry->symbol_index_plus_one - 1U].pName, name))) return slot;
+        if (!entry->symbol_index_plus_one || (entry->hash == hash && !xx_rt_strcmp(trie->state->pSymbols[entry->symbol_index_plus_one - 1U].pName, name))) return slot;
         slot = (slot + 1U) & mask;
     }
     mach_inspect_error(trie->file, XXFC_ERR_INVALID_ARG, "Cannot search Mach-O export symbol index");
@@ -198,7 +197,10 @@ static int mach_uleb(xx_executable_input *file, uint64_t *position, uint64_t end
         uint8_t byte = xx_exec_u8(file, (int64_t)(*position)++);
         if (file->failed || (shift == 63 && (byte & 0x7e))) return 0;
         result |= (uint64_t)(byte & 0x7f) << shift;
-        if (!(byte & 0x80)) { *value = result; return 1; }
+        if (!(byte & 0x80)) {
+            *value = result;
+            return 1;
+        }
         shift += 7;
     }
     return 0;
@@ -206,9 +208,15 @@ static int mach_uleb(xx_executable_input *file, uint64_t *position, uint64_t end
 
 static int mach_export_address(MachExportTrie *trie, uint64_t flags, uint64_t relative, uint64_t *address)
 {
-    if ((flags & 3U) == 2U) { *address = relative; return 1; }
+    if ((flags & 3U) == 2U) {
+        *address = relative;
+        return 1;
+    }
     if ((flags & 3U) == 3U) return 0;
-    if (trie->state->nImageBase == UINT64_MAX) { *address = UINT64_MAX; return 1; }
+    if (trie->state->nImageBase == UINT64_MAX) {
+        *address = UINT64_MAX;
+        return 1;
+    }
     if (relative >= UINT64_MAX - trie->state->nImageBase) return 0;
     *address = trie->state->nImageBase + relative;
     return 1;
@@ -223,8 +231,8 @@ static int mach_export_trie_node(MachExportTrie *trie, uint64_t node, unsigned d
     size_t prefix;
     if (depth > 256 || ++trie->visited > 1048576U || node >= trie->size || xx_pd_is_stopped(trie->file->pd)) goto invalid;
     cursor = (uint64_t)trie->offset + node;
-    if (!mach_uleb(trie->file, &cursor, (uint64_t)trie->offset + trie->size, &terminal_size) ||
-        terminal_size > (uint64_t)trie->offset + trie->size - cursor) goto invalid;
+    if (!mach_uleb(trie->file, &cursor, (uint64_t)trie->offset + trie->size, &terminal_size) || terminal_size > (uint64_t)trie->offset + trie->size - cursor)
+        goto invalid;
     terminal_end = cursor + terminal_size;
     if (terminal_size) {
         xx_macho_inspect_symbol *symbol = NULL;
@@ -237,14 +245,23 @@ static int mach_export_trie_node(MachExportTrie *trie, uint64_t node, unsigned d
             if (!mach_uleb(trie->file, &cursor, terminal_end, &ordinal) || !ordinal || ordinal > (uint64_t)trie->state->nLibraryCount) goto invalid;
             target = mach_inspect_string(trie->file, cursor, terminal_end - cursor);
             if (!target) return 0;
-            if ((uint64_t)xx_rt_strlen(target) + 1 != terminal_end - cursor) { xx_mem_free(target); goto invalid; }
+            if ((uint64_t)xx_rt_strlen(target) + 1 != terminal_end - cursor) {
+                xx_mem_free(target);
+                goto invalid;
+            }
             public_name = target[0] ? target : trie->name;
             library = trie->state->pLibraries[ordinal - 1].pName;
             library_length = xx_rt_strlen(library);
             target_length = xx_rt_strlen(public_name);
-            if (!xx_exec_account_string(trie->file, library_length + target_length + 1)) { xx_mem_free(target); goto invalid; }
+            if (!xx_exec_account_string(trie->file, library_length + target_length + 1)) {
+                xx_mem_free(target);
+                goto invalid;
+            }
             forwarder = (char *)xx_mem_alloc(library_length + target_length + 2);
-            if (!forwarder) { xx_mem_free(target); goto memory; }
+            if (!forwarder) {
+                xx_mem_free(target);
+                goto memory;
+            }
             xx_rt_memcpy(forwarder, library, library_length);
             forwarder[library_length] = '.';
             xx_rt_memcpy(forwarder + library_length + 1, public_name, target_length + 1);
@@ -258,7 +275,10 @@ static int mach_export_trie_node(MachExportTrie *trie, uint64_t node, unsigned d
         }
         hash = mach_export_symbol_hash(trie->name);
         slot = mach_export_symbol_slot(trie, trie->name, hash);
-        if (slot == UINT32_MAX) { xx_mem_free(forwarder); return 0; }
+        if (slot == UINT32_MAX) {
+            xx_mem_free(forwarder);
+            return 0;
+        }
         if (trie->symbol_slots[slot].symbol_index_plus_one) {
             symbol = &trie->state->pSymbols[trie->symbol_slots[slot].symbol_index_plus_one - 1U];
         }
@@ -271,7 +291,10 @@ static int mach_export_trie_node(MachExportTrie *trie, uint64_t node, unsigned d
                     return 0;
                 }
                 slot = mach_export_symbol_slot(trie, trie->name, hash);
-                if (slot == UINT32_MAX) { xx_mem_free(forwarder); return 0; }
+                if (slot == UINT32_MAX) {
+                    xx_mem_free(forwarder);
+                    return 0;
+                }
             }
             if (count == trie->symbol_capacity) {
                 uint32_t next = trie->symbol_capacity ? trie->symbol_capacity * 2U : 256U;
@@ -319,7 +342,8 @@ static int mach_export_trie_node(MachExportTrie *trie, uint64_t node, unsigned d
             trie->name[prefix + edge_length++] = (char)byte;
         }
         if (cursor > (uint64_t)trie->offset + trie->size || prefix + edge_length + 1 >= sizeof(trie->name) ||
-            !mach_uleb(trie->file, &cursor, (uint64_t)trie->offset + trie->size, &child_node)) goto invalid;
+            !mach_uleb(trie->file, &cursor, (uint64_t)trie->offset + trie->size, &child_node))
+            goto invalid;
         trie->name[prefix + edge_length] = '\0';
         if (!mach_export_trie_node(trie, child_node, depth + 1)) return 0;
         trie->name[prefix] = '\0';
@@ -672,12 +696,10 @@ static int inspect_parse_input(xx_executable_input *pFile, xx_macho_inspection *
         if ((nCmdSize < 8) || (nOffset + nCmdSize > commands_end)) {
             break;
         }
-        if ((nCmd == MACH_LC_SYMTAB && nCmdSize < 24) ||
-            (nCmd == MACH_LC_DYLD_EXPORTS_TRIE && nCmdSize < 16) ||
+        if ((nCmd == MACH_LC_SYMTAB && nCmdSize < 24) || (nCmd == MACH_LC_DYLD_EXPORTS_TRIE && nCmdSize < 16) ||
             ((nCmd & 0x7fffffffU) == MACH_LC_DYLD_INFO && nCmdSize < 48) ||
             ((nCmd == MACH_LC_LOAD_DYLIB || nCmd == 0x80000018U || nCmd == 0x20U || nCmd == 0x8000001fU || nCmd == 0x80000023U) && nCmdSize < 24) ||
-            (nCmd == MACH_LC_SEGMENT && nCmdSize < 56) ||
-            (nCmd == MACH_LC_SEGMENT_64 && nCmdSize < 72)) {
+            (nCmd == MACH_LC_SEGMENT && nCmdSize < 56) || (nCmd == MACH_LC_SEGMENT_64 && nCmdSize < 72)) {
             mach_inspect_error(pFile, XXFC_ERR_INVALID_ARG, "Short Mach-O load command");
             break;
         }
@@ -733,8 +755,7 @@ static int inspect_parse_input(xx_executable_input *pFile, xx_macho_inspection *
             uint64_t nFileSize = bSeg64 ? xx_exec_u64(pFile, nOffset + 48, bBE != 0) : xx_exec_u32(pFile, nOffset + 36, bBE != 0);
             if (!nFileOffset && nFileSize && nVmAddress < pMach->nImageBase) pMach->nImageBase = nVmAddress;
 
-            if ((uint64_t)nNsects > (uint64_t)(nCmdEnd - nSectOffset) / (uint64_t)nSectSize ||
-                nNsects > 1048576U - vecSections.count) {
+            if ((uint64_t)nNsects > (uint64_t)(nCmdEnd - nSectOffset) / (uint64_t)nSectSize || nNsects > 1048576U - vecSections.count) {
                 mach_inspect_error(pFile, XXFC_ERR_INVALID_ARG, "Invalid Mach-O section count");
                 break;
             }
@@ -793,9 +814,8 @@ static int inspect_parse_input(xx_executable_input *pFile, xx_macho_inspection *
     pMach->pSections = (xx_macho_inspect_section *)vecSections.data;
     if (nSymCount) {
         uint64_t stride = b64 ? 16U : 12U;
-        if (nSymCount > 1048576U || nSymOffset > (uint64_t)pFile->size || nStrOffset > (uint64_t)pFile->size ||
-            !nStrSize || nStrSize > (uint64_t)pFile->size - nStrOffset ||
-            (uint64_t)nSymCount > ((uint64_t)pFile->size - nSymOffset) / stride) {
+        if (nSymCount > 1048576U || nSymOffset > (uint64_t)pFile->size || nStrOffset > (uint64_t)pFile->size || !nStrSize ||
+            nStrSize > (uint64_t)pFile->size - nStrOffset || (uint64_t)nSymCount > ((uint64_t)pFile->size - nSymOffset) / stride) {
             mach_inspect_error(pFile, XXFC_ERR_OUT_OF_BOUNDS, "Mach-O symbol table outside input");
         } else {
             pMach->pSymbols = (xx_macho_inspect_symbol *)xx_mem_calloc(nSymCount, sizeof(*pMach->pSymbols));
@@ -808,33 +828,42 @@ static int inspect_parse_input(xx_executable_input *pFile, xx_macho_inspection *
                 uint16_t desc = xx_exec_u16(pFile, so + 6, bBE != 0);
                 uint64_t value = b64 ? xx_exec_u64(pFile, so + 8, bBE != 0) : xx_exec_u32(pFile, so + 8, bBE != 0);
                 xx_macho_inspect_symbol *symbol = &pMach->pSymbols[pMach->nSymbolCount];
-                if (strx >= nStrSize) { mach_inspect_error(pFile, XXFC_ERR_OUT_OF_BOUNDS, "Invalid Mach-O symbol string offset"); break; }
+                if (strx >= nStrSize) {
+                    mach_inspect_error(pFile, XXFC_ERR_OUT_OF_BOUNDS, "Invalid Mach-O symbol string offset");
+                    break;
+                }
                 symbol->pName = strx ? mach_inspect_string(pFile, (uint64_t)nStrOffset + strx, nStrSize - strx) : xx_exec_copy_string(pFile, "");
-                if (!symbol->pName) { pFile->failed = true; break; }
+                if (!symbol->pName) {
+                    pFile->failed = true;
+                    break;
+                }
                 symbol->nValue = value;
                 symbol->nType = type;
                 symbol->nSection = sect;
                 symbol->nDescription = desc;
                 symbol->bExternal = (type & MACH_N_EXT) != 0;
-                symbol->bUndefined = (type & MACH_N_STAB) == 0 &&
-                                    ((type & MACH_N_TYPE) == MACH_N_UNDF || (type & MACH_N_TYPE) == 0x0cU);
+                symbol->bUndefined = (type & MACH_N_STAB) == 0 && ((type & MACH_N_TYPE) == MACH_N_UNDF || (type & MACH_N_TYPE) == 0x0cU);
                 symbol->bFromSymbolTable = 1;
                 symbol->nTableIndex = si;
                 symbol->nRecordOffset = so;
                 symbol->bExported = (type & (MACH_N_STAB | 0x10U)) == 0 && symbol->bExternal && !symbol->bUndefined;
-                symbol->nExportFlags = (symbol->bExported && (desc & 0x80U) ? 4U : 0U) |
-                                       ((type & MACH_N_TYPE) == 2U ? 2U : 0U);
+                symbol->nExportFlags = (symbol->bExported && (desc & 0x80U) ? 4U : 0U) | ((type & MACH_N_TYPE) == 2U ? 2U : 0U);
                 symbol->nExportAddress = symbol->bExported ? value : UINT64_MAX;
                 symbol->nResolverAddress = UINT64_MAX;
                 if ((type & MACH_N_STAB) == 0 && (type & MACH_N_TYPE) == 0x0aU) {
                     /* N_INDR's native value is a string-table index. */
                     if (value >= nStrSize) {
-                        xx_mem_free(symbol->pName); symbol->pName = NULL;
+                        xx_mem_free(symbol->pName);
+                        symbol->pName = NULL;
                         mach_inspect_error(pFile, XXFC_ERR_OUT_OF_BOUNDS, "Invalid Mach-O indirect symbol target");
                         break;
                     }
                     symbol->pForwarder = mach_inspect_string(pFile, (uint64_t)nStrOffset + value, nStrSize - value);
-                    if (!symbol->pForwarder) { xx_mem_free(symbol->pName); symbol->pName = NULL; break; }
+                    if (!symbol->pForwarder) {
+                        xx_mem_free(symbol->pName);
+                        symbol->pName = NULL;
+                        break;
+                    }
                     symbol->nExportAddress = UINT64_MAX;
                 }
                 ++pMach->nSymbolCount;

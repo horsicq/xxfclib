@@ -218,8 +218,7 @@ static bool record(xx_archive_record *r, const ain_member *m)
            xx_archive_record_set_meta_u64(r, XX_META_ID_TIMESTAMP, m->time) &&
            /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
            xx_archive_record_set_meta_u64(r, XX_META_ID_LAST_MOD_DATE, (m->time >> 16) & 0xFFFFU) &&
-           xx_archive_record_set_meta_u64(r, XX_META_ID_LAST_MOD_TIME, m->time & 0xFFFFU) &&
-           xx_archive_record_set_meta_bool(r, XX_META_ID_IS_ENCRYPTED, m->encrypted) &&
+           xx_archive_record_set_meta_u64(r, XX_META_ID_LAST_MOD_TIME, m->time & 0xFFFFU) && xx_archive_record_set_meta_bool(r, XX_META_ID_IS_ENCRYPTED, m->encrypted) &&
            xx_archive_record_set_meta_bool(r, XX_META_ID_IS_FOLDER, false);
 }
 static bool decode(Abstractformat *f, const ain_member *m, uint8_t **out, size_t *size)

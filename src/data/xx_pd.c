@@ -46,7 +46,8 @@ static bool pd_stop_load(const xx_pd_struct *pd)
     return __atomic_load_n(&pd->is_stop, __ATOMIC_ACQUIRE);
 #else
     bool stopped;
-    while (atomic_flag_test_and_set_explicit(&pd_stop_lock, memory_order_acquire)) {}
+    while (atomic_flag_test_and_set_explicit(&pd_stop_lock, memory_order_acquire)) {
+    }
     stopped = pd->is_stop;
     atomic_flag_clear_explicit(&pd_stop_lock, memory_order_release);
     return stopped;
@@ -60,7 +61,8 @@ static void pd_stop_store(xx_pd_struct *pd)
 #elif defined(__GNUC__) || defined(__clang__)
     __atomic_store_n(&pd->is_stop, true, __ATOMIC_RELEASE);
 #else
-    while (atomic_flag_test_and_set_explicit(&pd_stop_lock, memory_order_acquire)) {}
+    while (atomic_flag_test_and_set_explicit(&pd_stop_lock, memory_order_acquire)) {
+    }
     pd->is_stop = true;
     atomic_flag_clear_explicit(&pd_stop_lock, memory_order_release);
 #endif

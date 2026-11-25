@@ -90,8 +90,7 @@ XXFC_API bool xx_dotnet_inspect_method_body(xx_dotnet_inspection *state, uint32_
  * every existing extent/token/count check remains enabled. The strict API
  * above is identical to calling _ex with flags=0. */
 #define XX_DOTNET_METHOD_BODY_ALLOW_UNALIGNED_FAT UINT32_C(1)
-XXFC_API bool xx_dotnet_inspect_method_body_ex(xx_dotnet_inspection *state, uint32_t rva,
-    uint32_t flags, xx_dotnet_method_body *body);
+XXFC_API bool xx_dotnet_inspect_method_body_ex(xx_dotnet_inspection *state, uint32_t rva, uint32_t flags, xx_dotnet_method_body *body);
 
 #ifdef __cplusplus
 }

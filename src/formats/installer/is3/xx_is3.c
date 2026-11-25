@@ -317,8 +317,7 @@ static bool is3_parse_cabinet(Abstractformat *format, const uint8_t *header, int
             /* MS-DOS timestamp stored as two words: date at +15, time at +17.
              * The packed TIMESTAMP meta is (date << 16) | time (as CAB/ZOO). A
              * plain u32 read here would place them in the wrong halves. */
-            member.dos_time = ((uint32_t)xx_data_get_u16(entry + 15U, 2, 0, false) << 16) |
-                              (uint32_t)xx_data_get_u16(entry + 17U, 2, 0, false);
+            member.dos_time = ((uint32_t)xx_data_get_u16(entry + 15U, 2, 0, false) << 16) | (uint32_t)xx_data_get_u16(entry + 17U, 2, 0, false);
             member.attributes = xx_data_get_u32(entry + 19U, 4, 0, false);
             member.volume = xx_data_get_u16(entry + 25U, 2, 0, false);
             member.wire_offset = xx_data_get_u32(entry + 11U, 4, 0, false);
@@ -611,36 +610,61 @@ static bool is3_lone_volume(Abstractformat *format, is3_stream *stream)
     return true;
 }
 
-static bool is3_parse(Abstractformat *format,is3_stream **result,xx_pd_struct *pd)
+static bool is3_parse(Abstractformat *format, is3_stream **result, xx_pd_struct *pd)
 {
-    is3_stream *single=NULL,*joined=NULL;xx_io_device *view=NULL;Abstractformat logical;
-    int64_t saved;size_t i;bool ok=false;
-    if(!format||!format->device||xx_pd_is_stopped(pd)||(saved=xx_io_tell(format->device))<0)return false;
-    if(!is3_parse_single(format,&single))goto done;
-    if(!single->payload_variant) {
+    is3_stream *single = NULL, *joined = NULL;
+    xx_io_device *view = NULL;
+    Abstractformat logical;
+    int64_t saved;
+    size_t i;
+    bool ok = false;
+    if (!format || !format->device || xx_pd_is_stopped(pd) || (saved = xx_io_tell(format->device)) < 0) return false;
+    if (!is3_parse_single(format, &single)) goto done;
+    if (!single->payload_variant) {
         uint8_t flags[2];
-        view=is3_volume_view(format,pd);
-        if(!xx_io_read_at(format->device,format->base_address+10,flags,sizeof(flags)))goto done;
+        view = is3_volume_view(format, pd);
+        if (!xx_io_read_at(format->device, format->base_address + 10, flags, sizeof(flags))) goto done;
         /* Never expose directory bytes as a missing member's payload merely
          * because its numeric extent happens to fit the physical volume. */
-        if((xx_data_get_u16(flags,2,0,false)&3U)&&!view&&!is3_lone_volume(format,single))goto done;
+        if ((xx_data_get_u16(flags, 2, 0, false) & 3U) && !view && !is3_lone_volume(format, single)) goto done;
     }
-    if(xx_pd_is_stopped(pd))goto done;
-    if(view) {
-        logical=*format;logical.device=view;logical.base_address=0;
-        if(!is3_parse_single(&logical,&joined)||joined->count!=single->count)goto done;
-        for(i=0;i<joined->count;i++) {
-            uint8_t *plain=NULL;size_t size=0;
-            if(xx_pd_is_stopped(pd)||!is3_decode_member(&logical,&joined->items[i],&plain,&size)){xx_mem_free(plain);goto done;}
-            xx_mem_free(plain);joined->items[i].volume=1;
+    if (xx_pd_is_stopped(pd)) goto done;
+    if (view) {
+        logical = *format;
+        logical.device = view;
+        logical.base_address = 0;
+        if (!is3_parse_single(&logical, &joined) || joined->count != single->count) goto done;
+        for (i = 0; i < joined->count; i++) {
+            uint8_t *plain = NULL;
+            size_t size = 0;
+            if (xx_pd_is_stopped(pd) || !is3_decode_member(&logical, &joined->items[i], &plain, &size)) {
+                xx_mem_free(plain);
+                goto done;
+            }
+            xx_mem_free(plain);
+            joined->items[i].volume = 1;
         }
-        joined->volume_view=view;view=NULL;joined->archive_size=single->archive_size;
-        is3_stream_free(single);single=joined;joined=NULL;
+        joined->volume_view = view;
+        view = NULL;
+        joined->archive_size = single->archive_size;
+        is3_stream_free(single);
+        single = joined;
+        joined = NULL;
     }
-    *result=single;single=NULL;ok=true;
+    *result = single;
+    single = NULL;
+    ok = true;
 done:
-    is3_stream_free(single);is3_stream_free(joined);if(view)xx_io_close(view);
-    if(xx_io_seek64(format->device,saved,SEEK_SET)!=0){if(ok){is3_stream_free(*result);*result=NULL;}ok=false;}
+    is3_stream_free(single);
+    is3_stream_free(joined);
+    if (view) xx_io_close(view);
+    if (xx_io_seek64(format->device, saved, SEEK_SET) != 0) {
+        if (ok) {
+            is3_stream_free(*result);
+            *result = NULL;
+        }
+        ok = false;
+    }
     return ok;
 }
 
@@ -700,7 +724,7 @@ bool xx_is3_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
     is3_stream *stream;
     xx_is3 *archive;
     (void)pd;
-    if (!format || !is3_parse(format, &stream,pd)) return false;
+    if (!format || !is3_parse(format, &stream, pd)) return false;
     archive = (xx_is3 *)format;
     archive->number_of_records = stream->count;
     archive->archive_end = format->base_address + stream->archive_size;
@@ -727,7 +751,7 @@ xx_archive_record_state *xx_is3_create_archive_records_reading(Abstractformat *f
     is3_stream *stream;
     xx_archive_record_state *state;
     (void)pd;
-    if (!is3_parse(format, &stream,pd)) return NULL;
+    if (!is3_parse(format, &stream, pd)) return NULL;
     state = (xx_archive_record_state *)xx_mem_alloc(sizeof(*state));
     if (!state) {
         is3_stream_free(stream);
@@ -780,8 +804,11 @@ bool xx_is3_unpack_current_archive_record(Abstractformat *format, xx_archive_rec
         (pd && xx_pd_is_stopped(pd)))
         return false;
     member = &stream->items[stream->index];
-    logical=*format;
-    if(stream->volume_view){logical.device=stream->volume_view;logical.base_address=0;}
+    logical = *format;
+    if (stream->volume_view) {
+        logical.device = stream->volume_view;
+        logical.base_address = 0;
+    }
     if (!is3_safe_output_name(member->name) || !is3_decode_member(&logical, member, &plain, &plain_size)) goto done;
     path_option = is3_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_option) {
@@ -798,8 +825,8 @@ bool xx_is3_unpack_current_archive_record(Abstractformat *format, xx_archive_rec
         char *relative = xx_archive_output_name(member->name, 1252, 0);
         XX_ARCHIVE_OUTPUT_RESOLVE(relative, stream->items, stream->count, stream->index, name, 1252, 0);
         if (!relative) goto done;
-    path = (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", relative)
-                                                                                                  : xx_str_concat(base, relative);
+        path =
+            (base[0] && base[xx_str_len(base) - 1U] != '/' && base[xx_str_len(base) - 1U] != '\\') ? xx_str_concat3(base, "/", relative) : xx_str_concat(base, relative);
         xx_mem_free(relative);
     }
     if (!path || !xx_store_create_dirs_a(path, false)) goto done;

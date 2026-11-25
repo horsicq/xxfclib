@@ -310,15 +310,15 @@ XXFC_API const xx_pe_section *xx_pe_get_section(const xx_pe *pe, uint16_t index)
 /** The first CodeView record of the debug directory
  *  (IMAGE_DEBUG_TYPE_CODEVIEW, CV_INFO_PDB70 or CV_INFO_PDB20). */
 typedef struct xx_pe_codeview_info {
-    uint32_t signature;  /**< XX_PE_CODEVIEW_SIGNATURE_RSDS or _NB10 */
-    uint8_t guid[16];    /**< RSDS: the GUID as stored (Data1..3 little endian); NB10: zero */
-    uint32_t nb10_signature; /**< NB10: the time stamp signature; RSDS: 0 */
-    uint32_t nb10_offset;    /**< NB10: the CodeView offset (0); RSDS: 0 */
-    uint32_t age;        /**< The age the PDB must have (its DBI age) */
+    uint32_t signature;                     /**< XX_PE_CODEVIEW_SIGNATURE_RSDS or _NB10 */
+    uint8_t guid[16];                       /**< RSDS: the GUID as stored (Data1..3 little endian); NB10: zero */
+    uint32_t nb10_signature;                /**< NB10: the time stamp signature; RSDS: 0 */
+    uint32_t nb10_offset;                   /**< NB10: the CodeView offset (0); RSDS: 0 */
+    uint32_t age;                           /**< The age the PDB must have (its DBI age) */
     char pdb_path[XX_PE_CODEVIEW_PATH_MAX]; /**< PDB path as stored (bytes up to the first zero), NUL terminated */
-    bool is_path_truncated; /**< The stored path did not fit pdb_path */
-    int64_t record_offset;  /**< Device offset of the record */
-    uint32_t record_size;   /**< SizeOfData of its debug directory entry */
+    bool is_path_truncated;                 /**< The stored path did not fit pdb_path */
+    int64_t record_offset;                  /**< Device offset of the record */
+    uint32_t record_size;                   /**< SizeOfData of its debug directory entry */
 } xx_pe_codeview_info;
 
 /** Read the first RSDS or NB10 CodeView record of the debug directory.

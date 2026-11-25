@@ -146,7 +146,6 @@ static bool ardi_read_at(xx_io_device *device, int64_t offset, void *buffer, siz
 /* OS/2 stores 8-bit names in the system code page; code page 850 is taken,
  * the default for the western European installs these carriers target. */
 
-
 /* @p length code page 850 bytes as UTF-8 into @p out (NUL terminated).
  * Fails when a byte is a control character or the text does not fit. */
 static bool ardi_decode(const uint8_t *raw, size_t length, char *out, size_t capacity)

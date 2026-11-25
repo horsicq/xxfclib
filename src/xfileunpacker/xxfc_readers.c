@@ -20,7 +20,10 @@
 #endif
 #include <string.h>
 
-typedef struct xxfc_reader_alias { const char *name; xx_file_type_t type; } xxfc_reader_alias;
+typedef struct xxfc_reader_alias {
+    const char *name;
+    xx_file_type_t type;
+} xxfc_reader_alias;
 static const xxfc_reader_alias aliases[] = {
 #if !XFU_FORMAT_SUPPORT_FULL
 #define XX_SUPPORTED_FORMAT(type, name, label) {#name, XX_FILE_TYPE_##type},
@@ -39,8 +42,10 @@ static const xxfc_reader_alias aliases[] = {
     {"bzip2", XX_FILE_TYPE_BZ2},
 #endif
 #else
-    {"7z", XX_FILE_TYPE_7ZIP}, {"gzip", XX_FILE_TYPE_GZ},
-    {"bzip2", XX_FILE_TYPE_BZ2}, {"compress", XX_FILE_TYPE_UNIX_COMPRESS},
+    {"7z", XX_FILE_TYPE_7ZIP},
+    {"gzip", XX_FILE_TYPE_GZ},
+    {"bzip2", XX_FILE_TYPE_BZ2},
+    {"compress", XX_FILE_TYPE_UNIX_COMPRESS},
     {"txt", XX_FILE_TYPE_TEXT},
     {"executable_overlay", XX_FILE_TYPE_EXECUTABLE_OVERLAY},
     {"scummvm_dxa", XX_FILE_TYPE_SCUMMVM_DXA},
@@ -123,7 +128,8 @@ static const xxfc_reader_alias aliases[] = {
     {"natata", XX_FILE_TYPE_NATATA_EBOOK},
     {"natata_ebook", XX_FILE_TYPE_NATATA_EBOOK},
     {"Executable overlay", XX_FILE_TYPE_EXECUTABLE_OVERLAY},
-    {"tar_lz", XX_FILE_TYPE_TAR_LZIP}, {"tar_zst", XX_FILE_TYPE_TAR_ZSTD},
+    {"tar_lz", XX_FILE_TYPE_TAR_LZIP},
+    {"tar_zst", XX_FILE_TYPE_TAR_ZSTD},
 #include "xxfc_reader_aliases.inc"
 #endif
 };
@@ -135,12 +141,14 @@ static bool same_name(const char *a, const char *b)
         unsigned char x, y;
         while (*a && !((*a >= 'a' && *a <= 'z') || (*a >= 'A' && *a <= 'Z') || (*a >= '0' && *a <= '9'))) ++a;
         while (*b && !((*b >= 'a' && *b <= 'z') || (*b >= 'A' && *b <= 'Z') || (*b >= '0' && *b <= '9'))) ++b;
-        x = (unsigned char)*a; y = (unsigned char)*b;
+        x = (unsigned char)*a;
+        y = (unsigned char)*b;
         if (x >= 'A' && x <= 'Z') x += 'a' - 'A';
         if (y >= 'A' && y <= 'Z') y += 'a' - 'A';
         if (x != y) return false;
         if (!x) return true;
-        ++a; ++b;
+        ++a;
+        ++b;
     }
     return true;
 }
@@ -172,8 +180,7 @@ bool xxfc_open_type(xxfc_opened *opened, xx_io_device *device, int64_t base, xx_
     if (!opened || !device || base < 0) return false;
     format = xx_format_create_reader(type, device, base);
     if (!format) return false;
-    if (type == XX_FILE_TYPE_ZIP || type == XX_FILE_TYPE_ZIP64)
-        ((xx_zip *)format)->allow_leading_data = true;
+    if (type == XX_FILE_TYPE_ZIP || type == XX_FILE_TYPE_ZIP64) ((xx_zip *)format)->allow_leading_data = true;
     memset(opened, 0, sizeof(*opened));
     opened->format = format;
     opened->type = type;
@@ -201,15 +208,14 @@ static bool validate(xxfc_opened *opened, const char *password, xx_pd_struct *pd
     Abstractformat *f = opened->format;
     if (!f || (pd && xx_pd_is_stopped(pd))) return false;
     if (password && !xx_format_set_password(f, password)) return false;
-    if (!xx_format_is_valid(f, pd) || !xx_format_handle_base_info(f, pd) ||
-        !f->create_archive_records_reading || !f->get_current_archive_record ||
-        !f->unpack_current_archive_record) return false;
+    if (!xx_format_is_valid(f, pd) || !xx_format_handle_base_info(f, pd) || !f->create_archive_records_reading || !f->get_current_archive_record ||
+        !f->unpack_current_archive_record)
+        return false;
     if (f->file_type != XX_FILE_TYPE_UNKNOWN) opened->type = f->file_type;
     return true;
 }
 
-bool xxfc_open_extension_fast(xxfc_opened *opened, xx_io_device *device, int64_t base,
-                              const char *path, xx_pd_struct *pd)
+bool xxfc_open_extension_fast(xxfc_opened *opened, xx_io_device *device, int64_t base, const char *path, xx_pd_struct *pd)
 {
     xx_file_type_t type = xx_format_get_file_type_extension(path);
     if (type == XX_FILE_TYPE_UNKNOWN || !xxfc_open_type(opened, device, base, type)) return false;
@@ -218,8 +224,7 @@ bool xxfc_open_extension_fast(xxfc_opened *opened, xx_io_device *device, int64_t
     return false;
 }
 
-bool xxfc_open_extension(xxfc_opened *opened, xx_io_device *device, int64_t base,
-                         const char *path, xx_pd_struct *pd)
+bool xxfc_open_extension(xxfc_opened *opened, xx_io_device *device, int64_t base, const char *path, xx_pd_struct *pd)
 {
     const char *suffix;
     size_t i;
@@ -227,16 +232,14 @@ bool xxfc_open_extension(xxfc_opened *opened, xx_io_device *device, int64_t base
     if (!path || (suffix = strrchr(path, '.')) == NULL) return false;
     for (i = 0; i < sizeof(aliases) / sizeof(aliases[0]); ++i) {
         if (pd && xx_pd_is_stopped(pd)) break;
-        if (!same_name(suffix + 1, aliases[i].name) ||
-            !xxfc_open_type(opened, device, base, aliases[i].type)) continue;
+        if (!same_name(suffix + 1, aliases[i].name) || !xxfc_open_type(opened, device, base, aliases[i].type)) continue;
         if (validate(opened, NULL, pd)) return true;
         xxfc_close(opened);
     }
     return false;
 }
 
-bool xxfc_open_fallback(xxfc_opened *opened, xx_io_device *device, int64_t base,
-                        const char *path, const char *password, xx_file_type_t previous, xx_pd_struct *pd)
+bool xxfc_open_fallback(xxfc_opened *opened, xx_io_device *device, int64_t base, const char *path, const char *password, xx_file_type_t previous, xx_pd_struct *pd)
 {
     xx_list_t *handles;
     size_t i;
@@ -247,9 +250,11 @@ bool xxfc_open_fallback(xxfc_opened *opened, xx_io_device *device, int64_t base,
     for (i = 0; i < xx_list_count(handles); ++i) {
         xx_unpack_handle_t handle = *(const xx_unpack_handle_t *)xx_list_at(handles, i);
         xx_file_type_t type = handle.type;
-        if (type == previous || (pd && xx_pd_is_stopped(pd)) ||
-            !xxfc_open_type(opened, device, base, type)) continue;
-        if (validate(opened, password, pd)) { xx_list_destroy(handles); return true; }
+        if (type == previous || (pd && xx_pd_is_stopped(pd)) || !xxfc_open_type(opened, device, base, type)) continue;
+        if (validate(opened, password, pd)) {
+            xx_list_destroy(handles);
+            return true;
+        }
         xxfc_close(opened);
     }
     xx_list_destroy(handles);
@@ -265,7 +270,8 @@ Abstractformat *xxfc_make_writer(const char *name, xx_io_device *output, xxfc_re
     format = xx_format_create_reader(type, output, 0);
     if (!format) return NULL;
     if (!format->create_archive_records_writing || !format->pack_archive_record) {
-        xx_format_free_reader(format); return NULL;
+        xx_format_free_reader(format);
+        return NULL;
     }
     if (release) *release = xx_format_free_reader;
     return format;
@@ -275,13 +281,13 @@ void xxfc_attach_source_files(xxfc_opened *opened, const char *path)
 {
     /* Native readers borrow their device, which retains the source path and
      * volume set. No helper executable or separate filename factory is used. */
-    (void)opened; (void)path;
+    (void)opened;
+    (void)path;
 }
 
 void xxfc_refresh_sevenzip_type(xxfc_opened *opened)
 {
-    if (opened && opened->format && opened->format->file_type != XX_FILE_TYPE_UNKNOWN)
-        opened->type = opened->format->file_type;
+    if (opened && opened->format && opened->format->file_type != XX_FILE_TYPE_UNKNOWN) opened->type = opened->format->file_type;
 }
 
 bool xxfc_reader_uses_helper(const xxfc_opened *opened)
@@ -300,8 +306,7 @@ bool xxfc_is_incomplete(const xxfc_opened *opened)
 #endif
     /* Destructors can be identical across native formats and folded by the
      * linker. Use the reader's actual enum identity before concrete casts. */
-    if (type == XX_FILE_TYPE_ZIP || type == XX_FILE_TYPE_ZIP64)
-        return ((const xx_zip *)opened->format)->directory_damaged;
+    if (type == XX_FILE_TYPE_ZIP || type == XX_FILE_TYPE_ZIP64) return ((const xx_zip *)opened->format)->directory_damaged;
 
 #if !XFU_FORMAT_SUPPORT_FULL
     return false;
@@ -312,26 +317,18 @@ bool xxfc_is_incomplete(const xxfc_opened *opened)
          * reader aggregates termination across its wrapped members. */
         return archive->is_wrapped && !archive->is_terminated;
     }
-    if (type == XX_FILE_TYPE_UUE)
-        return !((const xx_uue *)opened->format)->is_terminated;
-    if (type == XX_FILE_TYPE_SFX_LHA)
-        return ((const xx_sfx_lha *)opened->format)->incomplete_tail;
-    if (type == XX_FILE_TYPE_BIGAF)
-        return !((const xx_bigaf *)opened->format)->is_complete;
-    if (type == XX_FILE_TYPE_CHZ)
-        return !((const xx_chz *)opened->format)->is_complete;
-    if (type == XX_FILE_TYPE_SFX_CHZ)
-        return !((const xx_sfx_chz *)opened->format)->is_complete;
-    if (type == XX_FILE_TYPE_SPIS)
-        return !((const xx_spis *)opened->format)->is_complete;
-    if (type == XX_FILE_TYPE_SWAG)
-        return !((const xx_swag *)opened->format)->is_complete;
-    if (type == XX_FILE_TYPE_SFX_SWAG)
-        return !((const xx_sfx_swag *)opened->format)->is_complete;
+    if (type == XX_FILE_TYPE_UUE) return !((const xx_uue *)opened->format)->is_terminated;
+    if (type == XX_FILE_TYPE_SFX_LHA) return ((const xx_sfx_lha *)opened->format)->incomplete_tail;
+    if (type == XX_FILE_TYPE_BIGAF) return !((const xx_bigaf *)opened->format)->is_complete;
+    if (type == XX_FILE_TYPE_CHZ) return !((const xx_chz *)opened->format)->is_complete;
+    if (type == XX_FILE_TYPE_SFX_CHZ) return !((const xx_sfx_chz *)opened->format)->is_complete;
+    if (type == XX_FILE_TYPE_SPIS) return !((const xx_spis *)opened->format)->is_complete;
+    if (type == XX_FILE_TYPE_SWAG) return !((const xx_swag *)opened->format)->is_complete;
+    if (type == XX_FILE_TYPE_SFX_SWAG) return !((const xx_sfx_swag *)opened->format)->is_complete;
     switch (type) {
 #include "xxfc_legacy_incomplete.inc"
         return ((const xx_legacy_archive_info *)opened->format)->incomplete;
-    default: return false;
+        default: return false;
     }
 #endif
 }

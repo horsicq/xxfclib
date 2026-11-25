@@ -31,8 +31,8 @@
 const uint8_t PPMD8_kExpEscape[16] = {25, 14, 9, 7, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2};
 static const uint16_t kInitBinEsc[] = {0x3CDD, 0x1F3F, 0x59BF, 0x48F3, 0x64A1, 0x5ABC, 0x6632, 0x6051};
 /* SQX method 6 frequency-class startup values. */
-static const uint8_t sqxBinDiv[25] = {2,3,4,5,6,7,9,12,16,21,27,34,42,51,61,72,84,97,111,126,142,159,177,196,216};
-static const uint8_t sqxSeeBase[24] = {1,2,3,5,8,12,17,23,30,38,47,57,68,80,93,107,122,138,155,173,192,212,233,255};
+static const uint8_t sqxBinDiv[25] = {2, 3, 4, 5, 6, 7, 9, 12, 16, 21, 27, 34, 42, 51, 61, 72, 84, 97, 111, 126, 142, 159, 177, 196, 216};
+static const uint8_t sqxSeeBase[24] = {1, 2, 3, 5, 8, 12, 17, 23, 30, 38, 47, 57, 68, 80, 93, 107, 122, 138, 155, 173, 192, 212, 233, 255};
 
 #define MAX_FREQ PPMD8_MAX_FREQ
 #define UNIT_SIZE PPMD8_UNIT_SIZE

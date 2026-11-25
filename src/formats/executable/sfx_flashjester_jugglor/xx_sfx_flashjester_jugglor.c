@@ -195,7 +195,6 @@ static bool jg_pe_overlay(Abstractformat *format, int64_t size, int64_t *overlay
 
 /* Windows-1252 0x80..0x9F; 0 marks the five unassigned bytes. */
 
-
 static size_t jg_put_utf8(char *out, uint8_t byte)
 {
     uint32_t code = byte;
@@ -497,8 +496,8 @@ static bool jg_walk(Abstractformat *format, jg_layout *layout, jg_member **list,
         if (layout->variant == XX_SFX_FLASHJESTER_JUGGLOR_VARIANT_JUGGLOR) {
             /* Each step is either the trailer or another member. */
             if (remaining < (int64_t)JG_TRAILER || !jg_read_at(format->device, format->base_address + position, h, avail)) return false;
-            if (xx_data_get_u32(h, 4, 0, false) == JG_MAGIC && (xx_data_get_u32(h + JG_TRAILER_SEAL_AT, 4, 0, false) == JG_SEAL ||
-                                                                          xx_data_get_u32(h + JG_TRAILER_SEAL_AT, 4, 0, false) == JG_RELATIVE_SEAL)) {
+            if (xx_data_get_u32(h, 4, 0, false) == JG_MAGIC &&
+                (xx_data_get_u32(h + JG_TRAILER_SEAL_AT, 4, 0, false) == JG_SEAL || xx_data_get_u32(h + JG_TRAILER_SEAL_AT, 4, 0, false) == JG_RELATIVE_SEAL)) {
                 if (layout->count == 0U || !jg_trailer_parse(h, layout, position, layout->version)) return false;
                 layout->end = position + (int64_t)JG_TRAILER;
                 return true;

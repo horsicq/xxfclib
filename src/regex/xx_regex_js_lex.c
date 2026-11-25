@@ -27,8 +27,10 @@
  * are accepted lexically here; regex compilation decides their semantics. */
 static int regexp_flag_ident_part(int nChar)
 {
-    return (((nChar >= 'a') && (nChar <= 'z')) || ((nChar >= 'A') && (nChar <= 'Z')) ||
-            ((nChar >= '0') && (nChar <= '9')) || (nChar == '_') || (nChar == '$') || (nChar >= 0x80)) ? 1 : 0;
+    return (((nChar >= 'a') && (nChar <= 'z')) || ((nChar >= 'A') && (nChar <= 'Z')) || ((nChar >= '0') && (nChar <= '9')) || (nChar == '_') || (nChar == '$') ||
+            (nChar >= 0x80))
+               ? 1
+               : 0;
 }
 
 static size_t matching_open(const JSLexer *pLexer, size_t nClose, JSTokType open, JSTokType close)
@@ -50,8 +52,12 @@ static int control_paren(const JSLexer *pLexer, size_t nClose)
      * so a following slash remains division rather than a statement regex. */
     if (nOpen > 1 && pLexer->pTokens[nOpen - 2].type == T_DOT) return 0;
     switch (pLexer->pTokens[nOpen - 1].type) {
-        case T_IF: case T_WHILE: case T_FOR: case T_WITH:
-        case T_SWITCH: case T_CATCH: return 1;
+        case T_IF:
+        case T_WHILE:
+        case T_FOR:
+        case T_WITH:
+        case T_SWITCH:
+        case T_CATCH: return 1;
         default: return 0;
     }
 }
@@ -66,8 +72,13 @@ static int statement_block(const JSLexer *pLexer, size_t nClose)
     if (nOpen == 0) return 1;
     previous = pLexer->pTokens[nOpen - 1].type;
     switch (previous) {
-        case T_SEMI: case T_LBRACE: case T_RBRACE:
-        case T_ELSE: case T_TRY: case T_FINALLY: case T_DO: return 1;
+        case T_SEMI:
+        case T_LBRACE:
+        case T_RBRACE:
+        case T_ELSE:
+        case T_TRY:
+        case T_FINALLY:
+        case T_DO: return 1;
         case T_RPAREN: {
             size_t nParams, nFunction;
             if (control_paren(pLexer, nOpen - 1)) return 1;
@@ -78,7 +89,10 @@ static int statement_block(const JSLexer *pLexer, size_t nClose)
             if (pLexer->pTokens[nFunction].type != T_FUNCTION) return 0;
             if (nFunction == 0) return 1;
             switch (pLexer->pTokens[nFunction - 1].type) {
-                case T_SEMI: case T_LBRACE: case T_RBRACE: case T_ELSE: return 1;
+                case T_SEMI:
+                case T_LBRACE:
+                case T_RBRACE:
+                case T_ELSE: return 1;
                 default: return 0;
             }
         }
@@ -94,9 +108,17 @@ static int prev_allows_regexp(const JSLexer *pLexer)
     switch (pPrev->type) {
         case T_RPAREN: return control_paren(pLexer, pLexer->nCount - 1);
         case T_RBRACE: return statement_block(pLexer, pLexer->nCount - 1);
-        case T_IDENT: case T_NUMBER: case T_STRING: case T_REGEXP:
-        case T_RBRACKET: case T_THIS: case T_TRUE: case T_FALSE:
-        case T_NULL: case T_INC: case T_DEC: return 0;
+        case T_IDENT:
+        case T_NUMBER:
+        case T_STRING:
+        case T_REGEXP:
+        case T_RBRACKET:
+        case T_THIS:
+        case T_TRUE:
+        case T_FALSE:
+        case T_NULL:
+        case T_INC:
+        case T_DEC: return 0;
         default: return 1;
     }
 }

@@ -36,14 +36,11 @@ static inline unsigned xx_maskscan_first_bit(uint32_t bits)
 
 /* Backends receive validated arguments: 1 <= count <= XX_MASKSCAN_MAX_PROBES,
  * first <= last and last + every offset inside the buffer. */
-size_t xx_maskscan_find_scalar(const uint8_t *data, size_t first, size_t last,
-                               const xx_maskscan_probe *probes, size_t count);
+size_t xx_maskscan_find_scalar(const uint8_t *data, size_t first, size_t last, const xx_maskscan_probe *probes, size_t count);
 
 #ifdef XX_MASKSCAN_X86
-size_t xx_maskscan_find_sse2(const uint8_t *data, size_t first, size_t last,
-                             const xx_maskscan_probe *probes, size_t count);
-size_t xx_maskscan_find_avx2(const uint8_t *data, size_t first, size_t last,
-                             const xx_maskscan_probe *probes, size_t count);
+size_t xx_maskscan_find_sse2(const uint8_t *data, size_t first, size_t last, const xx_maskscan_probe *probes, size_t count);
+size_t xx_maskscan_find_avx2(const uint8_t *data, size_t first, size_t last, const xx_maskscan_probe *probes, size_t count);
 #endif
 
 #endif /* XX_MASKSCAN_PLATFORM_H */

@@ -233,11 +233,11 @@ static void hoist_plan_compact(JSHoistPlan *pPlan)
                 JSHoistStep *pPrevious = &pPlan->steps[pIndex[nSlot] - 1];
                 JSNode *pPreviousNode = pPrevious->pNode;
                 if (pPreviousNode->nStrHash == pNode->nStrHash && pPreviousNode->nStrSize == pNode->nStrSize &&
-                    !xx_rt_memcmp(pPreviousNode->pStr, pNode->pStr, pNode->nStrSize)) break;
+                    !xx_rt_memcmp(pPreviousNode->pStr, pNode->pStr, pNode->nStrSize))
+                    break;
                 nSlot = (nSlot + 1) & (nIndexSize - 1);
             }
-            if (pNode->type == N_VARDECL && pIndex[nSlot] &&
-                pPlan->steps[pIndex[nSlot] - 1].nDepth <= step.nDepth) continue;
+            if (pNode->type == N_VARDECL && pIndex[nSlot] && pPlan->steps[pIndex[nSlot] - 1].nDepth <= step.nDepth) continue;
         }
         step.nCheckDepth = nCheckDepth;
         nCheckDepth = 0;
@@ -314,8 +314,7 @@ static unsigned prepare_program_node(JSNode *pNode, unsigned nDepth)
          * obtain eval. Literal strings, object keys and member spellings do
          * not read a variable. Keep propagating identifier references from
          * nested functions because closures can observe enclosing scopes. */
-        if (pNode->type == N_IDENT && pNode->pStr &&
-            (!xx_rt_strcmp(pNode->pStr, "arguments") || !xx_rt_strcmp(pNode->pStr, "eval"))) nInfo |= PREPARE_ARGUMENTS;
+        if (pNode->type == N_IDENT && pNode->pStr && (!xx_rt_strcmp(pNode->pStr, "arguments") || !xx_rt_strcmp(pNode->pStr, "eval"))) nInfo |= PREPARE_ARGUMENTS;
         if (pNode->type == N_VAR || (pNode->type == N_FUNCTION && pNode->nNum == 0 && pNode->pStr)) nInfo |= PREPARE_HOIST;
         pNode = pLeft;
     }
@@ -1271,7 +1270,10 @@ static JSNode *parse_statement(JSParser *pParser)
         int nLine = tok(pParser)->nLine;
         int nColumn = tok(pParser)->nColumn;
         pNode = parse_statement_inner(pParser);
-        if (pNode) { pNode->nLine = nLine; pNode->nColumn = nColumn; }
+        if (pNode) {
+            pNode->nLine = nLine;
+            pNode->nColumn = nColumn;
+        }
     }
     pParser->nDepth--;
 

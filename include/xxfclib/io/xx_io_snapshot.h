@@ -16,19 +16,19 @@ typedef bool (*xx_io_snapshot_progress)(uint64_t current, uint64_t total, void *
  * external sources before/after. Cancellation returns NULL and sets cancelled.
  * No input-sized memory allocation. Each opened device has an independent
  * cursor and must close before destroy; the snapshot owns/removes its path. */
-XXFC_API xx_io_snapshot *xx_io_snapshot_create(uint64_t size, xx_io_snapshot_reader reader,
-    void *reader_user, xx_io_snapshot_progress progress, void *progress_user,
-    bool *cancelled, char *error, size_t capacity);
+XXFC_API xx_io_snapshot *xx_io_snapshot_create(uint64_t size, xx_io_snapshot_reader reader, void *reader_user, xx_io_snapshot_progress progress, void *progress_user,
+                                               bool *cancelled, char *error, size_t capacity);
 /* Retain the same immutable revision without copying bytes. */
 XXFC_API xx_io_snapshot *xx_io_snapshot_retain(xx_io_snapshot *snapshot);
-typedef struct xx_io_snapshot_range { uint64_t offset, length; } xx_io_snapshot_range;
+typedef struct xx_io_snapshot_range {
+    uint64_t offset, length;
+} xx_io_snapshot_range;
 /* Clone source into a private immutable revision, replacing only listed ranges.
  * APFS uses clonefile (copy on write); portable fallback streams bounded blocks.
  * Bytes outside ranges must equal source, and source size must equal size. */
-XXFC_API xx_io_snapshot *xx_io_snapshot_create_ranges(const char *source, uint64_t size,
-    const xx_io_snapshot_range *ranges, size_t range_count, xx_io_snapshot_reader reader,
-    void *reader_user, xx_io_snapshot_progress progress, void *progress_user,
-    bool *cancelled, char *error, size_t capacity);
+XXFC_API xx_io_snapshot *xx_io_snapshot_create_ranges(const char *source, uint64_t size, const xx_io_snapshot_range *ranges, size_t range_count,
+                                                      xx_io_snapshot_reader reader, void *reader_user, xx_io_snapshot_progress progress, void *progress_user,
+                                                      bool *cancelled, char *error, size_t capacity);
 XXFC_API const char *xx_io_snapshot_path(const xx_io_snapshot *snapshot);
 XXFC_API uint64_t xx_io_snapshot_size(const xx_io_snapshot *snapshot);
 /* True after publication to a caller-owned durable cache path. */
@@ -42,9 +42,8 @@ XXFC_API bool xx_io_snapshot_persist(xx_io_snapshot *snapshot, const char *path,
  * cross-volume copy. Return false to cancel. Failure/cancellation preserves
  * the original snapshot and the target; no incomplete target is published.
  * On cancellation returns false, sets *cancelled and leaves error empty. */
-XXFC_API bool xx_io_snapshot_persist_progress(xx_io_snapshot *snapshot, const char *path,
-    xx_io_snapshot_progress progress, void *user, bool *cancelled,
-    char *error, size_t capacity);
+XXFC_API bool xx_io_snapshot_persist_progress(xx_io_snapshot *snapshot, const char *path, xx_io_snapshot_progress progress, void *user, bool *cancelled, char *error,
+                                              size_t capacity);
 XXFC_API void xx_io_snapshot_destroy(xx_io_snapshot *snapshot);
 #ifdef __cplusplus
 }

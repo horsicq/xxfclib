@@ -75,8 +75,7 @@ bool xx_dwarf_loclists_section_init(xx_dwarf_loclists_section *section, const vo
     return true;
 }
 
-bool xx_dwarf_loclists_read_contribution(const xx_dwarf_loclists_section *section, size_t header_offset,
-                                          xx_dwarf_loclists_contribution *contribution)
+bool xx_dwarf_loclists_read_contribution(const xx_dwarf_loclists_section *section, size_t header_offset, xx_dwarf_loclists_contribution *contribution)
 {
     xx_dwarf_loclists_contribution parsed;
     uint64_t initial_length;
@@ -90,8 +89,7 @@ bool xx_dwarf_loclists_read_contribution(const xx_dwarf_loclists_section *sectio
     if (initial_length == UINT32_MAX) {
         parsed.dwarf64 = true;
         parsed.offset_size = 8U;
-        if (!xx_dwarf_read_uint(section, header_offset + 4U, 8U, &parsed.unit_length) || parsed.unit_length < 8U ||
-            parsed.unit_length > SIZE_MAX - 12U) {
+        if (!xx_dwarf_read_uint(section, header_offset + 4U, 8U, &parsed.unit_length) || parsed.unit_length < 8U || parsed.unit_length > SIZE_MAX - 12U) {
             return false;
         }
         total_size = 12U + (size_t)parsed.unit_length;
@@ -122,27 +120,23 @@ bool xx_dwarf_loclists_read_contribution(const xx_dwarf_loclists_section *sectio
     return true;
 }
 
-bool xx_dwarf_loclists_find_contribution_by_base(const xx_dwarf_loclists_section *section, size_t offsets_offset,
-                                                  xx_dwarf_loclists_contribution *contribution)
+bool xx_dwarf_loclists_find_contribution_by_base(const xx_dwarf_loclists_section *section, size_t offsets_offset, xx_dwarf_loclists_contribution *contribution)
 {
     xx_dwarf_loclists_contribution parsed;
     if (!section || !contribution || offsets_offset > section->size) return false;
     /* Try the 64-bit initial-length layout first, as prescribed by DWARF. */
-    if (offsets_offset >= 20U && xx_dwarf_loclists_read_contribution(section, offsets_offset - 20U, &parsed) &&
-        parsed.offsets_offset == offsets_offset) {
+    if (offsets_offset >= 20U && xx_dwarf_loclists_read_contribution(section, offsets_offset - 20U, &parsed) && parsed.offsets_offset == offsets_offset) {
         *contribution = parsed;
         return true;
     }
-    if (offsets_offset >= 12U && xx_dwarf_loclists_read_contribution(section, offsets_offset - 12U, &parsed) &&
-        parsed.offsets_offset == offsets_offset) {
+    if (offsets_offset >= 12U && xx_dwarf_loclists_read_contribution(section, offsets_offset - 12U, &parsed) && parsed.offsets_offset == offsets_offset) {
         *contribution = parsed;
         return true;
     }
     return false;
 }
 
-bool xx_dwarf_loclists_find_contribution_containing(const xx_dwarf_loclists_section *section, size_t list_offset,
-                                                     xx_dwarf_loclists_contribution *contribution)
+bool xx_dwarf_loclists_find_contribution_containing(const xx_dwarf_loclists_section *section, size_t list_offset, xx_dwarf_loclists_contribution *contribution)
 {
     xx_dwarf_loclists_contribution parsed;
     size_t at = 0U;
@@ -159,22 +153,17 @@ bool xx_dwarf_loclists_find_contribution_containing(const xx_dwarf_loclists_sect
     return false;
 }
 
-bool xx_dwarf_loclists_resolve_index(const xx_dwarf_loclists_section *section,
-                                      const xx_dwarf_loclists_contribution *contribution,
-                                      uint64_t index, size_t *list_offset)
+bool xx_dwarf_loclists_resolve_index(const xx_dwarf_loclists_section *section, const xx_dwarf_loclists_contribution *contribution, uint64_t index, size_t *list_offset)
 {
     uint64_t relative;
     uint64_t minimum;
     uint64_t maximum;
     size_t entry;
     size_t resolved;
-    if (!section || !contribution || !list_offset || contribution->offsets_offset > contribution->lists_offset ||
-        contribution->lists_offset > contribution->end_offset || contribution->end_offset > section->size ||
-        (contribution->offset_size != 4U && contribution->offset_size != 8U) ||
-        (uint64_t)(contribution->lists_offset - contribution->offsets_offset) !=
-            (uint64_t)contribution->offset_entry_count * contribution->offset_size ||
-        index >= contribution->offset_entry_count ||
-        index > (SIZE_MAX - contribution->offsets_offset) / contribution->offset_size) {
+    if (!section || !contribution || !list_offset || contribution->offsets_offset > contribution->lists_offset || contribution->lists_offset > contribution->end_offset ||
+        contribution->end_offset > section->size || (contribution->offset_size != 4U && contribution->offset_size != 8U) ||
+        (uint64_t)(contribution->lists_offset - contribution->offsets_offset) != (uint64_t)contribution->offset_entry_count * contribution->offset_size ||
+        index >= contribution->offset_entry_count || index > (SIZE_MAX - contribution->offsets_offset) / contribution->offset_size) {
         return false;
     }
     entry = contribution->offsets_offset + (size_t)index * contribution->offset_size;
@@ -188,16 +177,12 @@ bool xx_dwarf_loclists_resolve_index(const xx_dwarf_loclists_section *section,
     return true;
 }
 
-bool xx_dwarf_loclists_cursor_init(xx_dwarf_loclists_cursor *cursor, const xx_dwarf_loclists_section *section,
-                                    const xx_dwarf_loclists_contribution *contribution, size_t list_offset,
-                                    uint64_t initial_base, xx_dwarf_loclists_address_resolver resolve_address,
-                                    void *resolve_user)
+bool xx_dwarf_loclists_cursor_init(xx_dwarf_loclists_cursor *cursor, const xx_dwarf_loclists_section *section, const xx_dwarf_loclists_contribution *contribution,
+                                   size_t list_offset, uint64_t initial_base, xx_dwarf_loclists_address_resolver resolve_address, void *resolve_user)
 {
-    if (!cursor || !section || !contribution || !section->data || contribution->version != 5U ||
-        contribution->end_offset > section->size ||
-        contribution->lists_offset > contribution->end_offset || list_offset < contribution->lists_offset ||
-        list_offset >= contribution->end_offset || contribution->address_size == 0U || contribution->address_size > 8U ||
-        contribution->segment_selector_size != 0U) {
+    if (!cursor || !section || !contribution || !section->data || contribution->version != 5U || contribution->end_offset > section->size ||
+        contribution->lists_offset > contribution->end_offset || list_offset < contribution->lists_offset || list_offset >= contribution->end_offset ||
+        contribution->address_size == 0U || contribution->address_size > 8U || contribution->segment_selector_size != 0U) {
         return false;
     }
     memset(cursor, 0, sizeof(*cursor));
@@ -210,8 +195,7 @@ bool xx_dwarf_loclists_cursor_init(xx_dwarf_loclists_cursor *cursor, const xx_dw
     return true;
 }
 
-static xx_dwarf_loclists_result xx_dwarf_resolve_address(const xx_dwarf_loclists_cursor *cursor, size_t *at,
-                                                          bool indexed, uint64_t *address)
+static xx_dwarf_loclists_result xx_dwarf_resolve_address(const xx_dwarf_loclists_cursor *cursor, size_t *at, bool indexed, uint64_t *address)
 {
     uint64_t value;
     if (indexed) {
@@ -244,74 +228,70 @@ xx_dwarf_loclists_result xx_dwarf_loclists_cursor_next(xx_dwarf_loclists_cursor 
     kind = cursor->section->data[at++];
     parsed.kind = (xx_dwarf_loclists_entry_kind)kind;
     switch (kind) {
-    case XX_DWARF_LLE_END_OF_LIST:
-        parsed.next_offset = at;
-        cursor->position = at;
-        cursor->finished = true;
-        *entry = parsed;
-        return XX_DWARF_LOCLISTS_ENTRY;
-    case XX_DWARF_LLE_BASE_ADDRESSX:
-        status = xx_dwarf_resolve_address(cursor, &at, true, &parsed.base_address);
-        if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
-        cursor->base_address = parsed.base_address;
-        parsed.next_offset = at;
-        cursor->position = at;
-        *entry = parsed;
-        return XX_DWARF_LOCLISTS_ENTRY;
-    case XX_DWARF_LLE_BASE_ADDRESS:
-        status = xx_dwarf_resolve_address(cursor, &at, false, &parsed.base_address);
-        if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
-        cursor->base_address = parsed.base_address;
-        parsed.next_offset = at;
-        cursor->position = at;
-        *entry = parsed;
-        return XX_DWARF_LOCLISTS_ENTRY;
-    case XX_DWARF_LLE_STARTX_ENDX:
-        status = xx_dwarf_resolve_address(cursor, &at, true, &first);
-        if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
-        status = xx_dwarf_resolve_address(cursor, &at, true, &second);
-        if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
-        break;
-    case XX_DWARF_LLE_STARTX_LENGTH:
-        status = xx_dwarf_resolve_address(cursor, &at, true, &first);
-        if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
-        if (!xx_dwarf_read_uleb(cursor->section, &at, cursor->contribution.end_offset, &second) ||
-            !xx_dwarf_add_u64(first, second, &second)) {
-            return XX_DWARF_LOCLISTS_MALFORMED;
-        }
-        break;
-    case XX_DWARF_LLE_OFFSET_PAIR:
-        if (!xx_dwarf_read_uleb(cursor->section, &at, cursor->contribution.end_offset, &first) ||
-            !xx_dwarf_read_uleb(cursor->section, &at, cursor->contribution.end_offset, &second) ||
-            !xx_dwarf_add_u64(cursor->base_address, first, &first) ||
-            !xx_dwarf_add_u64(cursor->base_address, second, &second)) {
-            return XX_DWARF_LOCLISTS_MALFORMED;
-        }
-        break;
-    case XX_DWARF_LLE_DEFAULT_LOCATION:
-        if (cursor->has_default) return XX_DWARF_LOCLISTS_MALFORMED;
-        parsed.is_default = true;
-        break;
-    case XX_DWARF_LLE_START_END:
-        status = xx_dwarf_resolve_address(cursor, &at, false, &first);
-        if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
-        status = xx_dwarf_resolve_address(cursor, &at, false, &second);
-        if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
-        break;
-    case XX_DWARF_LLE_START_LENGTH:
-        status = xx_dwarf_resolve_address(cursor, &at, false, &first);
-        if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
-        if (!xx_dwarf_read_uleb(cursor->section, &at, cursor->contribution.end_offset, &second) ||
-            !xx_dwarf_add_u64(first, second, &second)) {
-            return XX_DWARF_LOCLISTS_MALFORMED;
-        }
-        break;
-    default:
-        return XX_DWARF_LOCLISTS_MALFORMED;
+        case XX_DWARF_LLE_END_OF_LIST:
+            parsed.next_offset = at;
+            cursor->position = at;
+            cursor->finished = true;
+            *entry = parsed;
+            return XX_DWARF_LOCLISTS_ENTRY;
+        case XX_DWARF_LLE_BASE_ADDRESSX:
+            status = xx_dwarf_resolve_address(cursor, &at, true, &parsed.base_address);
+            if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
+            cursor->base_address = parsed.base_address;
+            parsed.next_offset = at;
+            cursor->position = at;
+            *entry = parsed;
+            return XX_DWARF_LOCLISTS_ENTRY;
+        case XX_DWARF_LLE_BASE_ADDRESS:
+            status = xx_dwarf_resolve_address(cursor, &at, false, &parsed.base_address);
+            if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
+            cursor->base_address = parsed.base_address;
+            parsed.next_offset = at;
+            cursor->position = at;
+            *entry = parsed;
+            return XX_DWARF_LOCLISTS_ENTRY;
+        case XX_DWARF_LLE_STARTX_ENDX:
+            status = xx_dwarf_resolve_address(cursor, &at, true, &first);
+            if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
+            status = xx_dwarf_resolve_address(cursor, &at, true, &second);
+            if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
+            break;
+        case XX_DWARF_LLE_STARTX_LENGTH:
+            status = xx_dwarf_resolve_address(cursor, &at, true, &first);
+            if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
+            if (!xx_dwarf_read_uleb(cursor->section, &at, cursor->contribution.end_offset, &second) || !xx_dwarf_add_u64(first, second, &second)) {
+                return XX_DWARF_LOCLISTS_MALFORMED;
+            }
+            break;
+        case XX_DWARF_LLE_OFFSET_PAIR:
+            if (!xx_dwarf_read_uleb(cursor->section, &at, cursor->contribution.end_offset, &first) ||
+                !xx_dwarf_read_uleb(cursor->section, &at, cursor->contribution.end_offset, &second) || !xx_dwarf_add_u64(cursor->base_address, first, &first) ||
+                !xx_dwarf_add_u64(cursor->base_address, second, &second)) {
+                return XX_DWARF_LOCLISTS_MALFORMED;
+            }
+            break;
+        case XX_DWARF_LLE_DEFAULT_LOCATION:
+            if (cursor->has_default) return XX_DWARF_LOCLISTS_MALFORMED;
+            parsed.is_default = true;
+            break;
+        case XX_DWARF_LLE_START_END:
+            status = xx_dwarf_resolve_address(cursor, &at, false, &first);
+            if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
+            status = xx_dwarf_resolve_address(cursor, &at, false, &second);
+            if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
+            break;
+        case XX_DWARF_LLE_START_LENGTH:
+            status = xx_dwarf_resolve_address(cursor, &at, false, &first);
+            if (status != XX_DWARF_LOCLISTS_ENTRY) return status;
+            if (!xx_dwarf_read_uleb(cursor->section, &at, cursor->contribution.end_offset, &second) || !xx_dwarf_add_u64(first, second, &second)) {
+                return XX_DWARF_LOCLISTS_MALFORMED;
+            }
+            break;
+        default: return XX_DWARF_LOCLISTS_MALFORMED;
     }
     if (!parsed.is_default && second < first) return XX_DWARF_LOCLISTS_MALFORMED;
-    if (!xx_dwarf_read_uleb(cursor->section, &at, cursor->contribution.end_offset, &expression_size) ||
-        expression_size > SIZE_MAX || expression_size > cursor->contribution.end_offset - at) {
+    if (!xx_dwarf_read_uleb(cursor->section, &at, cursor->contribution.end_offset, &expression_size) || expression_size > SIZE_MAX ||
+        expression_size > cursor->contribution.end_offset - at) {
         return XX_DWARF_LOCLISTS_MALFORMED;
     }
     parsed.start_address = first;
@@ -326,10 +306,8 @@ xx_dwarf_loclists_result xx_dwarf_loclists_cursor_next(xx_dwarf_loclists_cursor 
     return XX_DWARF_LOCLISTS_ENTRY;
 }
 
-xx_dwarf_loclists_result xx_dwarf_loclists_select_expression(const xx_dwarf_loclists_cursor *cursor,
-                                                              uint64_t scope_start, uint64_t scope_end,
-                                                              xx_dwarf_loclists_selection selection,
-                                                              xx_dwarf_loclists_entry *entry)
+xx_dwarf_loclists_result xx_dwarf_loclists_select_expression(const xx_dwarf_loclists_cursor *cursor, uint64_t scope_start, uint64_t scope_end,
+                                                             xx_dwarf_loclists_selection selection, xx_dwarf_loclists_entry *entry)
 {
     xx_dwarf_loclists_cursor scan;
     xx_dwarf_loclists_entry current;
@@ -339,8 +317,7 @@ xx_dwarf_loclists_result xx_dwarf_loclists_select_expression(const xx_dwarf_locl
     uint64_t best_overlap = 0U;
     bool have_best = false;
     bool have_fallback = false;
-    if (!cursor || !entry || scope_end < scope_start ||
-        (selection != XX_DWARF_LOCLISTS_SELECT_ENTRY && selection != XX_DWARF_LOCLISTS_SELECT_WIDEST)) {
+    if (!cursor || !entry || scope_end < scope_start || (selection != XX_DWARF_LOCLISTS_SELECT_ENTRY && selection != XX_DWARF_LOCLISTS_SELECT_WIDEST)) {
         return XX_DWARF_LOCLISTS_MALFORMED;
     }
     scan = *cursor;
@@ -379,8 +356,7 @@ xx_dwarf_loclists_result xx_dwarf_loclists_select_expression(const xx_dwarf_locl
     return status == XX_DWARF_LOCLISTS_END ? XX_DWARF_LOCLISTS_MALFORMED : status;
 }
 
-bool xx_dwarf_loc_cursor_init(xx_dwarf_loc_cursor *cursor, const xx_dwarf_loclists_section *section,
-                               size_t list_offset, uint8_t address_size, uint64_t initial_base)
+bool xx_dwarf_loc_cursor_init(xx_dwarf_loc_cursor *cursor, const xx_dwarf_loclists_section *section, size_t list_offset, uint8_t address_size, uint64_t initial_base)
 {
     if (!cursor || !section || !section->data || list_offset >= section->size || address_size == 0U || address_size > 8U) return false;
     memset(cursor, 0, sizeof(*cursor));
@@ -428,10 +404,8 @@ xx_dwarf_loclists_result xx_dwarf_loc_cursor_next(xx_dwarf_loc_cursor *cursor, x
     }
     if (!xx_dwarf_read_uint(cursor->section, at, 2U, &expression_size)) return XX_DWARF_LOCLISTS_MALFORMED;
     at += 2U;
-    if (expression_size > SIZE_MAX || expression_size > cursor->section->size - at ||
-        !xx_dwarf_add_u64(cursor->base_address, first, &parsed.start_address) ||
-        !xx_dwarf_add_u64(cursor->base_address, second, &parsed.end_address) ||
-        parsed.end_address < parsed.start_address) {
+    if (expression_size > SIZE_MAX || expression_size > cursor->section->size - at || !xx_dwarf_add_u64(cursor->base_address, first, &parsed.start_address) ||
+        !xx_dwarf_add_u64(cursor->base_address, second, &parsed.end_address) || parsed.end_address < parsed.start_address) {
         return XX_DWARF_LOCLISTS_MALFORMED;
     }
     parsed.kind = XX_DWARF_LOC_RANGE;

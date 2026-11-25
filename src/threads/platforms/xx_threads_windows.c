@@ -140,8 +140,7 @@ static void xx_threads_windows_resolve(void *arg)
         xx_threads_kernel32.wake_all_cv = wake_all_cv;
     }
 
-    xx_threads_kernel32.active_processor_count =
-        (xx_active_processor_count_fn)(void (*)(void))GetProcAddress(module, "GetActiveProcessorCount");
+    xx_threads_kernel32.active_processor_count = (xx_active_processor_count_fn)(void (*)(void))GetProcAddress(module, "GetActiveProcessorCount");
 }
 
 uint32_t xx_thread_cpu_count(void)

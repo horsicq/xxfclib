@@ -43,8 +43,7 @@ void xx_bytestats_histogram_sse2(const uint8_t *data, size_t size, uint64_t coun
             XX_BYTESTATS_COUNT16(p + 48, tables);
         }
         xx_bytestats_tables_add(data + i, part - i, tables);
-        for (value = 0U; value < 256U; ++value)
-            counts[value] += (uint64_t)tables[0][value] + tables[1][value] + tables[2][value] + tables[3][value];
+        for (value = 0U; value < 256U; ++value) counts[value] += (uint64_t)tables[0][value] + tables[1][value] + tables[2][value] + tables[3][value];
         data += part;
         size -= part;
     }

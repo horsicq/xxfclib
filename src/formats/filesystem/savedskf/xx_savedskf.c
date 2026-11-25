@@ -432,8 +432,7 @@ static xx_savedskf_stream *xx_savedskf_parse(Abstractformat *self, xx_pd_struct 
              * tolerated. */
             uint8_t tail[XX_SAVEDSKF_MAX_SECTOR_SIZE];
             int64_t extra = payload_size - image_size;
-            if (extra <= 0 || extra >= (int64_t)sector_size ||
-                !xx_savedskf_read_at(self, self->base_address + (int64_t)data_offset + image_size, tail, (size_t)extra) ||
+            if (extra <= 0 || extra >= (int64_t)sector_size || !xx_savedskf_read_at(self, self->base_address + (int64_t)data_offset + image_size, tail, (size_t)extra) ||
                 !xx_disk_filler_run(tail, (size_t)extra)) {
                 return NULL;
             }

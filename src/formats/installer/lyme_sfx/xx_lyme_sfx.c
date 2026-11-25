@@ -196,14 +196,16 @@ static bool lyme_sfx_extended_table(Abstractformat *f, pm_stream *s, int64_t at,
         start = at - (int64_t)span - 4;
         if (!pm_read(f, start, h, 4U)) return false;
         len = lyme_sfx_u32(h);
-        if (len < 2U || len > sizeof(name) || span != len + 24U || !pm_read(f, start + 4, name, len) ||
-            name[len - 1U] != 0 || xx_rt_memchr(name, 0, len - 1U) || !pm_read(f, start + 4 + len, h, sizeof(h))) return false;
+        if (len < 2U || len > sizeof(name) || span != len + 24U || !pm_read(f, start + 4, name, len) || name[len - 1U] != 0 || xx_rt_memchr(name, 0, len - 1U) ||
+            !pm_read(f, start + 4 + len, h, sizeof(h)))
+            return false;
         packed = lyme_sfx_u32(h);
         plain = lyme_sfx_u32(h + 4);
         offset = lyme_sfx_u32(h + 8);
         end = (uint64_t)offset + packed;
         if (packed < 6U || packed > LYME_SFX_MEMORY_CAP || plain > LYME_SFX_MEMORY_CAP || plain > maximum || end > (uint64_t)start ||
-            !lyme_sfx_name(f, s, name, offset, packed)) return false;
+            !lyme_sfx_name(f, s, name, offset, packed))
+            return false;
         if (end > last_payload_end) last_payload_end = end;
         s->items[s->count - 1U].size = plain;
         s->items[s->count - 1U].compression_method = 8U;
@@ -231,8 +233,7 @@ static bool lyme_sfx_lyme(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     }
     if (at >= 4 && pm_read(f, at - 4, h, 4U)) {
         uint32_t span = lyme_sfx_u32(h);
-        if (span >= 26U && span <= 4120U && (uint64_t)span + 4U <= (uint64_t)at &&
-            pm_read(f, at - span - 4, h, 4U) && lyme_sfx_u32(h) == span - 24U) {
+        if (span >= 26U && span <= 4120U && (uint64_t)span + 4U <= (uint64_t)at && pm_read(f, at - span - 4, h, 4U) && lyme_sfx_u32(h) == span - 24U) {
             /* A valid compact name cannot start with this small LE length:
              * its upper bytes are NUL, which compact names prohibit. */
             return lyme_sfx_extended_table(f, s, at, count, pd);

@@ -738,9 +738,9 @@ xx_archive_record_state *xx_format_create_archive_records_reading(Abstractformat
     }
     /* These readers parse their index under the reading operation's memory
      * limit. Explicit INFO and detection retain their normal default budget. */
-    if (!f->base_info_handled && !(f->create_archive_records_reading && (f->file_type == XX_FILE_TYPE_SUPERDAT || f->file_type == XX_FILE_TYPE_EXCELSIOR_INSTALLER ||
-                                                                         f->file_type == XX_FILE_TYPE_NETOPSYSTEMS_FEAD || f->file_type == XX_FILE_TYPE_DGCA ||
-                                                                         f->file_type == XX_FILE_TYPE_SQUEEZE1))) {
+    if (!f->base_info_handled && !(f->create_archive_records_reading &&
+                                   (f->file_type == XX_FILE_TYPE_SUPERDAT || f->file_type == XX_FILE_TYPE_EXCELSIOR_INSTALLER ||
+                                    f->file_type == XX_FILE_TYPE_NETOPSYSTEMS_FEAD || f->file_type == XX_FILE_TYPE_DGCA || f->file_type == XX_FILE_TYPE_SQUEEZE1))) {
         xx_format_handle_base_info(f, pd);
     }
     if (f->create_archive_records_reading) {
@@ -896,4 +896,3 @@ void xx_format_free_archive_records_writing(Abstractformat *f, xx_archive_write_
         xx_archive_write_state_free(state);
     }
 }
-

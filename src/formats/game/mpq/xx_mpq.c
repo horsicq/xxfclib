@@ -456,8 +456,7 @@ static bool mpq_parse_inner(Abstractformat *format, mpq_stream **result)
          * lookup. Non-power-of-two tables used by protected StarCraft maps
          * therefore need no different lookup algorithm or relaxed bounds. */
         if (version > 3U || header_size < MPQ_HEADER_SIZE || (uint64_t)header_size > archive_size || archive_size > available || sector_shift > 15U ||
-            hash_entries == 0U || hash_entries > MPQ_MAX_TABLE_ENTRIES || block_entries == 0U ||
-            block_entries > MPQ_MAX_TABLE_ENTRIES)
+            hash_entries == 0U || hash_entries > MPQ_MAX_TABLE_ENTRIES || block_entries == 0U || block_entries > MPQ_MAX_TABLE_ENTRIES)
             continue;
         if (version >= 1U) {
             if (header_size < MPQ_HEADER_SIZE_V1 || want < MPQ_HEADER_SIZE_V1) continue;
@@ -637,8 +636,7 @@ static bool mpq_wave_key(const uint32_t *crypt, const uint8_t *packed, size_t pa
         mpq_decrypt_block(crypt, first, sizeof(first), key);
         uint32_t riff_size = xx_data_get_u32(first + 4U, 4, 0, false);
         bool padded = (riff_size & 1U) != 0U && riff_size == raw_size - 9U;
-        if (xx_data_get_u32(first, 4, 0, false) == 0x46464952U && (riff_size == raw_size - 8U || padded) &&
-            xx_data_get_u32(first + 8U, 4, 0, false) == 0x45564157U) {
+        if (xx_data_get_u32(first, 4, 0, false) == 0x46464952U && (riff_size == raw_size - 8U || padded) && xx_data_get_u32(first + 8U, 4, 0, false) == 0x45564157U) {
             *file_key = key;
             *padded_wave = padded;
             if (++matches > 1U) return false;

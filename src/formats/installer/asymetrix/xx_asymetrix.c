@@ -477,7 +477,7 @@ static xx_asymetrix_stream *xx_asymetrix_parse_single(Abstractformat *self, xx_p
             goto fail;
         }
 
-publish_member:
+    publish_member:
         xx_mem_zero(&member, sizeof(member));
         owned = xx_str_dup(name);
         if (!owned) goto fail;
@@ -814,7 +814,10 @@ bool xx_asymetrix_unpack_current_archive_record(Abstractformat *self, xx_archive
     if (!stream || stream->index >= stream->count) return false;
     member = &stream->items[stream->index];
     logical = *self;
-    if (stream->volumes) { logical.device = stream->volumes; logical.base_address = 0; }
+    if (stream->volumes) {
+        logical.device = stream->volumes;
+        logical.base_address = 0;
+    }
     if (!xx_asymetrix_path_safe(member->name)) return false;
 
     path_option = xx_asymetrix_get_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);

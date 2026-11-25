@@ -598,7 +598,8 @@ static bool rpa_latin1(rpa_vm *vm, uint32_t text, uint32_t *result)
         uint32_t scalar;
         size_t consumed, written;
         if (xx_codepage_decode(xx_codepage_by_number(65001), in + index, source.length - index, &consumed, &scalar) != XX_CODEPAGE_OK ||
-            xx_codepage_encode(xx_codepage_by_number(28591), scalar, vm->blob + offset + used, source.length - used, &written) != XX_CODEPAGE_OK) return false;
+            xx_codepage_encode(xx_codepage_by_number(28591), scalar, vm->blob + offset + used, source.length - used, &written) != XX_CODEPAGE_OK)
+            return false;
         index += consumed;
         used += written;
     }

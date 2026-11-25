@@ -5,9 +5,18 @@
 #include "../../xx_payload_members.h"
 #include "xxfclib/data/xx_data.h"
 
-static bool msx_stop(xx_pd_struct *pd) { return pd && xx_pd_is_stopped(pd); }
-static bool msx_power_of_two(uint64_t value) { return value && !(value & (value - 1U)); }
-static bool msx_rom_pointer(uint16_t value, uint16_t base, uint64_t size) { return value == 0 || (value >= base && (uint64_t)(value - base) < size); }
+static bool msx_stop(xx_pd_struct *pd)
+{
+    return pd && xx_pd_is_stopped(pd);
+}
+static bool msx_power_of_two(uint64_t value)
+{
+    return value && !(value & (value - 1U));
+}
+static bool msx_rom_pointer(uint16_t value, uint16_t base, uint64_t size)
+{
+    return value == 0 || (value >= base && (uint64_t)(value - base) < size);
+}
 
 static bool pm_parse(Abstractformat *format, pm_stream *stream, xx_pd_struct *pd)
 {
@@ -17,7 +26,8 @@ static bool pm_parse(Abstractformat *format, pm_stream *stream, xx_pd_struct *pd
     uint16_t base;
     xx_mem_zero(header, sizeof(header));
     if (available < 8 || available > UINT32_C(0x100000) || msx_stop(pd) ||
-        !pm_read(format, 0, header, (size_t)(available < (int64_t)sizeof(header) ? available : (int64_t)sizeof(header)))) return false;
+        !pm_read(format, 0, header, (size_t)(available < (int64_t)sizeof(header) ? available : (int64_t)sizeof(header))))
+        return false;
     if (header[0] == 'A' && header[1] == 'B') {
         uint16_t init = xx_data_get_u16(header + 2, 2, 0, false);
         uint16_t runtime = xx_data_get_u16(header + 4, 2, 0, false);
@@ -75,10 +85,25 @@ xx_msx_rom *xx_msx_rom_create(xx_io_device *device, int64_t base_address)
     if (reader) xx_msx_rom_init(reader, device, base_address);
     return reader;
 }
-void xx_msx_rom_destroy(xx_msx_rom *reader) { if (reader) xx_format_cleanup_extra_parameters(&reader->format); }
-void xx_msx_rom_free(xx_msx_rom *reader) { if (reader) { xx_msx_rom_destroy(reader); xx_mem_free(reader); } }
-bool xx_msx_rom_check_is_valid(Abstractformat *format, xx_pd_struct *pd) { return pm_valid(format, pd); }
-bool xx_msx_rom_handle_base_info(Abstractformat *format, xx_pd_struct *pd) { return pm_handle(format, pd); }
+void xx_msx_rom_destroy(xx_msx_rom *reader)
+{
+    if (reader) xx_format_cleanup_extra_parameters(&reader->format);
+}
+void xx_msx_rom_free(xx_msx_rom *reader)
+{
+    if (reader) {
+        xx_msx_rom_destroy(reader);
+        xx_mem_free(reader);
+    }
+}
+bool xx_msx_rom_check_is_valid(Abstractformat *format, xx_pd_struct *pd)
+{
+    return pm_valid(format, pd);
+}
+bool xx_msx_rom_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
+{
+    return pm_handle(format, pd);
+}
 
 bool xx_msx_rom_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_memory_map *map, xx_pd_struct *pd)
 {

@@ -50,8 +50,7 @@ static uint16_t elf_symbol_u16(const uint8_t *bytes, bool big_endian)
 
 static uint32_t elf_symbol_u32(const uint8_t *bytes, bool big_endian)
 {
-    if (big_endian)
-        return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) | ((uint32_t)bytes[2] << 8U) | bytes[3];
+    if (big_endian) return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) | ((uint32_t)bytes[2] << 8U) | bytes[3];
     return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) | ((uint32_t)bytes[2] << 16U) | ((uint32_t)bytes[3] << 24U);
 }
 
@@ -138,8 +137,7 @@ static char *elf_symbol_name(elf_symbol_cursor *cursor, const xx_elf_section_hea
         }
         for (length = 0U; length < amount && bytes[length] != 0U; ++length) {
         }
-        if ((uint64_t)length > ELF_SYMBOL_NAMES_TOTAL_LIMIT - cursor->name_bytes ||
-            used + (uint64_t)length > ELF_SYMBOL_NAMES_TOTAL_LIMIT - cursor->name_bytes) {
+        if ((uint64_t)length > ELF_SYMBOL_NAMES_TOTAL_LIMIT - cursor->name_bytes || used + (uint64_t)length > ELF_SYMBOL_NAMES_TOTAL_LIMIT - cursor->name_bytes) {
             elf_symbol_error(pd, XXFC_ERR_OUT_OF_MEMORY, "ELF symbol names exceed bounded budget");
             xx_mem_free(result);
             return NULL;
@@ -174,8 +172,7 @@ static uint32_t elf_symbol_extended_section(elf_symbol_cursor *cursor, uint64_t 
         if (section->type != XX_ELF_SECTION_SYMTAB_SHNDX || section->link != table_index) continue;
         if (section->entry_size != 0U && section->entry_size < 4U) break;
         stride = section->entry_size ? section->entry_size : 4U;
-        if (section->size % stride != 0U || symbol_index > UINT64_MAX / stride || symbol_index * stride > section->size ||
-            section->size - symbol_index * stride < 4U)
+        if (section->size % stride != 0U || symbol_index > UINT64_MAX / stride || symbol_index * stride > section->size || section->size - symbol_index * stride < 4U)
             break;
         if (!elf_symbol_read(&cursor->elf->format, section->offset + symbol_index * stride, bytes, sizeof(bytes), pd)) return UINT32_MAX;
         return elf_symbol_u32(bytes, cursor->elf->data_encoding == XX_ELF_DATA_MSB);
@@ -234,9 +231,7 @@ static bool elf_symbol_target(elf_symbol_cursor *cursor, xx_symbol_record *recor
         const xx_elf_section_header *section = &cursor->elf->section_headers[section_index];
         uint64_t target;
         if (cursor->elf->type == XX_ELF_TYPE_REL) {
-            if (record->value > section->size || record->size > section->size - record->value ||
-                section->offset > UINT64_MAX - record->value)
-                return true;
+            if (record->value > section->size || record->size > section->size - record->value || section->offset > UINT64_MAX - record->value) return true;
             relative = section->offset + record->value;
             if (relative < XX_INVALID_ADDRESS - module) record->address = module + relative;
         } else {
@@ -429,12 +424,10 @@ uint64_t xx_elf_get_number_of_symbols(Abstractformat *format, xx_pd_struct *pd)
 
 const StreamSymbols *xx_elf_get_stream_symbols(void)
 {
-    static const StreamSymbols stream = {
-        .get_number_of_symbols = xx_elf_get_number_of_symbols,
-        .create_symbols_reading = xx_elf_create_symbols_reading,
-        .get_current_symbol = xx_elf_get_current_symbol,
-        .symbol_move_to_next = xx_elf_symbol_move_to_next,
-        .free_symbols_reading = xx_elf_free_symbols_reading
-    };
+    static const StreamSymbols stream = {.get_number_of_symbols = xx_elf_get_number_of_symbols,
+                                         .create_symbols_reading = xx_elf_create_symbols_reading,
+                                         .get_current_symbol = xx_elf_get_current_symbol,
+                                         .symbol_move_to_next = xx_elf_symbol_move_to_next,
+                                         .free_symbols_reading = xx_elf_free_symbols_reading};
     return &stream;
 }

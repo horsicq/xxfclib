@@ -21,15 +21,15 @@
 #define XX_ENTROPY_NEON_LARGE_MIN_SIZE ((size_t)65536U)
 
 #define XX_ENTROPY_NEON_COUNT8(q, offset, h0, h1, h2, h3, h4, h5, h6, h7) \
-    do {                                                                       \
-        (h0)[(q)[(offset)]]++;                                                 \
-        (h1)[(q)[(offset) + 1U]]++;                                            \
-        (h2)[(q)[(offset) + 2U]]++;                                            \
-        (h3)[(q)[(offset) + 3U]]++;                                            \
-        (h4)[(q)[(offset) + 4U]]++;                                            \
-        (h5)[(q)[(offset) + 5U]]++;                                            \
-        (h6)[(q)[(offset) + 6U]]++;                                            \
-        (h7)[(q)[(offset) + 7U]]++;                                            \
+    do {                                                                  \
+        (h0)[(q)[(offset)]]++;                                            \
+        (h1)[(q)[(offset) + 1U]]++;                                       \
+        (h2)[(q)[(offset) + 2U]]++;                                       \
+        (h3)[(q)[(offset) + 3U]]++;                                       \
+        (h4)[(q)[(offset) + 4U]]++;                                       \
+        (h5)[(q)[(offset) + 5U]]++;                                       \
+        (h6)[(q)[(offset) + 6U]]++;                                       \
+        (h7)[(q)[(offset) + 7U]]++;                                       \
     } while (0)
 
 static double xx_entropy_neon_finish(const uint32_t total_counts[256], size_t size)

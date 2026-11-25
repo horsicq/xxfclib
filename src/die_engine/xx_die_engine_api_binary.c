@@ -684,7 +684,6 @@ static bool zip_get_format_options(DieEngine *pEngine, char *sBuf, size_t nBufSi
     return true;
 }
 
-
 static bool check_string_number(const char *str, unsigned int min_val, unsigned int max_val)
 {
     unsigned long long val;
@@ -795,13 +794,9 @@ static const char *apk_get_os_version(xx_apk *apk, char *buf, size_t buf_size)
         if (sPlatformBuildVersionName) sPlatformBuildVersionName[0] = '\0';
     }
 
-    if ((sCompileSdkVersion && sCompileSdkVersion[0]) ||
-        (sCompileSdkVersionCodename && sCompileSdkVersionCodename[0]) ||
-        (sPlatformBuildVersionCode && sPlatformBuildVersionCode[0]) ||
-        (sPlatformBuildVersionName && sPlatformBuildVersionName[0]) ||
-        (sTargetSdkVersion && sTargetSdkVersion[0]) ||
-        (sMinSdkVersion && sMinSdkVersion[0])) {
-
+    if ((sCompileSdkVersion && sCompileSdkVersion[0]) || (sCompileSdkVersionCodename && sCompileSdkVersionCodename[0]) ||
+        (sPlatformBuildVersionCode && sPlatformBuildVersionCode[0]) || (sPlatformBuildVersionName && sPlatformBuildVersionName[0]) ||
+        (sTargetSdkVersion && sTargetSdkVersion[0]) || (sMinSdkVersion && sMinSdkVersion[0])) {
         if (sTargetSdkVersion && sTargetSdkVersion[0]) sVersion = sTargetSdkVersion;
         else if (sMinSdkVersion && sMinSdkVersion[0]) sVersion = sMinSdkVersion;
         else if (sCompileSdkVersion && sCompileSdkVersion[0]) sVersion = sCompileSdkVersion;
@@ -831,160 +826,158 @@ static const char *apk_get_os_version(xx_apk *apk, char *buf, size_t buf_size)
     return buf;
 }
 
-static const ApiEntry g_binary_api_table[] = {
-    {"getSize", A_getSize, 0},
-    {"Sz", A_getSize, 0},
-    {"compare", A_compare, 2},
-    {"c", A_compare, 2},
-    {"compareEP", A_compareEP, 2},
-    {"compareOverlay", A_compareOverlay, 2},
-    {"readByte", A_readByte, 1},
-    {"readSByte", A_readSByte, 1},
-    {"readWord", A_readWord, 1},
-    {"readSWord", A_readSWord, 1},
-    {"readDword", A_readDword, 1},
-    {"readSDword", A_readSDword, 1},
-    {"readQword", A_readQword, 1},
-    {"readSQword", A_readSQword, 1},
-    {"getString", A_getString, 2},
-    {"isJavaScriptMinified", A_isJavaScriptMinified, 0},
-    {"findSignature", A_findSignature, 3},
-    {"fSig", A_findSignature, 3},
-    {"findString", A_findString, 3},
-    {"fStr", A_findString, 3},
-    {"findByte", A_findByte, 3},
-    {"findWord", A_findWord, 3},
-    {"findDword", A_findDword, 3},
-    {"getEntryPointOffset", A_getEntryPointOffset, 0},
-    {"getOverlayOffset", A_getOverlayOffset, 0},
-    {"getOverlaySize", A_getOverlaySize, 0},
-    {"getAddressOfEntryPoint", A_getAddressOfEntryPoint, 0},
-    {"isOverlayPresent", A_isOverlayPresent, 0},
-    {"isSignaturePresent", A_isSignaturePresent, 3},
-    {"swapBytes", A_swapBytes, 1},
-    {"RVAToOffset", A_RVAToOffset, 1},
-    {"VAToOffset", A_VAToOffset, 1},
-    {"OffsetToVA", A_OffsetToVA, 1},
-    {"OffsetToRVA", A_OffsetToRVA, 1},
-    {"getFileDirectory", A_getFileDirectory, 0},
-    {"getFileBaseName", A_getFileBaseName, 0},
-    {"getFileCompleteSuffix", A_getFileCompleteSuffix, 0},
-    {"getFileSuffix", A_getFileSuffix, 0},
-    {"getSignature", A_getSignature, 2},
-    {"calculateEntropy", A_calculateEntropy, 2},
-    {"isZeroFilled", A_isZeroFilled, 2},
-    {"scanBufferForEncryptedPe", A_scanBufferForEncryptedPe, 2},
-    {"validateAmd64Unwind", A_validateAmd64Unwind, 2},
-    {"validateGuardCfFunctionTable", A_validateGuardCfFunctionTable, 3},
-    {"calculateMD5", A_calculateMD5, 2},
-    {"calculateCRC32", A_calculateCRC32, 2},
-    {"crc16", A_crc16, 3},
-    {"crc32", A_crc32, 3},
-    {"adler32", A_adler32, 2},
-    {"isSignatureInSectionPresent", A_isSignatureInSectionPresent, 2},
-    {"isAnySignatureInSectionPresent", A_isAnySignatureInSectionPresent, 2},
-    {"getImageBase", A_getImageBase, 0},
-    {"upperCase", A_upperCase, 1},
-    {"lowerCase", A_lowerCase, 1},
-    {"isPlainText", A_isPlainText, 0},
-    {"isUTF8Text", A_isUTF8Text, 0},
-    {"isUnicodeText", A_isUnicodeText, 0},
-    {"isText", A_isText, 0},
-    {"getHeaderString", A_getHeaderString, 0},
-    {"getDisasmLength", A_getDisasmLength, 1},
-    {"getDisasmString", A_getDisasmString, 1},
-    {"getDisasmNextAddress", A_getDisasmNextAddress, 1},
-    {"is16", A_is16, 0},
-    {"is32", A_is32, 0},
-    {"is64", A_is64, 0},
-    {"isDeepScan", A_isDeepScan, 0},
-    {"isHeuristicScan", A_isHeuristicScan, 0},
-    {"isFirstWrapperScan", A_isFirstWrapperScan, 0},
-    {"isAggressiveScan", A_isAggressiveScan, 0},
-    {"isRecursiveScan", A_isRecursiveScan, 0},
-    {"isOverlayScan", A_isOverlayScan, 0},
-    {"isVerbose", A_isVerbose, 0},
-    {"isProfiling", A_isProfiling, 0},
-    {"getScanID", A_getScanID, 0},
-    {"getStartOffset", A_getStartOffset, 0},
-    {"read_uint8", A_read_uint8, 1},
-    {"U8", A_read_uint8, 1},
-    {"read_int8", A_read_int8, 1},
-    {"I8", A_read_int8, 1},
-    {"read_uint16", A_read_uint16, 2},
-    {"U16", A_read_uint16, 2},
-    {"read_int16", A_read_int16, 2},
-    {"I16", A_read_int16, 2},
-    {"read_uint24", A_read_uint24, 2},
-    {"U24", A_read_uint24, 2},
-    {"read_int24", A_read_int24, 2},
-    {"I24", A_read_int24, 2},
-    {"read_uint32", A_read_uint32, 2},
-    {"U32", A_read_uint32, 2},
-    {"read_int32", A_read_int32, 2},
-    {"I32", A_read_int32, 2},
-    {"read_uint64", A_read_uint64, 2},
-    {"U64", A_read_uint64, 2},
-    {"read_int64", A_read_int64, 2},
-    {"I64", A_read_int64, 2},
-    {"read_float", A_read_float, 2},
-    {"read_float32", A_read_float, 2},
-    {"F32", A_read_float, 2},
-    {"read_double", A_read_double, 2},
-    {"read_float64", A_read_double, 2},
-    {"F64", A_read_double, 2},
-    {"read_float16", A_read_float16, 2},
-    {"F16", A_read_float16, 2},
-    {"read_UUID", A_read_UUID, 2},
-    {"read_ucsdString", A_read_ucsdString, 1},
-    {"UCSD", A_read_ucsdString, 1},
-    {"read_ansiString", A_read_ansiString, 2},
-    {"SA", A_read_ansiString, 2},
-    {"read_unicodeString", A_read_unicodeString, 2},
-    {"SU16", A_read_unicodeString, 2},
-    {"read_utf8String", A_read_utf8String, 2},
-    {"SU8", A_read_utf8String, 2},
-    {"read_codePageString", A_read_codePageString, 3},
-    {"SC", A_read_codePageString, 3},
-    {"bytesCountToString", A_bytesCountToString, 1},
-    {"find_ansiString", A_find_ansiString, 3},
-    {"find_unicodeString", A_find_unicodeString, 3},
-    {"find_utf8String", A_find_utf8String, 3},
-    {"getOperationSystemName", A_getOperationSystemName, 0},
-    {"getOperationSystemVersion", A_getOperationSystemVersion, 0},
-    {"getOperationSystemOptions", A_getOperationSystemOptions, 0},
-    {"getFileFormatName", A_getFileFormatName, 0},
-    {"getFileFormatVersion", A_getFileFormatVersion, 0},
-    {"getFileFormatOptions", A_getFileFormatOptions, 0},
-    {"isSigned", A_isSigned, 0},
-    {"cleanString", A_cleanString, 1},
-    {"readBytes", A_readBytes, 3},
-    {"BA", A_readBytes, 3},
-    {"isOverlay", A_isOverlay, 0},
-    {"isResource", A_isResource, 0},
-    {"isDebugData", A_isDebugData, 0},
-    {"isFilePart", A_isFilePart, 0},
-    {"isReleaseBuild", A_isReleaseBuild, 0},
-    {"isDebugBuild", A_isDebugBuild, 0},
-    {"isChecksumCorrect", A_isChecksumCorrect, 0},
-    {"isEntryPointCorrect", A_isEntryPointCorrect, 0},
-    {"isSectionAlignmentCorrect", A_isSectionAlignmentCorrect, 0},
-    {"isFileAlignmentCorrect", A_isFileAlignmentCorrect, 0},
-    {"isHeaderCorrect", A_isHeaderCorrect, 0},
-    {"isRelocsTableCorrect", A_isRelocsTableCorrect, 0},
-    {"isImportTableCorrect", A_isImportTableCorrect, 0},
-    {"isExportTableCorrect", A_isExportTableCorrect, 0},
-    {"isResourcesTableCorrect", A_isResourcesTableCorrect, 0},
-    {"isSectionsTableCorrect", A_isSectionsTableCorrect, 0},
-    {"getFormatMessages", A_getFormatMessages, 0},
-    {"getListOfCompressionMethods", A_getListOfCompressionMethods, 0},
-    {"startTiming", A_startTiming, 0},
-    {"endTiming", A_endTiming, 2},
-    {"detectZLIB", A_detectZLIB, 2},
-    {"detectGZIP", A_detectGZIP, 2},
-    {"detectZIP", A_detectZIP, 2},
-    {NULL, A_NONE, 0}
-};
+static const ApiEntry g_binary_api_table[] = {{"getSize", A_getSize, 0},
+                                              {"Sz", A_getSize, 0},
+                                              {"compare", A_compare, 2},
+                                              {"c", A_compare, 2},
+                                              {"compareEP", A_compareEP, 2},
+                                              {"compareOverlay", A_compareOverlay, 2},
+                                              {"readByte", A_readByte, 1},
+                                              {"readSByte", A_readSByte, 1},
+                                              {"readWord", A_readWord, 1},
+                                              {"readSWord", A_readSWord, 1},
+                                              {"readDword", A_readDword, 1},
+                                              {"readSDword", A_readSDword, 1},
+                                              {"readQword", A_readQword, 1},
+                                              {"readSQword", A_readSQword, 1},
+                                              {"getString", A_getString, 2},
+                                              {"isJavaScriptMinified", A_isJavaScriptMinified, 0},
+                                              {"findSignature", A_findSignature, 3},
+                                              {"fSig", A_findSignature, 3},
+                                              {"findString", A_findString, 3},
+                                              {"fStr", A_findString, 3},
+                                              {"findByte", A_findByte, 3},
+                                              {"findWord", A_findWord, 3},
+                                              {"findDword", A_findDword, 3},
+                                              {"getEntryPointOffset", A_getEntryPointOffset, 0},
+                                              {"getOverlayOffset", A_getOverlayOffset, 0},
+                                              {"getOverlaySize", A_getOverlaySize, 0},
+                                              {"getAddressOfEntryPoint", A_getAddressOfEntryPoint, 0},
+                                              {"isOverlayPresent", A_isOverlayPresent, 0},
+                                              {"isSignaturePresent", A_isSignaturePresent, 3},
+                                              {"swapBytes", A_swapBytes, 1},
+                                              {"RVAToOffset", A_RVAToOffset, 1},
+                                              {"VAToOffset", A_VAToOffset, 1},
+                                              {"OffsetToVA", A_OffsetToVA, 1},
+                                              {"OffsetToRVA", A_OffsetToRVA, 1},
+                                              {"getFileDirectory", A_getFileDirectory, 0},
+                                              {"getFileBaseName", A_getFileBaseName, 0},
+                                              {"getFileCompleteSuffix", A_getFileCompleteSuffix, 0},
+                                              {"getFileSuffix", A_getFileSuffix, 0},
+                                              {"getSignature", A_getSignature, 2},
+                                              {"calculateEntropy", A_calculateEntropy, 2},
+                                              {"isZeroFilled", A_isZeroFilled, 2},
+                                              {"scanBufferForEncryptedPe", A_scanBufferForEncryptedPe, 2},
+                                              {"validateAmd64Unwind", A_validateAmd64Unwind, 2},
+                                              {"validateGuardCfFunctionTable", A_validateGuardCfFunctionTable, 3},
+                                              {"calculateMD5", A_calculateMD5, 2},
+                                              {"calculateCRC32", A_calculateCRC32, 2},
+                                              {"crc16", A_crc16, 3},
+                                              {"crc32", A_crc32, 3},
+                                              {"adler32", A_adler32, 2},
+                                              {"isSignatureInSectionPresent", A_isSignatureInSectionPresent, 2},
+                                              {"isAnySignatureInSectionPresent", A_isAnySignatureInSectionPresent, 2},
+                                              {"getImageBase", A_getImageBase, 0},
+                                              {"upperCase", A_upperCase, 1},
+                                              {"lowerCase", A_lowerCase, 1},
+                                              {"isPlainText", A_isPlainText, 0},
+                                              {"isUTF8Text", A_isUTF8Text, 0},
+                                              {"isUnicodeText", A_isUnicodeText, 0},
+                                              {"isText", A_isText, 0},
+                                              {"getHeaderString", A_getHeaderString, 0},
+                                              {"getDisasmLength", A_getDisasmLength, 1},
+                                              {"getDisasmString", A_getDisasmString, 1},
+                                              {"getDisasmNextAddress", A_getDisasmNextAddress, 1},
+                                              {"is16", A_is16, 0},
+                                              {"is32", A_is32, 0},
+                                              {"is64", A_is64, 0},
+                                              {"isDeepScan", A_isDeepScan, 0},
+                                              {"isHeuristicScan", A_isHeuristicScan, 0},
+                                              {"isFirstWrapperScan", A_isFirstWrapperScan, 0},
+                                              {"isAggressiveScan", A_isAggressiveScan, 0},
+                                              {"isRecursiveScan", A_isRecursiveScan, 0},
+                                              {"isOverlayScan", A_isOverlayScan, 0},
+                                              {"isVerbose", A_isVerbose, 0},
+                                              {"isProfiling", A_isProfiling, 0},
+                                              {"getScanID", A_getScanID, 0},
+                                              {"getStartOffset", A_getStartOffset, 0},
+                                              {"read_uint8", A_read_uint8, 1},
+                                              {"U8", A_read_uint8, 1},
+                                              {"read_int8", A_read_int8, 1},
+                                              {"I8", A_read_int8, 1},
+                                              {"read_uint16", A_read_uint16, 2},
+                                              {"U16", A_read_uint16, 2},
+                                              {"read_int16", A_read_int16, 2},
+                                              {"I16", A_read_int16, 2},
+                                              {"read_uint24", A_read_uint24, 2},
+                                              {"U24", A_read_uint24, 2},
+                                              {"read_int24", A_read_int24, 2},
+                                              {"I24", A_read_int24, 2},
+                                              {"read_uint32", A_read_uint32, 2},
+                                              {"U32", A_read_uint32, 2},
+                                              {"read_int32", A_read_int32, 2},
+                                              {"I32", A_read_int32, 2},
+                                              {"read_uint64", A_read_uint64, 2},
+                                              {"U64", A_read_uint64, 2},
+                                              {"read_int64", A_read_int64, 2},
+                                              {"I64", A_read_int64, 2},
+                                              {"read_float", A_read_float, 2},
+                                              {"read_float32", A_read_float, 2},
+                                              {"F32", A_read_float, 2},
+                                              {"read_double", A_read_double, 2},
+                                              {"read_float64", A_read_double, 2},
+                                              {"F64", A_read_double, 2},
+                                              {"read_float16", A_read_float16, 2},
+                                              {"F16", A_read_float16, 2},
+                                              {"read_UUID", A_read_UUID, 2},
+                                              {"read_ucsdString", A_read_ucsdString, 1},
+                                              {"UCSD", A_read_ucsdString, 1},
+                                              {"read_ansiString", A_read_ansiString, 2},
+                                              {"SA", A_read_ansiString, 2},
+                                              {"read_unicodeString", A_read_unicodeString, 2},
+                                              {"SU16", A_read_unicodeString, 2},
+                                              {"read_utf8String", A_read_utf8String, 2},
+                                              {"SU8", A_read_utf8String, 2},
+                                              {"read_codePageString", A_read_codePageString, 3},
+                                              {"SC", A_read_codePageString, 3},
+                                              {"bytesCountToString", A_bytesCountToString, 1},
+                                              {"find_ansiString", A_find_ansiString, 3},
+                                              {"find_unicodeString", A_find_unicodeString, 3},
+                                              {"find_utf8String", A_find_utf8String, 3},
+                                              {"getOperationSystemName", A_getOperationSystemName, 0},
+                                              {"getOperationSystemVersion", A_getOperationSystemVersion, 0},
+                                              {"getOperationSystemOptions", A_getOperationSystemOptions, 0},
+                                              {"getFileFormatName", A_getFileFormatName, 0},
+                                              {"getFileFormatVersion", A_getFileFormatVersion, 0},
+                                              {"getFileFormatOptions", A_getFileFormatOptions, 0},
+                                              {"isSigned", A_isSigned, 0},
+                                              {"cleanString", A_cleanString, 1},
+                                              {"readBytes", A_readBytes, 3},
+                                              {"BA", A_readBytes, 3},
+                                              {"isOverlay", A_isOverlay, 0},
+                                              {"isResource", A_isResource, 0},
+                                              {"isDebugData", A_isDebugData, 0},
+                                              {"isFilePart", A_isFilePart, 0},
+                                              {"isReleaseBuild", A_isReleaseBuild, 0},
+                                              {"isDebugBuild", A_isDebugBuild, 0},
+                                              {"isChecksumCorrect", A_isChecksumCorrect, 0},
+                                              {"isEntryPointCorrect", A_isEntryPointCorrect, 0},
+                                              {"isSectionAlignmentCorrect", A_isSectionAlignmentCorrect, 0},
+                                              {"isFileAlignmentCorrect", A_isFileAlignmentCorrect, 0},
+                                              {"isHeaderCorrect", A_isHeaderCorrect, 0},
+                                              {"isRelocsTableCorrect", A_isRelocsTableCorrect, 0},
+                                              {"isImportTableCorrect", A_isImportTableCorrect, 0},
+                                              {"isExportTableCorrect", A_isExportTableCorrect, 0},
+                                              {"isResourcesTableCorrect", A_isResourcesTableCorrect, 0},
+                                              {"isSectionsTableCorrect", A_isSectionsTableCorrect, 0},
+                                              {"getFormatMessages", A_getFormatMessages, 0},
+                                              {"getListOfCompressionMethods", A_getListOfCompressionMethods, 0},
+                                              {"startTiming", A_startTiming, 0},
+                                              {"endTiming", A_endTiming, 2},
+                                              {"detectZLIB", A_detectZLIB, 2},
+                                              {"detectGZIP", A_detectGZIP, 2},
+                                              {"detectZIP", A_detectZIP, 2},
+                                              {NULL, A_NONE, 0}};
 
 void die_engine_api_register_binary(JSCtx *pCtx, JSVal object)
 {
@@ -995,10 +988,10 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
     xx_io_device *pFile = pEngine->device;
     xx_pe_inspection *pPE = &pEngine->pe;
     xx_memory_map *pMap = pEngine->pMap;
-    xx_memory_map_lookup_t addressLookup = (pEngine->bHasPE || pMap->file_type == XX_FILE_TYPE_NE || pMap->file_type == XX_FILE_TYPE_LE ||
-                                            pMap->file_type == XX_FILE_TYPE_LX)
-                                               ? XX_MEMORY_MAP_LOOKUP_LAST_PHYSICAL
-                                               : XX_MEMORY_MAP_LOOKUP_FIRST_MATCH;
+    xx_memory_map_lookup_t addressLookup =
+        (pEngine->bHasPE || pMap->file_type == XX_FILE_TYPE_NE || pMap->file_type == XX_FILE_TYPE_LE || pMap->file_type == XX_FILE_TYPE_LX)
+            ? XX_MEMORY_MAP_LOOKUP_LAST_PHYSICAL
+            : XX_MEMORY_MAP_LOOKUP_FIRST_MATCH;
     /* NE's script base is zero even though its segmented map starts at
      * 0x10000. XNE's module address and Binary_Script's RVA base differ.
      * The same holds for the DOS script map: XMSDOS's module address is
@@ -1006,9 +999,7 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
     cd_u64 nRvaBase = (pMap->file_type == XX_FILE_TYPE_NE || has_legacy_script_map(pMap)) ? 0 : pMap->module_address;
 
     switch (id) {
-        case A_getSize:
-            *pResult = js_num((double)xx_io_total_size(pFile));
-            return true;
+        case A_getSize: *pResult = js_num((double)xx_io_total_size(pFile)); return true;
 
         case A_compare: {
             char *pSignature = arg_string(pCtx, nArgc, pArgv, 0);
@@ -1063,33 +1054,17 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
         }
 
         case A_readByte:
-        case A_read_uint8:
-            *pResult = js_num((double)xx_io_get_u8(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0)));
-            return true;
+        case A_read_uint8: *pResult = js_num((double)xx_io_get_u8(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0))); return true;
 
         case A_readSByte:
-        case A_read_int8:
-            *pResult = js_num((double)xx_io_get_i8(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0)));
-            return true;
+        case A_read_int8: *pResult = js_num((double)xx_io_get_i8(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0))); return true;
 
-        case A_readWord:
-            *pResult = js_num((double)xx_io_get_u16(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), false));
-            return true;
-        case A_readSWord:
-            *pResult = js_num((double)xx_io_get_i16(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), false));
-            return true;
-        case A_readDword:
-            *pResult = js_num((double)xx_io_get_u32(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), false));
-            return true;
-        case A_readSDword:
-            *pResult = js_num((double)xx_io_get_i32(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), false));
-            return true;
-        case A_readQword:
-            *pResult = js_num((double)xx_io_get_u64(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), false));
-            return true;
-        case A_readSQword:
-            *pResult = js_num((double)xx_io_get_i64(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), false));
-            return true;
+        case A_readWord: *pResult = js_num((double)xx_io_get_u16(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), false)); return true;
+        case A_readSWord: *pResult = js_num((double)xx_io_get_i16(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), false)); return true;
+        case A_readDword: *pResult = js_num((double)xx_io_get_u32(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), false)); return true;
+        case A_readSDword: *pResult = js_num((double)xx_io_get_i32(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), false)); return true;
+        case A_readQword: *pResult = js_num((double)xx_io_get_u64(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), false)); return true;
+        case A_readSQword: *pResult = js_num((double)xx_io_get_i64(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), false)); return true;
 
         case A_read_uint16:
             *pResult = js_num((double)xx_io_get_u16(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_bool(pCtx, nArgc, pArgv, 1, 0) ? true : false));
@@ -1125,18 +1100,12 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
         case A_read_float:
             *pResult = js_num((double)xx_io_get_f32(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_bool(pCtx, nArgc, pArgv, 1, 0) ? true : false));
             return true;
-        case A_read_double:
-            *pResult = js_num(xx_io_get_f64(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_bool(pCtx, nArgc, pArgv, 1, 0) ? true : false));
-            return true;
+        case A_read_double: *pResult = js_num(xx_io_get_f64(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_bool(pCtx, nArgc, pArgv, 1, 0) ? true : false)); return true;
         case A_read_float16:
             *pResult = js_num((double)xx_io_get_f16(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_bool(pCtx, nArgc, pArgv, 1, 0) ? true : false));
             return true;
-        case A_read_UUID:
-            *pResult = str_take_native(pCtx, xx_io_get_uuid(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0)));
-            return true;
-        case A_read_ucsdString:
-            *pResult = str_take_native(pCtx, xx_str_read_ucsd(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0)));
-            return true;
+        case A_read_UUID: *pResult = str_take_native(pCtx, xx_io_get_uuid(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0))); return true;
+        case A_read_ucsdString: *pResult = str_take_native(pCtx, xx_str_read_ucsd(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0))); return true;
 
         case A_div64: {
             cd_i64 nA = arg_i64(pCtx, nArgc, pArgv, 0, 0);
@@ -1414,9 +1383,7 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             return true;
         }
 
-        case A_getEntryPointOffset:
-            *pResult = js_num((double)script_entry_point_offset(pEngine));
-            return true;
+        case A_getEntryPointOffset: *pResult = js_num((double)script_entry_point_offset(pEngine)); return true;
 
         case A_getOverlayOffset:
             if (has_map_overlay(pMap)) {
@@ -1503,12 +1470,8 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
         case A_RVAToOffset:
             *pResult = js_num((double)xx_memory_map_address_to_offset_ex(pMap, nRvaBase + (cd_u64)arg_i64(pCtx, nArgc, pArgv, 0, 0), addressLookup));
             return true;
-        case A_VAToOffset:
-            *pResult = js_num((double)xx_memory_map_address_to_offset_ex(pMap, (cd_u64)arg_i64(pCtx, nArgc, pArgv, 0, 0), addressLookup));
-            return true;
-        case A_OffsetToVA:
-            *pResult = js_num((double)(cd_i64)xx_memory_map_offset_to_address_ex(pMap, arg_i64(pCtx, nArgc, pArgv, 0, 0), addressLookup));
-            return true;
+        case A_VAToOffset: *pResult = js_num((double)xx_memory_map_address_to_offset_ex(pMap, (cd_u64)arg_i64(pCtx, nArgc, pArgv, 0, 0), addressLookup)); return true;
+        case A_OffsetToVA: *pResult = js_num((double)(cd_i64)xx_memory_map_offset_to_address_ex(pMap, arg_i64(pCtx, nArgc, pArgv, 0, 0), addressLookup)); return true;
         case A_OffsetToRVA: {
             cd_i64 nAddress = xx_memory_map_offset_to_address_ex(pMap, arg_i64(pCtx, nArgc, pArgv, 0, 0), addressLookup);
 
@@ -1520,20 +1483,12 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             return true;
         }
 
-        case A_getFileDirectory:
-            *pResult = str_take_native(pCtx, xx_fs_path_dir(pEngine->file_name));
-            return true;
-        case A_getFileBaseName:
-            *pResult = str_take_native(pCtx, xx_fs_path_base_name(pEngine->file_name));
-            return true;
+        case A_getFileDirectory: *pResult = str_take_native(pCtx, xx_fs_path_dir(pEngine->file_name)); return true;
+        case A_getFileBaseName: *pResult = str_take_native(pCtx, xx_fs_path_base_name(pEngine->file_name)); return true;
         /* false: cdie counts a leading dot, so ".hidden.txt" has no complete
          * suffix here. The signature databases were written against that. */
-        case A_getFileCompleteSuffix:
-            *pResult = str_take_native(pCtx, xx_fs_path_complete_suffix_ex(pEngine->file_name, false));
-            return true;
-        case A_getFileSuffix:
-            *pResult = str_take_native(pCtx, xx_fs_path_suffix(pEngine->file_name));
-            return true;
+        case A_getFileCompleteSuffix: *pResult = str_take_native(pCtx, xx_fs_path_complete_suffix_ex(pEngine->file_name, false)); return true;
+        case A_getFileSuffix: *pResult = str_take_native(pCtx, xx_fs_path_suffix(pEngine->file_name)); return true;
 
         case A_getSignature:
             *pResult = str_take_native(pCtx, xx_io_get_signature_hex(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0)));
@@ -1548,9 +1503,7 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             *pResult = js_num(dEntropy);
             return true;
         }
-        case A_isZeroFilled:
-            *pResult = js_bool(xx_io_is_zero_filled(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0)));
-            return true;
+        case A_isZeroFilled: *pResult = js_bool(xx_io_is_zero_filled(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0))); return true;
         case A_scanBufferForEncryptedPe: {
             cd_i64 nStart = die_engine_profile_start(pEngine);
             const char *pszAlgo = "";
@@ -1606,16 +1559,13 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             JSVal result;
             int available;
 
-            if (!pEngine->bHasPE || nArgc < 2 || nRVA < 0 || nRVA > UINT32_MAX ||
-                nSize < 0 || nSize > UINT32_MAX) {
+            if (!pEngine->bHasPE || nArgc < 2 || nRVA < 0 || nRVA > UINT32_MAX || nSize < 0 || nSize > UINT32_MAX) {
                 *pResult = js_null();
                 return true;
             }
             nStart = die_engine_profile_start(pEngine);
-            available = xx_pe_inspect_validate_amd64_unwind(pPE, pFile, (uint32_t)nRVA,
-                                                           (uint32_t)nSize, &validation);
-            die_engine_profile_end(pEngine, nStart, "validateAmd64Unwind: %lld %lld",
-                                   (long long)nRVA, (long long)nSize);
+            available = xx_pe_inspect_validate_amd64_unwind(pPE, pFile, (uint32_t)nRVA, (uint32_t)nSize, &validation);
+            die_engine_profile_end(pEngine, nStart, "validateAmd64Unwind: %lld %lld", (long long)nRVA, (long long)nSize);
             if (!available) {
                 *pResult = js_null();
                 return true;
@@ -1638,19 +1588,14 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             JSVal result;
             int available;
 
-            if (!pEngine->bHasPE || !arg_exact_u32(nArgc, pArgv, 0, &nTableRVA) ||
-                !arg_exact_u32(nArgc, pArgv, 1, &nEntryCount) || !nEntryCount ||
+            if (!pEngine->bHasPE || !arg_exact_u32(nArgc, pArgv, 0, &nTableRVA) || !arg_exact_u32(nArgc, pArgv, 1, &nEntryCount) || !nEntryCount ||
                 !arg_exact_u32(nArgc, pArgv, 2, &nEntrySize) || nEntrySize < 4 || nEntrySize > 19) {
                 *pResult = js_null();
                 return true;
             }
             nStart = die_engine_profile_start(pEngine);
-            available = xx_pe_inspect_validate_guard_cf_function_table(
-                pPE, pFile, nTableRVA, nEntryCount, nEntrySize, &validation);
-            die_engine_profile_end(pEngine, nStart,
-                                   "validateGuardCfFunctionTable: %lld %lld %lld",
-                                   (long long)nTableRVA, (long long)nEntryCount,
-                                   (long long)nEntrySize);
+            available = xx_pe_inspect_validate_guard_cf_function_table(pPE, pFile, nTableRVA, nEntryCount, nEntrySize, &validation);
+            die_engine_profile_end(pEngine, nStart, "validateGuardCfFunctionTable: %lld %lld %lld", (long long)nTableRVA, (long long)nEntryCount, (long long)nEntrySize);
             if (!available) {
                 *pResult = js_null();
                 return true;
@@ -1686,8 +1631,7 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
                 return true;
             }
             bHasDigest = xx_md5_device(pFile, nOffset, nSize, digest, sizeof(digest), pEngine->pd);
-            if (xx_io_seek64(pFile, nPosition, SEEK_SET) != 0 || !bHasDigest ||
-                xx_io_buffer_failed(pFile) || xx_pd_is_stopped(pEngine->pd)) {
+            if (xx_io_seek64(pFile, nPosition, SEEK_SET) != 0 || !bHasDigest || xx_io_buffer_failed(pFile) || xx_pd_is_stopped(pEngine->pd)) {
                 *pResult = js_str(pCtx, "");
                 return true;
             }
@@ -1699,11 +1643,10 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             *pResult = js_str(pCtx, hex);
             return true;
         }
-        case A_calculateCRC32:
-            *pResult = js_num((double)xx_crc32_device(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0), 0));
-            return true;
+        case A_calculateCRC32: *pResult = js_num((double)xx_crc32_device(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0), 0)); return true;
         case A_crc32:
-            *pResult = js_num((double)xx_crc32_device(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0), (cd_u32)arg_i64(pCtx, nArgc, pArgv, 2, 0)));
+            *pResult =
+                js_num((double)xx_crc32_device(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0), (cd_u32)arg_i64(pCtx, nArgc, pArgv, 2, 0)));
             return true;
         case A_crc16: {
             cd_i64 nOffset = arg_i64(pCtx, nArgc, pArgv, 0, 0);
@@ -1714,8 +1657,7 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             /* Binary_Script::crc16 uses XBinary's range API: valid, nonempty
              * reads receive a final XOR; rejected or failed reads return 0.
              * Keep the native CRC-16/ARC accumulator contract unchanged. */
-            if (nSize < -1 || !xx_io_range_clamp(pFile, nOffset, &nSize) || !nSize ||
-                xx_io_buffer_failed(pFile) || xx_pd_is_stopped(pEngine->pd)) {
+            if (nSize < -1 || !xx_io_range_clamp(pFile, nOffset, &nSize) || !nSize || xx_io_buffer_failed(pFile) || xx_pd_is_stopped(pEngine->pd)) {
                 *pResult = js_num(0);
                 return true;
             }
@@ -1727,9 +1669,7 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             *pResult = js_num((double)(nResult ^ 0xffffU));
             return true;
         }
-        case A_adler32:
-            *pResult = js_num((double)xx_adler32_device(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0)));
-            return true;
+        case A_adler32: *pResult = js_num((double)xx_adler32_device(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0))); return true;
 
         case A_isSignatureInSectionPresent: {
             cd_i64 nNumber = arg_i64(pCtx, nArgc, pArgv, 0, 0);
@@ -1808,7 +1748,7 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             }
             bResult = die_engine_signature_find_any(pEngine, nOffset, nSize, (const char *const *)ppSignatures, (size_t)nLength);
 
-any_signature_cleanup:
+        any_signature_cleanup:
             for (i = 0; i < (size_t)nLength; i++) cd_free(ppSignatures[i]);
             xx_mem_free(ppSignatures);
             die_engine_profile_end(pEngine, nStart, "isAnySignatureInSectionPresent: %lld (%lld patterns) ", (long long)nNumber, (long long)nLength);
@@ -1816,9 +1756,7 @@ any_signature_cleanup:
             return true;
         }
 
-        case A_getImageBase:
-            *pResult = js_num((double)pMap->module_address);
-            return true;
+        case A_getImageBase: *pResult = js_num((double)pMap->module_address); return true;
 
         case A_upperCase:
         case A_lowerCase: {
@@ -1841,22 +1779,14 @@ any_signature_cleanup:
             return true;
         }
 
-        case A_isPlainText:
-            *pResult = js_bool(is_plain_text(pFile));
-            return true;
+        case A_isPlainText: *pResult = js_bool(is_plain_text(pFile)); return true;
 
-        case A_isUTF8Text:
-            *pResult = js_bool(is_utf8_text(pFile));
-            return true;
+        case A_isUTF8Text: *pResult = js_bool(is_utf8_text(pFile)); return true;
         /* m_bIsUnicodeText is set only on the getUnicodeType branch of the
          * constructor, so it means "not UNICODE_TYPE_NONE".                */
-        case A_isUnicodeText:
-            *pResult = js_bool(unicode_type(pFile) != 0);
-            return true;
+        case A_isUnicodeText: *pResult = js_bool(unicode_type(pFile) != 0); return true;
         /* isText ORs the three flags together, as the reference does. */
-        case A_isText:
-            *pResult = js_bool(is_plain_text(pFile) || is_utf8_text(pFile) || (unicode_type(pFile) != 0));
-            return true;
+        case A_isText: *pResult = js_bool(is_plain_text(pFile) || is_utf8_text(pFile) || (unicode_type(pFile) != 0)); return true;
 
         /* Binary_Script's constructor fills m_sHeaderString with the head of
          * the file in the first encoding that answers: read_unicodeString
@@ -1943,47 +1873,24 @@ any_signature_cleanup:
             return true;
         }
 
-        case A_is16:
-            *pResult = js_bool(pEngine->nBits == 16);
-            return true;
-        case A_is32:
-            *pResult = js_bool(pEngine->nBits == 32);
-            return true;
-        case A_is64:
-            *pResult = js_bool(pEngine->nBits == 64);
-            return true;
+        case A_is16: *pResult = js_bool(pEngine->nBits == 16); return true;
+        case A_is32: *pResult = js_bool(pEngine->nBits == 32); return true;
+        case A_is64: *pResult = js_bool(pEngine->nBits == 64); return true;
 
-        case A_isDeepScan:
-            *pResult = js_bool(pEngine->pOptions->deep_scan);
-            return true;
-        case A_isHeuristicScan:
-            *pResult = js_bool(pEngine->pOptions->heuristic_scan);
-            return true;
-        case A_isFirstWrapperScan:
-            *pResult = js_bool(0);
-            return true;
-        case A_isAggressiveScan:
-            *pResult = js_bool(pEngine->pOptions->aggressive_scan);
-            return true;
-        case A_isRecursiveScan:
-            *pResult = js_bool(pEngine->pOptions->recursive_scan);
-            return true;
-        case A_isOverlayScan:
-            *pResult = js_bool(0);
-            return true;
-        case A_isVerbose:
-            *pResult = js_bool(pEngine->pOptions->verbose);
-            return true;
-        case A_isProfiling:
-            *pResult = js_bool(pEngine->pOptions->profiling);
-            return true;
+        case A_isDeepScan: *pResult = js_bool(pEngine->pOptions->deep_scan); return true;
+        case A_isHeuristicScan: *pResult = js_bool(pEngine->pOptions->heuristic_scan); return true;
+        case A_isFirstWrapperScan: *pResult = js_bool(0); return true;
+        case A_isAggressiveScan: *pResult = js_bool(pEngine->pOptions->aggressive_scan); return true;
+        case A_isRecursiveScan: *pResult = js_bool(pEngine->pOptions->recursive_scan); return true;
+        case A_isOverlayScan: *pResult = js_bool(0); return true;
+        case A_isVerbose: *pResult = js_bool(pEngine->pOptions->verbose); return true;
+        case A_isProfiling: *pResult = js_bool(pEngine->pOptions->profiling); return true;
         case A_getScanID:
-            *pResult = js_str(pCtx, pEngine->pOptions->resource_type ? pEngine->pOptions->resource_type :
-                                   pEngine->pOptions->archive_member ? pEngine->pOptions->archive_member : "");
+            *pResult = js_str(pCtx, pEngine->pOptions->resource_type    ? pEngine->pOptions->resource_type
+                                    : pEngine->pOptions->archive_member ? pEngine->pOptions->archive_member
+                                                                        : "");
             return true;
-        case A_getStartOffset:
-            *pResult = js_num(0);
-            return true;
+        case A_getStartOffset: *pResult = js_num(0); return true;
 
         /* Binary_Script::bytesCountToString uses XBinary's default base. */
         case A_bytesCountToString: {
@@ -2122,11 +2029,8 @@ any_signature_cleanup:
                 return true;
             }
 
-            if (pPE->nMachine == (0xFD1D ^ 0x8664) ||
-                pPE->nSubsystem == 9 ||
-                (pPE->nSubsystem >= 10 && pPE->nSubsystem <= 13) ||
-                pPE->nSubsystem == 14 || pPE->nSubsystem == 17 ||
-                pPE->nSubsystem == 5 || pPE->nSubsystem == 7) {
+            if (pPE->nMachine == (0xFD1D ^ 0x8664) || pPE->nSubsystem == 9 || (pPE->nSubsystem >= 10 && pPE->nSubsystem <= 13) || pPE->nSubsystem == 14 ||
+                pPE->nSubsystem == 17 || pPE->nSubsystem == 5 || pPE->nSubsystem == 7) {
                 *pResult = js_str(pCtx, "");
                 return true;
             }
@@ -2262,9 +2166,7 @@ any_signature_cleanup:
             *pResult = js_str(pCtx, sBuf);
             return true;
         }
-        case A_getFileFormatName:
-            *pResult = js_str(pCtx, xft_to_string(pEngine->fileType));
-            return true;
+        case A_getFileFormatName: *pResult = js_str(pCtx, xft_to_string(pEngine->fileType)); return true;
 
         case A_getFileFormatVersion:
             if (pEngine->bHasJpeg && xx_jpeg_get_version(&pEngine->jpeg)) {
@@ -2419,25 +2321,13 @@ any_signature_cleanup:
             return true;
         }
 
-        case A_isOverlay:
-            *pResult = js_bool(pEngine->pOptions->scan_part == XX_SCAN_PART_OVERLAY);
-            return true;
-        case A_isResource:
-            *pResult = js_bool(pEngine->pOptions->scan_part == XX_SCAN_PART_RESOURCE);
-            return true;
-        case A_isDebugData:
-            *pResult = js_bool(0);
-            return true;
-        case A_isFilePart:
-            *pResult = js_bool(pEngine->pOptions->scan_part != XX_SCAN_PART_INPUT);
-            return true;
+        case A_isOverlay: *pResult = js_bool(pEngine->pOptions->scan_part == XX_SCAN_PART_OVERLAY); return true;
+        case A_isResource: *pResult = js_bool(pEngine->pOptions->scan_part == XX_SCAN_PART_RESOURCE); return true;
+        case A_isDebugData: *pResult = js_bool(0); return true;
+        case A_isFilePart: *pResult = js_bool(pEngine->pOptions->scan_part != XX_SCAN_PART_INPUT); return true;
 
-        case A_isReleaseBuild:
-            *pResult = js_bool(1);
-            return true;
-        case A_isDebugBuild:
-            *pResult = js_bool(0);
-            return true;
+        case A_isReleaseBuild: *pResult = js_bool(1); return true;
+        case A_isDebugBuild: *pResult = js_bool(0); return true;
 
         case A_isChecksumCorrect:
         case A_isEntryPointCorrect:
@@ -2448,16 +2338,10 @@ any_signature_cleanup:
         case A_isImportTableCorrect:
         case A_isExportTableCorrect:
         case A_isResourcesTableCorrect:
-        case A_isSectionsTableCorrect:
-            *pResult = js_bool(1);
-            return true;
+        case A_isSectionsTableCorrect: *pResult = js_bool(1); return true;
 
-        case A_getFormatMessages:
-            *pResult = js_new_array(pCtx);
-            return true;
-        case A_getListOfCompressionMethods:
-            *pResult = js_new_array(pCtx);
-            return true;
+        case A_getFormatMessages: *pResult = js_new_array(pCtx); return true;
+        case A_getListOfCompressionMethods: *pResult = js_new_array(pCtx); return true;
 
         case A_startTiming: {
             /* The reference hands out a random 32-bit handle and keeps the
@@ -2504,11 +2388,8 @@ any_signature_cleanup:
 
         case A_detectZLIB:
         case A_detectGZIP:
-        case A_detectZIP:
-            *pResult = js_num(-1);
-            return true;
+        case A_detectZIP: *pResult = js_num(-1); return true;
 
-        default:
-            return false;
+        default: return false;
     }
 }

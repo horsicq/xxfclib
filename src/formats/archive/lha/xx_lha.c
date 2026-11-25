@@ -149,7 +149,8 @@ static bool xx_lha_path_safe(const char *name)
     /* Internal colons are literal filename bytes and the output boundary
      * escapes them as %3A. Only a leading drive designator is a path root. */
     if (!name || !name[0] || name[0] == '/' || name[0] == '\\' || xx_rt_strchr(name, '\\') ||
-        (((name[0] >= 'A' && name[0] <= 'Z') || (name[0] >= 'a' && name[0] <= 'z')) && name[1] == ':')) return false;
+        (((name[0] >= 'A' && name[0] <= 'Z') || (name[0] >= 'a' && name[0] <= 'z')) && name[1] == ':'))
+        return false;
     while (*cursor) {
         const char *end = cursor;
         size_t length;
@@ -613,9 +614,7 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd)
              * Unix for an Atari stub, OS id 'U'); require the extension
              * terminator to consume the declared header exactly. Other
              * probes still require CRC. */
-            if (level != 2U || (os_id != (uint8_t)'a' && os_id != (uint8_t)'U') ||
-                self->priv != &atari_inline_context ||
-                ext_pos + word_size != header_total) goto fail;
+            if (level != 2U || (os_id != (uint8_t)'a' && os_id != (uint8_t)'U') || self->priv != &atari_inline_context || ext_pos + word_size != header_total) goto fail;
         }
 
         /* Level 1's subtraction can underflow a lying size field. */
@@ -1017,9 +1016,8 @@ static bool xx_lha_set_record(xx_archive_record *record, const xx_lha_member *me
            xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, member->timestamp) &&
            /* Levels 0/1 only: also the packed DOS words, because the listing
             * reads TIMESTAMP as Unix seconds (which it is at levels 2/3). */
-           (!member->dos_stamp ||
-            (xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (member->timestamp >> 16) & 0xFFFFU) &&
-             xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->timestamp & 0xFFFFU))) &&
+           (!member->dos_stamp || (xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, (member->timestamp >> 16) & 0xFFFFU) &&
+                                   xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->timestamp & 0xFFFFU))) &&
            xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, member->is_folder) && xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false);
 }
 
@@ -1141,8 +1139,7 @@ static bool xx_lha_copy_stored_to_device(Abstractformat *self, const xx_lha_memb
     uint8_t buffer[4096];
     uint16_t crc = 0U;
     int pass;
-    if (member->compressed_size != member->uncompressed_size ||
-        !xx_lha_range_within(xx_io_total_size(self->device), member->data_offset, member->compressed_size)) {
+    if (member->compressed_size != member->uncompressed_size || !xx_lha_range_within(xx_io_total_size(self->device), member->data_offset, member->compressed_size)) {
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Invalid stored LHA member range or size");
         return false;
     }
@@ -1171,8 +1168,7 @@ static bool xx_lha_copy_stored_to_device(Abstractformat *self, const xx_lha_memb
                     if (xx_pd_is_stopped(pd)) return false;
                     sent = xx_io_write(destination, buffer + written, (size_t)received - written);
                     if (sent <= 0 || (size_t)sent > (size_t)received - written) {
-                        if (!pd || (!pd->last_error && !xx_pd_is_stopped(pd)))
-                            xx_pd_set_error(pd, XXFC_ERR_IO, "Cannot write stored LHA member");
+                        if (!pd || (!pd->last_error && !xx_pd_is_stopped(pd))) xx_pd_set_error(pd, XXFC_ERR_IO, "Cannot write stored LHA member");
                         return false;
                     }
                     written += (size_t)sent;
@@ -1197,8 +1193,9 @@ bool xx_lha_unpack_current_archive_record_to_device(Abstractformat *self, xx_arc
     uint64_t packed_size, unpacked_size, allocation_size;
     int64_t saved;
     bool result = false, stored;
-    if (!self || !self->device || !state || state->format != self || !state->has_record || !destination ||
-        !destination->write || destination == self->device || xx_pd_is_stopped(pd)) return false;
+    if (!self || !self->device || !state || state->format != self || !state->has_record || !destination || !destination->write || destination == self->device ||
+        xx_pd_is_stopped(pd))
+        return false;
     stream = (xx_lha_stream *)state->internal_state;
     if (!stream || stream->index >= stream->count) return false;
     member = &stream->items[stream->index];
@@ -1243,8 +1240,7 @@ done:
         xx_pd_set_error(pd, XXFC_ERR_IO, "Cannot restore LHA source position");
         result = false;
     }
-    if (!result && pd && !pd->last_error && !xx_pd_is_stopped(pd))
-        xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Cannot decode or verify LHA member");
+    if (!result && pd && !pd->last_error && !xx_pd_is_stopped(pd)) xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG, "Cannot decode or verify LHA member");
     return result;
 }
 
@@ -1290,8 +1286,7 @@ bool xx_lha_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
         return false;
     }
     relative = xx_archive_output_name(member->name, 437, 0);
-    if (relative && !member->is_folder)
-        XX_ARCHIVE_OUTPUT_RESOLVE(relative, stream->items, stream->count, stream->index, name, 437, 0);
+    if (relative && !member->is_folder) XX_ARCHIVE_OUTPUT_RESOLVE(relative, stream->items, stream->count, stream->index, name, 437, 0);
     if (!relative) {
         xx_str_free(converted_path);
         return false;

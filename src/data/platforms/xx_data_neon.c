@@ -85,14 +85,10 @@ int64_t xx_data_find_bytes_neon(const uint8_t *pdata, size_t data_size, size_t s
             uint8x16_t any;
 
             if (xx_data_neon_should_stop(pd, i, start_offset)) return -1;
-            matches0 = vandq_u8(vceqq_u8(vld1q_u8(pdata + i + idx1), wanted1),
-                                 vceqq_u8(vld1q_u8(pdata + i + idx2), wanted2));
-            matches1 = vandq_u8(vceqq_u8(vld1q_u8(pdata + i + 16 + idx1), wanted1),
-                                 vceqq_u8(vld1q_u8(pdata + i + 16 + idx2), wanted2));
-            matches2 = vandq_u8(vceqq_u8(vld1q_u8(pdata + i + 32 + idx1), wanted1),
-                                 vceqq_u8(vld1q_u8(pdata + i + 32 + idx2), wanted2));
-            matches3 = vandq_u8(vceqq_u8(vld1q_u8(pdata + i + 48 + idx1), wanted1),
-                                 vceqq_u8(vld1q_u8(pdata + i + 48 + idx2), wanted2));
+            matches0 = vandq_u8(vceqq_u8(vld1q_u8(pdata + i + idx1), wanted1), vceqq_u8(vld1q_u8(pdata + i + idx2), wanted2));
+            matches1 = vandq_u8(vceqq_u8(vld1q_u8(pdata + i + 16 + idx1), wanted1), vceqq_u8(vld1q_u8(pdata + i + 16 + idx2), wanted2));
+            matches2 = vandq_u8(vceqq_u8(vld1q_u8(pdata + i + 32 + idx1), wanted1), vceqq_u8(vld1q_u8(pdata + i + 32 + idx2), wanted2));
+            matches3 = vandq_u8(vceqq_u8(vld1q_u8(pdata + i + 48 + idx1), wanted1), vceqq_u8(vld1q_u8(pdata + i + 48 + idx2), wanted2));
             any = vorrq_u8(vorrq_u8(matches0, matches1), vorrq_u8(matches2, matches3));
             if (xx_data_neon_any(any)) {
                 uint8_t lanes[64];
@@ -119,8 +115,7 @@ int64_t xx_data_find_bytes_neon(const uint8_t *pdata, size_t data_size, size_t s
         while (i <= limit && limit - i >= 15) {
             uint8x16_t matches;
             if (xx_data_neon_should_stop(pd, i, start_offset)) return -1;
-            matches = vandq_u8(vceqq_u8(vld1q_u8(pdata + i + idx1), wanted1),
-                                vceqq_u8(vld1q_u8(pdata + i + idx2), wanted2));
+            matches = vandq_u8(vceqq_u8(vld1q_u8(pdata + i + idx1), wanted1), vceqq_u8(vld1q_u8(pdata + i + idx2), wanted2));
             if (xx_data_neon_any(matches)) {
                 uint8_t lanes[16];
                 size_t lane;
@@ -138,8 +133,7 @@ int64_t xx_data_find_bytes_neon(const uint8_t *pdata, size_t data_size, size_t s
         }
 
         for (; i <= limit; ++i) {
-            if (pdata[i + idx1] == pat[idx1] && pdata[i + idx2] == pat[idx2] &&
-                (pattern_size <= 2 || xx_mem_compare(pdata + i, pat, pattern_size) == 0)) {
+            if (pdata[i + idx1] == pat[idx1] && pdata[i + idx2] == pat[idx2] && (pattern_size <= 2 || xx_mem_compare(pdata + i, pat, pattern_size) == 0)) {
                 return (int64_t)i;
             }
         }
@@ -171,8 +165,7 @@ int64_t xx_data_find_masked_neon(const uint8_t *data, size_t size, const uint8_t
     wanted1 = vdupq_n_u8(value[idx1]);
     wanted2 = vdupq_n_u8(value[idx2]);
     while (p <= last && last - p >= 15) {
-        uint8x16_t matches = vandq_u8(vceqq_u8(vld1q_u8(data + p + idx1), wanted1),
-                                      vceqq_u8(vld1q_u8(data + p + idx2), wanted2));
+        uint8x16_t matches = vandq_u8(vceqq_u8(vld1q_u8(data + p + idx1), wanted1), vceqq_u8(vld1q_u8(data + p + idx2), wanted2));
         if (xx_data_neon_any(matches)) {
             uint8_t lanes[16];
             size_t lane;

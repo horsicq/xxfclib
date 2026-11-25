@@ -29,9 +29,7 @@
 #define XX_REGEX_AVX2
 #endif
 
-static const unsigned char *find_pair_scalar(const unsigned char *text, size_t candidates,
-                                            unsigned char first, size_t offset,
-                                            unsigned char second)
+static const unsigned char *find_pair_scalar(const unsigned char *text, size_t candidates, unsigned char first, size_t offset, unsigned char second)
 {
     size_t at;
     for (at = 0; at < candidates; ++at) {
@@ -42,9 +40,7 @@ static const unsigned char *find_pair_scalar(const unsigned char *text, size_t c
 
 #ifdef XX_REGEX_X86
 XX_REGEX_SSE2
-static const unsigned char *find_pair_sse2(const unsigned char *text, size_t candidates,
-                                          unsigned char first, size_t offset,
-                                          unsigned char second)
+static const unsigned char *find_pair_sse2(const unsigned char *text, size_t candidates, unsigned char first, size_t offset, unsigned char second)
 {
     const __m128i a = _mm_set1_epi8((char)first);
     const __m128i b = _mm_set1_epi8((char)second);
@@ -68,16 +64,13 @@ static const unsigned char *find_pair_sse2(const unsigned char *text, size_t can
 #endif
 
 #ifdef XX_REGEX_NEON
-static const unsigned char *find_pair_neon(const unsigned char *text, size_t candidates,
-                                          unsigned char first, size_t offset,
-                                          unsigned char second)
+static const unsigned char *find_pair_neon(const unsigned char *text, size_t candidates, unsigned char first, size_t offset, unsigned char second)
 {
     const uint8x16_t a = vdupq_n_u8(first);
     const uint8x16_t b = vdupq_n_u8(second);
     size_t at = 0;
     for (; candidates - at >= 16; at += 16) {
-        const uint8x16_t equal = vandq_u8(vceqq_u8(vld1q_u8(text + at), a),
-                                        vceqq_u8(vld1q_u8(text + at + offset), b));
+        const uint8x16_t equal = vandq_u8(vceqq_u8(vld1q_u8(text + at), a), vceqq_u8(vld1q_u8(text + at + offset), b));
         const uint64x2_t words = vreinterpretq_u64_u8(equal);
         if (vgetq_lane_u64(words, 0) || vgetq_lane_u64(words, 1)) {
             return find_pair_scalar(text + at, 16, first, offset, second);
@@ -87,9 +80,7 @@ static const unsigned char *find_pair_neon(const unsigned char *text, size_t can
 }
 #endif
 
-const unsigned char *xx_regex_find_pair(const unsigned char *text, size_t size,
-                                       unsigned char first, size_t offset,
-                                       unsigned char second)
+const unsigned char *xx_regex_find_pair(const unsigned char *text, size_t size, unsigned char first, size_t offset, unsigned char second)
 {
     size_t candidates;
     const unsigned char *candidate;
@@ -141,8 +132,7 @@ static int byteset_has(const xx_regex_byteset *set, unsigned char value)
     return (set->map[value >> 3] >> (value & 7)) & 1;
 }
 
-static const unsigned char *find_sets_scalar(const unsigned char *text, size_t candidates,
-                                             const xx_regex_byteset *sets, size_t count)
+static const unsigned char *find_sets_scalar(const unsigned char *text, size_t candidates, const xx_regex_byteset *sets, size_t count)
 {
     size_t at, j;
     for (at = 0; at < candidates; ++at) {
@@ -172,8 +162,7 @@ static int byteset_kind(const xx_regex_byteset *set)
 static const unsigned char re_set_bits[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
 
 XX_REGEX_SSSE3
-static const unsigned char *find_sets_ssse3(const unsigned char *text, size_t candidates,
-                                            const xx_regex_byteset *sets, size_t count)
+static const unsigned char *find_sets_ssse3(const unsigned char *text, size_t candidates, const xx_regex_byteset *sets, size_t count)
 {
     __m128i low[XX_REGEX_MAX_SETS], high[XX_REGEX_MAX_SETS];
     __m128i b0[XX_REGEX_MAX_SETS], b1[XX_REGEX_MAX_SETS], b2[XX_REGEX_MAX_SETS];
@@ -199,15 +188,11 @@ static const unsigned char *find_sets_ssse3(const unsigned char *text, size_t ca
             switch (kind[j]) {
                 case RE_SET_EQ1: member = _mm_cmpeq_epi8(v, b0[j]); break;
                 case RE_SET_EQ2: member = _mm_or_si128(_mm_cmpeq_epi8(v, b0[j]), _mm_cmpeq_epi8(v, b1[j])); break;
-                case RE_SET_EQ3:
-                    member = _mm_or_si128(_mm_or_si128(_mm_cmpeq_epi8(v, b0[j]), _mm_cmpeq_epi8(v, b1[j])),
-                                          _mm_cmpeq_epi8(v, b2[j]));
-                    break;
+                case RE_SET_EQ3: member = _mm_or_si128(_mm_or_si128(_mm_cmpeq_epi8(v, b0[j]), _mm_cmpeq_epi8(v, b1[j])), _mm_cmpeq_epi8(v, b2[j])); break;
                 default: {
                     __m128i row = _mm_shuffle_epi8(low[j], _mm_and_si128(v, keep_low));
                     const __m128i bit = _mm_shuffle_epi8(bits, _mm_and_si128(_mm_srli_epi16(v, 4), nibble));
-                    if (kind[j] == RE_SET_FULL)
-                        row = _mm_or_si128(row, _mm_shuffle_epi8(high[j], _mm_and_si128(_mm_xor_si128(v, flip), keep_low)));
+                    if (kind[j] == RE_SET_FULL) row = _mm_or_si128(row, _mm_shuffle_epi8(high[j], _mm_and_si128(_mm_xor_si128(v, flip), keep_low)));
                     member = _mm_cmpeq_epi8(_mm_and_si128(row, bit), bit);
                     break;
                 }
@@ -231,8 +216,7 @@ static const unsigned char *find_sets_ssse3(const unsigned char *text, size_t ca
 }
 
 XX_REGEX_AVX2
-static const unsigned char *find_sets_avx2(const unsigned char *text, size_t candidates,
-                                           const xx_regex_byteset *sets, size_t count)
+static const unsigned char *find_sets_avx2(const unsigned char *text, size_t candidates, const xx_regex_byteset *sets, size_t count)
 {
     __m256i low[XX_REGEX_MAX_SETS], high[XX_REGEX_MAX_SETS];
     __m256i b0[XX_REGEX_MAX_SETS], b1[XX_REGEX_MAX_SETS], b2[XX_REGEX_MAX_SETS];
@@ -259,15 +243,11 @@ static const unsigned char *find_sets_avx2(const unsigned char *text, size_t can
             switch (kind[j]) {
                 case RE_SET_EQ1: member = _mm256_cmpeq_epi8(v, b0[j]); break;
                 case RE_SET_EQ2: member = _mm256_or_si256(_mm256_cmpeq_epi8(v, b0[j]), _mm256_cmpeq_epi8(v, b1[j])); break;
-                case RE_SET_EQ3:
-                    member = _mm256_or_si256(_mm256_or_si256(_mm256_cmpeq_epi8(v, b0[j]), _mm256_cmpeq_epi8(v, b1[j])),
-                                             _mm256_cmpeq_epi8(v, b2[j]));
-                    break;
+                case RE_SET_EQ3: member = _mm256_or_si256(_mm256_or_si256(_mm256_cmpeq_epi8(v, b0[j]), _mm256_cmpeq_epi8(v, b1[j])), _mm256_cmpeq_epi8(v, b2[j])); break;
                 default: {
                     __m256i row = _mm256_shuffle_epi8(low[j], _mm256_and_si256(v, keep_low));
                     const __m256i bit = _mm256_shuffle_epi8(bits, _mm256_and_si256(_mm256_srli_epi16(v, 4), nibble));
-                    if (kind[j] == RE_SET_FULL)
-                        row = _mm256_or_si256(row, _mm256_shuffle_epi8(high[j], _mm256_and_si256(_mm256_xor_si256(v, flip), keep_low)));
+                    if (kind[j] == RE_SET_FULL) row = _mm256_or_si256(row, _mm256_shuffle_epi8(high[j], _mm256_and_si256(_mm256_xor_si256(v, flip), keep_low)));
                     member = _mm256_cmpeq_epi8(_mm256_and_si256(row, bit), bit);
                     break;
                 }
@@ -294,8 +274,7 @@ static const unsigned char *find_sets_avx2(const unsigned char *text, size_t can
 }
 #endif
 
-const unsigned char *xx_regex_find_sets(const unsigned char *text, size_t candidates,
-                                       const xx_regex_byteset *sets, size_t count)
+const unsigned char *xx_regex_find_sets(const unsigned char *text, size_t candidates, const xx_regex_byteset *sets, size_t count)
 {
     if (!text || !candidates || !sets || !count || count > XX_REGEX_MAX_SETS) return NULL;
 #ifdef XX_REGEX_X86

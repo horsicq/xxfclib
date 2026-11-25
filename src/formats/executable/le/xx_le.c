@@ -249,10 +249,8 @@ static bool xx_linear_parse(Abstractformat *format, xx_linear_executable *parsed
         if (object->page_count == 0U) continue;
         /* VxDs (QEMM386.SYS, W32S.386) list pages past e32_mpages: keep the pages that exist, like Qt XLE */
         first = object->first_page == 0U ? (uint64_t)parsed->module_page_count : (uint64_t)object->first_page - 1U;
-        if (first >= parsed->module_page_count)
-            object->page_count = 0U;
-        else if (object->page_count > parsed->module_page_count - first)
-            object->page_count = (uint32_t)(parsed->module_page_count - first);
+        if (first >= parsed->module_page_count) object->page_count = 0U;
+        else if (object->page_count > parsed->module_page_count - first) object->page_count = (uint32_t)(parsed->module_page_count - first);
     }
 
     size = signature == XX_LE_SIGNATURE ? XX_LE_PAGE_RECORD_SIZE : XX_LX_PAGE_RECORD_SIZE;

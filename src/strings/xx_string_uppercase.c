@@ -37,8 +37,7 @@ typedef struct {
 
 /* Width of the well-formed UTF-8 scalar at bytes, or 0 for a malformed
  * byte, which bstr's char_indices reports as U+FFFD with its raw bytes. */
-static size_t xx_string_upper_decode(const uint8_t *bytes, size_t length,
-                                     uint32_t *scalar)
+static size_t xx_string_upper_decode(const uint8_t *bytes, size_t length, uint32_t *scalar)
 {
     uint8_t lead = bytes[0];
     size_t width;
@@ -64,9 +63,7 @@ static size_t xx_string_upper_decode(const uint8_t *bytes, size_t length,
         if ((bytes[i] & 0xc0u) != 0x80u) return 0;
         value = (value << 6) | (bytes[i] & 0x3fu);
     }
-    if ((width == 3 && value < 0x800u) || (width == 4 && value < 0x10000u) ||
-        (value >= 0xd800u && value <= 0xdfffu) || value > 0x10ffffu)
-        return 0;
+    if ((width == 3 && value < 0x800u) || (width == 4 && value < 0x10000u) || (value >= 0xd800u && value <= 0xdfffu) || value > 0x10ffffu) return 0;
     *scalar = value;
     return width;
 }
@@ -98,21 +95,18 @@ static size_t xx_string_upper_encode(uint8_t *out, uint32_t scalar)
 static const xx_string_upper_mapping *xx_string_upper_find(uint32_t scalar)
 {
     size_t first = 0;
-    size_t last = sizeof(xx_string_upper_mappings) /
-                  sizeof(xx_string_upper_mappings[0]);
+    size_t last = sizeof(xx_string_upper_mappings) / sizeof(xx_string_upper_mappings[0]);
     while (first < last) {
         size_t middle = first + (last - first) / 2;
         if (xx_string_upper_mappings[middle].source < scalar) first = middle + 1;
         else last = middle;
     }
-    return first < sizeof(xx_string_upper_mappings) /
-                   sizeof(xx_string_upper_mappings[0]) &&
-           xx_string_upper_mappings[first].source == scalar ?
-           &xx_string_upper_mappings[first] : NULL;
+    return first < sizeof(xx_string_upper_mappings) / sizeof(xx_string_upper_mappings[0]) && xx_string_upper_mappings[first].source == scalar
+               ? &xx_string_upper_mappings[first]
+               : NULL;
 }
 
-XXFC_API bool xx_string_to_upper_alloc(const uint8_t *bytes, size_t length,
-                                       char **out, size_t *out_length)
+XXFC_API bool xx_string_to_upper_alloc(const uint8_t *bytes, size_t length, char **out, size_t *out_length)
 {
     uint8_t *upper;
     size_t used = 0, capacity;
@@ -132,9 +126,15 @@ XXFC_API bool xx_string_to_upper_alloc(const uint8_t *bytes, size_t length,
         const xx_string_upper_mapping *mapping;
         if (capacity - used < 13) {
             uint8_t *grown;
-            if (capacity > SIZE_MAX / 2) { free(upper); return false; }
+            if (capacity > SIZE_MAX / 2) {
+                free(upper);
+                return false;
+            }
             grown = (uint8_t *)realloc(upper, capacity * 2);
-            if (!grown) { free(upper); return false; }
+            if (!grown) {
+                free(upper);
+                return false;
+            }
             upper = grown;
             capacity *= 2;
         }
@@ -144,8 +144,7 @@ XXFC_API bool xx_string_to_upper_alloc(const uint8_t *bytes, size_t length,
         }
         mapping = xx_string_upper_find(scalar);
         if (mapping) {
-            for (unsigned c = 0; c < mapping->count; ++c)
-                used += xx_string_upper_encode(upper + used, mapping->mapped[c]);
+            for (unsigned c = 0; c < mapping->count; ++c) used += xx_string_upper_encode(upper + used, mapping->mapped[c]);
         } else {
             memcpy(upper + used, bytes + i, width);
             used += width;
@@ -158,16 +157,11 @@ XXFC_API bool xx_string_to_upper_alloc(const uint8_t *bytes, size_t length,
     return true;
 }
 
-XXFC_API bool xx_string_has_case_property(const uint8_t *bytes, size_t length,
-                                          bool uppercase)
+XXFC_API bool xx_string_has_case_property(const uint8_t *bytes, size_t length, bool uppercase)
 {
-    const xx_string_case_range *ranges = uppercase ?
-        xx_string_uppercase_property : xx_string_lowercase_property;
-    size_t count = uppercase ?
-        sizeof(xx_string_uppercase_property) /
-        sizeof(xx_string_uppercase_property[0]) :
-        sizeof(xx_string_lowercase_property) /
-        sizeof(xx_string_lowercase_property[0]);
+    const xx_string_case_range *ranges = uppercase ? xx_string_uppercase_property : xx_string_lowercase_property;
+    size_t count = uppercase ? sizeof(xx_string_uppercase_property) / sizeof(xx_string_uppercase_property[0])
+                             : sizeof(xx_string_lowercase_property) / sizeof(xx_string_lowercase_property[0]);
     if (!bytes && length) return false;
     for (size_t i = 0; i < length;) {
         uint32_t scalar;

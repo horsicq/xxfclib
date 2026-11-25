@@ -50,8 +50,7 @@ static bool som_range_is_valid(uint32_t location, uint32_t size, uint32_t limit)
 static bool som_read_relative(const xx_hp_som *reader, uint32_t offset, void *data, size_t size)
 {
     int64_t absolute;
-    if (!reader || !data || reader->format.base_address < 0 || size > UINT32_MAX ||
-        !som_range_is_valid(offset, (uint32_t)size, reader->header.som_length) ||
+    if (!reader || !data || reader->format.base_address < 0 || size > UINT32_MAX || !som_range_is_valid(offset, (uint32_t)size, reader->header.som_length) ||
         (uint64_t)offset > (uint64_t)(INT64_MAX - reader->format.base_address))
         return false;
     absolute = reader->format.base_address + (int64_t)offset;
@@ -176,8 +175,8 @@ static bool som_parse_header(xx_hp_som *reader)
     header->unloadable_space_location = xx_data_get_u32(data, sizeof(data), 116U, true);
     header->unloadable_space_size = xx_data_get_u32(data, sizeof(data), 120U, true);
     header->checksum = xx_data_get_u32(data, sizeof(data), 124U, true);
-    if (header->som_length < XX_HP_SOM_HEADER_SIZE || header->som_length > (uint64_t)(total - reader->format.base_address) ||
-        header->space_total > SOM_MAX_SPACES || header->subspace_total > SOM_MAX_SECTIONS || header->symbol_total > SOM_MAX_SYMBOLS ||
+    if (header->som_length < XX_HP_SOM_HEADER_SIZE || header->som_length > (uint64_t)(total - reader->format.base_address) || header->space_total > SOM_MAX_SPACES ||
+        header->subspace_total > SOM_MAX_SECTIONS || header->symbol_total > SOM_MAX_SYMBOLS ||
         !som_range_is_valid(header->auxiliary_header_location, header->auxiliary_header_size, header->som_length) ||
         !som_span_is_valid(header->space_location, header->space_total, XX_HP_SOM_SPACE_RECORD_SIZE, header->som_length) ||
         !som_span_is_valid(header->subspace_location, header->subspace_total, XX_HP_SOM_SECTION_RECORD_SIZE, header->som_length) ||
@@ -246,8 +245,7 @@ static bool som_parse_sections(xx_hp_som *reader, const char *strings)
             reader->entry_address = section->address + reader->header.entry_offset;
             if (reader->header.entry_offset < section->file_size) {
                 uint64_t relative = (uint64_t)section->file_offset + reader->header.entry_offset;
-                if (relative <= (uint64_t)(INT64_MAX - reader->format.base_address))
-                    reader->entry_file_offset = reader->format.base_address + (int64_t)relative;
+                if (relative <= (uint64_t)(INT64_MAX - reader->format.base_address)) reader->entry_file_offset = reader->format.base_address + (int64_t)relative;
             }
         }
     }
@@ -305,8 +303,7 @@ static bool som_parse_dynamic_loader(xx_hp_som *reader)
     if (section->file_size < XX_HP_SOM_DL_HEADER_SIZE || !som_read_relative(reader, section->file_offset, data, sizeof(data))) return false;
     som_parse_dynamic_header(header, data);
     reader->has_dynamic_loader_header = true;
-    if (header->library_list_count > SOM_MAX_LIBRARIES || header->import_list_count > SOM_MAX_IMPORTS ||
-        header->string_table_size > SOM_MAX_STRING_TABLE ||
+    if (header->library_list_count > SOM_MAX_LIBRARIES || header->import_list_count > SOM_MAX_IMPORTS || header->string_table_size > SOM_MAX_STRING_TABLE ||
         !som_range_is_valid(header->string_table_location, header->string_table_size, section->file_size) ||
         !som_span_is_valid(header->library_list_location, header->library_list_count, XX_HP_SOM_DL_LIBRARY_RECORD_SIZE, section->file_size) ||
         !som_span_is_valid(header->import_list_location, header->import_list_count, XX_HP_SOM_DL_IMPORT_RECORD_SIZE, section->file_size))
@@ -331,8 +328,7 @@ static bool som_parse_dynamic_loader(xx_hp_som *reader)
         for (index = 1U; index < header->library_list_count; ++index) {
             uint8_t record[XX_HP_SOM_DL_LIBRARY_RECORD_SIZE];
             xx_hp_som_library *library = &reader->libraries[output_count];
-            if (!som_read_relative(reader, section->file_offset + header->library_list_location + index * XX_HP_SOM_DL_LIBRARY_RECORD_SIZE,
-                                   record, sizeof(record))) {
+            if (!som_read_relative(reader, section->file_offset + header->library_list_location + index * XX_HP_SOM_DL_LIBRARY_RECORD_SIZE, record, sizeof(record))) {
                 xx_mem_free(strings);
                 return false;
             }
@@ -362,8 +358,7 @@ static bool som_parse_dynamic_loader(xx_hp_som *reader)
             uint8_t record[XX_HP_SOM_DL_IMPORT_RECORD_SIZE];
             uint32_t name_offset;
             xx_hp_som_import *import_entry;
-            if (!som_read_relative(reader, section->file_offset + header->import_list_location + index * XX_HP_SOM_DL_IMPORT_RECORD_SIZE,
-                                   record, sizeof(record))) {
+            if (!som_read_relative(reader, section->file_offset + header->import_list_location + index * XX_HP_SOM_DL_IMPORT_RECORD_SIZE, record, sizeof(record))) {
                 xx_mem_free(strings);
                 return false;
             }
@@ -406,8 +401,7 @@ static bool som_parse_symbols(xx_hp_som *reader, const char *strings)
         candidate.type = (uint8_t)((candidate.flags >> 24U) & 0x3fU);
         candidate.scope = (uint8_t)((candidate.flags >> 20U) & 0x0fU);
         candidate.address = XX_HP_SOM_BASE_ADDRESS + candidate.value;
-        if (candidate.name_offset == UINT32_MAX ||
-            !som_duplicate_string(strings, reader->header.symbol_strings_size, candidate.name_offset, &candidate.name) ||
+        if (candidate.name_offset == UINT32_MAX || !som_duplicate_string(strings, reader->header.symbol_strings_size, candidate.name_offset, &candidate.name) ||
             candidate.name[0] == '\0') {
             xx_mem_free(candidate.name);
             continue;
@@ -465,9 +459,9 @@ static bool som_parse(xx_hp_som *reader, xx_pd_struct *pd)
     bool result = false;
     if (!reader || som_stopped(pd) || !som_parse_header(reader)) goto done;
     if (!som_read_string_table(reader, reader->header.space_strings_location, reader->header.space_strings_size, &space_strings) ||
-        !som_read_string_table(reader, reader->header.symbol_strings_location, reader->header.symbol_strings_size, &symbol_strings) ||
-        som_stopped(pd) || !som_parse_spaces(reader, space_strings) || !som_parse_sections(reader, space_strings) || som_stopped(pd) ||
-        !som_parse_dynamic_loader(reader) || !som_parse_symbols(reader, symbol_strings) || som_stopped(pd) || !som_find_interpreter(reader))
+        !som_read_string_table(reader, reader->header.symbol_strings_location, reader->header.symbol_strings_size, &symbol_strings) || som_stopped(pd) ||
+        !som_parse_spaces(reader, space_strings) || !som_parse_sections(reader, space_strings) || som_stopped(pd) || !som_parse_dynamic_loader(reader) ||
+        !som_parse_symbols(reader, symbol_strings) || som_stopped(pd) || !som_find_interpreter(reader))
         goto done;
     result = true;
 done:
@@ -569,8 +563,7 @@ bool xx_hp_som_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode,
 {
     xx_hp_som *reader = (xx_hp_som *)format;
     uint32_t index;
-    if (!reader || !output || som_stopped(pd) ||
-        (mode != XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_SECTIONS && mode != XX_MEMORY_MAP_MODE_MAPS) ||
+    if (!reader || !output || som_stopped(pd) || (mode != XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_SECTIONS && mode != XX_MEMORY_MAP_MODE_MAPS) ||
         (!format->base_info_handled && !xx_hp_som_handle_base_info(format, pd)))
         return false;
     output->binary_offset = format->base_address;
@@ -585,17 +578,16 @@ bool xx_hp_som_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode,
     output->arch = format->arch;
     output->mode = XX_MEMORY_MAP_MODE_SECTIONS;
     output->is_image = true;
-    if (!xx_memory_map_add_part(output, format->base_address, XX_HP_SOM_HEADER_SIZE, XX_HP_SOM_BASE_ADDRESS, XX_HP_SOM_HEADER_SIZE,
-                                XX_FILE_PART_HEADER, 0, "SOM header", false))
+    if (!xx_memory_map_add_part(output, format->base_address, XX_HP_SOM_HEADER_SIZE, XX_HP_SOM_BASE_ADDRESS, XX_HP_SOM_HEADER_SIZE, XX_FILE_PART_HEADER, 0, "SOM header",
+                                false))
         return false;
     for (index = 0U; index < reader->section_count; ++index) {
         const xx_hp_som_section *section = &reader->sections[index];
         int64_t offset;
         if (section->file_size == 0U && section->virtual_size == 0U) continue;
         offset = section->file_size > 0U ? format->base_address + section->file_offset : -1;
-        if (!xx_memory_map_add_part(output, offset, section->file_size, section->address, section->virtual_size,
-                                    XX_FILE_PART_SECTION, index <= INT32_MAX ? (int32_t)index : -1,
-                                    section->name ? section->name : "SOM subspace", false))
+        if (!xx_memory_map_add_part(output, offset, section->file_size, section->address, section->virtual_size, XX_FILE_PART_SECTION,
+                                    index <= INT32_MAX ? (int32_t)index : -1, section->name ? section->name : "SOM subspace", false))
             return false;
     }
     return !som_stopped(pd) && xx_memory_map_finalize(output);

@@ -36,28 +36,30 @@ static inline uint32_t xx_blake2_rotr(uint32_t word, unsigned bits)
     return (word >> bits) | (word << (32U - bits));
 }
 
-#define XX_BLAKE2_G(a, b, c, d, first, second) do { \
-    (a) += (b) + (first); \
-    (d) = xx_blake2_rotr((d) ^ (a), 16); \
-    (c) += (d); \
-    (b) = xx_blake2_rotr((b) ^ (c), 12); \
-    (a) += (b) + (second); \
-    (d) = xx_blake2_rotr((d) ^ (a), 8); \
-    (c) += (d); \
-    (b) = xx_blake2_rotr((b) ^ (c), 7); \
-} while (0)
+#define XX_BLAKE2_G(a, b, c, d, first, second) \
+    do {                                       \
+        (a) += (b) + (first);                  \
+        (d) = xx_blake2_rotr((d) ^ (a), 16);   \
+        (c) += (d);                            \
+        (b) = xx_blake2_rotr((b) ^ (c), 12);   \
+        (a) += (b) + (second);                 \
+        (d) = xx_blake2_rotr((d) ^ (a), 8);    \
+        (c) += (d);                            \
+        (b) = xx_blake2_rotr((b) ^ (c), 7);    \
+    } while (0)
 
-#define XX_BLAKE2_ROUND(r) do { \
-    const uint8_t *s = xx_blake2_permutation[r]; \
-    XX_BLAKE2_G(work[0], work[4], work[8],  work[12], message[s[0]],  message[s[1]]);  \
-    XX_BLAKE2_G(work[1], work[5], work[9],  work[13], message[s[2]],  message[s[3]]);  \
-    XX_BLAKE2_G(work[2], work[6], work[10], work[14], message[s[4]],  message[s[5]]);  \
-    XX_BLAKE2_G(work[3], work[7], work[11], work[15], message[s[6]],  message[s[7]]);  \
-    XX_BLAKE2_G(work[0], work[5], work[10], work[15], message[s[8]],  message[s[9]]);  \
-    XX_BLAKE2_G(work[1], work[6], work[11], work[12], message[s[10]], message[s[11]]); \
-    XX_BLAKE2_G(work[2], work[7], work[8],  work[13], message[s[12]], message[s[13]]); \
-    XX_BLAKE2_G(work[3], work[4], work[9],  work[14], message[s[14]], message[s[15]]); \
-} while (0)
+#define XX_BLAKE2_ROUND(r)                                                                 \
+    do {                                                                                   \
+        const uint8_t *s = xx_blake2_permutation[r];                                       \
+        XX_BLAKE2_G(work[0], work[4], work[8], work[12], message[s[0]], message[s[1]]);    \
+        XX_BLAKE2_G(work[1], work[5], work[9], work[13], message[s[2]], message[s[3]]);    \
+        XX_BLAKE2_G(work[2], work[6], work[10], work[14], message[s[4]], message[s[5]]);   \
+        XX_BLAKE2_G(work[3], work[7], work[11], work[15], message[s[6]], message[s[7]]);   \
+        XX_BLAKE2_G(work[0], work[5], work[10], work[15], message[s[8]], message[s[9]]);   \
+        XX_BLAKE2_G(work[1], work[6], work[11], work[12], message[s[10]], message[s[11]]); \
+        XX_BLAKE2_G(work[2], work[7], work[8], work[13], message[s[12]], message[s[13]]);  \
+        XX_BLAKE2_G(work[3], work[4], work[9], work[14], message[s[14]], message[s[15]]);  \
+    } while (0)
 
 static void xx_blake2_compress(xx_blake2sp_node *node, bool final, bool last_node)
 {
@@ -150,146 +152,137 @@ bool xx_blake2sp_init(xx_blake2sp_context *context)
 
 #ifdef XX_BLAKE2_X86
 XX_TARGET_AVX2
-static inline __m256i xx_blake2_rotr12_avx2(__m256i x) {
+static inline __m256i xx_blake2_rotr12_avx2(__m256i x)
+{
     return _mm256_or_si256(_mm256_srli_epi32(x, 12), _mm256_slli_epi32(x, 20));
 }
 XX_TARGET_AVX2
-static inline __m256i xx_blake2_rotr7_avx2(__m256i x) {
+static inline __m256i xx_blake2_rotr7_avx2(__m256i x)
+{
     return _mm256_or_si256(_mm256_srli_epi32(x, 7), _mm256_slli_epi32(x, 25));
 }
 
-#define XX_BLAKE2_G_AVX2(a, b, c, d, x, y) do { \
-    (a) = _mm256_add_epi32(_mm256_add_epi32((a), (b)), (x)); \
-    (d) = _mm256_shuffle_epi8(_mm256_xor_si256((d), (a)), mask16); \
-    (c) = _mm256_add_epi32((c), (d)); \
-    (b) = xx_blake2_rotr12_avx2(_mm256_xor_si256((b), (c))); \
-    (a) = _mm256_add_epi32(_mm256_add_epi32((a), (b)), (y)); \
-    (d) = _mm256_shuffle_epi8(_mm256_xor_si256((d), (a)), mask8); \
-    (c) = _mm256_add_epi32((c), (d)); \
-    (b) = xx_blake2_rotr7_avx2(_mm256_xor_si256((b), (c))); \
-} while (0)
+#define XX_BLAKE2_G_AVX2(a, b, c, d, x, y)                             \
+    do {                                                               \
+        (a) = _mm256_add_epi32(_mm256_add_epi32((a), (b)), (x));       \
+        (d) = _mm256_shuffle_epi8(_mm256_xor_si256((d), (a)), mask16); \
+        (c) = _mm256_add_epi32((c), (d));                              \
+        (b) = xx_blake2_rotr12_avx2(_mm256_xor_si256((b), (c)));       \
+        (a) = _mm256_add_epi32(_mm256_add_epi32((a), (b)), (y));       \
+        (d) = _mm256_shuffle_epi8(_mm256_xor_si256((d), (a)), mask8);  \
+        (c) = _mm256_add_epi32((c), (d));                              \
+        (b) = xx_blake2_rotr7_avx2(_mm256_xor_si256((b), (c)));        \
+    } while (0)
 
-#define XX_BLAKE2_ROUND_AVX2(r) do { \
-    const uint8_t *s = xx_blake2_permutation[r]; \
-    XX_BLAKE2_G_AVX2(v[0], v[4], v[8],  v[12], m[s[0]],  m[s[1]]);  \
-    XX_BLAKE2_G_AVX2(v[1], v[5], v[9],  v[13], m[s[2]],  m[s[3]]);  \
-    XX_BLAKE2_G_AVX2(v[2], v[6], v[10], v[14], m[s[4]],  m[s[5]]);  \
-    XX_BLAKE2_G_AVX2(v[3], v[7], v[11], v[15], m[s[6]],  m[s[7]]);  \
-    XX_BLAKE2_G_AVX2(v[0], v[5], v[10], v[15], m[s[8]],  m[s[9]]);  \
-    XX_BLAKE2_G_AVX2(v[1], v[6], v[11], v[12], m[s[10]], m[s[11]]); \
-    XX_BLAKE2_G_AVX2(v[2], v[7], v[8],  v[13], m[s[12]], m[s[13]]); \
-    XX_BLAKE2_G_AVX2(v[3], v[4], v[9],  v[14], m[s[14]], m[s[15]]); \
-} while (0)
+#define XX_BLAKE2_ROUND_AVX2(r)                                         \
+    do {                                                                \
+        const uint8_t *s = xx_blake2_permutation[r];                    \
+        XX_BLAKE2_G_AVX2(v[0], v[4], v[8], v[12], m[s[0]], m[s[1]]);    \
+        XX_BLAKE2_G_AVX2(v[1], v[5], v[9], v[13], m[s[2]], m[s[3]]);    \
+        XX_BLAKE2_G_AVX2(v[2], v[6], v[10], v[14], m[s[4]], m[s[5]]);   \
+        XX_BLAKE2_G_AVX2(v[3], v[7], v[11], v[15], m[s[6]], m[s[7]]);   \
+        XX_BLAKE2_G_AVX2(v[0], v[5], v[10], v[15], m[s[8]], m[s[9]]);   \
+        XX_BLAKE2_G_AVX2(v[1], v[6], v[11], v[12], m[s[10]], m[s[11]]); \
+        XX_BLAKE2_G_AVX2(v[2], v[7], v[8], v[13], m[s[12]], m[s[13]]);  \
+        XX_BLAKE2_G_AVX2(v[3], v[4], v[9], v[14], m[s[14]], m[s[15]]);  \
+    } while (0)
 
 XX_TARGET_AVX2
 static size_t xx_blake2sp_update_blocks_avx2(xx_blake2sp_node *leaves, const uint8_t *input, size_t size)
 {
-    const __m256i mask16 = _mm256_setr_epi8(
-        2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13,
-        2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13
-    );
-    const __m256i mask8 = _mm256_setr_epi8(
-        1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12,
-        1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12
-    );
+    const __m256i mask16 = _mm256_setr_epi8(2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13, 2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13);
+    const __m256i mask8 = _mm256_setr_epi8(1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12, 1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12);
     __m256i st[8];
     unsigned i;
     for (i = 0; i < 8; ++i) {
-        st[i] = _mm256_setr_epi32(
-            (int)leaves[0].words[i], (int)leaves[1].words[i],
-            (int)leaves[2].words[i], (int)leaves[3].words[i],
-            (int)leaves[4].words[i], (int)leaves[5].words[i],
-            (int)leaves[6].words[i], (int)leaves[7].words[i]
-        );
+        st[i] = _mm256_setr_epi32((int)leaves[0].words[i], (int)leaves[1].words[i], (int)leaves[2].words[i], (int)leaves[3].words[i], (int)leaves[4].words[i],
+                                  (int)leaves[5].words[i], (int)leaves[6].words[i], (int)leaves[7].words[i]);
     }
     uint64_t c_size = leaves[0].compressed_size;
     const uint8_t *orig_input = input;
 
-#define XX_TRANSPOSE_8x8_32(r0, r1, r2, r3, r4, r5, r6, r7, c0, c1, c2, c3, c4, c5, c6, c7) do { \
-    __m256i _t0 = _mm256_unpacklo_epi32((r0), (r1)); \
-    __m256i _t1 = _mm256_unpackhi_epi32((r0), (r1)); \
-    __m256i _t2 = _mm256_unpacklo_epi32((r2), (r3)); \
-    __m256i _t3 = _mm256_unpackhi_epi32((r2), (r3)); \
-    __m256i _t4 = _mm256_unpacklo_epi32((r4), (r5)); \
-    __m256i _t5 = _mm256_unpackhi_epi32((r4), (r5)); \
-    __m256i _t6 = _mm256_unpacklo_epi32((r6), (r7)); \
-    __m256i _t7 = _mm256_unpackhi_epi32((r6), (r7)); \
-    __m256i _u0 = _mm256_unpacklo_epi64(_t0, _t2); \
-    __m256i _u1 = _mm256_unpackhi_epi64(_t0, _t2); \
-    __m256i _u2 = _mm256_unpacklo_epi64(_t1, _t3); \
-    __m256i _u3 = _mm256_unpackhi_epi64(_t1, _t3); \
-    __m256i _u4 = _mm256_unpacklo_epi64(_t4, _t6); \
-    __m256i _u5 = _mm256_unpackhi_epi64(_t4, _t6); \
-    __m256i _u6 = _mm256_unpacklo_epi64(_t5, _t7); \
-    __m256i _u7 = _mm256_unpackhi_epi64(_t5, _t7); \
-    (c0) = _mm256_permute2x128_si256(_u0, _u4, 0x20); \
-    (c4) = _mm256_permute2x128_si256(_u0, _u4, 0x31); \
-    (c1) = _mm256_permute2x128_si256(_u1, _u5, 0x20); \
-    (c5) = _mm256_permute2x128_si256(_u1, _u5, 0x31); \
-    (c2) = _mm256_permute2x128_si256(_u2, _u6, 0x20); \
-    (c6) = _mm256_permute2x128_si256(_u2, _u6, 0x31); \
-    (c3) = _mm256_permute2x128_si256(_u3, _u7, 0x20); \
-    (c7) = _mm256_permute2x128_si256(_u3, _u7, 0x31); \
-} while (0)
+#define XX_TRANSPOSE_8x8_32(r0, r1, r2, r3, r4, r5, r6, r7, c0, c1, c2, c3, c4, c5, c6, c7) \
+    do {                                                                                    \
+        __m256i _t0 = _mm256_unpacklo_epi32((r0), (r1));                                    \
+        __m256i _t1 = _mm256_unpackhi_epi32((r0), (r1));                                    \
+        __m256i _t2 = _mm256_unpacklo_epi32((r2), (r3));                                    \
+        __m256i _t3 = _mm256_unpackhi_epi32((r2), (r3));                                    \
+        __m256i _t4 = _mm256_unpacklo_epi32((r4), (r5));                                    \
+        __m256i _t5 = _mm256_unpackhi_epi32((r4), (r5));                                    \
+        __m256i _t6 = _mm256_unpacklo_epi32((r6), (r7));                                    \
+        __m256i _t7 = _mm256_unpackhi_epi32((r6), (r7));                                    \
+        __m256i _u0 = _mm256_unpacklo_epi64(_t0, _t2);                                      \
+        __m256i _u1 = _mm256_unpackhi_epi64(_t0, _t2);                                      \
+        __m256i _u2 = _mm256_unpacklo_epi64(_t1, _t3);                                      \
+        __m256i _u3 = _mm256_unpackhi_epi64(_t1, _t3);                                      \
+        __m256i _u4 = _mm256_unpacklo_epi64(_t4, _t6);                                      \
+        __m256i _u5 = _mm256_unpackhi_epi64(_t4, _t6);                                      \
+        __m256i _u6 = _mm256_unpacklo_epi64(_t5, _t7);                                      \
+        __m256i _u7 = _mm256_unpackhi_epi64(_t5, _t7);                                      \
+        (c0) = _mm256_permute2x128_si256(_u0, _u4, 0x20);                                   \
+        (c4) = _mm256_permute2x128_si256(_u0, _u4, 0x31);                                   \
+        (c1) = _mm256_permute2x128_si256(_u1, _u5, 0x20);                                   \
+        (c5) = _mm256_permute2x128_si256(_u1, _u5, 0x31);                                   \
+        (c2) = _mm256_permute2x128_si256(_u2, _u6, 0x20);                                   \
+        (c6) = _mm256_permute2x128_si256(_u2, _u6, 0x31);                                   \
+        (c3) = _mm256_permute2x128_si256(_u3, _u7, 0x20);                                   \
+        (c7) = _mm256_permute2x128_si256(_u3, _u7, 0x31);                                   \
+    } while (0)
 
-#define XX_BLAKE2SP_DO_BLOCK_AVX2(ptr0, ptr1, ptr2, ptr3, ptr4, ptr5, ptr6, ptr7) do { \
-    c_size += 64U; \
-    __m256i v[16]; \
-    __m256i m[16]; \
-    for (i = 0; i < 8; ++i) { \
-        v[i] = st[i]; \
-        v[i + 8] = _mm256_set1_epi32((int)xx_blake2_initial[i]); \
-    } \
-    v[12] = _mm256_xor_si256(v[12], _mm256_set1_epi32((int)(uint32_t)c_size)); \
-    v[13] = _mm256_xor_si256(v[13], _mm256_set1_epi32((int)(uint32_t)(c_size >> 32))); \
-    __m256i r0 = _mm256_loadu_si256((const __m256i *)(ptr0)); \
-    __m256i r1 = _mm256_loadu_si256((const __m256i *)(ptr1)); \
-    __m256i r2 = _mm256_loadu_si256((const __m256i *)(ptr2)); \
-    __m256i r3 = _mm256_loadu_si256((const __m256i *)(ptr3)); \
-    __m256i r4 = _mm256_loadu_si256((const __m256i *)(ptr4)); \
-    __m256i r5 = _mm256_loadu_si256((const __m256i *)(ptr5)); \
-    __m256i r6 = _mm256_loadu_si256((const __m256i *)(ptr6)); \
-    __m256i r7 = _mm256_loadu_si256((const __m256i *)(ptr7)); \
-    XX_TRANSPOSE_8x8_32(r0, r1, r2, r3, r4, r5, r6, r7, m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7]); \
-    r0 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr0) + 32)); \
-    r1 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr1) + 32)); \
-    r2 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr2) + 32)); \
-    r3 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr3) + 32)); \
-    r4 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr4) + 32)); \
-    r5 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr5) + 32)); \
-    r6 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr6) + 32)); \
-    r7 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr7) + 32)); \
-    XX_TRANSPOSE_8x8_32(r0, r1, r2, r3, r4, r5, r6, r7, m[8], m[9], m[10], m[11], m[12], m[13], m[14], m[15]); \
-    XX_BLAKE2_ROUND_AVX2(0); \
-    XX_BLAKE2_ROUND_AVX2(1); \
-    XX_BLAKE2_ROUND_AVX2(2); \
-    XX_BLAKE2_ROUND_AVX2(3); \
-    XX_BLAKE2_ROUND_AVX2(4); \
-    XX_BLAKE2_ROUND_AVX2(5); \
-    XX_BLAKE2_ROUND_AVX2(6); \
-    XX_BLAKE2_ROUND_AVX2(7); \
-    XX_BLAKE2_ROUND_AVX2(8); \
-    XX_BLAKE2_ROUND_AVX2(9); \
-    for (i = 0; i < 8; ++i) { \
-        st[i] = _mm256_xor_si256(st[i], _mm256_xor_si256(v[i], v[i + 8])); \
-    } \
-} while (0)
+#define XX_BLAKE2SP_DO_BLOCK_AVX2(ptr0, ptr1, ptr2, ptr3, ptr4, ptr5, ptr6, ptr7)                                  \
+    do {                                                                                                           \
+        c_size += 64U;                                                                                             \
+        __m256i v[16];                                                                                             \
+        __m256i m[16];                                                                                             \
+        for (i = 0; i < 8; ++i) {                                                                                  \
+            v[i] = st[i];                                                                                          \
+            v[i + 8] = _mm256_set1_epi32((int)xx_blake2_initial[i]);                                               \
+        }                                                                                                          \
+        v[12] = _mm256_xor_si256(v[12], _mm256_set1_epi32((int)(uint32_t)c_size));                                 \
+        v[13] = _mm256_xor_si256(v[13], _mm256_set1_epi32((int)(uint32_t)(c_size >> 32)));                         \
+        __m256i r0 = _mm256_loadu_si256((const __m256i *)(ptr0));                                                  \
+        __m256i r1 = _mm256_loadu_si256((const __m256i *)(ptr1));                                                  \
+        __m256i r2 = _mm256_loadu_si256((const __m256i *)(ptr2));                                                  \
+        __m256i r3 = _mm256_loadu_si256((const __m256i *)(ptr3));                                                  \
+        __m256i r4 = _mm256_loadu_si256((const __m256i *)(ptr4));                                                  \
+        __m256i r5 = _mm256_loadu_si256((const __m256i *)(ptr5));                                                  \
+        __m256i r6 = _mm256_loadu_si256((const __m256i *)(ptr6));                                                  \
+        __m256i r7 = _mm256_loadu_si256((const __m256i *)(ptr7));                                                  \
+        XX_TRANSPOSE_8x8_32(r0, r1, r2, r3, r4, r5, r6, r7, m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7]);       \
+        r0 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr0) + 32));                                  \
+        r1 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr1) + 32));                                  \
+        r2 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr2) + 32));                                  \
+        r3 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr3) + 32));                                  \
+        r4 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr4) + 32));                                  \
+        r5 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr5) + 32));                                  \
+        r6 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr6) + 32));                                  \
+        r7 = _mm256_loadu_si256((const __m256i *)((const uint8_t *)(ptr7) + 32));                                  \
+        XX_TRANSPOSE_8x8_32(r0, r1, r2, r3, r4, r5, r6, r7, m[8], m[9], m[10], m[11], m[12], m[13], m[14], m[15]); \
+        XX_BLAKE2_ROUND_AVX2(0);                                                                                   \
+        XX_BLAKE2_ROUND_AVX2(1);                                                                                   \
+        XX_BLAKE2_ROUND_AVX2(2);                                                                                   \
+        XX_BLAKE2_ROUND_AVX2(3);                                                                                   \
+        XX_BLAKE2_ROUND_AVX2(4);                                                                                   \
+        XX_BLAKE2_ROUND_AVX2(5);                                                                                   \
+        XX_BLAKE2_ROUND_AVX2(6);                                                                                   \
+        XX_BLAKE2_ROUND_AVX2(7);                                                                                   \
+        XX_BLAKE2_ROUND_AVX2(8);                                                                                   \
+        XX_BLAKE2_ROUND_AVX2(9);                                                                                   \
+        for (i = 0; i < 8; ++i) {                                                                                  \
+            st[i] = _mm256_xor_si256(st[i], _mm256_xor_si256(v[i], v[i + 8]));                                     \
+        }                                                                                                          \
+    } while (0)
 
     if (leaves[0].pending_size == 64U) {
-        XX_BLAKE2SP_DO_BLOCK_AVX2(
-            leaves[0].pending, leaves[1].pending, leaves[2].pending, leaves[3].pending,
-            leaves[4].pending, leaves[5].pending, leaves[6].pending, leaves[7].pending
-        );
+        XX_BLAKE2SP_DO_BLOCK_AVX2(leaves[0].pending, leaves[1].pending, leaves[2].pending, leaves[3].pending, leaves[4].pending, leaves[5].pending, leaves[6].pending,
+                                  leaves[7].pending);
         for (i = 0; i < 8; ++i) {
             leaves[i].pending_size = 0;
         }
     }
 
     while (size >= 1024U) {
-        XX_BLAKE2SP_DO_BLOCK_AVX2(
-            input + 0 * 64U, input + 1 * 64U, input + 2 * 64U, input + 3 * 64U,
-            input + 4 * 64U, input + 5 * 64U, input + 6 * 64U, input + 7 * 64U
-        );
+        XX_BLAKE2SP_DO_BLOCK_AVX2(input + 0 * 64U, input + 1 * 64U, input + 2 * 64U, input + 3 * 64U, input + 4 * 64U, input + 5 * 64U, input + 6 * 64U, input + 7 * 64U);
         input += 512U;
         size -= 512U;
     }
@@ -342,24 +335,24 @@ bool xx_blake2sp_update(xx_blake2sp_context *context, const void *data, size_t s
             size -= consumed;
         } else
 #endif
-        while (size >= 512U) {
-            unsigned leaf;
-            bool had_pending = (context->leaves[0].pending_size == 64U);
-            if (had_pending) {
-                for (leaf = 0; leaf < 8U; ++leaf) {
-                    xx_blake2sp_node *node = context->leaves + leaf;
-                    node->compressed_size += 64U;
-                    xx_blake2_compress(node, false, false);
+            while (size >= 512U) {
+                unsigned leaf;
+                bool had_pending = (context->leaves[0].pending_size == 64U);
+                if (had_pending) {
+                    for (leaf = 0; leaf < 8U; ++leaf) {
+                        xx_blake2sp_node *node = context->leaves + leaf;
+                        node->compressed_size += 64U;
+                        xx_blake2_compress(node, false, false);
+                    }
                 }
+                for (leaf = 0; leaf < 8U; ++leaf) {
+                    xx_mem_copy(context->leaves[leaf].pending, input + leaf * 64U, 64U);
+                    context->leaves[leaf].pending_size = 64U;
+                }
+                context->total_size += 512U;
+                input += 512U;
+                size -= 512U;
             }
-            for (leaf = 0; leaf < 8U; ++leaf) {
-                xx_mem_copy(context->leaves[leaf].pending, input + leaf * 64U, 64U);
-                context->leaves[leaf].pending_size = 64U;
-            }
-            context->total_size += 512U;
-            input += 512U;
-            size -= 512U;
-        }
     }
 
     while (size) {

@@ -671,7 +671,8 @@ static bool xx_arq_decode(Abstractformat *self, const xx_arq_member *member, uin
         xx_mem_free(packed);
         return false;
     }
-    if (member->uncompressed_size != 0U && (!xx_lzh5_decode_memory(packed, member->compressed_size, plain, member->uncompressed_size, 5, &written) || written != member->uncompressed_size)) {
+    if (member->uncompressed_size != 0U &&
+        (!xx_lzh5_decode_memory(packed, member->compressed_size, plain, member->uncompressed_size, 5, &written) || written != member->uncompressed_size)) {
         xx_mem_free(plain);
         xx_mem_free(packed);
         return false;

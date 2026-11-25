@@ -82,7 +82,6 @@ static bool xx_zip_unpack_reference_to_device(Abstractformat *format, const xx_a
 /* ZIP filenames without the UTF-8 flag use the original DOS code page. */
 static wchar_t *xx_zip_cp437_to_unicode(const char *name, size_t length)
 {
-
     wchar_t *wide;
     size_t i;
     if (!name || length > (SIZE_MAX / sizeof(wchar_t)) - 1U) return NULL;
@@ -885,8 +884,7 @@ bool xx_zip_parse_cd_entry(xx_zip *zip, xx_io_device *device, int64_t dev_size, 
         return false;
     }
 
-    if (zip && zip->cd_cache && curr_offset >= zip->cd_offset &&
-        (uint64_t)(curr_offset - zip->cd_offset) + 46 <= (uint64_t)zip->cd_size) {
+    if (zip && zip->cd_cache && curr_offset >= zip->cd_offset && (uint64_t)(curr_offset - zip->cd_offset) + 46 <= (uint64_t)zip->cd_size) {
         entry_ptr = zip->cd_cache + (size_t)(curr_offset - zip->cd_offset);
         xx_rt_memcpy(fixed, entry_ptr, 46);
     } else {
@@ -1097,9 +1095,7 @@ bool xx_zip_resolve_record_data_offset_ex(xx_zip *zip, xx_archive_record *rec, u
         uint8_t stack_buf[256];
 
         /* Check if local_offset is already in cached block */
-        if (zip->lhdr_cache &&
-            local_offset >= zip->lhdr_cache_offset &&
-            local_offset + 30 <= zip->lhdr_cache_offset + (int64_t)zip->lhdr_cache_size) {
+        if (zip->lhdr_cache && local_offset >= zip->lhdr_cache_offset && local_offset + 30 <= zip->lhdr_cache_offset + (int64_t)zip->lhdr_cache_size) {
             size_t rel = (size_t)(local_offset - zip->lhdr_cache_offset);
             buf = zip->lhdr_cache + rel;
             avail = zip->lhdr_cache_size - rel;
@@ -2353,8 +2349,14 @@ static bool xx_zip_zipcrypto_confirm(xx_zip *zip, const uint8_t *envelope, size_
     ok = true;
 done:
     if (compressed_device) xx_io_close(compressed_device);
-    if (plain) { xx_mem_zero(plain, plain_size); xx_mem_free(plain); }
-    if (compressed) { xx_mem_zero(compressed, compressed_capacity); xx_mem_free(compressed); }
+    if (plain) {
+        xx_mem_zero(plain, plain_size);
+        xx_mem_free(plain);
+    }
+    if (compressed) {
+        xx_mem_zero(compressed, compressed_capacity);
+        xx_mem_free(compressed);
+    }
     return ok;
 }
 
@@ -2578,8 +2580,8 @@ static bool xx_zip_unpack_encrypted_to_device(Abstractformat *format, const xx_a
          * authoritative. Preferring it over any supplied password avoids a
          * rare header-check false accept from an unrelated password string. */
         if (zip->zc_dictionary_enabled && zip->zc_have &&
-            xx_zipcrypto_decrypt_envelope_keystate(envelope, envelope_size, zip->zc_key0, zip->zc_key1, zip->zc_key2, expected_crc, last_mod_time, (flags & 0x0008U) != 0U,
-                                                   compressed, compressed_capacity, &compressed_size, pd)) {
+            xx_zipcrypto_decrypt_envelope_keystate(envelope, envelope_size, zip->zc_key0, zip->zc_key1, zip->zc_key2, expected_crc, last_mod_time,
+                                                   (flags & 0x0008U) != 0U, compressed, compressed_capacity, &compressed_size, pd)) {
             decrypted = true;
         }
         /* 2. A genuinely supplied password (including an explicit empty one)
@@ -2598,9 +2600,8 @@ static bool xx_zip_unpack_encrypted_to_device(Abstractformat *format, const xx_a
             if (!zip->zc_have) {
                 (void)xx_zip_zipcrypto_ensure(zip, pd);
             }
-            if (zip->zc_have &&
-                xx_zipcrypto_decrypt_envelope_keystate(envelope, envelope_size, zip->zc_key0, zip->zc_key1, zip->zc_key2, expected_crc, last_mod_time,
-                                                       (flags & 0x0008U) != 0U, compressed, compressed_capacity, &compressed_size, pd)) {
+            if (zip->zc_have && xx_zipcrypto_decrypt_envelope_keystate(envelope, envelope_size, zip->zc_key0, zip->zc_key1, zip->zc_key2, expected_crc, last_mod_time,
+                                                                       (flags & 0x0008U) != 0U, compressed, compressed_capacity, &compressed_size, pd)) {
                 decrypted = true;
             }
         }
@@ -3214,8 +3215,7 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
             if (success && xx_pd_is_stopped(pd)) success = false;
             if (success) {
                 success = xx_io_file_replace_a(stage_path, dest_path_utf8, overwrite);
-            } else if (stage_path && destination && !is_encrypted && crc_sink.position > 0 &&
-                       xx_archive_salvage_wanted(&state->options, pd)) {
+            } else if (stage_path && destination && !is_encrypted && crc_sink.position > 0 && xx_archive_salvage_wanted(&state->options, pd)) {
                 /* A damaged member under XX_META_ID_OPT_FORCE: the staged
                  * bytes are what the decoder produced before it failed, or a
                  * whole member whose size or CRC does not match. They are
@@ -3428,8 +3428,8 @@ static bool xx_zip_pack_xz_source(xx_io_device *source, const char *source_path,
 /* The ZIP meta IDs of the DEFLATE packing settings; names, ranges and
  * defaults belong to the deflate code (xx_deflate_pack_option_set). A
  * per-record value overrides the writer's, including an explicit zero. */
-static bool xx_zip_pack_deflate_options(Abstractformat *self, const xx_archive_write_state *state, const xx_archive_record *record,
-                                        xx_deflate_pack_options_ex *options, xx_pd_struct *pd)
+static bool xx_zip_pack_deflate_options(Abstractformat *self, const xx_archive_write_state *state, const xx_archive_record *record, xx_deflate_pack_options_ex *options,
+                                        xx_pd_struct *pd)
 {
     static const struct {
         uint32_t meta;
@@ -3453,11 +3453,17 @@ static bool xx_zip_pack_deflate_options(Abstractformat *self, const xx_archive_w
                 valid = map[i].id == XX_DEFLATE_OPTION_SHORT_MATCH_FILTER;
                 number = xx_var_get_bool(value) ? 1U : 0U;
                 break;
-            case XX_VAR_TYPE_UINT8: case XX_VAR_TYPE_UINT16: case XX_VAR_TYPE_UINT32: case XX_VAR_TYPE_UINT64:
+            case XX_VAR_TYPE_UINT8:
+            case XX_VAR_TYPE_UINT16:
+            case XX_VAR_TYPE_UINT32:
+            case XX_VAR_TYPE_UINT64:
                 valid = map[i].id != XX_DEFLATE_OPTION_SHORT_MATCH_FILTER;
                 number = xx_var_get_u64(value);
                 break;
-            case XX_VAR_TYPE_INT8: case XX_VAR_TYPE_INT16: case XX_VAR_TYPE_INT32: case XX_VAR_TYPE_INT64:
+            case XX_VAR_TYPE_INT8:
+            case XX_VAR_TYPE_INT16:
+            case XX_VAR_TYPE_INT32:
+            case XX_VAR_TYPE_INT64:
                 valid = map[i].id != XX_DEFLATE_OPTION_SHORT_MATCH_FILTER && xx_var_get_i64(value) >= 0;
                 if (valid) number = (uint64_t)xx_var_get_i64(value);
                 break;
@@ -3466,7 +3472,7 @@ static bool xx_zip_pack_deflate_options(Abstractformat *self, const xx_archive_w
         if (!valid || !xx_deflate_pack_option_set(options, map[i].id, number)) {
             xx_pd_set_error(pd, XXFC_ERR_INVALID_ARG,
                             map[i].id == XX_DEFLATE_OPTION_SHORT_MATCH_FILTER ? "DEFLATE short-match filter must be boolean"
-                                                                               : "DEFLATE packing settings must be nonnegative size_t integers");
+                                                                              : "DEFLATE packing settings must be nonnegative size_t integers");
             return false;
         }
     }
@@ -3474,7 +3480,8 @@ static bool xx_zip_pack_deflate_options(Abstractformat *self, const xx_archive_w
 }
 
 static bool xx_zip_pack_source_staged(xx_io_device *source, const char *source_path, uint16_t method, int64_t *out_uncompressed_size, int64_t *out_compressed_size,
-                                      uint32_t *out_crc32, xx_io_device *destination, xx_zip_grow_sink *sink, int level, const xx_deflate_pack_options_ex *deflate_options, xx_pd_struct *progress)
+                                      uint32_t *out_crc32, xx_io_device *destination, xx_zip_grow_sink *sink, int level,
+                                      const xx_deflate_pack_options_ex *deflate_options, xx_pd_struct *progress)
 {
     bool success = false;
     if (progress && xx_pd_is_stopped(progress)) return false;
@@ -3495,7 +3502,8 @@ static bool xx_zip_pack_source_staged(xx_io_device *source, const char *source_p
             break;
         case 8:
         case 9:
-            success = xx_deflate_pack_source_with_options_ex(source, source_path, out_uncompressed_size, out_compressed_size, out_crc32, destination, level, method == 9U, deflate_options, progress);
+            success = xx_deflate_pack_source_with_options_ex(source, source_path, out_uncompressed_size, out_compressed_size, out_crc32, destination, level, method == 9U,
+                                                             deflate_options, progress);
             if (success && *out_uncompressed_size == 0 && *out_compressed_size == 0) {
                 /* Both Deflate variants need a final block for an empty file.
                  * The standalone codec's zero-length API emits no bytes. */
@@ -3853,7 +3861,8 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
         if (!xx_zip_get_password(self, &state->options, &password)) {
             goto encrypted_cleanup;
         }
-        if (!xx_zip_pack_source_staged(source_dev, name_utf8, method, &staged_uncomp_size, &staged_comp_size, &staged_crc, &compressed_device, &compressed, level, &deflate_options, pd)) {
+        if (!xx_zip_pack_source_staged(source_dev, name_utf8, method, &staged_uncomp_size, &staged_comp_size, &staged_crc, &compressed_device, &compressed, level,
+                                       &deflate_options, pd)) {
             goto encrypted_cleanup;
         }
 
@@ -3993,8 +4002,8 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
             uint64_t record_size;
             uint64_t record_end;
 
-            bool compression_ok =
-                xx_zip_pack_source_staged(source_dev, name_utf8, method, &staged_uncomp_size, &staged_comp_size, &staged_crc, &compressed_device, &compressed, level, &deflate_options, pd);
+            bool compression_ok = xx_zip_pack_source_staged(source_dev, name_utf8, method, &staged_uncomp_size, &staged_comp_size, &staged_crc, &compressed_device,
+                                                            &compressed, level, &deflate_options, pd);
             if (!compression_ok || staged_uncomp_size < 0 || staged_comp_size < 0 || (uint64_t)staged_uncomp_size > UINT32_MAX || compressed.size > UINT32_MAX ||
                 (uint64_t)staged_comp_size != (uint64_t)compressed.size) {
                 break;
@@ -4062,7 +4071,8 @@ bool xx_zip_pack_archive_record(Abstractformat *self, xx_archive_write_state *st
         uint32_t comp_crc = 0;
 
         if (!is_folder) {
-            bool compression_ok = xx_deflate_pack_source_with_options_ex(source_dev, name_utf8, &out_uncomp, &out_comp, &comp_crc, self->device, level, method == 9U, &deflate_options, pd);
+            bool compression_ok =
+                xx_deflate_pack_source_with_options_ex(source_dev, name_utf8, &out_uncomp, &out_comp, &comp_crc, self->device, level, method == 9U, &deflate_options, pd);
             if (compression_ok && out_uncomp == 0 && out_comp == 0) {
                 static const uint8_t empty_stream[2] = {0x03U, 0x00U};
                 compression_ok = xx_zip_write_exact_progress(self->device, empty_stream, sizeof(empty_stream), pd);

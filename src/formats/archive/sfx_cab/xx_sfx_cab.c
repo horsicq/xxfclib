@@ -173,17 +173,10 @@ static uint32_t sfx_cab_csum(const uint8_t *p, size_t n, uint32_t seed)
     /* The leftover bytes, first byte highest, as the specification's
      * fall-through switch shifts them. */
     switch (n - i) {
-    case 3:
-        tail = ((uint32_t)p[i] << 16) | ((uint32_t)p[i + 1] << 8) | p[i + 2];
-        break;
-    case 2:
-        tail = ((uint32_t)p[i] << 8) | p[i + 1];
-        break;
-    case 1:
-        tail = p[i];
-        break;
-    default:
-        break;
+        case 3: tail = ((uint32_t)p[i] << 16) | ((uint32_t)p[i + 1] << 8) | p[i + 2]; break;
+        case 2: tail = ((uint32_t)p[i] << 8) | p[i + 1]; break;
+        case 1: tail = p[i]; break;
+        default: break;
     }
     return csum ^ tail;
 }
@@ -286,10 +279,8 @@ static bool sfx_cab_probe_at(Abstractformat *format, pm_stream *unused, int64_t 
 static bool sfx_cab_header_plausible(const uint8_t *data, size_t size, size_t index)
 {
     const uint8_t *h = data + index;
-    return index + 36U <= size &&
-           xx_data_get_u32(h + 4, 4, 0, false) == 0U && xx_data_get_u32(h + 12, 4, 0, false) == 0U &&
-           xx_data_get_u32(h + 20, 4, 0, false) == 0U && h[24] == 3U && h[25] == 1U &&
-           xx_data_get_u16(h + 26, 2, 0, false) != 0U && xx_data_get_u16(h + 28, 2, 0, false) != 0U &&
+    return index + 36U <= size && xx_data_get_u32(h + 4, 4, 0, false) == 0U && xx_data_get_u32(h + 12, 4, 0, false) == 0U && xx_data_get_u32(h + 20, 4, 0, false) == 0U &&
+           h[24] == 3U && h[25] == 1U && xx_data_get_u16(h + 26, 2, 0, false) != 0U && xx_data_get_u16(h + 28, 2, 0, false) != 0U &&
            (xx_data_get_u16(h + 30, 2, 0, false) & ~7U) == 0U;
 }
 /* A PE whose section table runs past the end of a truncated file fails the
@@ -315,8 +306,10 @@ static bool sfx_cab_find(xx_sfx_cab *archive, xx_pd_struct *pd)
     if (!archive || !archive->format.device) return false;
     if (archive->payload_offset >= 0) return true;
     total = pm_available(&archive->format);
-    if ((!executable_carrier_carrier(&archive->format, &low, true, false, pd) &&
-         !sfx_cab_legacy_bss(&archive->format,&low,pd) && !sfx_cab_broken_pe(&archive->format, &low)) || low < 0 || low >= total) return false;
+    if ((!executable_carrier_carrier(&archive->format, &low, true, false, pd) && !sfx_cab_legacy_bss(&archive->format, &low, pd) &&
+         !sfx_cab_broken_pe(&archive->format, &low)) ||
+        low < 0 || low >= total)
+        return false;
     size = (size_t)((total - low) > 16777216 ? 16777216 : total - low);
     data = (uint8_t *)xx_mem_alloc(size);
     if (!data) return false;
@@ -336,7 +329,7 @@ static bool sfx_cab_find(xx_sfx_cab *archive, xx_pd_struct *pd)
         }
     }
     xx_mem_free(data);
-    return sfx_cab_resources(archive,pd);
+    return sfx_cab_resources(archive, pd);
 }
 
 static bool sfx_cab_prefix_record(xx_archive_record_state *state)

@@ -338,10 +338,9 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result)
      * permissive "header plus offset table" shape from matching unrelated
      * files. */
     if (!pdb_is_printable_4cc(type) || !pdb_is_printable_4cc(creator)) return false;
-    if ((attributes & 0x1000U) != 0U && (type != 0x54455874U || creator != 0x52454164U ||
-        (attributes & PDB_ATTR_RESOURCE) != 0U || app_info != 0 || sort_info != 0)) return false;
-    if (header[0] == 0U && (type != 0x424f4f4bU || creator != 0x4d4f4249U ||
-        (attributes & PDB_ATTR_RESOURCE) != 0U || app_info != 0 || sort_info != 0)) return false;
+    if ((attributes & 0x1000U) != 0U && (type != 0x54455874U || creator != 0x52454164U || (attributes & PDB_ATTR_RESOURCE) != 0U || app_info != 0 || sort_info != 0))
+        return false;
+    if (header[0] == 0U && (type != 0x424f4f4bU || creator != 0x4d4f4249U || (attributes & PDB_ATTR_RESOURCE) != 0U || app_info != 0 || sort_info != 0)) return false;
     resource_database = (attributes & PDB_ATTR_RESOURCE) != 0U;
     entry_count = (int32_t)xx_data_get_u16(header + 0x4cU, 2, 0, true);
     if (entry_count < 1 || entry_count > PDB_MAX_ENTRIES) return false;
@@ -364,20 +363,19 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result)
         }
         /* AppInfo is located by its explicit header pointer. Some writers
          * reserve a zero-filled gap before it rather than two filler bytes. */
-        if (app_info != 0 && header[0] != 0U && first > header_size + PDB_MAX_FILLER &&
-            first - header_size <= 4096 && first < size) {
+        if (app_info != 0 && header[0] != 0U && first > header_size + PDB_MAX_FILLER && first - header_size <= 4096 && first < size) {
             uint8_t gap[256];
             int64_t at = header_size;
             while (at < first) {
                 size_t take = first - at > (int64_t)sizeof(gap) ? sizeof(gap) : (size_t)(first - at);
                 if (!pdb_read_at(format->device, format->base_address + at, gap, take)) return false;
-                for (size_t j = 0U; j < take; ++j) if (gap[j] != 0U) return false;
+                for (size_t j = 0U; j < take; ++j)
+                    if (gap[j] != 0U) return false;
                 at += (int64_t)take;
             }
             maximum_filler = first - header_size;
         }
-        if (first > header_size + PDB_MAX_FILLER && first - header_size <= 4096 && first < size &&
-            !resource_database && app_info == 0 && sort_info == 0 &&
+        if (first > header_size + PDB_MAX_FILLER && first - header_size <= 4096 && first < size && !resource_database && app_info == 0 && sort_info == 0 &&
             type == 0x54455874U && creator == 0x52454164U && entry_count > 1) {
             uint8_t block[256], doc[16];
             int64_t at = header_size;
@@ -387,7 +385,8 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result)
             compression = xx_data_get_u16(doc, 2, 0, true);
             text_records = xx_data_get_u16(doc + 8U, 2, 0, true);
             if ((compression != 1U && compression != 2U) || text_records == 0U || text_records >= (uint32_t)entry_count ||
-                xx_data_get_u16(doc + 10U, 2, 0, true) != 4096U) return false;
+                xx_data_get_u16(doc + 10U, 2, 0, true) != 4096U)
+                return false;
             while (at < first) {
                 size_t take = first - at > (int64_t)sizeof(block) ? sizeof(block) : (size_t)(first - at);
                 if (!pdb_read_at(format->device, format->base_address + at, block, take)) return false;
@@ -486,8 +485,9 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result)
         compression = xx_data_get_u16(doc, 2, 0, true);
         text_records = xx_data_get_u16(doc + 8U, 2, 0, true);
         text_size = xx_data_get_u32(doc + 4U, 4, 0, true);
-        if ((compression != 1U && compression != 2U) || text_records == 0U || text_records >= (uint32_t)entry_count ||
-            xx_data_get_u16(doc + 10U, 2, 0, true) != 4096U || text_size > (uint32_t)text_records * 4096U) goto fail;
+        if ((compression != 1U && compression != 2U) || text_records == 0U || text_records >= (uint32_t)entry_count || xx_data_get_u16(doc + 10U, 2, 0, true) != 4096U ||
+            text_size > (uint32_t)text_records * 4096U)
+            goto fail;
     }
     if (maximum_filler > PDB_MAX_FILLER && app_info == 0 && items[1].offset - items[0].offset < 16) goto fail;
     if (header[0] == 0U) {
@@ -495,16 +495,14 @@ static bool pdb_parse(Abstractformat *format, pdb_stream **result)
         int64_t end = count > 1U ? items[1].offset : size;
         uint32_t length;
         uint16_t compression, text_records;
-        if (end - items[0].offset < (int64_t)sizeof(mobi) ||
-            !pdb_read_at(format->device, format->base_address + items[0].offset, mobi, sizeof(mobi))) goto fail;
+        if (end - items[0].offset < (int64_t)sizeof(mobi) || !pdb_read_at(format->device, format->base_address + items[0].offset, mobi, sizeof(mobi))) goto fail;
         compression = xx_data_get_u16(mobi, 2, 0, true);
         text_records = xx_data_get_u16(mobi + 8U, 2, 0, true);
         length = xx_data_get_u32(mobi + 20U, 4, 0, true);
-        if (mobi[16] != 'M' || mobi[17] != 'O' || mobi[18] != 'B' || mobi[19] != 'I' ||
-            length < 24U || (int64_t)length > end - items[0].offset - 16 ||
-            (compression != 1U && compression != 2U && compression != 17480U) ||
-            text_records == 0U || text_records >= (uint32_t)entry_count ||
-            xx_data_get_u16(mobi + 12U, 2, 0, true) > 2U) goto fail;
+        if (mobi[16] != 'M' || mobi[17] != 'O' || mobi[18] != 'B' || mobi[19] != 'I' || length < 24U || (int64_t)length > end - items[0].offset - 16 ||
+            (compression != 1U && compression != 2U && compression != 17480U) || text_records == 0U || text_records >= (uint32_t)entry_count ||
+            xx_data_get_u16(mobi + 12U, 2, 0, true) > 2U)
+            goto fail;
     }
     for (index = 0; (size_t)index < count; ++index) {
         int64_t next = ((size_t)index + 1U < count) ? items[index + 1].offset : size;

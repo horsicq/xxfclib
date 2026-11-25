@@ -210,4 +210,3 @@ void xx_list_sort(xx_list_t *list, xx_elem_compare_fn cmp)
         xx_mem_free(context.buffer);
     }
 }
-

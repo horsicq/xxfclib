@@ -58,12 +58,14 @@ static bool xx_handle_pe_carrier(Abstractformat *format, uint32_t pe)
     unsigned count, size, magic, minimum, i;
     if (total < base || pe < 64U || pe > 1048576U) return false;
     available = (uint64_t)(total - base);
-    if (pe > available || sizeof(coff) > available - pe || !xx_io_read_at(format->device, base + pe, coff, sizeof(coff)) ||
-        coff[0] != 'P' || coff[1] != 'E' || coff[2] || coff[3]) return false;
+    if (pe > available || sizeof(coff) > available - pe || !xx_io_read_at(format->device, base + pe, coff, sizeof(coff)) || coff[0] != 'P' || coff[1] != 'E' || coff[2] ||
+        coff[3])
+        return false;
     count = xx_handle_u16(coff + 6);
     size = xx_handle_u16(coff + 20);
     if (!count || count > 96U || size < 96U || size > 4096U || size > available - pe - sizeof(coff) ||
-        !xx_io_read_at(format->device, base + pe + sizeof(coff), optional, 96U)) return false;
+        !xx_io_read_at(format->device, base + pe + sizeof(coff), optional, 96U))
+        return false;
     magic = xx_handle_u16(optional);
     minimum = magic == 0x10bU ? 96U : magic == 0x20bU ? 112U : 0U;
     if (!minimum || size < minimum || (minimum > 96U && !xx_io_read_at(format->device, base + pe + sizeof(coff), optional, minimum))) return false;
@@ -106,8 +108,8 @@ xx_file_type_t xx_format_get_handle_type(Abstractformat *format)
     unsigned carrier;
     size_t i;
     if (!format) return XX_FILE_TYPE_UNKNOWN;
-    if (xx_format_handle_is_inspection_only(format->file_type) || format->file_type == XX_FILE_TYPE_DER ||
-        (format->base_info_handled && !format->is_archive) || !format->create_archive_records_reading || !format->get_current_archive_record || !format->unpack_current_archive_record ||
+    if (xx_format_handle_is_inspection_only(format->file_type) || format->file_type == XX_FILE_TYPE_DER || (format->base_info_handled && !format->is_archive) ||
+        !format->create_archive_records_reading || !format->get_current_archive_record || !format->unpack_current_archive_record ||
         !format->archive_record_move_to_next || !format->free_archive_records_reading) {
         format->handle_type = XX_FILE_TYPE_UNKNOWN;
         format->handle_carrier = XX_UNPACK_CARRIER_NONE;

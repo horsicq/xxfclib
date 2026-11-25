@@ -15,8 +15,8 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     uint16_t count, kind;
     uint32_t i;
     int64_t end;
-    if (!pm_read(f, 0, h, 6) || xx_data_get_u16(h, 2, 0, false) != 0 || ((kind = xx_data_get_u16(h + 2, 2, 0, false)) != 1 && kind != 2) || (count = xx_data_get_u16(h + 4, 2, 0, false)) == 0 ||
-        count > 4096)
+    if (!pm_read(f, 0, h, 6) || xx_data_get_u16(h, 2, 0, false) != 0 || ((kind = xx_data_get_u16(h + 2, 2, 0, false)) != 1 && kind != 2) ||
+        (count = xx_data_get_u16(h + 4, 2, 0, false)) == 0 || count > 4096)
         return false;
     end = 6 + (int64_t)count * 16;
     for (i = 0; i < count; ++i) {
@@ -27,8 +27,7 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
         /* Cursor entries store hotspot coordinates where icon entries have
          * planes and bit depth. The encoded PNG/DIB still supplies the pixel
          * format; validate each hotspot against its declared dimensions. */
-        if (kind == 2 && (xx_data_get_u16(e + 4, 2, 0, false) >= (e[0] ? e[0] : 256U) ||
-                          xx_data_get_u16(e + 6, 2, 0, false) >= (e[1] ? e[1] : 256U))) return false;
+        if (kind == 2 && (xx_data_get_u16(e + 4, 2, 0, false) >= (e[0] ? e[0] : 256U) || xx_data_get_u16(e + 6, 2, 0, false) >= (e[1] ? e[1] : 256U))) return false;
         size = xx_data_get_u32(e + 8, 4, 0, false);
         off = xx_data_get_u32(e + 12, 4, 0, false);
         if (off < 6 + (uint32_t)count * 16 || size < 12 || !pm_read(f, off, sig, size < 40 ? size : 40)) return false;

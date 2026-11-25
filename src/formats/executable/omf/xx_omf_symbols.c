@@ -125,12 +125,10 @@ void xx_omf_free_symbols_reading(Abstractformat *format, xx_symbol_state *state)
 
 const StreamSymbols *xx_omf_get_stream_symbols(void)
 {
-    static const StreamSymbols stream = {
-        .get_number_of_symbols = xx_omf_get_number_of_symbols,
-        .create_symbols_reading = xx_omf_create_symbols_reading,
-        .get_current_symbol = xx_omf_get_current_symbol,
-        .symbol_move_to_next = xx_omf_symbol_move_to_next,
-        .free_symbols_reading = xx_omf_free_symbols_reading
-    };
+    static const StreamSymbols stream = {.get_number_of_symbols = xx_omf_get_number_of_symbols,
+                                         .create_symbols_reading = xx_omf_create_symbols_reading,
+                                         .get_current_symbol = xx_omf_get_current_symbol,
+                                         .symbol_move_to_next = xx_omf_symbol_move_to_next,
+                                         .free_symbols_reading = xx_omf_free_symbols_reading};
     return &stream;
 }

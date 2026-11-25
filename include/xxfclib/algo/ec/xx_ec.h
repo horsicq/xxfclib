@@ -47,11 +47,8 @@ XXFC_API bool xx_ec_point_mul(xx_ec_curve curve, xx_ec_point *out, const xx_ec_p
  * Raw signature is fixed-width r || s; DER must be minimal positive INTEGERs.
  * The digest is truncated to the leftmost order bits as specified by SEC1.
  * Finite public keys are validated on-curve and in the prime-order subgroup. */
-XXFC_API bool xx_ecdsa_verify_digest(xx_ec_curve curve,
-                                    const uint8_t *public_key, size_t public_key_size,
-                                    const uint8_t *digest, size_t digest_size,
-                                    const uint8_t *signature, size_t signature_size,
-                                    bool signature_is_der);
+XXFC_API bool xx_ecdsa_verify_digest(xx_ec_curve curve, const uint8_t *public_key, size_t public_key_size, const uint8_t *digest, size_t digest_size,
+                                     const uint8_t *signature, size_t signature_size, bool signature_is_der);
 
 #ifdef __cplusplus
 }

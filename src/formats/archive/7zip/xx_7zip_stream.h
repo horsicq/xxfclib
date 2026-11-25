@@ -16,10 +16,9 @@ bool xx_7zip_stream_decode(uint64_t method, const uint8_t *properties, size_t pr
 /* Each independent input device/view starts at offset zero. */
 bool xx_7zip_stream_bcj2(xx_io_device *const sources[4], const uint64_t sizes[4], const uint8_t *properties, size_t properties_size, uint64_t expected_size,
                          xx_io_device *destination, xx_pd_struct *pd);
-bool xx_7zip_stream_bcj2_streaming(xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3],
-                                   const uint8_t *properties, size_t properties_size, uint64_t in0_size, uint64_t expected_size,
-                                   xx_io_device *u_source, int64_t u_source_offset, uint64_t u_compressed_size,
-                                   uint64_t u_method, const uint8_t *u_properties, size_t u_properties_size,
-                                   xx_io_device *destination, const uint8_t *password_utf16le, size_t password_size, xx_pd_struct *pd);
+bool xx_7zip_stream_bcj2_streaming(xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3], const uint8_t *properties, size_t properties_size,
+                                   uint64_t in0_size, uint64_t expected_size, xx_io_device *u_source, int64_t u_source_offset, uint64_t u_compressed_size,
+                                   uint64_t u_method, const uint8_t *u_properties, size_t u_properties_size, xx_io_device *destination, const uint8_t *password_utf16le,
+                                   size_t password_size, xx_pd_struct *pd);
 
 #endif /* XX_7ZIP_STREAM_H */

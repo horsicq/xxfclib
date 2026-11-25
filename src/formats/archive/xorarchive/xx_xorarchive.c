@@ -147,10 +147,8 @@ static ssize_t xx_xorarchive_view_read(xx_io_device *device, void *data, size_t 
     if (archive->rotation == 0U) {
         uint8_t key = archive->key;
 #if defined(XX_XORARCHIVE_X86)
-        if (xx_is_avx2_enabled() && ((size_t)amount >= 32U))
-            index = xx_xorarchive_xor_avx2(bytes, (size_t)amount, key);
-        if (xx_is_sse2_enabled() && (index + 16U <= (size_t)amount))
-            index += xx_xorarchive_xor_sse2(bytes + index, (size_t)amount - index, key);
+        if (xx_is_avx2_enabled() && ((size_t)amount >= 32U)) index = xx_xorarchive_xor_avx2(bytes, (size_t)amount, key);
+        if (xx_is_sse2_enabled() && (index + 16U <= (size_t)amount)) index += xx_xorarchive_xor_sse2(bytes + index, (size_t)amount - index, key);
 #endif
         for (; index + 8U <= (size_t)amount; index += 8U) {
             uint64_t val;

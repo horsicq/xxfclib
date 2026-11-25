@@ -68,7 +68,7 @@ struct xx_io_device {
     int (*seek64)(xx_io_device *self, int64_t off, int whence);
     int64_t (*tell)(xx_io_device *self);
     xx_io_buffer_state *buffer_state; /* Opaque state managed by xx_io_buffer_*. */
-    bool buffer_enabled; /* Use xx_io_set_buffer_enabled to change buffering. */
+    bool buffer_enabled;              /* Use xx_io_set_buffer_enabled to change buffering. */
     /* Optional whole-device resizing: 0 on success, -1 on failure.
      * NULL means unsupported. Use xx_io_resize for cache-aware dispatch. */
     int (*resize)(xx_io_device *self, int64_t new_size);

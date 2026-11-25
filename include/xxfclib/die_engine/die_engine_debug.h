@@ -16,8 +16,8 @@ extern "C" {
 typedef void (*die_engine_debug_log_fn)(const char *text, void *user_data);
 
 typedef struct die_engine_debug_config {
-    size_t size;                 /* Initialise to sizeof(die_engine_debug_config). */
-    unsigned int version;       /* DIE_ENGINE_DEBUG_VERSION. */
+    size_t size;          /* Initialise to sizeof(die_engine_debug_config). */
+    unsigned int version; /* DIE_ENGINE_DEBUG_VERSION. */
     JSDebugHook hook;
     void *hook_user;
     die_engine_debug_log_fn log;
@@ -46,9 +46,8 @@ typedef struct die_engine_debug_config {
  * progress uses private progress storage. _log output is captured independently
  * of show_messages; profiling output obeys options.profiling. With no log
  * callback, the normal console output rules apply. */
-XXFC_API int die_engine_scan_file_type_debug_pd(const char *file_name, DBase *database,
-    xx_scan_options *options, XFileType file_type, xx_scan_result *result,
-    xx_pd_struct *progress, const die_engine_debug_config *config);
+XXFC_API int die_engine_scan_file_type_debug_pd(const char *file_name, DBase *database, xx_scan_options *options, XFileType file_type, xx_scan_result *result,
+                                                xx_pd_struct *progress, const die_engine_debug_config *config);
 
 #ifdef __cplusplus
 }

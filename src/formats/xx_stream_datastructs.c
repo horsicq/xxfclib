@@ -248,8 +248,7 @@ bool xx_data_struct_record_set_raw_bytes(xx_data_struct_record *rec, xx_io_devic
     size_t head, tail, position = 0U;
     size_t index;
     bool full = g_xx_data_struct_raw_bytes_full;
-    if (!rec || !device || offset < 0 || size < 0 || !xx_io_check(device, offset, size) ||
-        (uint64_t)size > (uint64_t)(SIZE_MAX - 3U) / 2U) {
+    if (!rec || !device || offset < 0 || size < 0 || !xx_io_check(device, offset, size) || (uint64_t)size > (uint64_t)(SIZE_MAX - 3U) / 2U) {
         return false;
     }
     byte_count = (size_t)size;
@@ -299,8 +298,7 @@ static bool xx_data_struct_record_format_location(const xx_data_struct_record *r
     size_t count = 0U;
     size_t position = 0U;
 
-    if ((rec->property & (XX_DATA_STRUCT_RECORD_PROPERTY_VIRTUAL_ADDRESS | XX_DATA_STRUCT_RECORD_PROPERTY_OFFSET |
-                          XX_DATA_STRUCT_RECORD_PROPERTY_POINTER)) == 0U ||
+    if ((rec->property & (XX_DATA_STRUCT_RECORD_PROPERTY_VIRTUAL_ADDRESS | XX_DATA_STRUCT_RECORD_PROPERTY_OFFSET | XX_DATA_STRUCT_RECORD_PROPERTY_POINTER)) == 0U ||
         (rec->type && xx_rt_wcschr(rec->type, L'[')))
         return false;
 
@@ -319,11 +317,8 @@ static bool xx_data_struct_record_format_location(const xx_data_struct_record *r
         case XX_VAR_TYPE_UINT8:
         case XX_VAR_TYPE_UINT16:
         case XX_VAR_TYPE_UINT32:
-        case XX_VAR_TYPE_UINT64:
-            magnitude = xx_var_get_u64(&rec->value);
-            break;
-        default:
-            return false;
+        case XX_VAR_TYPE_UINT64: magnitude = xx_var_get_u64(&rec->value); break;
+        default: return false;
     }
 
     /* Prefer the logical type width to the size of its containing bitfield. */
@@ -350,7 +345,6 @@ static bool xx_data_struct_record_format_location(const xx_data_struct_record *r
     display[position] = L'\0';
     return true;
 }
-
 
 bool xx_data_struct_record_set_display_value(xx_data_struct_record *rec, const wchar_t *display_value)
 {
@@ -408,8 +402,7 @@ static bool xx_data_struct_record_set_size_comment(xx_data_struct_record *rec, u
 
 /* Array fields retain all their bytes instead of pretending the first four
  * bytes are the scalar value. Text arrays stop at their first NUL. */
-static bool xx_data_struct_record_populate_array(xx_data_struct_record *rec, xx_io_device *device,
-                                                  int64_t abs_offset, const xx_data_struct_field_desc *field)
+static bool xx_data_struct_record_populate_array(xx_data_struct_record *rec, xx_io_device *device, int64_t abs_offset, const xx_data_struct_field_desc *field)
 {
     size_t size = (size_t)field->size;
     uint8_t *bytes = (uint8_t *)xx_mem_alloc(size + 1U);
@@ -427,8 +420,7 @@ static bool xx_data_struct_record_populate_array(xx_data_struct_record *rec, xx_
         if (length > SIZE_MAX / sizeof(*display) - 1U) goto done;
         display = (wchar_t *)xx_mem_alloc((length + 1U) * sizeof(*display));
         if (!display || !xx_var_set_str(&rec->value, (const char *)bytes)) goto done;
-        for (index = 0U; index < length; ++index)
-            display[index] = bytes[index] >= 0x20U && bytes[index] != 0x7fU ? (wchar_t)bytes[index] : L'.';
+        for (index = 0U; index < length; ++index) display[index] = bytes[index] >= 0x20U && bytes[index] != 0x7fU ? (wchar_t)bytes[index] : L'.';
         display[length] = L'\0';
     } else if (!xx_var_set_bytes(&rec->value, bytes, size)) {
         goto done;
@@ -458,8 +450,8 @@ bool xx_data_struct_record_populate(xx_data_struct_record *rec, xx_io_device *de
     size_t index;
     if (!rec) return false;
     xx_data_struct_record_init(rec);
-    if (!device || !field || parent_offset < 0 || field->rel_offset < 0 || field->size < 0 ||
-        field->rel_offset > INT64_MAX - parent_offset || (uint64_t)field->size >= SIZE_MAX)
+    if (!device || !field || parent_offset < 0 || field->rel_offset < 0 || field->size < 0 || field->rel_offset > INT64_MAX - parent_offset ||
+        (uint64_t)field->size >= SIZE_MAX)
         return false;
     abs_offset = parent_offset + field->rel_offset;
     if (field->size > INT64_MAX - abs_offset || !xx_io_check(device, abs_offset, field->size)) return false;
@@ -483,10 +475,9 @@ bool xx_data_struct_record_populate(xx_data_struct_record *rec, xx_io_device *de
         size_t shift_index = is_big_endian ? (size_t)field->size - index - 1U : index;
         raw_value |= (uint64_t)bytes[index] << (shift_index * 8U);
     }
-    is_signed = field->type && (xx_rt_wcscmp(field->type, L"int8") == 0 || xx_rt_wcscmp(field->type, L"int16") == 0 ||
-                               xx_rt_wcscmp(field->type, L"int24") == 0 || xx_rt_wcscmp(field->type, L"int32") == 0 ||
-                               xx_rt_wcscmp(field->type, L"int40") == 0 || xx_rt_wcscmp(field->type, L"int48") == 0 ||
-                               xx_rt_wcscmp(field->type, L"int56") == 0 || xx_rt_wcscmp(field->type, L"int64") == 0);
+    is_signed = field->type && (xx_rt_wcscmp(field->type, L"int8") == 0 || xx_rt_wcscmp(field->type, L"int16") == 0 || xx_rt_wcscmp(field->type, L"int24") == 0 ||
+                                xx_rt_wcscmp(field->type, L"int32") == 0 || xx_rt_wcscmp(field->type, L"int40") == 0 || xx_rt_wcscmp(field->type, L"int48") == 0 ||
+                                xx_rt_wcscmp(field->type, L"int56") == 0 || xx_rt_wcscmp(field->type, L"int64") == 0);
     if (is_floating) {
         if (is_float32) {
             uint32_t bits = (uint32_t)raw_value;
@@ -500,9 +491,18 @@ bool xx_data_struct_record_populate(xx_data_struct_record *rec, xx_io_device *de
         }
     } else if (is_signed) {
         switch (field->size) {
-            case 1: signed_value = (int8_t)raw_value; xx_var_set_i8(&rec->value, (int8_t)signed_value); break;
-            case 2: signed_value = (int16_t)raw_value; xx_var_set_i16(&rec->value, (int16_t)signed_value); break;
-            case 4: signed_value = (int32_t)raw_value; xx_var_set_i32(&rec->value, (int32_t)signed_value); break;
+            case 1:
+                signed_value = (int8_t)raw_value;
+                xx_var_set_i8(&rec->value, (int8_t)signed_value);
+                break;
+            case 2:
+                signed_value = (int16_t)raw_value;
+                xx_var_set_i16(&rec->value, (int16_t)signed_value);
+                break;
+            case 4:
+                signed_value = (int32_t)raw_value;
+                xx_var_set_i32(&rec->value, (int32_t)signed_value);
+                break;
             default:
                 signed_value = (int64_t)raw_value;
                 if (field->size < 8 && (raw_value & (UINT64_C(1) << ((unsigned)field->size * 8U - 1U))) != 0U)
@@ -518,20 +518,14 @@ bool xx_data_struct_record_populate(xx_data_struct_record *rec, xx_io_device *de
             default: xx_var_set_u64(&rec->value, raw_value); break;
         }
     }
-    as_hex = (field->property & (XX_DATA_STRUCT_RECORD_PROPERTY_ID | XX_DATA_STRUCT_RECORD_PROPERTY_FLAGS |
-                                XX_DATA_STRUCT_RECORD_PROPERTY_SIGNATURE |
-                                XX_DATA_STRUCT_RECORD_PROPERTY_CHECKSUM)) != 0;
-    if (is_floating)
-        display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), is_float32 ? "%.9g" : "%.17g", floating_value);
-    else if (as_hex)
-        display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), "0x%08llX", (unsigned long long)raw_value);
-    else if (is_signed)
-        display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), "%lld", (long long)signed_value);
-    else
-        display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), "%llu", (unsigned long long)raw_value);
+    as_hex = (field->property & (XX_DATA_STRUCT_RECORD_PROPERTY_ID | XX_DATA_STRUCT_RECORD_PROPERTY_FLAGS | XX_DATA_STRUCT_RECORD_PROPERTY_SIGNATURE |
+                                 XX_DATA_STRUCT_RECORD_PROPERTY_CHECKSUM)) != 0;
+    if (is_floating) display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), is_float32 ? "%.9g" : "%.17g", floating_value);
+    else if (as_hex) display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), "0x%08llX", (unsigned long long)raw_value);
+    else if (is_signed) display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), "%lld", (long long)signed_value);
+    else display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), "%llu", (unsigned long long)raw_value);
     if (display_length < 0 || (size_t)display_length >= sizeof(display_ascii)) goto fail;
-    for (index = 0U; index <= (size_t)display_length; ++index)
-        display_buf[index] = (wchar_t)(unsigned char)display_ascii[index];
+    for (index = 0U; index <= (size_t)display_length; ++index) display_buf[index] = (wchar_t)(unsigned char)display_ascii[index];
     if (!xx_data_struct_record_set_name(rec, field->name) || !xx_data_struct_record_set_type(rec, field->type) ||
         !xx_data_struct_record_set_raw_uint(rec, raw_value, field->size) || !xx_data_struct_record_set_display_value(rec, display_buf) ||
         (!is_floating && (field->property & XX_DATA_STRUCT_RECORD_PROPERTY_SIZE) != 0 && (!is_signed || signed_value >= 0) &&

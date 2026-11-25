@@ -61,8 +61,8 @@ typedef struct xx_process_structs_options {
  * Each zero limit is unlimited; positive limits bound discovery and omitted
  * records set truncated. Allocation failures return OUT_OF_MEMORY.
  * The caller owns *out and releases it with xx_process_structs_free. */
-XXFC_API xx_process_structs_status xx_process_structs_read(uint64_t pid, uint64_t expected_start_time,
-    const xx_process_structs_options *options, xx_process_structs_snapshot **out);
+XXFC_API xx_process_structs_status xx_process_structs_read(uint64_t pid, uint64_t expected_start_time, const xx_process_structs_options *options,
+                                                           xx_process_structs_snapshot **out);
 XXFC_API void xx_process_structs_free(xx_process_structs_snapshot *);
 XXFC_API const char *xx_process_structs_status_string(xx_process_structs_status);
 #ifdef __cplusplus

@@ -82,8 +82,12 @@ typedef enum xx_scan_color_category {
 } xx_scan_color_category;
 
 /* 0xRRGGBB, or UINT32_MAX to retain the UI's default color. */
-typedef struct xx_scan_color_record { uint32_t foreground, background; } xx_scan_color_record;
-typedef struct xx_scan_color_options { xx_scan_color_record records[XX_SCAN_COLOR_COUNT]; } xx_scan_color_options;
+typedef struct xx_scan_color_record {
+    uint32_t foreground, background;
+} xx_scan_color_record;
+typedef struct xx_scan_color_options {
+    xx_scan_color_record records[XX_SCAN_COLOR_COUNT];
+} xx_scan_color_options;
 
 /* Initialize the upstream light/dark defaults, then override any category. */
 XXFC_API void xx_scan_color_options_init(xx_scan_color_options *options, int dark_mode);

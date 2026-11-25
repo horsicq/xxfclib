@@ -21,8 +21,7 @@ static bool nro_read_header(const Abstractformat *format, uint8_t header[XX_NRO_
     if (!format || !format->device || !header || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
     return total >= format->base_address && total - format->base_address >= XX_NRO_ENTRY_OFFSET &&
-           xx_io_read_at(format->device, format->base_address, header, XX_NRO_ENTRY_OFFSET) &&
-           memcmp(header + XX_NRO_HEADER_OFFSET, "NRO0", 4U) == 0;
+           xx_io_read_at(format->device, format->base_address, header, XX_NRO_ENTRY_OFFSET) && memcmp(header + XX_NRO_HEADER_OFFSET, "NRO0", 4U) == 0;
 }
 
 static bool nro_span(uint32_t offset, uint32_t size, uint32_t limit)
@@ -112,8 +111,9 @@ bool xx_nintendo_nro_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
         if (index == XX_NRO_SEGMENT_DATA && reader->bss_size > XX_NRO_MAX_MEMORY_SIZE - segment->file_size) return false;
         segment->memory_size = segment->file_size + ((index == XX_NRO_SEGMENT_DATA) ? reader->bss_size : 0U);
         segment->flags = flags[index];
-        if (!nro_span(segment->file_offset, segment->file_size, reader->image_size) ||
-            (index != 0U && segment->file_offset < previous_end) || segment->memory_size < segment->file_size) return false;
+        if (!nro_span(segment->file_offset, segment->file_size, reader->image_size) || (index != 0U && segment->file_offset < previous_end) ||
+            segment->memory_size < segment->file_size)
+            return false;
         previous_end = segment->file_offset + segment->file_size;
     }
     if (reader->segments[XX_NRO_SEGMENT_TEXT].file_offset != 0U || XX_NRO_ENTRY_OFFSET >= reader->segments[XX_NRO_SEGMENT_TEXT].file_size) return false;
@@ -138,8 +138,7 @@ int64_t xx_nintendo_nro_get_format_size(Abstractformat *self, xx_pd_struct *pd)
 
 const xx_nro_segment *xx_nintendo_nro_get_segment(xx_nintendo_nro *reader, xx_nro_segment_kind kind, xx_pd_struct *pd)
 {
-    return reader && (unsigned)kind < 3U &&
-                   (reader->format.base_info_handled || xx_nintendo_nro_handle_base_info(&reader->format, pd))
+    return reader && (unsigned)kind < 3U && (reader->format.base_info_handled || xx_nintendo_nro_handle_base_info(&reader->format, pd))
                ? &reader->segments[(unsigned)kind]
                : NULL;
 }
@@ -150,7 +149,8 @@ bool xx_nintendo_nro_get_memory_map(Abstractformat *self, xx_memory_map_mode_t m
     xx_nintendo_nro *reader = (xx_nintendo_nro *)self;
     unsigned index;
     if (!reader || !output || (mode != XX_MEMORY_MAP_MODE_UNKNOWN && mode != XX_MEMORY_MAP_MODE_SEGMENTS) ||
-        (!self->base_info_handled && !xx_nintendo_nro_handle_base_info(self, pd))) return false;
+        (!self->base_info_handled && !xx_nintendo_nro_handle_base_info(self, pd)))
+        return false;
     output->binary_offset = self->base_address;
     output->binary_size = self->format_size;
     output->module_address = 0U;
@@ -163,17 +163,16 @@ bool xx_nintendo_nro_get_memory_map(Abstractformat *self, xx_memory_map_mode_t m
     output->arch = self->arch;
     output->mode = XX_MEMORY_MAP_MODE_SEGMENTS;
     output->is_image = true;
-    if (!xx_memory_map_add_part(output, self->base_address, XX_NRO_ENTRY_OFFSET, 0U, XX_NRO_ENTRY_OFFSET,
-                                XX_FILE_PART_HEADER, 0, "header", false)) return false;
+    if (!xx_memory_map_add_part(output, self->base_address, XX_NRO_ENTRY_OFFSET, 0U, XX_NRO_ENTRY_OFFSET, XX_FILE_PART_HEADER, 0, "header", false)) return false;
     for (index = 0U; index < 3U; ++index) {
         const xx_nro_segment *segment = &reader->segments[index];
-        if (!xx_memory_map_add_part(output, self->base_address + segment->file_offset, segment->file_size,
-                                    segment->memory_offset, segment->memory_size, XX_FILE_PART_SEGMENT,
-                                    (int32_t)index + 1, names[index], false)) return false;
+        if (!xx_memory_map_add_part(output, self->base_address + segment->file_offset, segment->file_size, segment->memory_offset, segment->memory_size,
+                                    XX_FILE_PART_SEGMENT, (int32_t)index + 1, names[index], false))
+            return false;
     }
     if (reader->has_asset_header && self->format_size > reader->asset_offset &&
-        !xx_memory_map_add_part(output, self->base_address + reader->asset_offset,
-                                self->format_size - reader->asset_offset, XX_INVALID_ADDRESS, 0,
-                                XX_FILE_PART_RESOURCE, 4, "ASET assets", false)) return false;
+        !xx_memory_map_add_part(output, self->base_address + reader->asset_offset, self->format_size - reader->asset_offset, XX_INVALID_ADDRESS, 0, XX_FILE_PART_RESOURCE,
+                                4, "ASET assets", false))
+        return false;
     return !nro_stopped(pd) && xx_memory_map_finalize(output);
 }

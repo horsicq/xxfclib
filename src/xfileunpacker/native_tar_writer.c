@@ -27,8 +27,12 @@
 #define TAR_NOBODY_ID 65534U
 
 typedef enum tar_variant {
-    TAR_UNKNOWN = 0, TAR_USTAR, TAR_PAX, TAR_PAX_RESTRICTED,
-    TAR_GNU, TAR_V7
+    TAR_UNKNOWN = 0,
+    TAR_USTAR,
+    TAR_PAX,
+    TAR_PAX_RESTRICTED,
+    TAR_GNU,
+    TAR_V7
 } tar_variant;
 
 typedef struct tar_source {
@@ -36,7 +40,7 @@ typedef struct tar_source {
     const xfu_native_member *member; /* As walked: opened with its checks. */
     char *name;
     int64_t size;
-    int64_t stamp; /* The modification time as walked: negative before 1970. */
+    int64_t stamp;  /* The modification time as walked: negative before 1970. */
     uint64_t mtime; /* The time a ustar header holds: stamp, clamped to its range. */
     uint32_t mode;
     uint32_t uid;
@@ -49,12 +53,10 @@ static tar_variant tar_parse(const char *format)
     if (!format) return TAR_UNKNOWN;
     if (!strcmp(format, "ustar")) return TAR_USTAR;
     if (!strcmp(format, "pax") || !strcmp(format, "posix")) return TAR_PAX;
-    if (!strcmp(format, "tar") || !strcmp(format, "pax_restricted") ||
-        !strcmp(format, "paxr") || !strcmp(format, "rpax") ||
-        !strcmp(format, "bsdtar")) return TAR_PAX_RESTRICTED;
+    if (!strcmp(format, "tar") || !strcmp(format, "pax_restricted") || !strcmp(format, "paxr") || !strcmp(format, "rpax") || !strcmp(format, "bsdtar"))
+        return TAR_PAX_RESTRICTED;
     if (!strcmp(format, "gnutar")) return TAR_GNU;
-    if (!strcmp(format, "v7tar") || !strcmp(format, "v7") ||
-        !strcmp(format, "oldtar")) return TAR_V7;
+    if (!strcmp(format, "v7tar") || !strcmp(format, "v7") || !strcmp(format, "oldtar")) return TAR_V7;
     return TAR_UNKNOWN;
 }
 
@@ -86,8 +88,7 @@ static void tar_log(const xfu_request *request, const char *format, ...)
 
 static bool tar_cancelled(const xfu_request *request, xx_pd_struct *pd)
 {
-    if (request->callbacks.cancelled &&
-        request->callbacks.cancelled(request->callbacks.user)) xx_pd_stop(pd);
+    if (request->callbacks.cancelled && request->callbacks.cancelled(request->callbacks.user)) xx_pd_stop(pd);
     return xx_pd_is_stopped(pd);
 }
 
@@ -122,13 +123,11 @@ static bool tar_utf8(const char *text)
 {
     const unsigned char *p = (const unsigned char *)text;
     while (*p) {
-        size_t length = *p < 0x80U ? 1U : *p >= 0xC2U && *p <= 0xDFU ? 2U :
-            *p >= 0xE0U && *p <= 0xEFU ? 3U : *p >= 0xF0U && *p <= 0xF4U ? 4U : 0U, i;
+        size_t length = *p < 0x80U ? 1U : *p >= 0xC2U && *p <= 0xDFU ? 2U : *p >= 0xE0U && *p <= 0xEFU ? 3U : *p >= 0xF0U && *p <= 0xF4U ? 4U : 0U, i;
         if (!length) return false;
         for (i = 1U; i < length; ++i)
             if ((p[i] & 0xC0U) != 0x80U) return false;
-        if (length > 1U && ((*p == 0xE0U && p[1] < 0xA0U) || (*p == 0xEDU && p[1] >= 0xA0U) ||
-                            (*p == 0xF0U && p[1] < 0x90U) || (*p == 0xF4U && p[1] >= 0x90U)))
+        if (length > 1U && ((*p == 0xE0U && p[1] < 0xA0U) || (*p == 0xEDU && p[1] >= 0xA0U) || (*p == 0xF0U && p[1] < 0x90U) || (*p == 0xF4U && p[1] >= 0x90U)))
             return false;
         p += length;
     }
@@ -143,8 +142,7 @@ static bool tar_describe(tar_source *source, const xfu_native_member *member)
     source->size = member->directory ? 0 : member->size;
     source->mode = member->mode & 07777U;
     source->stamp = member->mtime;
-    source->mtime = member->mtime < 0 ? 0U : member->mtime > TAR_MAX_TIME ? (uint64_t)TAR_MAX_TIME :
-        (uint64_t)member->mtime;
+    source->mtime = member->mtime < 0 ? 0U : member->mtime > TAR_MAX_TIME ? (uint64_t)TAR_MAX_TIME : (uint64_t)member->mtime;
     source->uid = member->uid;
     source->gid = member->gid;
     source->name = member->name ? tar_given_name(member->name, member->directory) : NULL;
@@ -158,12 +156,14 @@ static bool tar_octal(uint8_t *destination, size_t length, uint64_t number)
     int count;
     if (length < 2U) return false;
     for (i = 0; i < length - 1U; ++i) {
-        if (limit > UINT64_MAX / 8U) { limit = UINT64_MAX; break; }
+        if (limit > UINT64_MAX / 8U) {
+            limit = UINT64_MAX;
+            break;
+        }
         limit *= 8U;
     }
     if (number >= limit) return false;
-    count = snprintf((char *)destination, length, "%0*llo", (int)(length - 1U),
-                     (unsigned long long)number);
+    count = snprintf((char *)destination, length, "%0*llo", (int)(length - 1U), (unsigned long long)number);
     return count == (int)(length - 1U);
 }
 
@@ -188,9 +188,8 @@ static bool tar_split_ustar(const char *name, uint8_t *header)
     return false;
 }
 
-static bool tar_header(uint8_t header[TAR_BLOCK], tar_variant variant,
-                       const char *name, uint64_t size, uint64_t mtime,
-                       uint32_t mode, uint32_t uid, uint32_t gid, char type)
+static bool tar_header(uint8_t header[TAR_BLOCK], tar_variant variant, const char *name, uint64_t size, uint64_t mtime, uint32_t mode, uint32_t uid, uint32_t gid,
+                       char type)
 {
     uint64_t checksum = 0U;
     size_t i, length = strlen(name);
@@ -198,17 +197,16 @@ static bool tar_header(uint8_t header[TAR_BLOCK], tar_variant variant,
     if (variant == TAR_USTAR || variant == TAR_PAX || variant == TAR_PAX_RESTRICTED) {
         if (!tar_split_ustar(name, header)) return false;
         memcpy(header + 257U, "ustar", 5U);
-        header[263U] = '0'; header[264U] = '0';
+        header[263U] = '0';
+        header[264U] = '0';
     } else {
         if (length > 100U) return false;
         memcpy(header, name, length);
         if (variant == TAR_GNU) memcpy(header + 257U, "ustar  ", 7U);
     }
-    if (!tar_octal(header + 100U, 8U, mode) ||
-        !tar_octal(header + 108U, 8U, uid) ||
-        !tar_octal(header + 116U, 8U, gid) ||
-        !tar_octal(header + 124U, 12U, size) ||
-        !tar_octal(header + 136U, 12U, mtime)) return false;
+    if (!tar_octal(header + 100U, 8U, mode) || !tar_octal(header + 108U, 8U, uid) || !tar_octal(header + 116U, 8U, gid) || !tar_octal(header + 124U, 12U, size) ||
+        !tar_octal(header + 136U, 12U, mtime))
+        return false;
     memset(header + 148U, ' ', 8U);
     header[156U] = (uint8_t)type;
     for (i = 0; i < TAR_BLOCK; ++i) checksum += header[i];
@@ -277,15 +275,11 @@ static bool tar_pax_record(xx_io_device *output, const tar_source *source)
     (void)snprintf(stamp, sizeof(stamp), "%" PRId64, source->stamp);
     (void)snprintf(uid, sizeof(uid), "%lu", (unsigned long)source->uid);
     (void)snprintf(gid, sizeof(gid), "%lu", (unsigned long)source->gid);
-    success = (tar_utf8(source->name) || tar_pax_add(&payload, &length, "hdrcharset", "BINARY")) &&
-        tar_pax_add(&payload, &length, "path", source->name) &&
-        (tar_time_fits(source) || tar_pax_add(&payload, &length, "mtime", stamp)) &&
-        (source->uid <= TAR_MAX_ID || tar_pax_add(&payload, &length, "uid", uid)) &&
-        (source->gid <= TAR_MAX_ID || tar_pax_add(&payload, &length, "gid", gid)) &&
-        tar_header(header, TAR_USTAR, "PaxHeaders.0/path", length, source->mtime, 0644U,
-                   tar_header_id(source->uid), tar_header_id(source->gid), 'x') &&
-        tar_write_all(output, header, TAR_BLOCK) &&
-        tar_write_all(output, payload, length) && tar_pad(output, length);
+    success = (tar_utf8(source->name) || tar_pax_add(&payload, &length, "hdrcharset", "BINARY")) && tar_pax_add(&payload, &length, "path", source->name) &&
+              (tar_time_fits(source) || tar_pax_add(&payload, &length, "mtime", stamp)) && (source->uid <= TAR_MAX_ID || tar_pax_add(&payload, &length, "uid", uid)) &&
+              (source->gid <= TAR_MAX_ID || tar_pax_add(&payload, &length, "gid", gid)) &&
+              tar_header(header, TAR_USTAR, "PaxHeaders.0/path", length, source->mtime, 0644U, tar_header_id(source->uid), tar_header_id(source->gid), 'x') &&
+              tar_write_all(output, header, TAR_BLOCK) && tar_write_all(output, payload, length) && tar_pad(output, length);
     free(payload);
     return success;
 }
@@ -294,14 +288,11 @@ static bool tar_gnu_long_name(xx_io_device *output, const tar_source *source)
 {
     uint8_t header[TAR_BLOCK];
     size_t size = strlen(source->name) + 1U;
-    return tar_header(header, TAR_GNU, "././@LongLink", size,
-                      source->mtime, 0644U, source->uid, source->gid, 'L') &&
-        tar_write_all(output, header, TAR_BLOCK) &&
-        tar_write_all(output, source->name, size) && tar_pad(output, size);
+    return tar_header(header, TAR_GNU, "././@LongLink", size, source->mtime, 0644U, source->uid, source->gid, 'L') && tar_write_all(output, header, TAR_BLOCK) &&
+           tar_write_all(output, source->name, size) && tar_pad(output, size);
 }
 
-static bool tar_copy_member(const xfu_request *request, const tar_source *item,
-                            xx_io_device *output, xx_pd_struct *pd)
+static bool tar_copy_member(const xfu_request *request, const tar_source *item, xx_io_device *output, xx_pd_struct *pd)
 {
     uint8_t buffer[65536U];
     int64_t remaining = item->size;
@@ -314,44 +305,38 @@ static bool tar_copy_member(const xfu_request *request, const tar_source *item,
         return false;
     }
     while (remaining > 0 && !tar_cancelled(request, pd)) {
-        size_t wanted = remaining > (int64_t)sizeof(buffer) ? sizeof(buffer) :
-            (size_t)remaining;
+        size_t wanted = remaining > (int64_t)sizeof(buffer) ? sizeof(buffer) : (size_t)remaining;
         ssize_t count = xx_io_read(input, buffer, wanted);
         if (count <= 0 || (size_t)count > wanted) {
             tar_log(request, "%s: source changed or cannot be read", item->path);
-            success = false; break;
+            success = false;
+            break;
         }
         if (!tar_write_all(output, buffer, (size_t)count)) {
-            success = false; break;
+            success = false;
+            break;
         }
         remaining -= count;
     }
     if (xx_io_close(input) != 0) success = false;
-    return success && remaining == 0 && !tar_cancelled(request, pd) &&
-        tar_pad(output, (uint64_t)item->size);
+    return success && remaining == 0 && !tar_cancelled(request, pd) && tar_pad(output, (uint64_t)item->size);
 }
 
-bool xfu_native_tar_write(const xfu_request *request, const char *format,
-                          const xfu_native_member *members, xx_io_device *output,
-                          xx_pd_struct *pd)
+bool xfu_native_tar_write(const xfu_request *request, const char *format, const xfu_native_member *members, xx_io_device *output, xx_pd_struct *pd)
 {
     static const uint8_t trailer[2U * TAR_BLOCK] = {0};
     tar_variant variant = tar_parse(format);
     tar_source *sources = NULL;
     size_t i;
     bool success = false;
-    if (!request || !output || !pd || variant == TAR_UNKNOWN ||
-        (request->file_count && !members) ||
-        request->file_count > SIZE_MAX / sizeof(*sources)) return false;
-    sources = (tar_source *)calloc(request->file_count ? request->file_count : 1U,
-                                   sizeof(*sources));
+    if (!request || !output || !pd || variant == TAR_UNKNOWN || (request->file_count && !members) || request->file_count > SIZE_MAX / sizeof(*sources)) return false;
+    sources = (tar_source *)calloc(request->file_count ? request->file_count : 1U, sizeof(*sources));
     if (!sources) return false;
     for (i = 0; i < request->file_count; ++i) {
         sources[i].path = members[i].path;
         sources[i].member = &members[i];
         if (!sources[i].path || !tar_describe(&sources[i], &members[i])) {
-            if (sources[i].path) tar_log(request, "%s: cannot describe the input for a %s member",
-                                         sources[i].path, format);
+            if (sources[i].path) tar_log(request, "%s: cannot describe the input for a %s member", sources[i].path, format);
             goto done;
         }
     }
@@ -362,10 +347,11 @@ bool xfu_native_tar_write(const xfu_request *request, const char *format,
         const char *header_name = item->name;
         bool requires_extension = false, name_fits = true;
         size_t j;
-        if (tar_cancelled(request, pd)) { success = false; break; }
-        if (request->callbacks.progress)
-            request->callbacks.progress(request->callbacks.user, i,
-                                        request->file_count, item->path);
+        if (tar_cancelled(request, pd)) {
+            success = false;
+            break;
+        }
+        if (request->callbacks.progress) request->callbacks.progress(request->callbacks.user, i, request->file_count, item->path);
         if (variant == TAR_PAX) requires_extension = true;
         else if (variant == TAR_PAX_RESTRICTED) {
             uint8_t probe[TAR_BLOCK] = {0};
@@ -376,48 +362,55 @@ bool xfu_native_tar_write(const xfu_request *request, const char *format,
         } else if (!tar_owner_fits(item)) {
             /* ustar, GNU and v7 headers: refused before any header of the
              * member (a GNU long name's too) is written. */
-            tar_log(request, "%s: its owner or group id is larger than a %s header holds; "
-                    "--format=pax stores it", item->path, format);
-            success = false; break;
+            tar_log(request,
+                    "%s: its owner or group id is larger than a %s header holds; "
+                    "--format=pax stores it",
+                    item->path, format);
+            success = false;
+            break;
         } else if (!tar_time_fits(item)) {
             /* ustar, GNU and v7 headers: the nearest time they hold. */
-            xfu_native_warn_time(request, item->path, format, item->stamp, (int64_t)item->mtime,
-                                 true);
+            xfu_native_warn_time(request, item->path, format, item->stamp, (int64_t)item->mtime, true);
         }
         if (requires_extension) {
-            if (!tar_pax_record(output, item)) { success = false; break; }
+            if (!tar_pax_record(output, item)) {
+                success = false;
+                break;
+            }
             /* A name the ustar header holds stays there for readers without
              * pax (when only the time needs the pax header). */
             if (variant == TAR_PAX || !name_fits) header_name = "PaxPath";
         } else if (variant == TAR_GNU && strlen(item->name) > 100U) {
-            if (!tar_gnu_long_name(output, item)) { success = false; break; }
+            if (!tar_gnu_long_name(output, item)) {
+                success = false;
+                break;
+            }
             header_name = "GNUPath";
         }
-        if (!tar_header(header, variant, header_name,
-                        item->directory ? 0U : (uint64_t)item->size, item->mtime, item->mode,
-                        requires_extension ? tar_header_id(item->uid) : item->uid,
-                        requires_extension ? tar_header_id(item->gid) : item->gid,
+        if (!tar_header(header, variant, header_name, item->directory ? 0U : (uint64_t)item->size, item->mtime, item->mode,
+                        requires_extension ? tar_header_id(item->uid) : item->uid, requires_extension ? tar_header_id(item->gid) : item->gid,
                         item->directory ? '5' : '0')) {
             /* A name or size the header has no room for: which. */
             if (!item->directory && (uint64_t)item->size > UINT64_C(077777777777))
-                tar_log(request, "%s: the file is 8 GiB or larger, which the %s writer cannot "
-                        "store", item->path, format);
+                tar_log(request,
+                        "%s: the file is 8 GiB or larger, which the %s writer cannot "
+                        "store",
+                        item->path, format);
             else
-                tar_log(request, "%s: the name does not fit a %s header (%s); --format=pax "
-                        "stores it", item->path, format, variant == TAR_V7 ? "100 bytes" :
-                        "100 bytes, or 256 split at a '/' into 155 and 100");
-            success = false; break;
+                tar_log(request,
+                        "%s: the name does not fit a %s header (%s); --format=pax "
+                        "stores it",
+                        item->path, format, variant == TAR_V7 ? "100 bytes" : "100 bytes, or 256 split at a '/' into 155 and 100");
+            success = false;
+            break;
         }
-        if (!tar_write_all(output, header, TAR_BLOCK) ||
-            !tar_copy_member(request, item, output, pd)) {
-            success = false; break;
+        if (!tar_write_all(output, header, TAR_BLOCK) || !tar_copy_member(request, item, output, pd)) {
+            success = false;
+            break;
         }
-        if (request->callbacks.progress)
-            request->callbacks.progress(request->callbacks.user, i + 1U,
-                                        request->file_count, NULL);
+        if (request->callbacks.progress) request->callbacks.progress(request->callbacks.user, i + 1U, request->file_count, NULL);
     }
-    if (success && !tar_cancelled(request, pd))
-        success = tar_write_all(output, trailer, sizeof(trailer));
+    if (success && !tar_cancelled(request, pd)) success = tar_write_all(output, trailer, sizeof(trailer));
     else success = false;
 done:
     for (i = 0; i < request->file_count; ++i) free(sources[i].name);

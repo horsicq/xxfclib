@@ -37,20 +37,31 @@ char *xfu_capabilities_text(void)
         "native zpaq read=partial create=no\n"
         "native pea read=partial create=yes\n"
         "native freearc read=partial create=yes\n"
-        "native paq8 read=" XFU_CODEC_READ " create=no\n"
-        "native paq8f read=" XFU_CODEC_READ " create=no\n"
-        "native paq8jd read=" XFU_CODEC_READ " create=no\n"
-        "native paq8l read=" XFU_CODEC_READ " create=no\n"
-        "native paq8o read=" XFU_CODEC_READ " create=no\n"
-        "native lpaq1 read=" XFU_CODEC_READ " create=no\n"
-        "native lpaq5 read=" XFU_CODEC_READ " create=no\n"
-        "native lpaq8 read=" XFU_CODEC_READ " create=no\n"
-        "native quad read=" XFU_CODEC_READ " create=no\n"
+        "native paq8 read=" XFU_CODEC_READ
+        " create=no\n"
+        "native paq8f read=" XFU_CODEC_READ
+        " create=no\n"
+        "native paq8jd read=" XFU_CODEC_READ
+        " create=no\n"
+        "native paq8l read=" XFU_CODEC_READ
+        " create=no\n"
+        "native paq8o read=" XFU_CODEC_READ
+        " create=no\n"
+        "native lpaq1 read=" XFU_CODEC_READ
+        " create=no\n"
+        "native lpaq5 read=" XFU_CODEC_READ
+        " create=no\n"
+        "native lpaq8 read=" XFU_CODEC_READ
+        " create=no\n"
+        "native quad read=" XFU_CODEC_READ
+        " create=no\n"
         "native balz read=partial create=no\n"
         "native bcm read=partial create=no\n"
         "native split read=partial create=yes\n"
-        "native sevenzip_engine read=" XFU_ENGINE_READ " create=no\n"
-        "native upx read=" XFU_CODEC_READ " create=no\n"
+        "native sevenzip_engine read=" XFU_ENGINE_READ
+        " create=no\n"
+        "native upx read=" XFU_CODEC_READ
+        " create=no\n"
         "native zim read=partial create=no\n"
         "native rar read=partial create=no\n"
         "native ace read=partial create=no\n"
@@ -104,29 +115,29 @@ char *xfu_supported_types_text(size_t *count)
     text = (char *)malloc(length);
     if (!text) goto finish;
     used = (size_t)snprintf(text, length,
-        "Supported file types (xxfclib): %zu\n"
-        "Detection/inspection formats.\n"
-        "Extraction and writing depend on the format.\n"
-        "\nArchive creation: 7z, ZIP, TAR, GZIP, BZIP2, XZ, stored WIM;\n"
-        "CPIO and compressed TAR (native).\n"
-        "In-process creation also includes PEA, stored/LZMA FreeArc\n"
-        "and numbered split volumes. Formats without writers report create=no;\n"
-        "helper-only readers report read=no.\n"
-        "Raw compressed or encoded streams hold one input file.\n"
-        "External 7-Zip, media, GARbro, UPX, UHARC, filesystem and codec\n"
-        "helper processes are disabled in this build.\n"
-        "Documents: native PDF streams and attachments;\n"
-        "MIME bodies and attachments;\n"
-        "gettext MO to PO; Qt QM to TS;\n"
-        "SQLite SQL export (sqlite3 keeps raw pages).\n"
-        "Native Python bytecode reader and PYC carving (--reader pyc).\n"
-        "\n"
-        "%s\n"
-        "   ID  File type\n", total, capabilities);
+                            "Supported file types (xxfclib): %zu\n"
+                            "Detection/inspection formats.\n"
+                            "Extraction and writing depend on the format.\n"
+                            "\nArchive creation: 7z, ZIP, TAR, GZIP, BZIP2, XZ, stored WIM;\n"
+                            "CPIO and compressed TAR (native).\n"
+                            "In-process creation also includes PEA, stored/LZMA FreeArc\n"
+                            "and numbered split volumes. Formats without writers report create=no;\n"
+                            "helper-only readers report read=no.\n"
+                            "Raw compressed or encoded streams hold one input file.\n"
+                            "External 7-Zip, media, GARbro, UPX, UHARC, filesystem and codec\n"
+                            "helper processes are disabled in this build.\n"
+                            "Documents: native PDF streams and attachments;\n"
+                            "MIME bodies and attachments;\n"
+                            "gettext MO to PO; Qt QM to TS;\n"
+                            "SQLite SQL export (sqlite3 keeps raw pages).\n"
+                            "Native Python bytecode reader and PYC carving (--reader pyc).\n"
+                            "\n"
+                            "%s\n"
+                            "   ID  File type\n",
+                            total, capabilities);
     for (i = 0; i < total; ++i) {
         xx_file_type_t type = *(const xx_file_type_t *)xx_list_at(types, i);
-        used += (size_t)snprintf(text + used, length - used, "%5u  %s\n",
-            (unsigned int)type, xx_format_file_type_to_string(type));
+        used += (size_t)snprintf(text + used, length - used, "%5u  %s\n", (unsigned int)type, xx_format_file_type_to_string(type));
     }
     if (count) *count = total;
 finish:

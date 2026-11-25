@@ -520,7 +520,7 @@ static void xx_entropy_histogram_update(uint64_t total_counts[256], const uint8_
             xx_entropy_histogram_neon(data, part, partial_counts);
         } else
 #endif
-        if (xx_is_avx2_enabled() && part >= 64U) {
+            if (xx_is_avx2_enabled() && part >= 64U) {
             xx_entropy_histogram_avx2(data, part, partial_counts);
         } else if (xx_is_sse2_enabled() && part >= 32U) {
             xx_entropy_histogram_sse2(data, part, partial_counts);

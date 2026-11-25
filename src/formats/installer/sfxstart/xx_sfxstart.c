@@ -473,7 +473,6 @@ static void sfs_decimal(char *out, char prefix, size_t value, unsigned width)
 
 /* Windows-1252 bytes 0x80..0x9F; 0 marks the five unassigned positions. */
 
-
 static uint8_t sfs_upper_ascii(uint8_t value)
 {
     return (value >= 'a' && value <= 'z') ? (uint8_t)(value - 0x20U) : value;

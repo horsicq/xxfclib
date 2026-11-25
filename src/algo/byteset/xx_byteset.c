@@ -196,8 +196,7 @@ static unsigned xx_byteset_merge(xx_byteset_bucket *buckets, unsigned count)
             for (j = i + 1; j < count; ++j) {
                 unsigned before = xx_byteset_popcount16(buckets[i].low) * xx_byteset_popcount16(buckets[i].high) +
                                   xx_byteset_popcount16(buckets[j].low) * xx_byteset_popcount16(buckets[j].high);
-                unsigned after = xx_byteset_popcount16(buckets[i].low | buckets[j].low) *
-                                 xx_byteset_popcount16(buckets[i].high | buckets[j].high);
+                unsigned after = xx_byteset_popcount16(buckets[i].low | buckets[j].low) * xx_byteset_popcount16(buckets[i].high | buckets[j].high);
                 if (after - before < best) {
                     best = after - before;
                     bi = i;
@@ -342,29 +341,34 @@ bool xx_byteset_prepare_strategy(xx_byteset *set, int strategy)
     count = xx_byteset_count(set);
     set->strategy = XX_BYTESET_STRATEGY_UNPREPARED;
     switch (strategy) {
-    case XX_BYTESET_STRATEGY_EMPTY: xx_byteset_reset_tables(set); ok = count == 0; break;
-    case XX_BYTESET_STRATEGY_FULL: xx_byteset_reset_tables(set); ok = count == 256; break;
-    case XX_BYTESET_STRATEGY_EQ1:
-    case XX_BYTESET_STRATEGY_EQ2:
-    case XX_BYTESET_STRATEGY_EQ3:
-        ok = xx_byteset_list(set, true, 3) == (unsigned)(strategy - XX_BYTESET_STRATEGY_EQ1 + 1);
-        break;
-    case XX_BYTESET_STRATEGY_NE1:
-    case XX_BYTESET_STRATEGY_NE2:
-    case XX_BYTESET_STRATEGY_NE3:
-        ok = xx_byteset_list(set, false, 3) == (unsigned)(strategy - XX_BYTESET_STRATEGY_NE1 + 1);
-        break;
-    case XX_BYTESET_STRATEGY_RANGE: ok = xx_byteset_build_range(set, true); break;
-    case XX_BYTESET_STRATEGY_NOT_RANGE: ok = xx_byteset_build_range(set, false); break;
-    case XX_BYTESET_STRATEGY_LOOKUP: ok = xx_byteset_build_lookup(set); break;
-    case XX_BYTESET_STRATEGY_SHUFTI: ok = xx_byteset_build_shufti(set, true); break;
-    case XX_BYTESET_STRATEGY_SHUFTI_FILTER: ok = xx_byteset_build_shufti(set, false); break;
-    case XX_BYTESET_STRATEGY_TRUFFLE_ASCII: /* only table_low: no member from 0x80 */
-        xx_byteset_build_truffle(set);
-        ok = (set->bits[2] | set->bits[3]) == 0;
-        break;
-    case XX_BYTESET_STRATEGY_TRUFFLE: xx_byteset_build_truffle(set); ok = true; break;
-    default: ok = false; break;
+        case XX_BYTESET_STRATEGY_EMPTY:
+            xx_byteset_reset_tables(set);
+            ok = count == 0;
+            break;
+        case XX_BYTESET_STRATEGY_FULL:
+            xx_byteset_reset_tables(set);
+            ok = count == 256;
+            break;
+        case XX_BYTESET_STRATEGY_EQ1:
+        case XX_BYTESET_STRATEGY_EQ2:
+        case XX_BYTESET_STRATEGY_EQ3: ok = xx_byteset_list(set, true, 3) == (unsigned)(strategy - XX_BYTESET_STRATEGY_EQ1 + 1); break;
+        case XX_BYTESET_STRATEGY_NE1:
+        case XX_BYTESET_STRATEGY_NE2:
+        case XX_BYTESET_STRATEGY_NE3: ok = xx_byteset_list(set, false, 3) == (unsigned)(strategy - XX_BYTESET_STRATEGY_NE1 + 1); break;
+        case XX_BYTESET_STRATEGY_RANGE: ok = xx_byteset_build_range(set, true); break;
+        case XX_BYTESET_STRATEGY_NOT_RANGE: ok = xx_byteset_build_range(set, false); break;
+        case XX_BYTESET_STRATEGY_LOOKUP: ok = xx_byteset_build_lookup(set); break;
+        case XX_BYTESET_STRATEGY_SHUFTI: ok = xx_byteset_build_shufti(set, true); break;
+        case XX_BYTESET_STRATEGY_SHUFTI_FILTER: ok = xx_byteset_build_shufti(set, false); break;
+        case XX_BYTESET_STRATEGY_TRUFFLE_ASCII: /* only table_low: no member from 0x80 */
+            xx_byteset_build_truffle(set);
+            ok = (set->bits[2] | set->bits[3]) == 0;
+            break;
+        case XX_BYTESET_STRATEGY_TRUFFLE:
+            xx_byteset_build_truffle(set);
+            ok = true;
+            break;
+        default: ok = false; break;
     }
     if (!ok) {
         xx_byteset_reset_tables(set);
@@ -389,9 +393,7 @@ void xx_byteset_prepare(xx_byteset *set)
     else if (xx_byteset_prepare_strategy(set, XX_BYTESET_STRATEGY_RANGE)) return;
     else if (xx_byteset_prepare_strategy(set, XX_BYTESET_STRATEGY_NOT_RANGE)) return;
     /* LOOKUP needs pshufb; without it three members stay with EQ3. */
-    else if (count <= 16 && (count > 3 || xx_byteset_pshufb_usable()) &&
-             xx_byteset_prepare_strategy(set, XX_BYTESET_STRATEGY_LOOKUP))
-        return;
+    else if (count <= 16 && (count > 3 || xx_byteset_pshufb_usable()) && xx_byteset_prepare_strategy(set, XX_BYTESET_STRATEGY_LOOKUP)) return;
     else if (count == 3) strategy = XX_BYTESET_STRATEGY_EQ3;
     else if (xx_byteset_prepare_strategy(set, XX_BYTESET_STRATEGY_TRUFFLE_ASCII)) return;
     else if (xx_byteset_prepare_strategy(set, XX_BYTESET_STRATEGY_SHUFTI)) return;
@@ -438,8 +440,7 @@ size_t xx_byteset_find(const xx_byteset *set, const void *data, size_t size, siz
     return xx_byteset_run(backend, set, (const uint8_t *)data, size, from);
 }
 
-bool xx_byteset_find_backend(int backend, const xx_byteset *set, const void *data, size_t size,
-                             size_t from, size_t *found)
+bool xx_byteset_find_backend(int backend, const xx_byteset *set, const void *data, size_t size, size_t from, size_t *found)
 {
     if (!found || !xx_byteset_backend_available(backend)) return false;
     *found = xx_byteset_run(backend, set, (const uint8_t *)data, size, from);

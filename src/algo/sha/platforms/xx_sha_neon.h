@@ -7,8 +7,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if ((defined(_M_ARM64) && !defined(_M_ARM64EC)) || \
-     (defined(__aarch64__) && !defined(_M_ARM64EC)))
+#if ((defined(_M_ARM64) && !defined(_M_ARM64EC)) || (defined(__aarch64__) && !defined(_M_ARM64EC)))
 #define XX_SHA_NEON 1
 
 /* Baseline Advanced SIMD computes four message-schedule words together; the

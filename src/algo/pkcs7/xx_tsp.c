@@ -40,20 +40,16 @@ bool xx_tsp_parse_tst_info_prefix(const uint8_t *der, size_t size, xx_tsp_tst_in
     size_t used;
     if (!der || !out) return false;
     memset(out, 0, sizeof(*out));
-    if (!xx_asn1_parse_tlv(der, size, &seq, &used) ||
-        !xx_asn1_is_universal(&seq, XX_ASN1_TAG_SEQUENCE) ||
-        !xx_asn1_cursor_init(&cursor, &seq, 1U) ||
-        !xx_asn1_cursor_next(&cursor, &version) || !xx_asn1_read_int64(&version, &out->version) ||
-        !xx_asn1_cursor_next(&cursor, &policy) ||
-        !xx_asn1_cursor_next(&cursor, &imprint) || !xx_asn1_is_universal(&imprint, XX_ASN1_TAG_SEQUENCE) ||
-        !xx_asn1_cursor_init(&fields, &imprint, 2U) ||
-        !xx_asn1_cursor_next(&fields, &algorithm) ||
-        !xx_x509_parse_algorithm_identifier(&algorithm, &out->message_imprint.hash_algorithm) ||
-        !xx_asn1_cursor_next(&fields, &hashed)) return false;
+    if (!xx_asn1_parse_tlv(der, size, &seq, &used) || !xx_asn1_is_universal(&seq, XX_ASN1_TAG_SEQUENCE) || !xx_asn1_cursor_init(&cursor, &seq, 1U) ||
+        !xx_asn1_cursor_next(&cursor, &version) || !xx_asn1_read_int64(&version, &out->version) || !xx_asn1_cursor_next(&cursor, &policy) ||
+        !xx_asn1_cursor_next(&cursor, &imprint) || !xx_asn1_is_universal(&imprint, XX_ASN1_TAG_SEQUENCE) || !xx_asn1_cursor_init(&fields, &imprint, 2U) ||
+        !xx_asn1_cursor_next(&fields, &algorithm) || !xx_x509_parse_algorithm_identifier(&algorithm, &out->message_imprint.hash_algorithm) ||
+        !xx_asn1_cursor_next(&fields, &hashed))
+        return false;
     if (xx_asn1_is_universal(&policy, XX_ASN1_TAG_OID)) {
-        out->policy_oid_der = policy.content; out->policy_oid_der_size = policy.content_size;
-        if (!xx_asn1_oid_to_text(policy.content, policy.content_size, out->policy_oid, sizeof(out->policy_oid), NULL))
-            memcpy(out->policy_oid, "invalid", 8U);
+        out->policy_oid_der = policy.content;
+        out->policy_oid_der_size = policy.content_size;
+        if (!xx_asn1_oid_to_text(policy.content, policy.content_size, out->policy_oid, sizeof(out->policy_oid), NULL)) memcpy(out->policy_oid, "invalid", 8U);
     }
     /* BerObjectContent::as_slice accepts primitive OCTET/BIT/string/integer. */
     if (hashed.constructed || hashed.tag_class != XX_ASN1_CLASS_UNIVERSAL) return false;
@@ -61,8 +57,7 @@ bool xx_tsp_parse_tst_info_prefix(const uint8_t *der, size_t size, xx_tsp_tst_in
         unsigned unused;
         return xx_asn1_read_bit_string_primitive(&hashed, &unused, &out->message_imprint.hashed_message, &out->message_imprint.hashed_message_size);
     }
-    if (hashed.tag != XX_ASN1_TAG_OCTET_STRING && hashed.tag != XX_ASN1_TAG_INTEGER &&
-        !xx_asn1_is_string_tag(hashed.tag)) return false;
+    if (hashed.tag != XX_ASN1_TAG_OCTET_STRING && hashed.tag != XX_ASN1_TAG_INTEGER && !xx_asn1_is_string_tag(hashed.tag)) return false;
     out->message_imprint.hashed_message = hashed.content;
     out->message_imprint.hashed_message_size = hashed.content_size;
     return true;
@@ -103,7 +98,9 @@ bool xx_tsp_parse_tst_info(const uint8_t *der, size_t size, xx_tsp_tst_info *out
 
     if (!xx_asn1_cursor_next(&cursor, &serial_tlv) || !xx_asn1_read_integer(&serial_tlv, &out->serial, &out->serial_size)) return false;
     if (xx_asn1_integer_is_negative(&serial_tlv)) return false;
-    if (!xx_asn1_cursor_next(&cursor, &gentime_tlv) || !xx_asn1_is_universal(&gentime_tlv, (uint32_t)XX_ASN1_TAG_GENERALIZEDTIME) || !xx_asn1_read_time(&gentime_tlv, &out->gen_time)) return false;
+    if (!xx_asn1_cursor_next(&cursor, &gentime_tlv) || !xx_asn1_is_universal(&gentime_tlv, (uint32_t)XX_ASN1_TAG_GENERALIZEDTIME) ||
+        !xx_asn1_read_time(&gentime_tlv, &out->gen_time))
+        return false;
 
     /* Validate every optional field in schema order, including fields that
      * are not exposed by this API. This prevents malformed trailing bytes or
@@ -159,7 +156,8 @@ bool xx_tsp_parse_tst_info(const uint8_t *der, size_t size, xx_tsp_tst_info *out
                 xx_asn1_cursor tsa_cursor;
                 xx_asn1_tlv general_name;
                 field_number = 4U;
-                if (!xx_asn1_cursor_init(&tsa_cursor, &next_tlv, 2U) || !xx_asn1_cursor_next(&tsa_cursor, &general_name) || !xx_asn1_cursor_at_end(&tsa_cursor)) return false;
+                if (!xx_asn1_cursor_init(&tsa_cursor, &next_tlv, 2U) || !xx_asn1_cursor_next(&tsa_cursor, &general_name) || !xx_asn1_cursor_at_end(&tsa_cursor))
+                    return false;
                 if (general_name.tag_class != XX_ASN1_CLASS_CONTEXT || general_name.tag > 8U) return false;
             } else if (next_tlv.tag_class == XX_ASN1_CLASS_CONTEXT && next_tlv.constructed && next_tlv.tag == 1U) {
                 xx_asn1_cursor extension_cursor;
@@ -170,8 +168,12 @@ bool xx_tsp_parse_tst_info(const uint8_t *der, size_t size, xx_tsp_tst_info *out
                     xx_asn1_tlv extension, oid, value;
                     const uint8_t *bytes;
                     size_t bytes_size;
-                    if (!xx_asn1_cursor_next(&extension_cursor, &extension) || !xx_asn1_is_universal(&extension, (uint32_t)XX_ASN1_TAG_SEQUENCE) || !xx_asn1_cursor_init(&extension_fields, &extension, 3U)) return false;
-                    if (!xx_asn1_cursor_next(&extension_fields, &oid) || !xx_asn1_read_oid_raw(&oid, &bytes, &bytes_size) || !xx_asn1_cursor_next(&extension_fields, &value)) return false;
+                    if (!xx_asn1_cursor_next(&extension_cursor, &extension) || !xx_asn1_is_universal(&extension, (uint32_t)XX_ASN1_TAG_SEQUENCE) ||
+                        !xx_asn1_cursor_init(&extension_fields, &extension, 3U))
+                        return false;
+                    if (!xx_asn1_cursor_next(&extension_fields, &oid) || !xx_asn1_read_oid_raw(&oid, &bytes, &bytes_size) ||
+                        !xx_asn1_cursor_next(&extension_fields, &value))
+                        return false;
                     if (xx_asn1_is_universal(&value, (uint32_t)XX_ASN1_TAG_BOOLEAN)) {
                         bool critical;
                         if (!xx_asn1_read_boolean(&value, &critical) || !xx_asn1_cursor_next(&extension_fields, &value)) return false;

@@ -84,9 +84,7 @@ static bool ns_decode(ac_blob *b, const uint8_t *in, uint32_t packed, uint8_t *o
             ++in;
             --packed;
         }
-        if (packed < 5U || b->used >= b->limit ||
-            (uint64_t)xx_data_get_u32(in + 1U, 4, 0, false) + 1024U * 1024U > b->limit - b->used)
-            return false;
+        if (packed < 5U || b->used >= b->limit || (uint64_t)xx_data_get_u32(in + 1U, 4, 0, false) + 1024U * 1024U > b->limit - b->used) return false;
     }
     if (method == 2U) {
         ok = xx_lzma_decompress_memory(in + 5, packed - 5U, in, 5, -1, out, cap, &n);
@@ -161,9 +159,7 @@ static bool ns_decode_device(ac_blob *b, const uint8_t *in, uint32_t packed, xx_
             ++in;
             --packed;
         }
-        if (packed < 5U || b->used >= b->limit ||
-            (uint64_t)xx_data_get_u32(in + 1U, 4, 0, false) + 1024U * 1024U > b->limit - b->used)
-            return false;
+        if (packed < 5U || b->used >= b->limit || (uint64_t)xx_data_get_u32(in + 1U, 4, 0, false) + 1024U * 1024U > b->limit - b->used) return false;
         ok = xx_lzma_unpack_memory_to_device(in + 5, packed - 5U, in, 5, -1, dst, b->pd);
     } else {
         ok = xx_deflate_unpack_memory_to_device(in, packed, dst, false, b->pd);
@@ -332,8 +328,8 @@ static bool ns_parse(Abstractformat *f, pm_stream *s, ac_blob *b)
         uint8_t declared[4];
         store = ns_store_open();
         if (!store) return false;
-        if (!ns_decode_device(b, data, data_size, store->device, method, &solid_total) || solid_total < 4U + (uint64_t)header_size ||
-            solid_total > UINT32_MAX || !xx_io_read_at(store->device, 0, declared, 4U) || xx_data_get_u32(declared, 4, 0, false) != header_size) {
+        if (!ns_decode_device(b, data, data_size, store->device, method, &solid_total) || solid_total < 4U + (uint64_t)header_size || solid_total > UINT32_MAX ||
+            !xx_io_read_at(store->device, 0, declared, 4U) || xx_data_get_u32(declared, 4, 0, false) != header_size) {
             failure = "NSIS solid stream decode failed";
             goto fail;
         }

@@ -20,18 +20,17 @@ static bool eid_set_key(xx_aes_context *context, const uint8_t key[32])
     if (!xx_aes_internal_set_key(context, key, 32U)) return false;
     xx_rt_memcpy(words, context->round_keys, 32U);
     while (generated < 240U) {
-        uint8_t temp[4] = {context->sbox[words[29]], context->sbox[words[30]],
-                           context->sbox[words[31]], context->sbox[words[28]]};
+        uint8_t temp[4] = {context->sbox[words[29]], context->sbox[words[30]], context->sbox[words[31]], context->sbox[words[28]]};
         temp[0] ^= rcon;
         rcon = (uint8_t)((rcon << 1U) ^ ((rcon & 0x80U) ? 0x1bU : 0U));
         for (j = 0; j < 4U; ++j) words[j] ^= temp[j];
         /* The first chain deliberately includes words 4..7 before the
          * substitution and second chain. Standard AES stops at word 3. */
         for (i = 1; i < 8U; ++i)
-            for (j = 0; j < 4U; ++j) words[4U*i+j] ^= words[4U*(i-1U)+j];
-        for (j = 0; j < 4U; ++j) words[16U+j] ^= context->sbox[words[12U+j]];
+            for (j = 0; j < 4U; ++j) words[4U * i + j] ^= words[4U * (i - 1U) + j];
+        for (j = 0; j < 4U; ++j) words[16U + j] ^= context->sbox[words[12U + j]];
         for (i = 5; i < 8U; ++i)
-            for (j = 0; j < 4U; ++j) words[4U*i+j] ^= words[4U*(i-1U)+j];
+            for (j = 0; j < 4U; ++j) words[4U * i + j] ^= words[4U * (i - 1U) + j];
         for (j = 0; j < 32U && generated < 240U; ++j) context->round_keys[generated++] = words[j];
         eid_clear(temp, sizeof(temp));
     }
@@ -46,7 +45,7 @@ static bool eid_crypt(const uint8_t *input, size_t size, const uint8_t key[32], 
     unsigned i;
     uintptr_t in = (uintptr_t)input, out = (uintptr_t)output;
     if (!key || (size && (!input || !output))) return false;
-    if (size && input != output && ((in < out && out-in < size) || (out < in && in-out < size))) return false;
+    if (size && input != output && ((in < out && out - in < size) || (out < in && in - out < size))) return false;
     if (!size) return true;
     if (!eid_set_key(&context, key)) return false;
     xx_rt_memset(feedback, 0xff, sizeof(feedback));
@@ -62,7 +61,9 @@ static bool eid_crypt(const uint8_t *input, size_t size, const uint8_t key[32], 
             for (i = 0; i < 16U; ++i) output[i] = transformed[i] ^ feedback[i];
         }
         for (i = 0; i < 16U; ++i) feedback[i] ^= block[i];
-        input += 16U; output += 16U; size -= 16U;
+        input += 16U;
+        output += 16U;
+        size -= 16U;
     }
     if (size) {
         xx_aes_internal_encrypt_block(&context, feedback, transformed);

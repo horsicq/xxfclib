@@ -24,8 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-XXFC_API bool xx_msi_yx_name_is(const xx_olecf_yx_stream *entry,
-                                const char *expected)
+XXFC_API bool xx_msi_yx_name_is(const xx_olecf_yx_stream *entry, const char *expected)
 {
     const uint8_t *name;
     size_t length, expected_length, i;
@@ -48,8 +47,7 @@ XXFC_API bool xx_msi_yx_name_is(const xx_olecf_yx_stream *entry,
     return true;
 }
 
-XXFC_API bool xx_msi_yx_hash_input(const uint8_t *data, size_t size,
-                                   xx_msi_yx_update_fn update, void *state)
+XXFC_API bool xx_msi_yx_hash_input(const uint8_t *data, size_t size, xx_msi_yx_update_fn update, void *state)
 {
     static const uint8_t zeroes[20] = {0};
     xx_olecf_yx_document *document;
@@ -64,17 +62,12 @@ XXFC_API bool xx_msi_yx_hash_input(const uint8_t *data, size_t size,
         update(state, zeroes, sizeof(zeroes));
         update(state, data + 28, sector_size - 28);
         for (i = 0; i < count; ++i) {
-            const xx_olecf_yx_stream *entry =
-                xx_olecf_yx_entry(document, i);
+            const xx_olecf_yx_stream *entry = xx_olecf_yx_entry(document, i);
             const uint8_t *bytes;
             size_t length;
             uint8_t *owner;
-            if (!entry || xx_msi_yx_name_is(entry, "DigitalSignature") ||
-                xx_msi_yx_name_is(entry, "MsiDigitalSignatureEx"))
-                continue;
-            if (!xx_olecf_yx_entry_data(document, i, &bytes, &length,
-                                        &owner))
-                continue;
+            if (!entry || xx_msi_yx_name_is(entry, "DigitalSignature") || xx_msi_yx_name_is(entry, "MsiDigitalSignatureEx")) continue;
+            if (!xx_olecf_yx_entry_data(document, i, &bytes, &length, &owner)) continue;
             if (length) update(state, bytes, length);
             free(owner);
         }

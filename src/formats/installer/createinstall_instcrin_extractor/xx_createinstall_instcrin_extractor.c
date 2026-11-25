@@ -844,7 +844,6 @@ static bool ci_publish(ci_walk *walk, ci_member *member)
 
 /* Windows-1252 bytes 0x80..0x9F; 0 marks the five unassigned positions. */
 
-
 static uint32_t ci_cp1252(uint8_t value)
 {
     if (value >= 0x80U && value < 0xA0U) return xx_codepage_decode_byte(xx_codepage_by_number(1252), (unsigned char)(value), 0x0);
@@ -1426,9 +1425,12 @@ bool xx_createinstall_instcrin_extractor_check_is_valid(Abstractformat *format, 
      * a file that does not carry the runtime signature. */
     if (!ci_locate(format, NULL, NULL)) {
         ci_walk *walk = NULL;
-        codec = ci_codec_create(); if (!codec) return false;
+        codec = ci_codec_create();
+        if (!codec) return false;
         result = ci_resource_files(format, codec, &walk, pd);
-        ci_walk_free(walk); xx_mem_free(codec); return result;
+        ci_walk_free(walk);
+        xx_mem_free(codec);
+        return result;
     }
     codec = ci_codec_create();
     if (!codec) return false;

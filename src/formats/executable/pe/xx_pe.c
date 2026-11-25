@@ -4,7 +4,6 @@
 
 #include "xxfclib/formats/executable/pe/xx_pe.h"
 
-
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/io/xx_io.h"
 #include "xxfclib/memory/xx_memory.h"
@@ -172,9 +171,8 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_stru
     if (relative_size < XX_PE_DOS_HEADER_SIZE || xx_io_get_u16(format->device, format->base_address, false) != UINT16_C(0x5a4d)) return false;
     parsed->pe_offset = xx_io_get_u32(format->device, format->base_address + 0x3c, false);
     /* Tiny packed PEs can overlap their DOS and NT headers. */
-    if (format->base_address > INT64_MAX - (int64_t)parsed->pe_offset ||
-        (nt_offset = format->base_address + (int64_t)parsed->pe_offset) < 0 || nt_offset > total || total - nt_offset < 24 ||
-        xx_io_get_u32(format->device, nt_offset, false) != XX_PE_SIGNATURE)
+    if (format->base_address > INT64_MAX - (int64_t)parsed->pe_offset || (nt_offset = format->base_address + (int64_t)parsed->pe_offset) < 0 || nt_offset > total ||
+        total - nt_offset < 24 || xx_io_get_u32(format->device, nt_offset, false) != XX_PE_SIGNATURE)
         return false;
     parsed->machine = xx_io_get_u16(format->device, nt_offset + 4, false);
     parsed->section_count = xx_io_get_u16(format->device, nt_offset + 6, false);

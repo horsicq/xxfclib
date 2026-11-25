@@ -513,7 +513,6 @@ static void sbx_decimal(char *out, char prefix, size_t value, unsigned width)
 
 /* Windows-1252 bytes 0x80..0x9F; 0 marks the five unassigned positions. */
 
-
 static uint8_t sbx_upper_ascii(uint8_t value)
 {
     return (value >= 'a' && value <= 'z') ? (uint8_t)(value - 0x20U) : value;
@@ -878,7 +877,8 @@ static bool sbx_set_record(Abstractformat *format, xx_archive_record *record, co
     if (member->dos_date != 0U && !xx_archive_record_set_meta_u64(record, XX_META_ID_TIMESTAMP, ((uint64_t)member->dos_date << 16U) | member->dos_time)) return false;
     /* Also the packed DOS words: the listing reads TIMESTAMP as Unix seconds. */
     if (member->dos_date != 0U && (!xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_DATE, member->dos_date & 0xFFFFU) ||
-                                   !xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_time & 0xFFFFU))) return false;
+                                   !xx_archive_record_set_meta_u64(record, XX_META_ID_LAST_MOD_TIME, member->dos_time & 0xFFFFU)))
+        return false;
     return true;
 }
 

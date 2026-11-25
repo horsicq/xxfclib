@@ -596,10 +596,14 @@ bool xx_7zip_bcj2_decode(const uint8_t *const inputs[4], const size_t input_size
         (input_sizes[1] & 3U) != 0U || (input_sizes[2] & 3U) != 0U)
         return false;
 
-    main_data = inputs[0]; main_size = input_sizes[0];
-    call_data = inputs[1]; call_size = input_sizes[1];
-    jump_data = inputs[2]; jump_size = input_sizes[2];
-    range_data = inputs[3]; range_size = input_sizes[3];
+    main_data = inputs[0];
+    main_size = input_sizes[0];
+    call_data = inputs[1];
+    call_size = input_sizes[1];
+    jump_data = inputs[2];
+    jump_size = input_sizes[2];
+    range_data = inputs[3];
+    range_size = input_sizes[3];
 
     ip = xx_7zip_branch_start_ip(properties, properties_size);
     for (size_t i = 0U; i < 258U; ++i) probabilities[i] = 1024U;
@@ -664,8 +668,7 @@ bool xx_7zip_bcj2_decode(const uint8_t *const inputs[4], const size_t input_size
 #elif (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
                 uint32_t target = __builtin_bswap32(*(const uint32_t *)(const void *)sel_ptr);
 #else
-                uint32_t target = ((uint32_t)sel_ptr[0] << 24U) | ((uint32_t)sel_ptr[1] << 16U) |
-                                  ((uint32_t)sel_ptr[2] << 8U)  | (uint32_t)sel_ptr[3];
+                uint32_t target = ((uint32_t)sel_ptr[0] << 24U) | ((uint32_t)sel_ptr[1] << 16U) | ((uint32_t)sel_ptr[2] << 8U) | (uint32_t)sel_ptr[3];
 #endif
                 *target_pos += 4U;
                 ip += 4U;
@@ -690,4 +693,3 @@ bool xx_7zip_bcj2_decode(const uint8_t *const inputs[4], const size_t input_size
     }
     return output_pos == output_size && call_pos == call_size && jump_pos == jump_size && code == 0U;
 }
-

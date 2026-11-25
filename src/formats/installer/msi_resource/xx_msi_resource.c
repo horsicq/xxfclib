@@ -27,7 +27,8 @@ static bool mr_header_ok(Abstractformat *f, int64_t at, uint32_t bytes, bool inv
     size_t i;
     uint16_t byte_order, shift, mini_shift;
     if (bytes < 1536U || !pm_read(f, at, h, sizeof(h))) return false;
-    if (inverted) for (i = 0; i < sizeof(h); ++i) h[i] = (uint8_t)~h[i];
+    if (inverted)
+        for (i = 0; i < sizeof(h); ++i) h[i] = (uint8_t)~h[i];
     byte_order = xx_data_get_u16(h + 0x1C, 2, 0, false);
     shift = xx_data_get_u16(h + 0x1E, 2, 0, false);
     mini_shift = xx_data_get_u16(h + 0x20, 2, 0, false);

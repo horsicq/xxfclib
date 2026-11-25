@@ -21,7 +21,7 @@ typedef bool (*xx_scan_resource_callback)(void *context, const xx_resource_recor
  * The device remains owned by the caller and its position is restored on
  * return. Malformed input, cancellation, allocation failure and exceeding
  * the bounded record count fail; a partially visited set is not success. */
-bool xx_scan_visit_resources(xx_io_device *device, xx_file_type_t type, int64_t offset, int64_t size,
-                             xx_scan_resource_callback callback, void *context, xx_pd_struct *pd);
+bool xx_scan_visit_resources(xx_io_device *device, xx_file_type_t type, int64_t offset, int64_t size, xx_scan_resource_callback callback, void *context,
+                             xx_pd_struct *pd);
 
 #endif /* XX_SCAN_RESOURCES_INTERNAL_H */

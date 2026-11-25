@@ -109,8 +109,6 @@ const char *xx_os_to_string(xx_os_t os)
     }
 }
 
-
-
 const char *xx_format_file_type_to_string(xx_file_type_t type)
 {
     switch (type) {
@@ -1798,7 +1796,8 @@ const char *xx_format_file_type_to_string(xx_file_type_t type)
 #else
         /* BINARY is also needed for generic non-archive diagnostics. */
         case XX_FILE_TYPE_BINARY: return "BINARY";
-#define XX_SUPPORTED_FORMAT(type, name, label) case XX_FILE_TYPE_##type: return label;
+#define XX_SUPPORTED_FORMAT(type, name, label) \
+    case XX_FILE_TYPE_##type: return label;
 #include "xxfclib/formats/xx_format_support_rows.inc"
 #undef XX_SUPPORTED_FORMAT
 #endif

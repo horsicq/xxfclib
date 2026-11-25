@@ -28,16 +28,13 @@
  * allocation contract while the shared core remains independent of JS. */
 JSRegExp *js_compile_regexp_n(const char *pattern, size_t pattern_size, const char *flags, size_t flags_size, char **error)
 {
-    static const xx_regex_allocator allocator = {
-        xx_js_malloc, xx_js_calloc, xx_js_realloc
-    };
+    static const xx_regex_allocator allocator = {xx_js_malloc, xx_js_calloc, xx_js_realloc};
     return xx_regex_compile_n_with_allocator(pattern, pattern_size, flags, flags_size, error, &allocator);
 }
 
 JSRegExp *js_compile_regexp(const char *pattern, const char *flags, char **error)
 {
-    return js_compile_regexp_n(pattern, pattern ? xx_rt_strlen(pattern) : 0,
-                              flags, flags ? xx_rt_strlen(flags) : 0, error);
+    return js_compile_regexp_n(pattern, pattern ? xx_rt_strlen(pattern) : 0, flags, flags ? xx_rt_strlen(flags) : 0, error);
 }
 
 /* ------------------------------------------------- JavaScript RegExp API  */
@@ -73,8 +70,7 @@ static JSVal fn_regexp_ctor(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv,
         flags = js_str(pCtx, "");
     }
     if (!pCtx->bException) {
-        result = js_new_regexp_n_val(pCtx, js_str_data(pattern), js_str_len(pattern),
-                                    js_str_data(flags), js_str_len(flags));
+        result = js_new_regexp_n_val(pCtx, js_str_data(pattern), js_str_len(pattern), js_str_data(flags), js_str_len(flags));
     }
 
 done:
@@ -115,8 +111,7 @@ static JSVal fn_regexp_test(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv,
     }
     /* Most detection patterns need only the whole match and a few captures.
      * Keep the common case off the heap; larger patterns retain full captures. */
-    pCaps = xx_regex_ngroups(pRegExp) < 16 ? sCaps :
-        (int32_t *)xx_js_malloc((size_t)(xx_regex_ngroups(pRegExp) + 1) * 2 * sizeof(int32_t));
+    pCaps = xx_regex_ngroups(pRegExp) < 16 ? sCaps : (int32_t *)xx_js_malloc((size_t)(xx_regex_ngroups(pRegExp) + 1) * 2 * sizeof(int32_t));
     bResult = js_regex_exec_checked(pCtx, pRegExp, js_str_data(text), js_str_len(text), nStart, pCaps);
     if (xx_regex_global(pRegExp)) js_set(pCtx, thisVal, "lastIndex", js_num(bResult ? (double)pCaps[1] : 0));
     if (pCaps != sCaps) xx_js_free(pCaps);
@@ -163,8 +158,7 @@ static JSVal fn_regexp_exec(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArgv,
 
     /* Most detection patterns need only the whole match and a few captures.
      * Keep the common case off the heap; larger patterns retain full captures. */
-    pCaps = xx_regex_ngroups(pRegExp) < 16 ? sCaps :
-        (int32_t *)xx_js_malloc((size_t)(xx_regex_ngroups(pRegExp) + 1) * 2 * sizeof(int32_t));
+    pCaps = xx_regex_ngroups(pRegExp) < 16 ? sCaps : (int32_t *)xx_js_malloc((size_t)(xx_regex_ngroups(pRegExp) + 1) * 2 * sizeof(int32_t));
 
     if ((nStart <= js_str_len(text)) && js_regex_exec_checked(pCtx, pRegExp, js_str_data(text), js_str_len(text), nStart, pCaps)) {
         int g = 0;
@@ -303,8 +297,7 @@ JSVal js_new_regexp_n_val(JSCtx *pCtx, const char *pPattern, size_t nPatternSize
 
 JSVal js_new_regexp_val(JSCtx *pCtx, const char *pPattern, const char *pFlags)
 {
-    return js_new_regexp_n_val(pCtx, pPattern, pPattern ? xx_rt_strlen(pPattern) : 0,
-                              pFlags, pFlags ? xx_rt_strlen(pFlags) : 0);
+    return js_new_regexp_n_val(pCtx, pPattern, pPattern ? xx_rt_strlen(pPattern) : 0, pFlags, pFlags ? xx_rt_strlen(pFlags) : 0);
 }
 
 void js_install_regexp(JSCtx *pCtx)

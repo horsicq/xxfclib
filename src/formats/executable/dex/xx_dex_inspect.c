@@ -41,8 +41,7 @@ bool xx_dex_analyze(xx_dex *dex, xx_pd_struct *pd)
         uint32_t count;
         uint64_t data_end = (uint64_t)dex->header.data_off + dex->header.data_size;
         int64_t map_abs = dex->format.base_address + (int64_t)map;
-        if ((map & 3U) || map < dex->header.data_off || (uint64_t)map + 4 > data_end ||
-            !xx_io_read_at(dex->format.device, map_abs, raw, sizeof(raw))) goto done;
+        if ((map & 3U) || map < dex->header.data_off || (uint64_t)map + 4 > data_end || !xx_io_read_at(dex->format.device, map_abs, raw, sizeof(raw))) goto done;
         count = xx_data_get_u32(raw, sizeof(raw), 0, be);
         if (!count || count > 65536 || (uint64_t)count * 12 > data_end - map - 4) goto done;
         for (i = 0; i < count && !xx_pd_is_stopped(pd); ++i) {

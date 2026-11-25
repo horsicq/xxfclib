@@ -555,12 +555,10 @@ uint64_t xx_pe_get_number_of_metadata(Abstractformat *format, xx_pd_struct *pd)
 
 const StreamMetadata *xx_pe_get_stream_metadata(void)
 {
-    static const StreamMetadata stream = {
-        .get_number_of_metadata = xx_pe_get_number_of_metadata,
-        .create_metadata_reading = xx_pe_create_metadata_reading,
-        .get_current_metadata = xx_pe_get_current_metadata,
-        .metadata_move_to_next = xx_pe_metadata_move_to_next,
-        .free_metadata_reading = xx_pe_free_metadata_reading
-    };
+    static const StreamMetadata stream = {.get_number_of_metadata = xx_pe_get_number_of_metadata,
+                                          .create_metadata_reading = xx_pe_create_metadata_reading,
+                                          .get_current_metadata = xx_pe_get_current_metadata,
+                                          .metadata_move_to_next = xx_pe_metadata_move_to_next,
+                                          .free_metadata_reading = xx_pe_free_metadata_reading};
     return &stream;
 }

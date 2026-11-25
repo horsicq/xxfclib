@@ -63,8 +63,7 @@ static bool xxzip_span(size_t size, uint64_t at, uint64_t length)
     return at <= size && length <= (uint64_t)size - at;
 }
 
-static bool xxzip_signature(const uint8_t *data, size_t size,
-                            uint64_t at, uint32_t signature)
+static bool xxzip_signature(const uint8_t *data, size_t size, uint64_t at, uint32_t signature)
 {
     return xxzip_span(size, at, 4) && xxzip_u32(data + (size_t)at) == signature;
 }
@@ -78,8 +77,7 @@ static bool xxzip_find_eocd(const uint8_t *data, size_t size, uint64_t *offset)
     size_t scan = 0;
     bool found = false;
     while (scan <= length - 22) {
-        int64_t position = xx_data_find_bytes_buffer_optimize(
-            data + start, length, scan, signature, sizeof(signature), NULL);
+        int64_t position = xx_data_find_bytes_buffer_optimize(data + start, length, scan, signature, sizeof(signature), NULL);
         if (position < 0) break;
         scan = (size_t)position + 1;
         if ((size_t)position > length - 22) break;
@@ -92,10 +90,7 @@ static bool xxzip_find_eocd(const uint8_t *data, size_t size, uint64_t *offset)
     return found;
 }
 
-static bool xxzip_zip64_record(const uint8_t *data, size_t size,
-                               uint64_t eocd_at, uint64_t *record_at,
-                               uint64_t *count, uint64_t *cd_size,
-                               uint64_t *cd_offset)
+static bool xxzip_zip64_record(const uint8_t *data, size_t size, uint64_t eocd_at, uint64_t *record_at, uint64_t *count, uint64_t *cd_size, uint64_t *cd_offset)
 {
     if (eocd_at < 20) return false;
     uint64_t locator = eocd_at - 20;
@@ -119,10 +114,8 @@ static bool xxzip_zip64_record(const uint8_t *data, size_t size,
     if (record == UINT64_MAX || !xxzip_span(size, record, 56)) return false;
     const uint8_t *header = data + (size_t)record;
     uint64_t record_size = xxzip_u64(header + 4);
-    if (record_size > UINT64_MAX - 12 ||
-        !xxzip_span(size, record, record_size + 12)) return false;
-    if (xxzip_u32(header + 16) != 0 || xxzip_u32(header + 20) != 0)
-        return false;
+    if (record_size > UINT64_MAX - 12 || !xxzip_span(size, record, record_size + 12)) return false;
+    if (xxzip_u32(header + 16) != 0 || xxzip_u32(header + 20) != 0) return false;
     *record_at = record;
     *count = xxzip_u64(header + 32);
     *cd_size = xxzip_u64(header + 40);
@@ -135,32 +128,21 @@ static bool xxzip_open(const uint8_t *data, size_t size, xxzip_archive *archive)
     uint64_t eocd_at;
     if (!xxzip_find_eocd(data, size, &eocd_at)) return false;
     const uint8_t *eocd = data + (size_t)eocd_at;
-    if (xxzip_u16(eocd + 4) != 0 || xxzip_u16(eocd + 6) != 0)
-        return false;
+    if (xxzip_u16(eocd + 4) != 0 || xxzip_u16(eocd + 6) != 0) return false;
     uint64_t count = xxzip_u16(eocd + 10);
     uint64_t cd_size = xxzip_u32(eocd + 12);
     uint64_t cd_offset = xxzip_u32(eocd + 16);
     uint64_t payload_end = eocd_at;
-    if (count == UINT16_MAX || cd_size == UINT32_MAX ||
-        cd_offset == UINT32_MAX) {
-        if (!xxzip_zip64_record(data, size, eocd_at, &payload_end,
-                                &count, &cd_size, &cd_offset))
-            return false;
+    if (count == UINT16_MAX || cd_size == UINT32_MAX || cd_offset == UINT32_MAX) {
+        if (!xxzip_zip64_record(data, size, eocd_at, &payload_end, &count, &cd_size, &cd_offset)) return false;
     }
-    if (cd_offset > UINT64_MAX - cd_size ||
-        cd_offset + cd_size > payload_end)
-        return false;
+    if (cd_offset > UINT64_MAX - cd_size || cd_offset + cd_size > payload_end) return false;
     uint64_t inferred_base = payload_end - (cd_offset + cd_size);
     if (cd_offset > UINT64_MAX - inferred_base) return false;
     uint64_t inferred = inferred_base + cd_offset;
-    uint64_t absolute = xxzip_signature(data, size, cd_offset, XXZIP_CENTRAL)
-                        ? cd_offset : inferred;
-    if (absolute < cd_offset || absolute > size ||
-        cd_size > UINT64_MAX - absolute ||
-        absolute + cd_size > eocd_at)
-        return false;
-    if (count == 0 && cd_size == 0 && cd_offset == 0 && eocd_at != 0)
-        return false;
+    uint64_t absolute = xxzip_signature(data, size, cd_offset, XXZIP_CENTRAL) ? cd_offset : inferred;
+    if (absolute < cd_offset || absolute > size || cd_size > UINT64_MAX - absolute || absolute + cd_size > eocd_at) return false;
+    if (count == 0 && cd_size == 0 && cd_offset == 0 && eocd_at != 0) return false;
     archive->entry_count = count;
     archive->cd_size = cd_size;
     archive->cd_offset = cd_offset;
@@ -170,9 +152,7 @@ static bool xxzip_open(const uint8_t *data, size_t size, xxzip_archive *archive)
     return true;
 }
 
-static bool xxzip_zip64_extra(const uint8_t *extra, size_t length,
-                              bool need_uncompressed, bool need_compressed,
-                              bool need_offset, uint64_t *uncompressed,
+static bool xxzip_zip64_extra(const uint8_t *extra, size_t length, bool need_uncompressed, bool need_compressed, bool need_offset, uint64_t *uncompressed,
                               uint64_t *compressed, uint64_t *offset)
 {
     size_t at = 0;
@@ -206,8 +186,7 @@ static bool xxzip_zip64_extra(const uint8_t *extra, size_t length,
 }
 
 /* Match Rust's String::from_utf8_lossy on each invalid byte sequence. */
-static char *xxzip_utf8_lossy(const uint8_t *source, size_t length,
-                              size_t *out_length)
+static char *xxzip_utf8_lossy(const uint8_t *source, size_t length, size_t *out_length)
 {
     if (length > (SIZE_MAX - 1) / 3) return NULL;
     char *output = (char *)malloc(length * 3 + 1);
@@ -220,19 +199,13 @@ static char *xxzip_utf8_lossy(const uint8_t *source, size_t length,
             ++in;
             continue;
         }
-        size_t width = lead >= 0xc2 && lead <= 0xdf ? 2 :
-                       lead >= 0xe0 && lead <= 0xef ? 3 :
-                       lead >= 0xf0 && lead <= 0xf4 ? 4 : 0;
+        size_t width = lead >= 0xc2 && lead <= 0xdf ? 2 : lead >= 0xe0 && lead <= 0xef ? 3 : lead >= 0xf0 && lead <= 0xf4 ? 4 : 0;
         if (width) {
             size_t valid = 1;
             while (valid < width && in + valid < length) {
                 uint8_t byte = source[in + valid];
                 if (byte < 0x80 || byte > 0xbf) break;
-                if (valid == 1 &&
-                    ((lead == 0xe0 && byte < 0xa0) ||
-                     (lead == 0xed && byte > 0x9f) ||
-                     (lead == 0xf0 && byte < 0x90) ||
-                     (lead == 0xf4 && byte > 0x8f)))
+                if (valid == 1 && ((lead == 0xe0 && byte < 0xa0) || (lead == 0xed && byte > 0x9f) || (lead == 0xf0 && byte < 0x90) || (lead == 0xf4 && byte > 0x8f)))
                     break;
                 ++valid;
             }
@@ -258,38 +231,43 @@ static char *xxzip_utf8_lossy(const uint8_t *source, size_t length,
 static uint32_t xxzip_compression(uint16_t raw)
 {
     switch (raw) {
-    case 0: case 1: case 2: case 3: case 4: case 5: case 6:
-    case 8: case 9: case 10: case 12: case 14: case 93: case 95:
-        return raw;
-    default:
-        return 255;
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 8:
+        case 9:
+        case 10:
+        case 12:
+        case 14:
+        case 93:
+        case 95: return raw;
+        default: return 255;
     }
 }
 
 XXFC_API void xx_zip_yx_result_free(xx_zip_yx_result *result)
 {
     if (!result) return;
-    for (size_t i = 0; i < result->entry_count; ++i)
-        free(result->entries[i].file_path);
+    for (size_t i = 0; i < result->entry_count; ++i) free(result->entries[i].file_path);
     free(result->entries);
     memset(result, 0, sizeof(*result));
 }
 
-static bool xxzip_pb_varint(const uint8_t *data, size_t size, size_t *at,
-                            uint64_t *value)
+static bool xxzip_pb_varint(const uint8_t *data, size_t size, size_t *at, uint64_t *value)
 {
     return xx_protobuf_wire_varint(data, size, at, value);
 }
 
-static bool xxzip_pb_skip(const uint8_t *data, size_t size, size_t *at,
-                          uint64_t field, unsigned wire, unsigned depth)
+static bool xxzip_pb_skip(const uint8_t *data, size_t size, size_t *at, uint64_t field, unsigned wire, unsigned depth)
 {
-    return xx_protobuf_wire_skip_field_zip(data, size, at, field, wire,
-                                           depth);
+    return xx_protobuf_wire_skip_field_zip(data, size, at, field, wire, depth);
 }
 
-static bool xxzip_pb_entry(const uint8_t *data, size_t size,
-                           xx_zip_yx_entry *entry)
+static bool xxzip_pb_entry(const uint8_t *data, size_t size, xx_zip_yx_entry *entry)
 {
     size_t at = 0;
     while (at < size) {
@@ -298,8 +276,7 @@ static bool xxzip_pb_entry(const uint8_t *data, size_t size,
         uint64_t field = key >> 3;
         unsigned wire = (unsigned)(key & 7);
         if (field == 1 && wire == 2) {
-            if (!xxzip_pb_varint(data, size, &at, &value) ||
-                value > size - at || value == SIZE_MAX) return false;
+            if (!xxzip_pb_varint(data, size, &at, &value) || value > size - at || value == SIZE_MAX) return false;
             char *name = (char *)malloc((size_t)value + 1);
             if (!name) return false;
             memcpy(name, data + at, (size_t)value);
@@ -328,8 +305,7 @@ static bool xxzip_pb_entry(const uint8_t *data, size_t size,
     return true;
 }
 
-XXFC_API bool xx_zip_yx_parse_output(const uint8_t *data, size_t size,
-                                     xx_zip_yx_result *result)
+XXFC_API bool xx_zip_yx_parse_output(const uint8_t *data, size_t size, xx_zip_yx_result *result)
 {
     if (!result || (!data && size)) return false;
     memset(result, 0, sizeof(*result));
@@ -345,14 +321,11 @@ XXFC_API bool xx_zip_yx_parse_output(const uint8_t *data, size_t size,
             result->is_zip = value != 0;
             result->is_zip_present = true;
         } else if (field == 2 && wire == 2) {
-            if (!xxzip_pb_varint(data, size, &at, &value) ||
-                value > size - at) goto fail;
+            if (!xxzip_pb_varint(data, size, &at, &value) || value > size - at) goto fail;
             if (result->entry_count == capacity) {
                 size_t next = capacity ? capacity * 2 : 8;
-                if (next < capacity || next > SIZE_MAX / sizeof(xx_zip_yx_entry))
-                    goto fail;
-                xx_zip_yx_entry *grown = (xx_zip_yx_entry *)realloc(
-                    result->entries, next * sizeof(*grown));
+                if (next < capacity || next > SIZE_MAX / sizeof(xx_zip_yx_entry)) goto fail;
+                xx_zip_yx_entry *grown = (xx_zip_yx_entry *)realloc(result->entries, next * sizeof(*grown));
                 if (!grown) goto fail;
                 result->entries = grown;
                 capacity = next;
@@ -372,8 +345,7 @@ fail:
     return false;
 }
 
-XXFC_API bool xx_zip_yx_parse(const uint8_t *data, size_t size,
-                              xx_zip_yx_result *result)
+XXFC_API bool xx_zip_yx_parse(const uint8_t *data, size_t size, xx_zip_yx_result *result)
 {
     if (!result || (!data && size)) return false;
     memset(result, 0, sizeof(*result));
@@ -384,10 +356,8 @@ XXFC_API bool xx_zip_yx_parse(const uint8_t *data, size_t size,
     result->is_zip = true;
     uint64_t at = archive.cd_absolute;
     size_t capacity = 0;
-    for (uint64_t i = 0; i < archive.entry_count &&
-                         result->entry_count < XXZIP_MAX_ENTRIES; ++i) {
-        if (!xxzip_span(size, at, 46) ||
-            !xxzip_signature(data, size, at, XXZIP_CENTRAL)) break;
+    for (uint64_t i = 0; i < archive.entry_count && result->entry_count < XXZIP_MAX_ENTRIES; ++i) {
+        if (!xxzip_span(size, at, 46) || !xxzip_signature(data, size, at, XXZIP_CENTRAL)) break;
         const uint8_t *header = data + (size_t)at;
         uint16_t flags = xxzip_u16(header + 8);
         if (flags & ((1u << 6) | (1u << 13))) break;
@@ -395,9 +365,7 @@ XXFC_API bool xx_zip_yx_parse(const uint8_t *data, size_t size,
         uint64_t extra_len = xxzip_u16(header + 30);
         uint64_t comment_len = xxzip_u16(header + 32);
         uint64_t record_len = 46 + name_len + extra_len + comment_len;
-        if (at > UINT64_MAX - record_len ||
-            at + record_len > archive.directory_end ||
-            !xxzip_span(size, at, record_len)) break;
+        if (at > UINT64_MAX - record_len || at + record_len > archive.directory_end || !xxzip_span(size, at, record_len)) break;
 
         uint64_t compressed = xxzip_u32(header + 20);
         uint64_t uncompressed = xxzip_u32(header + 24);
@@ -406,19 +374,15 @@ XXFC_API bool xx_zip_yx_parse(const uint8_t *data, size_t size,
         bool need_uncompressed = uncompressed == UINT32_MAX;
         bool need_offset = local_offset == UINT32_MAX;
         if (need_compressed || need_uncompressed || need_offset) {
-            if (extra_len > 256 ||
-                !xxzip_zip64_extra(data + (size_t)(at + 46 + name_len),
-                                   (size_t)extra_len, need_uncompressed,
-                                   need_compressed, need_offset,
-                                   &uncompressed, &compressed, &local_offset))
+            if (extra_len > 256 || !xxzip_zip64_extra(data + (size_t)(at + 46 + name_len), (size_t)extra_len, need_uncompressed, need_compressed, need_offset,
+                                                      &uncompressed, &compressed, &local_offset))
                 break;
         }
         (void)local_offset;
         if (result->entry_count == capacity) {
             size_t next = capacity ? capacity * 2 : 8;
             if (next > XXZIP_MAX_ENTRIES) next = XXZIP_MAX_ENTRIES;
-            xx_zip_yx_entry *grown = (xx_zip_yx_entry *)realloc(
-                result->entries, next * sizeof(*grown));
+            xx_zip_yx_entry *grown = (xx_zip_yx_entry *)realloc(result->entries, next * sizeof(*grown));
             if (!grown) {
                 xx_zip_yx_result_free(result);
                 return false;
@@ -428,9 +392,7 @@ XXFC_API bool xx_zip_yx_parse(const uint8_t *data, size_t size,
         }
         xx_zip_yx_entry *entry = &result->entries[result->entry_count];
         memset(entry, 0, sizeof(*entry));
-        entry->file_path = xxzip_utf8_lossy(data + (size_t)(at + 46),
-                                            (size_t)name_len,
-                                            &entry->file_path_length);
+        entry->file_path = xxzip_utf8_lossy(data + (size_t)(at + 46), (size_t)name_len, &entry->file_path_length);
         if (!entry->file_path) {
             xx_zip_yx_result_free(result);
             return false;
@@ -453,13 +415,12 @@ XXFC_API bool xx_zip_yx_constant(const char *member, uint64_t *value)
     if (!member || !value) return false;
     if (strncmp(member, "zip.", 4) == 0) member += 4;
     if (strncmp(member, "Compression.", 12) == 0) member += 12;
-    static const struct { const char *name; uint64_t value; } constants[] = {
-        {"STORED", 0}, {"SHRUNK", 1}, {"REDUCED_1", 2},
-        {"REDUCED_2", 3}, {"REDUCED_3", 4}, {"REDUCED_4", 5},
-        {"IMPLODED", 6}, {"DEFLATED", 8}, {"DEFLATE64", 9},
-        {"PKWARE_IMPLODING", 10}, {"BZIP2", 12}, {"LZMA", 14},
-        {"ZSTD", 93}, {"XZ", 95}, {"UNKNOWN", 255}
-    };
+    static const struct {
+        const char *name;
+        uint64_t value;
+    } constants[] = {{"STORED", 0},    {"SHRUNK", 1},   {"REDUCED_1", 2}, {"REDUCED_2", 3}, {"REDUCED_3", 4},
+                     {"REDUCED_4", 5}, {"IMPLODED", 6}, {"DEFLATED", 8},  {"DEFLATE64", 9}, {"PKWARE_IMPLODING", 10},
+                     {"BZIP2", 12},    {"LZMA", 14},    {"ZSTD", 93},     {"XZ", 95},       {"UNKNOWN", 255}};
     for (size_t i = 0; i < sizeof(constants) / sizeof(constants[0]); ++i) {
         if (strcmp(member, constants[i].name) == 0) {
             *value = constants[i].value;

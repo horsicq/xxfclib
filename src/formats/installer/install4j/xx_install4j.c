@@ -102,7 +102,8 @@ static bool pm_parse(Abstractformat *f, pm_stream *s, xx_pd_struct *pd)
     uint8_t header[I4_HEADER], raw[2 + I4_MAX_NAME + 8], lzma[I4_LZMA_HEADER];
     int64_t overlay, cabinet, cabinet_end, available = pm_available(f), dat, table = -1, at, data, from, limit;
     uint32_t count = 0, i, back, candidate;
-    if (!carrier_pe(f, &overlay, &cabinet, &cabinet_end, pd) || overlay <= 0 || available - overlay < (int64_t)(I4_HEADER + 32U) || !pm_read(f, overlay, header, sizeof(header)))
+    if (!carrier_pe(f, &overlay, &cabinet, &cabinet_end, pd) || overlay <= 0 || available - overlay < (int64_t)(I4_HEADER + 32U) ||
+        !pm_read(f, overlay, header, sizeof(header)))
         return false;
     if (xx_data_get_u32(header, 4, 0, false) != I4_MAGIC || xx_data_get_u32(header + 4, 4, 0, false) != 1U) return false;
     /* The table: the first ".dat" name whose u16 length and u32 count hold up;

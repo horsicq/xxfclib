@@ -354,8 +354,7 @@ bool xx_global_platform_has_arm_crypto(void)
 #elif defined(XX_GLOBAL_HAVE_ARM_HWCAP) && defined(HWCAP_AES) && defined(HWCAP_SHA1) && defined(HWCAP_SHA2)
     {
         unsigned long capabilities = getauxval(AT_HWCAP);
-        return (capabilities & (HWCAP_AES | HWCAP_SHA1 | HWCAP_SHA2)) ==
-            (HWCAP_AES | HWCAP_SHA1 | HWCAP_SHA2);
+        return (capabilities & (HWCAP_AES | HWCAP_SHA1 | HWCAP_SHA2)) == (HWCAP_AES | HWCAP_SHA1 | HWCAP_SHA2);
     }
 #elif defined(__ARM_FEATURE_AES) && defined(__ARM_FEATURE_SHA2)
     return true;
