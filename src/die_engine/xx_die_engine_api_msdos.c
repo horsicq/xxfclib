@@ -24,15 +24,27 @@ void die_engine_api_register_msdos(JSCtx *pCtx, JSVal object)
 {
     die_engine_api_register_entries(pCtx, object, g_msdos_api_table);
 }
+/* XMSDOS::isNE/isLE/isLX: the word e_lfanew points at. A file too short to
+ * hold e_lfanew has no extended header; without the size test the failed
+ * read yields 0 and the file's first two bytes would be compared instead. */
+static int msdos_new_header_is(xx_io_device *pFile, cd_u16 nSignature)
+{
+    if (xx_io_total_size(pFile) < 0x40) {
+        return 0;
+    }
+
+    return xx_io_get_u16(pFile, (cd_i64)xx_io_get_u32(pFile, 0x3C, false), false) == nSignature;
+}
+
 bool die_engine_api_dispatch_msdos(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult)
 {
     xx_pe_inspection *pPE = &pEngine->pe;
     xx_io_device *pFile = pEngine->device;
 
     switch (id) {
-        case A_isNE: *pResult = js_bool(xx_io_get_u16(pFile, (cd_i64)xx_io_get_u32(pFile, 0x3C, false), false) == 0x454E); return true;
-        case A_isLE: *pResult = js_bool(xx_io_get_u16(pFile, (cd_i64)xx_io_get_u32(pFile, 0x3C, false), false) == 0x454C); return true;
-        case A_isLX: *pResult = js_bool(xx_io_get_u16(pFile, (cd_i64)xx_io_get_u32(pFile, 0x3C, false), false) == 0x584C); return true;
+        case A_isNE: *pResult = js_bool(msdos_new_header_is(pFile, 0x454E)); return true;
+        case A_isLE: *pResult = js_bool(msdos_new_header_is(pFile, 0x454C)); return true;
+        case A_isLX: *pResult = js_bool(msdos_new_header_is(pFile, 0x584C)); return true;
 
         case A_isRichSignaturePresent: *pResult = js_bool(pEngine->bHasPE && pPE->bRichPresent); return true;
 

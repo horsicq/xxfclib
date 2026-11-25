@@ -55,7 +55,7 @@ typedef enum xx_zip_encryption_method_e {
 } xx_zip_encryption_method_t;
 typedef xx_zip_encryption_method_t xx_zip_encryption_method;
 
-/* The ids are defined by src/datastructs/zip.xxds and must match it. */
+/* The ids are defined by xxdatastructs src/datastructs/zip.xxds and must match it. */
 /**
  * @brief Identifiers for ZIP-specific binary data structures (used with xx_data_struct.id).
  */
@@ -99,6 +99,7 @@ struct xx_zip {
     size_t lhdr_cache_size;    /**< Cached local file header block byte count */
     uint8_t *lhdr_cache;       /**< Owned dynamic buffer for read-ahead local header caching */
     uint8_t *cd_cache;         /**< Cached entire central directory block buffer */
+    wchar_t *unpack_dir_cache; /**< Owned: the parent folder the last unpacked member was written to */
     /** Traditional ZipCrypto key-state recovery for legacy self-extractors that
      * store no in-file password. When enabled and a member is encrypted with no
      * working password, a dictionary of known key-states is tried; the confirmed

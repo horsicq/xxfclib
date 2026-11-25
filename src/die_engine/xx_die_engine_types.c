@@ -29,8 +29,8 @@
 static const char *die_file_type_names[XFT_COUNT] = {
     "Unknown",    "Binary",          "COM",     "MSDOS",    "NE",       "LE",   "LX",  "PE",  "PE32",     "PE64",       "ELF",
     "ELF32",      "ELF64",           "Mach-O",  "Mach-O32", "Mach-O64", "ZIP",  "JAR", "APK", "IPA",      "DEX",        "NPM",
-    "Mach-O FAT", "Archive",         "PDF",     "CFBF",     "Image",    "JPEG", "PNG", "RAR", "ISO 9660", "Amiga Hunk", "Atari ST",
-    "Java Class", "Python Bytecode", "DOS/16M", "DOS/4G",   ".NET"};
+    "Mach-O FAT", "Archive",         "PDF",     "CFBF",     "Image",    "JPEG", "PNG", "RAR", "ISO 9660", "Amiga Hunk", "GEMDOS",
+    "Java Class", "Python Bytecode", "DOS/16M", "DOS/4G",   ".NET",     "FAT",  "MSA"};
 
 const char *xft_to_string(XFileType type)
 {
@@ -159,6 +159,15 @@ bool xx_scan_file_type_set_detect(xx_io_device *device, const char *file_name, x
                 xx_scan_file_type_set_add(set, XFT_ARCHIVE);
                 break;
             case XX_FILE_TYPE_ISO9660: xx_scan_file_type_set_add(set, XFT_ISO9660); break;
+            /* XFormats types a floppy disk image as an archive too. */
+            case XX_FILE_TYPE_FAT:
+                xx_scan_file_type_set_add(set, XFT_FAT);
+                xx_scan_file_type_set_add(set, XFT_ARCHIVE);
+                break;
+            case XX_FILE_TYPE_ATARI_ST_MSA:
+                xx_scan_file_type_set_add(set, XFT_MSA);
+                xx_scan_file_type_set_add(set, XFT_ARCHIVE);
+                break;
             case XX_FILE_TYPE_AMIGAHUNK: xx_scan_file_type_set_add(set, XFT_AMIGAHUNK); break;
             case XX_FILE_TYPE_ATARIST: xx_scan_file_type_set_add(set, XFT_ATARIST); break;
             case XX_FILE_TYPE_COM: xx_scan_file_type_set_add(set, XFT_COM); break;
@@ -192,7 +201,10 @@ XFileType xx_scan_pick_file_type(xx_io_device *device, const char *file_name, co
     if (xx_scan_file_type_set_contains(pSet, XFT_DEX)) return XFT_DEX;
     if (xx_scan_file_type_set_contains(pSet, XFT_NPM)) return XFT_NPM;
     if (xx_scan_file_type_set_contains(pSet, XFT_MACHOFAT)) return XFT_MACHOFAT;
+    if (xx_scan_file_type_set_contains(pSet, XFT_FAT)) return XFT_FAT;
+    if (xx_scan_file_type_set_contains(pSet, XFT_MSA)) return XFT_MSA;
     if (xx_scan_file_type_set_contains(pSet, XFT_AMIGAHUNK)) return XFT_AMIGAHUNK;
+    if (xx_scan_file_type_set_contains(pSet, XFT_ATARIST)) return XFT_ATARIST;
     if (xx_scan_file_type_set_contains(pSet, XFT_PDF)) return XFT_PDF;
     if (xx_scan_file_type_set_contains(pSet, XFT_CFBF)) return XFT_CFBF;
     if (xx_scan_file_type_set_contains(pSet, XFT_RAR)) return XFT_RAR;

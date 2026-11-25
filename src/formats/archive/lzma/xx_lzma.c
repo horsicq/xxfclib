@@ -31,6 +31,14 @@
  * end marker, exact compressed-byte counts, bounded memory and range-coder
  * completion checks. This layer parses the .lzma header and applies the
  * archive detection, concatenation and overlay policies.
+ *
+ * Nothing in a .lzma file says where its data ends or (with an end marker)
+ * how much it holds, so handle_base_info has to decode the whole payload to
+ * measure it, and an unpack after it would decode everything a second time.
+ * The measuring pass therefore keeps what it decodes, up to
+ * XX_LZMA_UNPACK_CACHE_LIMIT bytes, and the first unpack writes that out
+ * instead of decoding again.  A payload over the limit, or one there is no
+ * memory to keep, is simply decoded twice as before.
  */
 
 #include "xxfclib/rt/xx_rt.h"
@@ -38,6 +46,7 @@
 #include "../../../algo/lzma/xx_lzma_stream_internal.h"
 
 #include "xxfclib/algo/store/xx_store.h"
+#include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/strings/xx_string.h"
 
@@ -64,7 +73,161 @@
  * its declared size with the coder not at rest. */
 #define XX_LZMA_LENIENT_SLACK 64U
 
+/* Decoded payload kept from measuring to the first unpack; 0 keeps nothing.
+ * Within a memory-only scope the whole-file memory limit bounds it too. */
+#ifndef XX_LZMA_UNPACK_CACHE_LIMIT
+#define XX_LZMA_UNPACK_CACHE_LIMIT (sizeof(void *) > 4U ? (uint64_t)1U << 30 : (uint64_t)0U)
+#endif
+#define XX_LZMA_CACHE_CHUNK ((size_t)4U * 1024U * 1024U)
+
 static void xx_lzma_vtable_destroy(Abstractformat *self);
+
+/* ------------------------------------------------- the decoded payload */
+
+/* A write-only device the measuring walk decodes into.  It never fails a
+ * write: once the payload is over the limit, or memory runs out, what was
+ * kept is dropped and the rest is discarded. */
+typedef struct xx_lzma_cache_s {
+    xx_io_device device;
+    uint8_t **chunks;
+    size_t chunk_count;
+    size_t chunk_capacity;
+    uint64_t size;
+    uint64_t limit;
+    bool dropped;
+} xx_lzma_cache;
+
+static void xx_lzma_cache_release_from(xx_lzma_cache *cache, size_t keep)
+{
+    while (cache->chunk_count > keep) xx_mem_free(cache->chunks[--cache->chunk_count]);
+}
+
+/* Forget everything; the cache can be filled again from the start. */
+static void xx_lzma_cache_reset(xx_lzma_cache *cache)
+{
+    if (!cache) return;
+    xx_lzma_cache_release_from(cache, 0U);
+    cache->size = 0U;
+    cache->dropped = false;
+}
+
+static void xx_lzma_cache_drop(xx_lzma_cache *cache)
+{
+    xx_lzma_cache_reset(cache);
+    cache->dropped = true;
+}
+
+/* Keep only the first size bytes: a walk decodes streams it then leaves out. */
+static void xx_lzma_cache_truncate(xx_lzma_cache *cache, uint64_t size)
+{
+    if (!cache || cache->dropped) return;
+    if (size > cache->size) {
+        xx_lzma_cache_drop(cache);
+        return;
+    }
+    cache->size = size;
+    xx_lzma_cache_release_from(cache, (size_t)((size + (XX_LZMA_CACHE_CHUNK - 1U)) / XX_LZMA_CACHE_CHUNK));
+}
+
+static ssize_t xx_lzma_cache_write(xx_io_device *device, const void *data, size_t size)
+{
+    xx_lzma_cache *cache = device ? (xx_lzma_cache *)device->priv : NULL;
+    const uint8_t *source = (const uint8_t *)data;
+    size_t left = size;
+    if (!cache || (!data && size != 0U)) return -1;
+    if (cache->dropped) return (ssize_t)size;
+    if ((uint64_t)size > cache->limit - cache->size) {
+        xx_lzma_cache_drop(cache);
+        return (ssize_t)size;
+    }
+    while (left != 0U) {
+        size_t at = (size_t)(cache->size % XX_LZMA_CACHE_CHUNK);
+        size_t amount = XX_LZMA_CACHE_CHUNK - at;
+        if (at == 0U && (size_t)(cache->size / XX_LZMA_CACHE_CHUNK) == cache->chunk_count) {
+            uint8_t *chunk;
+            if (cache->chunk_count == cache->chunk_capacity) {
+                size_t capacity = cache->chunk_capacity ? cache->chunk_capacity * 2U : 16U;
+                uint8_t **chunks = (uint8_t **)xx_mem_alloc(capacity * sizeof(*chunks));
+                if (!chunks) {
+                    xx_lzma_cache_drop(cache);
+                    return (ssize_t)size;
+                }
+                if (cache->chunk_count) xx_mem_copy(chunks, cache->chunks, cache->chunk_count * sizeof(*chunks));
+                xx_mem_free(cache->chunks);
+                cache->chunks = chunks;
+                cache->chunk_capacity = capacity;
+            }
+            chunk = (uint8_t *)xx_mem_alloc(XX_LZMA_CACHE_CHUNK);
+            if (!chunk) {
+                xx_lzma_cache_drop(cache);
+                return (ssize_t)size;
+            }
+            cache->chunks[cache->chunk_count++] = chunk;
+        }
+        if (amount > left) amount = left;
+        xx_mem_copy(cache->chunks[cache->size / XX_LZMA_CACHE_CHUNK] + at, source, amount);
+        cache->size += amount;
+        source += amount;
+        left -= amount;
+    }
+    return (ssize_t)size;
+}
+
+static xx_lzma_cache *xx_lzma_cache_create(void)
+{
+    uint64_t limit = XX_LZMA_UNPACK_CACHE_LIMIT;
+    xx_lzma_cache *cache;
+    if (xx_io_memory_only_active() && limit > xx_get_file_memory_limit()) limit = xx_get_file_memory_limit();
+    if (limit == 0U) return NULL;
+    cache = (xx_lzma_cache *)xx_mem_calloc(1U, sizeof(*cache));
+    if (!cache) return NULL;
+    cache->limit = limit;
+    cache->device.write = xx_lzma_cache_write;
+    cache->device.priv = cache;
+    return cache;
+}
+
+static void xx_lzma_cache_free(xx_lzma_cache *cache)
+{
+    if (!cache) return;
+    xx_lzma_cache_release_from(cache, 0U);
+    xx_mem_free(cache->chunks);
+    xx_mem_free(cache);
+}
+
+/* Write the kept payload, releasing it block by block as it goes. */
+static bool xx_lzma_cache_write_out(xx_lzma_cache *cache, xx_io_device *destination, xx_pd_struct *pd)
+{
+    size_t index;
+    uint64_t left = cache->size;
+    bool ok = true;
+    for (index = 0U; index < cache->chunk_count; ++index) {
+        size_t amount = left < (uint64_t)XX_LZMA_CACHE_CHUNK ? (size_t)left : XX_LZMA_CACHE_CHUNK;
+        size_t done = 0U;
+        while (ok && done < amount) {
+            ssize_t written;
+            if (pd && xx_pd_is_stopped(pd)) {
+                ok = false;
+                break;
+            }
+            written = xx_io_write(destination, cache->chunks[index] + done, amount - done);
+            if (written <= 0 || (size_t)written > amount - done) ok = false;
+            else done += (size_t)written;
+        }
+        xx_mem_free(cache->chunks[index]);
+        cache->chunks[index] = NULL;
+        left -= amount;
+    }
+    cache->chunk_count = 0U;
+    return ok;
+}
+
+static void xx_lzma_release_cache(Abstractformat *self)
+{
+    if (!self || !self->priv) return;
+    xx_lzma_cache_free((xx_lzma_cache *)self->priv);
+    self->priv = NULL;
+}
 
 /* The header grammar every stream must satisfy. */
 static bool xx_lzma_parse_header(const uint8_t *data, xx_lzma_stream_props *header)
@@ -138,8 +301,8 @@ typedef struct xx_lzma_walk_s {
  * probe_output > 0 (measuring only) accepts a first stream that is still
  * decoding cleanly after that much output, without finishing it.
  */
-static bool xx_lzma_walk(xx_io_device *device, int64_t start, int64_t stop_at, xx_io_device *destination, uint64_t probe_output, bool lenient, xx_pd_struct *pd,
-                         xx_lzma_walk_info *info)
+static bool xx_lzma_walk_streams(xx_io_device *device, int64_t start, int64_t stop_at, xx_io_device *destination, uint64_t probe_output, bool lenient,
+                                 xx_pd_struct *pd, xx_lzma_walk_info *info)
 {
     xx_lzma_stream_decoder *decoder;
     int64_t total_size;
@@ -252,6 +415,21 @@ done:
     return ok;
 }
 
+/* A walk that may keep what it decodes: with a cache (and no destination)
+ * the streams are decoded into it, and it is left holding exactly the output
+ * of the streams the walk took, or nothing if the walk failed. */
+static bool xx_lzma_walk(xx_io_device *device, int64_t start, int64_t stop_at, xx_io_device *destination, uint64_t probe_output, bool lenient, xx_pd_struct *pd,
+                         xx_lzma_walk_info *info, xx_lzma_cache *cache)
+{
+    bool ok;
+    if (!cache || destination) return xx_lzma_walk_streams(device, start, stop_at, destination, probe_output, lenient, pd, info);
+    xx_lzma_cache_reset(cache);
+    ok = xx_lzma_walk_streams(device, start, stop_at, &cache->device, probe_output, lenient, pd, info);
+    if (ok && info && info->end >= 0) xx_lzma_cache_truncate(cache, info->output_size);
+    else xx_lzma_cache_reset(cache);
+    return ok;
+}
+
 /* ------------------------------------------------------------ the reader */
 
 static bool xx_lzma_copy_options(xx_list_s *destination, const xx_list_s *source)
@@ -340,6 +518,7 @@ void xx_lzma_destroy(xx_lzma *archive)
 {
     if (!archive) return;
     if (archive->format.close) archive->format.close(&archive->format);
+    xx_lzma_release_cache(&archive->format);
     xx_format_cleanup_extra_parameters(&archive->format);
     archive->uncompressed_size = 0U;
     archive->stream_end = -1;
@@ -373,9 +552,9 @@ bool xx_lzma_check_is_valid(Abstractformat *self, xx_pd_struct *pd)
         !xx_lzma_stream_start_ok(head, &header, total_size - self->base_address)) {
         return false;
     }
-    if (xx_lzma_walk(self->device, self->base_address, -1, NULL, XX_LZMA_PROBE_OUTPUT, false, pd, &info)) return true;
+    if (xx_lzma_walk(self->device, self->base_address, -1, NULL, XX_LZMA_PROBE_OUTPUT, false, pd, &info, NULL)) return true;
     if (pd && xx_pd_is_stopped(pd)) return false;
-    return xx_lzma_walk(self->device, self->base_address, -1, NULL, 0U, true, pd, &info);
+    return xx_lzma_walk(self->device, self->base_address, -1, NULL, 0U, true, pd, &info, NULL);
 }
 
 bool xx_lzma_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
@@ -383,14 +562,23 @@ bool xx_lzma_handle_base_info(Abstractformat *self, xx_pd_struct *pd)
     xx_lzma_walk_info info;
     int64_t total_size;
     xx_lzma *archive = (xx_lzma *)self;
+    xx_lzma_cache *cache;
     if (!self) return false;
     xx_mem_zero(&info, sizeof(info));
     archive->size_mismatch = false;
-    if (self->device && self->base_address >= 0 && !xx_lzma_walk(self->device, self->base_address, -1, NULL, 0U, false, pd, &info) && !(pd && xx_pd_is_stopped(pd))) {
+    xx_lzma_release_cache(self);
+    cache = self->device && self->base_address >= 0 ? xx_lzma_cache_create() : NULL;
+    if (self->device && self->base_address >= 0 && !xx_lzma_walk(self->device, self->base_address, -1, NULL, 0U, false, pd, &info, cache) &&
+        !(pd && xx_pd_is_stopped(pd))) {
         xx_mem_zero(&info, sizeof(info));
-        if (xx_lzma_walk(self->device, self->base_address, -1, NULL, 0U, true, pd, &info)) archive->size_mismatch = true;
+        if (xx_lzma_walk(self->device, self->base_address, -1, NULL, 0U, true, pd, &info, cache)) archive->size_mismatch = true;
         else info.end = -1;
     }
+    if (!self->device || self->base_address < 0 || info.end <= self->base_address || !cache || cache->dropped || cache->size != info.output_size) {
+        xx_lzma_cache_free(cache);
+        cache = NULL;
+    }
+    self->priv = cache;
     if (!self->device || self->base_address < 0 || info.end <= self->base_address) {
         archive->uncompressed_size = 0U;
         archive->stream_end = -1;
@@ -442,7 +630,15 @@ bool xx_lzma_unpack_to_device(xx_lzma *archive, xx_io_device *destination, xx_pd
         archive->stream_end < 0) {
         return false;
     }
-    return xx_lzma_walk(archive->format.device, archive->format.base_address, archive->stream_end, destination, 0U, archive->size_mismatch, pd, &info) &&
+    if (archive->format.priv) {
+        /* The payload kept by the measuring pass: used once, then let go. */
+        xx_lzma_cache *cache = (xx_lzma_cache *)archive->format.priv;
+        bool usable = !cache->dropped && cache->size == archive->uncompressed_size;
+        bool written = usable && xx_lzma_cache_write_out(cache, destination, pd);
+        xx_lzma_release_cache(&archive->format);
+        if (usable) return written;
+    }
+    return xx_lzma_walk(archive->format.device, archive->format.base_address, archive->stream_end, destination, 0U, archive->size_mismatch, pd, &info, NULL) &&
            info.end == archive->stream_end && info.output_size == archive->uncompressed_size;
 }
 
@@ -496,7 +692,7 @@ bool xx_lzma_unpack_current_archive_record(Abstractformat *self, xx_archive_reco
     path_value = xx_lzma_find_option(&state->options, XX_META_ID_OPT_UNPACK_PATH);
     if (!path_value) {
         xx_lzma_walk_info info;
-        return archive->stream_end >= 0 && xx_lzma_walk(self->device, self->base_address, archive->stream_end, NULL, 0U, archive->size_mismatch, pd, &info) &&
+        return archive->stream_end >= 0 && xx_lzma_walk(self->device, self->base_address, archive->stream_end, NULL, 0U, archive->size_mismatch, pd, &info, NULL) &&
                info.output_size == archive->uncompressed_size;
     }
     if (path_value->type == XX_VAR_TYPE_STRING || path_value->type == XX_VAR_TYPE_STRING_VIEW) {

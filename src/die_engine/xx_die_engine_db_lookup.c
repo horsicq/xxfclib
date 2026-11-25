@@ -203,6 +203,8 @@ int db_count_for_type(DBase *pDb, XFileType fileType)
     int nResult = 0;
     int i = 0;
 
+    if (!pDb) return 0;
+
     for (i = 0; i < pDb->nCount; i++) {
         if ((x_strcmp(pDb->pRecords[i].pName, "_init") != 0) && xft_check(pDb->pRecords[i].fileType, fileType)) {
             nResult++;

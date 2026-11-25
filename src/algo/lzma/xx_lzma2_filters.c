@@ -126,6 +126,14 @@ static bool lzma2_sink_init(lzma2_sink *sink, xx_io_device *target, uint64_t exp
 bool xx_lzma2_unpack_filtered_checked_device(xx_io_device *source, int64_t offset, int64_t compressed_size, uint8_t property, uint16_t delta_distance,
                                              uint64_t expected_size, xx_io_device *destination, unsigned check_mask, xx_lzma2_decoded_info *info, xx_pd_struct *pd)
 {
+    return xx_lzma2_unpack_filtered_checked_device_threads(source, offset, compressed_size, property, delta_distance, expected_size, destination, check_mask, info, pd,
+                                                           0U);
+}
+
+bool xx_lzma2_unpack_filtered_checked_device_threads(xx_io_device *source, int64_t offset, int64_t compressed_size, uint8_t property, uint16_t delta_distance,
+                                                     uint64_t expected_size, xx_io_device *destination, unsigned check_mask, xx_lzma2_decoded_info *info,
+                                                     xx_pd_struct *pd, unsigned threads)
+{
     lzma2_sink sink;
     bool result = false;
     if (!info) return false;
@@ -137,7 +145,7 @@ bool xx_lzma2_unpack_filtered_checked_device(xx_io_device *source, int64_t offse
     if (!lzma2_sink_init(&sink, destination, expected_size, delta_distance, check_mask, pd)) {
         return false;
     }
-    if (!xx_lzma2_unpack_device(source, offset, compressed_size, property, &sink.device, pd) || sink.failed || sink.written != expected_size ||
+    if (!xx_lzma2_unpack_device_threads(source, offset, compressed_size, property, &sink.device, pd, threads) || sink.failed || sink.written != expected_size ||
         ((check_mask & XX_LZMA2_CALC_SHA256) && !xx_sha256_final(&sink.sha256, info->sha256, sizeof(info->sha256)))) {
         goto cleanup;
     }

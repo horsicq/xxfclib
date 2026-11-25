@@ -39,7 +39,7 @@ typedef struct xx_gz xx_gz;
 typedef struct xx_gz xx_gz_t;
 typedef struct xx_gz XGz;
 
-/* The ids are defined by src/datastructs/gz.xxds and must match it. */
+/* The ids are defined by xxdatastructs src/datastructs/gz.xxds and must match it. */
 typedef enum xx_gz_data_struct_id_e {
     XX_GZ_DS_UNKNOWN = 0,
     XX_GZ_DS_MEMBER_HEADER,

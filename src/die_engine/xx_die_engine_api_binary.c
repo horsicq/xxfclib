@@ -1018,7 +1018,9 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             cd_i64 nEntryPoint = script_entry_point_offset(pEngine);
             int bResult = 0;
 
-            if (nEntryPoint != -1) {
+            /* An offset that would overflow the sum matches nothing, as in
+             * XBinary::compareEntryPoint. */
+            if (nEntryPoint != -1 && (nEntryPoint < 0 || nOffset <= INT64_MAX - nEntryPoint)) {
                 bResult = die_engine_signature_compare(pEngine, nEntryPoint + nOffset, pSignature, 0, nEntryPoint);
             }
 
@@ -1034,7 +1036,9 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             int bResult = 0;
 
             if (pEngine->bHasPE && (pPE->nOverlaySize > 0)) {
-                bResult = die_engine_signature_compare(pEngine, pPE->nOverlayOffset + nOffset, pSignature, 2, pPE->nOverlayOffset);
+                if (pPE->nOverlayOffset < 0 || nOffset <= INT64_MAX - pPE->nOverlayOffset) {
+                    bResult = die_engine_signature_compare(pEngine, pPE->nOverlayOffset + nOffset, pSignature, 2, pPE->nOverlayOffset);
+                }
             } else if (pEngine->bHasElf && (pEngine->elf.nOverlaySize > 0)) {
                 /* Same overlay as ELF getOverlayOffset/getOverlaySize/isOverlayPresent */
                 if (nOffset <= INT64_MAX - pEngine->elf.nOverlayOffset) {
@@ -1517,6 +1521,7 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
                         for (int64_t i = 0; i < nMax; i++) {
                             JSVal elem = js_get_index(pCtx, pArgv[0], i);
                             pBytes[i] = (uint8_t)(js_to_int32(pCtx, elem) & 0xFF);
+                            js_release(pCtx, elem);
                         }
                         pszAlgo = xx_kpa_scan_buffer_encrypted_pe(pBytes, (size_t)nMax);
                         cd_free(pBytes);

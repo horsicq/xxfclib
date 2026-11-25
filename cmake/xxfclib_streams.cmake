@@ -12,7 +12,7 @@ unset(_xxfc_stream)
 # Every optional native provider has a core reader with the same stem. The
 # explicit list also defines availability for bounded emulator/DIE profiles.
 # DataStructs has no C provider at all: every file type is served by a script
-# in src/datastructs (which needs the JS engine in the profile). A profile
+# of the xxdatastructs library (needs the JS engine in the profile). A profile
 # without the JS engine has no DataStructs.
 set(_XXFC_STREAM_NATIVE_READERS
     7zip ar bz2 gz rar tar tar_bz2 tar_gz tar_lz4 tar_xz tar_zstd xz zip
@@ -132,15 +132,15 @@ function(xxfclib_select_stream_sources source_list)
         # Format-independent compare of two files' DataStructs.
         list(APPEND _selected "${_root}/src/formats/xx_data_struct_compare.c")
     endif()
-    # DataStructs scripts (src/datastructs/*.xxds) run in the JS engine, so the
-    # script host joins exactly the profiles that already carry it.
+    # The DataStructs scripts and their host live in the xxdatastructs library
+    # and run in xxfclib's JS engine. The reader bridge they call (fact
+    # tables, wrapper and alias readers) stays here and joins exactly the
+    # profiles that carry the JS engine.
     if(XXFC_ENABLE_STREAM_DATASTRUCTS)
         foreach(_source IN LISTS _selected)
             if(_source MATCHES "(^|/)src/js/xx_js_engine\\.c$")
                 list(APPEND _selected
-                    "${_root}/src/datastructs/xx_xxds.c"
-                    "${_root}/src/datastructs/xx_xxds_fields.c"
-                    "${_root}/src/datastructs/xx_xxds_readers.c")
+                    "${_root}/src/formats/xx_xxds_readers.c")
                 break()
             endif()
         endforeach()
@@ -177,12 +177,14 @@ function(xxfclib_configure_streams target)
     endforeach()
     set(_value 0)
     foreach(_source IN LISTS _sources)
-        if(_source MATCHES "(^|/)xx_xxds\\.c$")
+        if(_source MATCHES "(^|/)xx_xxds_readers\\.c$")
             set(_value 1)
             break()
         endif()
     endforeach()
     target_compile_definitions(${target} PRIVATE XXFC_STREAM_HAS_XXDS=${_value})
+    # xxdatastructs checks this before building its script host on the target.
+    set_property(TARGET ${target} PROPERTY XXFC_HAS_XXDS_BRIDGE ${_value})
 endfunction()
 
 # A project reusing an already-created xxfclib target must not silently run

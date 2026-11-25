@@ -70,7 +70,7 @@ extern "C" {
 #define XX_ELF_SECTION_FLAG_ALLOC UINT64_C(0x2)
 #define XX_ELF_SECTION_FLAG_COMPRESSED UINT64_C(0x800)
 
-/* The ids are defined by src/datastructs/elf.xxds and must match it. */
+/* The ids are defined by xxdatastructs src/datastructs/elf.xxds and must match it. */
 /** Fixed and bounded variable ELF structures exposed by the data stream. */
 typedef enum xx_elf_data_struct_id_e {
     XX_ELF_DATA_STRUCT_UNKNOWN = 0,

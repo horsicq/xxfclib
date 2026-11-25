@@ -1,7 +1,7 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
  * Reader-private declarations: shared by the reader's own units and, where
- * a DataStructs script needs reader state, src/datastructs/xx_xxds_readers.c.
+ * a DataStructs script needs reader state, src/formats/xx_xxds_readers.c.
  */
 #ifndef XX_XZ_PRIVATE_H
 #define XX_XZ_PRIVATE_H

@@ -1687,6 +1687,10 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/other/pcapng/xx_pcapng.h
     include/xxfclib/formats/document/pjl/xx_pjl.h
     include/xxfclib/formats/image/png/xx_png.h
+    include/xxfclib/formats/image/xx_image.h
+    include/xxfclib/formats/image/xx_image_codec.h
+    include/xxfclib/formats/image/xx_image_props.h
+    include/xxfclib/formats/xx_visualization.h
     include/xxfclib/formats/other/riff/xx_riff.h
     include/xxfclib/formats/image/svg/xx_svg.h
     include/xxfclib/formats/game/quake_pak/xx_quake_pak.h
@@ -2035,6 +2039,7 @@ set(XXFCLIB_SOURCES
     src/scan/xx_scan_resources.c
     src/scan/xx_scan_archives.c
     src/scan/xx_scan_archive_probe.c
+    src/scan/xx_scan_floppy.c
     src/sig/xx_sig.c
     # Embedded ECMAScript interpreter.
     src/js/xx_js_deps.c
@@ -2258,6 +2263,7 @@ set(XXFCLIB_SOURCES
     src/algo/bzip2/xx_bzip2.c
     src/algo/bzip2/xx_bzip2_bwt.c
     src/algo/bzip2/xx_bzip2_dec.c
+    src/algo/bzip2/xx_bzip2_dec_mt.c
     src/algo/bzip2/xx_bzip2_enc.c
     src/algo/bzip2/xx_bzip2_huffman.c
     src/algo/bzip2/xx_bzip2_mtf.c
@@ -4936,6 +4942,28 @@ set(XXFCLIB_SOURCES
     src/formats/document/pjl/xx_pjl.c
     src/formats/document/pjl/xx_pjl_extractor.c
     src/formats/image/png/xx_png.c
+    src/formats/image/xx_image_props.c
+    src/formats/xx_visualization.c
+    src/formats/image/bmp/xx_bmp_codec.c
+    src/formats/image/dds/xx_dds_codec.c
+    src/formats/image/farbfeld/xx_farbfeld_codec.c
+    src/formats/image/gif/xx_gif_codec.c
+    src/formats/image/radiance_hdr/xx_hdr_codec.c
+    src/formats/image/ico/xx_ico_codec.c
+    src/formats/image/jpeg/xx_jpeg_codec.c
+    src/formats/image/pcx/xx_pcx_codec.c
+    src/formats/image/png/xx_png_codec.c
+    src/formats/image/pnm/xx_pnm_codec.c
+    src/formats/image/qoi/xx_qoi_codec.c
+    src/formats/image/sgi_rgb/xx_sgi_codec.c
+    src/formats/image/sun_raster/xx_sunras_codec.c
+    src/formats/image/tga/xx_tga_codec.c
+    src/formats/image/tiff/xx_tiff_codec.c
+    src/formats/image/wbmp_image/xx_wbmp_codec.c
+    src/formats/image/x11_xbm/xx_xbm_codec.c
+    src/formats/image/xpm/xx_xpm_codec.c
+    src/formats/image/xx_image.c
+    src/formats/image/xx_image_codecs.c
     src/formats/image/png/xx_png_extractor.c
     src/formats/other/riff/xx_riff.c
     src/formats/other/riff/xx_riff_extractor.c
@@ -5711,6 +5739,8 @@ function(xxfclib_configure_target target is_shared)
         endif()
     endif()
 
+    # Multi-threaded LZMA2 / xz decoding: this target compiles src/threads.
+    target_compile_definitions(${target} PRIVATE XX_LZMA_MT=1)
     if(is_shared)
         target_compile_definitions(${target} PRIVATE XXFC_BUILD_SHARED)
         set_target_properties(${target} PROPERTIES

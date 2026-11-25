@@ -130,6 +130,41 @@ static bool reader_token(xx_dotnet_inspection *state, uint32_t token, bool local
         return false;
     return reader_row(state, table, token & 0xffffffU, &offset, &size);
 }
+#define DOTNET_READER_BODY_OPTIONS (XX_DOTNET_METHOD_BODY_ALLOW_UNALIGNED_FAT | XX_DOTNET_METHOD_BODY_ALLOW_LEGACY_EH_SIZE)
+bool xx_dotnet_method_eh_section_decode(const uint8_t *header, uint64_t available, uint32_t flags, uint32_t prior_clauses,
+                                        xx_dotnet_method_eh_section *section)
+{
+    xx_dotnet_method_eh_section value;
+    uint32_t stored, width, count, size;
+    if (section) xx_rt_memset(section, 0, sizeof(*section));
+    if (!header || !section || (flags & ~DOTNET_READER_BODY_OPTIONS) || prior_clauses > DOTNET_READER_MAX_CLAUSES || available < 4) return false;
+    if ((header[0] & 0x3f) != 1) return false; /* Only EH tables are defined here. */
+    xx_rt_memset(&value, 0, sizeof(value));
+    value.fat = (header[0] & 0x40) != 0;
+    value.more = (header[0] & 0x80) != 0;
+    if (value.fat)
+        stored = (uint32_t)header[1] | ((uint32_t)header[2] << 8) | ((uint32_t)header[3] << 16);
+    else {
+        if (header[2] || header[3]) return false;
+        stored = header[1];
+    }
+    width = value.fat ? 24 : 12;
+    if (stored >= 4 && (stored - 4) % width == 0)
+        count = (stored - 4) / width;
+    else if ((flags & XX_DOTNET_METHOD_BODY_ALLOW_LEGACY_EH_SIZE) && stored && stored % width == 0)
+        count = stored / width;
+    else
+        return false;
+    if (count > DOTNET_READER_MAX_CLAUSES - prior_clauses) return false;
+    size = 4 + count * width;
+    if (size > available) return false;
+    value.size = size;
+    value.clause_size = width;
+    value.clause_count = count;
+    *section = value;
+    return true;
+}
+
 bool xx_dotnet_inspect_method_body_ex(xx_dotnet_inspection *state, uint32_t rva, uint32_t options, xx_dotnet_method_body *body)
 {
     xx_dotnet_method_body value;
@@ -140,7 +175,7 @@ bool xx_dotnet_inspect_method_body_ex(xx_dotnet_inspection *state, uint32_t rva,
     uint32_t header_size;
     bool more;
     if (body) xx_rt_memset(body, 0, sizeof(*body));
-    if ((options & ~XX_DOTNET_METHOD_BODY_ALLOW_UNALIGNED_FAT) || !reader_begin(state) || !body || !reader_raw_range(state, rva, &start, &available) ||
+    if ((options & ~DOTNET_READER_BODY_OPTIONS) || !reader_begin(state) || !body || !reader_raw_range(state, rva, &start, &available) ||
         !xx_exec_read(state->pe.pInput, start, header, 1))
         return false;
     xx_rt_memset(&value, 0, sizeof(value));
@@ -170,6 +205,7 @@ bool xx_dotnet_inspect_method_body_ex(xx_dotnet_inspection *state, uint32_t rva,
     value.code_offset = start + header_size;
     while (more) {
         uint8_t section_header[4];
+        xx_dotnet_method_eh_section section;
         uint32_t section_size, clause_size, count, i;
         bool fat;
         /* CLR section alignment applies to the loaded address, including when
@@ -178,14 +214,12 @@ bool xx_dotnet_inspect_method_body_ex(xx_dotnet_inspection *state, uint32_t rva,
         if (++sections > DOTNET_READER_MAX_SECTIONS || extent > available || available - extent < 4 ||
             !xx_exec_read(state->pe.pInput, start + (int64_t)extent, section_header, 4))
             return false;
-        if ((section_header[0] & 0x3f) != 1) return false; /* Only EH tables are defined here. */
-        fat = (section_header[0] & 0x40) != 0;
-        more = (section_header[0] & 0x80) != 0;
-        section_size = fat ? (uint32_t)section_header[1] | ((uint32_t)section_header[2] << 8) | ((uint32_t)section_header[3] << 16) : section_header[1];
-        clause_size = fat ? 24 : 12;
-        if ((!fat && (section_header[2] || section_header[3])) || section_size < 4 || section_size > available - extent || (section_size - 4) % clause_size) return false;
-        count = (section_size - 4) / clause_size;
-        if (count > DOTNET_READER_MAX_CLAUSES - clauses) return false;
+        if (!xx_dotnet_method_eh_section_decode(section_header, available - extent, options, clauses, &section)) return false;
+        fat = section.fat;
+        more = section.more;
+        section_size = section.size;
+        clause_size = section.clause_size;
+        count = section.clause_count;
         clauses += count;
         value.has_exception_handlers = true;
         for (i = 0; i < count; ++i) {

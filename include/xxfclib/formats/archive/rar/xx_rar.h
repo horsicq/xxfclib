@@ -65,7 +65,7 @@ typedef enum xx_rar_version_e {
     XX_RAR_VERSION_14 = 14
 } xx_rar_version_t;
 
-/* The ids are defined by src/datastructs/rar.xxds and must match it. */
+/* The ids are defined by xxdatastructs src/datastructs/rar.xxds and must match it. */
 typedef enum xx_rar_data_struct_id_e {
     XX_RAR_DS_UNKNOWN = 0,
     XX_RAR_DS_SIGNATURE,

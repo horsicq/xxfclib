@@ -421,6 +421,216 @@ int64_t xx_macho_get_format_size(Abstractformat *format, xx_pd_struct *pd)
     return format && (format->base_info_handled || xx_macho_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
+/* ---- XX_MEMORY_MAP_MODE_DATA: the data structures of the file ----------------- */
+
+#define XX_MACHO_DATA_MAX_COMMANDS UINT32_C(65536)
+#define XX_MACHO_SYMTAB_SIZE 24U
+#define XX_MACHO_DYSYMTAB_SIZE 80U
+#define XX_MACHO_LINKEDIT_DATA_SIZE 16U
+#define XX_MACHO_DYLD_INFO_SIZE 48U
+#define XX_MACHO_NLIST32_SIZE 12U
+#define XX_MACHO_NLIST64_SIZE 16U
+
+typedef struct xx_macho_data_context_s {
+    const xx_macho *macho;
+    xx_memory_map *output;
+    uint64_t preferred;
+    uint64_t module;
+} xx_macho_data_context;
+
+/* Records are ordered by file offset; equal offsets keep the order they were added in. */
+static int xx_macho_compare_data_records(const void *left, const void *right, void *context)
+{
+    const xx_memory_record *a = (const xx_memory_record *)left;
+    const xx_memory_record *b = (const xx_memory_record *)right;
+    (void)context;
+    if (a->offset != b->offset) return a->offset < b->offset ? -1 : 1;
+    return a->index < b->index ? -1 : (a->index > b->index ? 1 : 0);
+}
+
+/* The address of a file range that lies inside the file bytes of one segment. */
+static uint64_t xx_macho_data_range_address(const xx_macho_data_context *context, uint64_t relative_offset, uint64_t size)
+{
+    const xx_macho *macho = context->macho;
+    uint32_t index;
+    for (index = 0U; index < macho->segment_count; ++index) {
+        const xx_macho_segment *segment = &macho->segments[index];
+        uint64_t delta;
+        uint64_t address;
+        if (relative_offset < segment->file_offset) continue;
+        delta = relative_offset - segment->file_offset;
+        if (delta >= segment->file_size || size > segment->file_size - delta || delta > UINT64_MAX - segment->virtual_address) continue;
+        if (xx_macho_relocate_address(segment->virtual_address + delta, context->preferred, context->module, &address)) return address;
+    }
+    return XX_INVALID_ADDRESS;
+}
+
+/* Add one structure given by its offset inside the binary. The range is clamped
+ * to the binary; an empty range or one outside the binary is skipped, which is
+ * not an error. */
+static bool xx_macho_data_add(const xx_macho_data_context *context, uint64_t relative_offset, uint64_t size, xx_file_part_t file_part, int32_t file_part_number,
+                              const char *name)
+{
+    xx_memory_map *output = context->output;
+    uint64_t available = (uint64_t)output->binary_size;
+    uint64_t address;
+    int64_t offset;
+    if (size == 0U || relative_offset >= available) return true;
+    if (size > available - relative_offset) size = available - relative_offset;
+    if (!xx_macho_absolute_offset(output->binary_offset, relative_offset, &offset)) return true;
+    address = xx_macho_data_range_address(context, relative_offset, size);
+    if (address != XX_INVALID_ADDRESS && size > XX_INVALID_ADDRESS - address) address = XX_INVALID_ADDRESS;
+    return xx_memory_map_add_part(output, offset, (int64_t)size, address, (int64_t)size, file_part, file_part_number, name, false);
+}
+
+/* A file range named by a load command: a 32-bit offset (0 = absent) and a size. */
+static bool xx_macho_data_add_command_range(const xx_macho_data_context *context, uint32_t file_offset, uint64_t size, xx_file_part_t file_part, uint32_t command_index,
+                                            const char *name)
+{
+    if (file_offset == 0U) return true;
+    return xx_macho_data_add(context, file_offset, size, file_part, (int32_t)command_index, name);
+}
+
+static bool xx_macho_data_finish(xx_memory_map *output)
+{
+    uint64_t minimum = XX_INVALID_ADDRESS;
+    uint64_t maximum = 0U;
+    size_t i;
+    xx_sort_context(output->records, output->record_count, sizeof(*output->records), xx_macho_compare_data_records, NULL);
+    for (i = 0U; i < output->record_count; ++i) {
+        const xx_memory_record *record = &output->records[i];
+        if (record->address == XX_INVALID_ADDRESS) continue;
+        if (record->address < minimum) minimum = record->address;
+        if (record->address + (uint64_t)record->size > maximum) maximum = record->address + (uint64_t)record->size;
+    }
+    /* An address span the map cannot describe: keep the offsets, drop the addresses. */
+    if (minimum != XX_INVALID_ADDRESS && maximum - minimum > (uint64_t)INT64_MAX) {
+        for (i = 0U; i < output->record_count; ++i) output->records[i].address = XX_INVALID_ADDRESS;
+    }
+    return xx_memory_map_finalize(output);
+}
+
+static bool xx_macho_get_data_memory_map(Abstractformat *format, xx_memory_map *output, xx_pd_struct *pd)
+{
+    xx_macho *macho = (xx_macho *)format;
+    xx_macho_data_context context;
+    xx_io_device *device = format->device;
+    bool big_endian = format->endian == XX_ENDIAN_BIG;
+    int64_t total;
+    int64_t binary_size;
+    uint64_t preferred = XX_INVALID_ADDRESS;
+    uint64_t header_size = macho->is_64 ? XX_MACHO_HEADER64_SIZE : XX_MACHO_HEADER32_SIZE;
+    uint64_t commands_end;
+    uint64_t command_relative;
+    uint32_t command_count;
+    uint32_t index;
+    total = xx_io_total_size(device);
+    if (total < format->base_address) return false;
+    binary_size = total - format->base_address;
+    for (index = 0U; index < macho->segment_count; ++index) {
+        const xx_macho_segment *segment = &macho->segments[index];
+        if (segment->virtual_size > 0U && (preferred == XX_INVALID_ADDRESS || segment->virtual_address < preferred)) {
+            preferred = segment->virtual_address;
+        }
+    }
+    if (preferred == XX_INVALID_ADDRESS) preferred = 0U;
+    context.macho = macho;
+    context.output = output;
+    context.preferred = preferred;
+    context.module = format->module_address != XX_INVALID_ADDRESS ? format->module_address : preferred;
+    output->binary_offset = format->base_address;
+    output->module_address = context.module;
+    output->is_image = format->is_mapped;
+    output->binary_size = binary_size;
+    output->entry_point_address = XX_INVALID_ADDRESS;
+    output->code_base = -1;
+    output->start_load_offset = -1;
+    output->file_type = format->file_type;
+    output->format_type = format->format_type;
+    output->endian = format->endian;
+    output->arch = format->arch;
+    output->mode = XX_MEMORY_MAP_MODE_DATA;
+
+    if (!xx_macho_data_add(&context, 0U, header_size, XX_FILE_PART_HEADER, -1, "Mach header") ||
+        !xx_macho_data_add(&context, header_size, macho->commands_size, XX_FILE_PART_TABLE, -1, "Load commands")) {
+        return false;
+    }
+    commands_end = header_size + macho->commands_size;
+    if (commands_end > (uint64_t)binary_size) commands_end = (uint64_t)binary_size;
+    command_count = macho->command_count < XX_MACHO_DATA_MAX_COMMANDS ? macho->command_count : XX_MACHO_DATA_MAX_COMMANDS;
+    command_relative = header_size;
+    for (index = 0U; index < command_count; ++index) {
+        uint32_t command;
+        uint32_t command_size;
+        int64_t offset;
+        if (xx_pd_is_stopped(pd)) return false;
+        /* A damaged command list ends the walk; what was found so far is kept. */
+        if (command_relative > commands_end || commands_end - command_relative < XX_MACHO_LOAD_COMMAND_SIZE ||
+            !xx_macho_absolute_offset(format->base_address, command_relative, &offset)) {
+            break;
+        }
+        command = xx_io_get_u32(device, offset, big_endian);
+        command_size = xx_io_get_u32(device, offset + 4, big_endian);
+        if (command_size < XX_MACHO_LOAD_COMMAND_SIZE || command_size > commands_end - command_relative) break;
+        switch (command) {
+            case XX_MACHO_LOAD_SYMTAB:
+                if (command_size < XX_MACHO_SYMTAB_SIZE) break;
+                if (!xx_macho_data_add_command_range(&context, xx_io_get_u32(device, offset + 8, big_endian),
+                                                     (uint64_t)xx_io_get_u32(device, offset + 12, big_endian) *
+                                                         (macho->is_64 ? XX_MACHO_NLIST64_SIZE : XX_MACHO_NLIST32_SIZE),
+                                                     XX_FILE_PART_TABLE, index, "Symbols") ||
+                    !xx_macho_data_add_command_range(&context, xx_io_get_u32(device, offset + 16, big_endian), xx_io_get_u32(device, offset + 20, big_endian),
+                                                     XX_FILE_PART_DATA, index, "Strings")) {
+                    return false;
+                }
+                break;
+            case XX_MACHO_LOAD_DYSYMTAB:
+                if (command_size < XX_MACHO_DYSYMTAB_SIZE) break;
+                if (!xx_macho_data_add_command_range(&context, xx_io_get_u32(device, offset + 56, big_endian),
+                                                     (uint64_t)xx_io_get_u32(device, offset + 60, big_endian) * 4U, XX_FILE_PART_TABLE, index, "Indirect symbols")) {
+                    return false;
+                }
+                break;
+            case XX_MACHO_LOAD_CODE_SIGNATURE:
+            case XX_MACHO_LOAD_FUNCTION_STARTS:
+            case XX_MACHO_LOAD_DATA_IN_CODE:
+            case XX_MACHO_LOAD_DYLD_EXPORTS_TRIE:
+            case XX_MACHO_LOAD_DYLD_CHAINED_FIXUPS: {
+                const char *name = "Chained fixups";
+                if (command == XX_MACHO_LOAD_CODE_SIGNATURE) name = "Code signature";
+                else if (command == XX_MACHO_LOAD_FUNCTION_STARTS) name = "Function starts";
+                else if (command == XX_MACHO_LOAD_DATA_IN_CODE) name = "Data in code";
+                else if (command == XX_MACHO_LOAD_DYLD_EXPORTS_TRIE) name = "Exports trie";
+                if (command_size < XX_MACHO_LINKEDIT_DATA_SIZE) break;
+                if (!xx_macho_data_add_command_range(&context, xx_io_get_u32(device, offset + 8, big_endian), xx_io_get_u32(device, offset + 12, big_endian),
+                                                     command == XX_MACHO_LOAD_CODE_SIGNATURE ? XX_FILE_PART_SIGNATURE : XX_FILE_PART_TABLE, index, name)) {
+                    return false;
+                }
+                break;
+            }
+            case XX_MACHO_LOAD_DYLD_INFO:
+            case XX_MACHO_LOAD_DYLD_INFO_ONLY: {
+                static const char *const names[5] = {"Rebase info", "Bind info", "Weak bind info", "Lazy bind info", "Export info"};
+                uint32_t part;
+                if (command_size < XX_MACHO_DYLD_INFO_SIZE) break;
+                for (part = 0U; part < 5U; ++part) {
+                    int64_t field = offset + 8 + (int64_t)part * 8;
+                    if (!xx_macho_data_add_command_range(&context, xx_io_get_u32(device, field, big_endian), xx_io_get_u32(device, field + 4, big_endian),
+                                                         XX_FILE_PART_TABLE, index, names[part])) {
+                        return false;
+                    }
+                }
+                break;
+            }
+            default: break;
+        }
+        command_relative += command_size;
+    }
+    if (!xx_macho_data_finish(output)) return false;
+    if (macho->has_main_entry) output->entry_point_address = xx_macho_data_range_address(&context, macho->main_entry_offset, 1U);
+    return !xx_pd_is_stopped(pd);
+}
+
 bool xx_macho_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd)
 {
     xx_macho *macho = (xx_macho *)format;
@@ -432,6 +642,7 @@ bool xx_macho_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, 
     if (!format || !output || !format->device || !format->base_info_handled || format->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
+    if (mode == XX_MEMORY_MAP_MODE_DATA) return xx_macho_get_data_memory_map(format, output, pd);
     if (mode == XX_MEMORY_MAP_MODE_UNKNOWN) mode = XX_MEMORY_MAP_MODE_SEGMENTS;
     if (mode != XX_MEMORY_MAP_MODE_SEGMENTS) return false;
     total = xx_io_total_size(format->device);

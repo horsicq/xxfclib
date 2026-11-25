@@ -145,6 +145,7 @@ void xx_zip_init(xx_zip *zip, xx_io_device *dev, int64_t base_address)
     zip->lhdr_cache_size = 0;
     zip->lhdr_cache = NULL;
     zip->cd_cache = NULL;
+    zip->unpack_dir_cache = NULL;
     zip->zc_dictionary_enabled = true;
     zip->zc_tried = false;
     zip->zc_have = false;
@@ -178,6 +179,8 @@ void xx_zip_destroy(xx_zip *zip)
         xx_mem_free(zip->cd_cache);
         zip->cd_cache = NULL;
     }
+    xx_mem_free(zip->unpack_dir_cache);
+    zip->unpack_dir_cache = NULL;
     if (zip->format.close) {
         zip->format.close(&zip->format);
     }
@@ -2933,6 +2936,39 @@ static char *xx_zip_stage_candidate(const char *destination, const char *suffix)
     return candidate;
 }
 
+/* The folder part of a destination path (up to the last separator). */
+static size_t xx_zip_parent_length(const wchar_t *path)
+{
+    size_t n = 0, last = 0;
+    for (; path[n]; ++n)
+        if (path[n] == L'/' || path[n] == L'\\') last = n;
+    return last;
+}
+
+/* Creates the destination's folders unless the previous member went to the
+ * same folder.  Extracting thousands of files into a few folders otherwise
+ * walks every path component with CreateDirectory for every member. */
+static bool xx_zip_ensure_parent(xx_zip *zip, const wchar_t *dest, bool force)
+{
+    size_t parent = xx_zip_parent_length(dest);
+    if (!force && parent && zip->unpack_dir_cache) {
+        size_t i = 0;
+        while (i < parent && zip->unpack_dir_cache[i] == dest[i]) ++i;
+        if (i == parent && zip->unpack_dir_cache[i] == 0) return true;
+    }
+    if (!xx_store_create_dirs_w(dest, false)) return false;
+    if (parent) {
+        wchar_t *copy = (wchar_t *)xx_mem_alloc((parent + 1) * sizeof(wchar_t));
+        if (copy) {
+            xx_mem_copy(copy, dest, parent * sizeof(wchar_t));
+            copy[parent] = 0;
+        }
+        xx_mem_free(zip->unpack_dir_cache);
+        zip->unpack_dir_cache = copy;
+    }
+    return true;
+}
+
 static xx_io_device *xx_zip_open_stage_file(const char *destination, char **stage_path)
 {
     unsigned int attempt;
@@ -3155,7 +3191,7 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
     } else {
         bool parent_ready = false;
         /* Ensure parent directory exists */
-        parent_ready = xx_store_create_dirs_w(full_dest_w, false);
+        parent_ready = xx_zip_ensure_parent((xx_zip *)self, full_dest_w, false);
         /* Convert full path to UTF-8 for xx_io_file_open */
         char *dest_path_utf8 = xx_str_unicode_to_utf8(full_dest_w);
         if (parent_ready && dest_path_utf8) {
@@ -3180,7 +3216,18 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
             xx_io_device *destination = NULL;
 
             bool is_encrypted = xx_archive_record_get_meta_bool(rec, XX_META_ID_IS_ENCRYPTED, false);
-            if (overwrite || !xx_io_file_exists_a(dest_path_utf8)) {
+            /* Without overwrite or salvage the member is written in place: the
+             * exclusive create refuses an existing file exactly as the
+             * existence check did, and a failed member's partial file is
+             * removed below.  Overwrite and salvage keep the stage file. */
+            bool direct = !overwrite && !xx_archive_salvage_wanted(&state->options, pd);
+            if (direct) {
+                stage = xx_io_file_open(dest_path_utf8, "wbx");
+                if (!stage && !xx_io_file_exists_a(dest_path_utf8) && xx_zip_ensure_parent((xx_zip *)self, full_dest_w, true)) {
+                    /* the cached folder was removed meanwhile */
+                    stage = xx_io_file_open(dest_path_utf8, "wbx");
+                }
+            } else if (overwrite || !xx_io_file_exists_a(dest_path_utf8)) {
                 stage = xx_zip_open_stage_file(dest_path_utf8, &stage_path);
             }
             if (stage) {
@@ -3213,7 +3260,10 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
                 }
             }
             if (success && xx_pd_is_stopped(pd)) success = false;
-            if (success) {
+            if (direct) {
+                /* in place: nothing to publish; a failure leaves no partial file */
+                if (!success && destination) (void)xx_io_file_remove_a(dest_path_utf8);
+            } else if (success) {
                 success = xx_io_file_replace_a(stage_path, dest_path_utf8, overwrite);
             } else if (stage_path && destination && !is_encrypted && crc_sink.position > 0 && xx_archive_salvage_wanted(&state->options, pd)) {
                 /* A damaged member under XX_META_ID_OPT_FORCE: the staged
@@ -3258,6 +3308,8 @@ void xx_zip_free_archive_records_reading(Abstractformat *self, xx_archive_record
             xx_mem_free(zip->cd_cache);
             zip->cd_cache = NULL;
         }
+        xx_mem_free(zip->unpack_dir_cache);
+        zip->unpack_dir_cache = NULL;
     }
     if (!state) {
         return;

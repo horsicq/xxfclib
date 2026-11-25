@@ -59,6 +59,8 @@ typedef enum {
     XFT_DOS16M,
     XFT_DOS4G,
     XFT_CLI_ASSEMBLY,
+    XFT_FAT, /* Raw FAT12/FAT16 floppy disk image (Atari ST .st, .img). */
+    XFT_MSA, /* Atari MSA (Magic Shadow Archiver) disk image. */
     XFT_COUNT
 } XFileType;
 

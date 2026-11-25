@@ -28,6 +28,7 @@
 #include <string.h>
 #include "LzmaDec.c"
 #include "Lzma2Dec.c"
+#include "xx_lzma_mt_internal.h"
 
 /* Memory allocator adapter for 7-Zip CLzmaDec */
 static void *xx_sz_alloc(ISzAllocPtr p, size_t size)
@@ -384,6 +385,58 @@ bool xx_lzma_decompress_stream(lzma_range_dec *rd, const lzma_props *props, int6
  * LZMA2 decompression
  * ========================================================================= */
 
+static bool lzma2_mt_write(void *context, const uint8_t *data, size_t size)
+{
+    return flush_direct((lzma_out *)context, data, size);
+}
+
+/* Decode in parallel what the stream allows (xx_lzma_mt.inc) and leave the
+ * range decoder at the unit the sequential decoder continues with.  False
+ * when the stream is finished or has failed; *ok then says which. */
+static bool lzma2_decode_units(lzma_range_dec *rd, uint8_t props2_byte, lzma_out *out, xx_pd_struct *pd, bool *ok)
+{
+    xx_lzma2_mt_source source;
+    xx_lzma2_mt_result result;
+    uint64_t resume = 0U;
+    unsigned threads;
+    *ok = false;
+    /* Only a stream whose bytes can be read from any offset, and that has
+     * not been read from yet. */
+    if (rd->ibuf || rd->error || rd->eof || rd->remaining <= 0) return true;
+    if (rd->dev) {
+        /* A device that knows its size and holds the whole stream: one that
+         * can be read at any offset, and read again. */
+        int64_t total;
+        if (!rd->rewindable || rd->dev_offset < 0) return true;
+        total = xx_io_total_size(rd->dev);
+        if (total < rd->dev_offset || total - rd->dev_offset < rd->remaining) return true;
+    } else if (!rd->mem || rd->mem_pos > rd->mem_size || (uint64_t)rd->remaining > (uint64_t)(rd->mem_size - rd->mem_pos)) {
+        return true;
+    }
+    threads = xx_lzma_mt_threads();
+    if (threads < 2U) return true;
+    xx_rt_memset(&source, 0, sizeof(source));
+    source.device = rd->dev;
+    source.offset = rd->dev ? rd->dev_offset : 0;
+    source.memory = rd->dev ? NULL : rd->mem + rd->mem_pos;
+    source.size = (uint64_t)rd->remaining;
+    result = xx_lzma2_mt_decode(&source, props2_byte, threads, xx_lzma_mt_memory(), lzma2_mt_write, out, pd, &resume);
+    if (result == XX_LZMA2_MT_FINISHED) {
+        *ok = true;
+        return false;
+    }
+    if (result == XX_LZMA2_MT_FAILED || resume > (uint64_t)rd->remaining) return false;
+    /* Walking the units moved the device; put the input where decoding
+     * continues. */
+    if (rd->dev) {
+        if (xx_io_seek64(rd->dev, rd->dev_offset + (int64_t)resume, SEEK_SET) != 0) return false;
+    } else {
+        rd->mem_pos += (size_t)resume;
+    }
+    rd->remaining -= (int64_t)resume;
+    return true;
+}
+
 bool xx_lzma2_decompress_stream(lzma_range_dec *rd, uint8_t props2_byte, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap, size_t *out_written, xx_pd_struct *pd)
 {
     if (out_written) *out_written = 0;
@@ -392,6 +445,19 @@ bool xx_lzma2_decompress_stream(lzma_range_dec *rd, uint8_t props2_byte, xx_io_d
     /* A property beyond the decoder's dictionary cap is invalid input, not
      * an allocation failure. */
     if (!xx_lzma2_parse_property(props2_byte, NULL)) return false;
+
+    lzma_out out;
+    xx_rt_memset(&out, 0, sizeof(out));
+    out.dev = dst_dev;
+    out.mem = mem_dst;
+    out.mem_cap = mem_cap;
+    out.pd = pd;
+
+    bool ok = false;
+    if (!lzma2_decode_units(rd, props2_byte, &out, pd, &ok)) {
+        if (out_written) *out_written = ok ? (size_t)out.total_written : 0;
+        return ok && !out.error;
+    }
 
     CLzma2Dec dec;
     Lzma2Dec_Construct(&dec);
@@ -405,14 +471,6 @@ bool xx_lzma2_decompress_stream(lzma_range_dec *rd, uint8_t props2_byte, xx_io_d
 
     Lzma2Dec_Init(&dec);
 
-    lzma_out out;
-    xx_rt_memset(&out, 0, sizeof(out));
-    out.dev = dst_dev;
-    out.mem = mem_dst;
-    out.mem_cap = mem_cap;
-    out.pd = pd;
-
-    bool ok = false;
     size_t dict_flush_pos = 0;
 
     while (!ok) {
@@ -471,3 +529,5 @@ cleanup:
     Lzma2Dec_Free(&dec, &g_xx_sz_alloc);
     return ok && !out.error;
 }
+
+#include "xx_lzma_mt.inc"

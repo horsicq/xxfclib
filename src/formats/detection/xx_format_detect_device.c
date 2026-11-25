@@ -1591,6 +1591,27 @@ static bool xx_format_is_tar_xz_device(xx_io_device *device)
     return prefix.size == sizeof(prefix.data) && xx_format_tar_header_is_valid(prefix.data);
 }
 
+/* As for gzip, bzip2 and xz: decode only the first 512 bytes and test the tar
+ * header.  Running the whole tar_lzma reader here decoded the entire stream
+ * once more before the file was even opened. */
+static bool xx_format_is_tar_lzma_device(xx_io_device *device)
+{
+    xx_format_prefix_sink prefix;
+    xx_io_device sink;
+    uint8_t head[13];
+    int64_t total;
+    if (!device) return false;
+    total = xx_io_total_size(device);
+    if (total < (int64_t)sizeof(head) || !xx_io_read_at(device, 0, head, sizeof(head)) || !xx_lzma_alone_has_header(head, sizeof(head))) return false;
+    xx_mem_zero(&prefix, sizeof(prefix));
+    xx_mem_zero(&sink, sizeof(sink));
+    sink.write = xx_format_prefix_write;
+    sink.priv = &prefix;
+    /* The sink refuses bytes past 512, which stops the decoder there. */
+    (void)xx_lzma_alone_decode_device_ex(device, 0, total, &sink, NULL, NULL, NULL);
+    return prefix.size == sizeof(prefix.data) && xx_format_tar_header_is_valid(prefix.data);
+}
+
 XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_lz4_device, xx_tar_lz4, device, tar_lz4, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
 XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lz4_device, xx_lz4, device, lz4, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
@@ -1942,7 +1963,6 @@ XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_lzip_device,
 
 XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzip_device, xx_lzip, device, lzip, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
-XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_tar_lzma_device, xx_tar_lzma, device, tar_lzma, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 
 XX_FORMAT_READER_ADAPTER(XX_FORMAT_INLINE_ALLOWED, xx_format_is_lzma_device, xx_lzma, device, lzma, result, XX_FORMAT_REQUIRE_DEVICE, handle_base_info)
 

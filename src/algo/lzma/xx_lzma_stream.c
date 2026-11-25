@@ -9,9 +9,21 @@
  * Container headers, concatenation policy and archive metadata belong to
  * formats/lzma. This implementation follows the public-domain LZMA format
  * description (LZMA SDK lzma-specification.txt).
+ *
+ * Two decoders share the window, input and result handling here:
+ *   - the reference decoder, written from the specification, which decides
+ *     every stream one symbol at a time.  It runs probes (a PARTIAL result
+ *     is defined on its symbol boundaries) and streams whose first sixteen
+ *     data bytes after the leading zero are all zero (the all-zero rule is
+ *     defined on its byte counts);
+ *   - the LZMA SDK decoder (LzmaDec.c, with its x64 assembly loop where it
+ *     is built), which decodes everything else several times faster and is
+ *     driven so that it accepts, rejects and measures a stream exactly as
+ *     the reference decoder does.
  */
 
 #include "xx_lzma_stream_internal.h"
+#include "xx_lzma_internal.h"
 #include "platforms/xx_lzma_platform.h"
 #include "xxfclib/algo/lzma/xx_lzma.h"
 #include "xxfclib/global/xx_global.h"
@@ -44,6 +56,17 @@
 
 #define XX_LZMA_MARKER_DISTANCE UINT32_C(0xFFFFFFFF)
 
+/* Data bytes looked at to choose the decoder: the leading zero and the
+ * sixteen bytes the all-zero rule covers (XX_LZMA_ZERO_DATA_LIMIT). */
+#define XX_LZMA_HEAD_SIZE 17U
+/* CLzmaDec.remainLen once the SDK decoder has read an end marker
+ * (kMatchSpecLenStart in LzmaDec.c). */
+#define XX_LZMA_SDK_MARKER_SEEN 274U
+/* The SDK decoder's output is written out once this much is pending, not
+ * only when the window is full: a window of tens of megabytes in one write
+ * is several times slower than the same bytes in small writes. */
+#define XX_LZMA_FLUSH_STEP ((uint32_t)1U << 20)
+
 struct xx_lzma_stream_decoder_s {
     /* Input: the device range [in_offset, in_end) not yet buffered. */
     xx_io_device *device;
@@ -75,7 +98,23 @@ struct xx_lzma_stream_decoder_s {
     uint8_t *in_buffer;
     size_t io_capacity;
     bool lenient;
+    /* The SDK decoder; its probability model is allocated per stream. */
+    CLzmaDec sdk;
 };
+
+static void *xx_lzma_stream_sz_alloc(ISzAllocPtr allocator, size_t size)
+{
+    (void)allocator;
+    return xx_mem_alloc(size);
+}
+
+static void xx_lzma_stream_sz_free(ISzAllocPtr allocator, void *address)
+{
+    (void)allocator;
+    xx_mem_free(address);
+}
+
+static const ISzAlloc g_xx_lzma_stream_sz_alloc = {xx_lzma_stream_sz_alloc, xx_lzma_stream_sz_free};
 
 bool xx_lzma_stream_read_exact_at(xx_io_device *device, int64_t offset, void *data, size_t size, xx_pd_struct *pd)
 {
@@ -293,6 +332,7 @@ static void xx_lzma_release_stream(xx_lzma_stream_decoder *decoder)
 {
     if (decoder->window) xx_mem_free(decoder->window);
     if (decoder->probs) xx_mem_free(decoder->probs);
+    LzmaDec_FreeProbs(&decoder->sdk, &g_xx_lzma_stream_sz_alloc);
     decoder->window = NULL;
     decoder->probs = NULL;
 }
@@ -325,14 +365,186 @@ static bool xx_lzma_prepare_stream(xx_lzma_stream_decoder *decoder, const xx_lzm
     decoder->window_size = decoder->window_limit < XX_LZMA_WINDOW_FIRST ? decoder->window_limit : XX_LZMA_WINDOW_FIRST;
     decoder->probs_count = xx_lzma_stream_model_entries(header);
     decoder->window = (uint8_t *)xx_mem_alloc(decoder->window_size);
+    if (!decoder->window) {
+        xx_lzma_release_stream(decoder);
+        decoder->alloc_failed = true;
+        return false;
+    }
+    return true;
+}
+
+/* The reference decoder's probability model. */
+static bool xx_lzma_prepare_model(xx_lzma_stream_decoder *decoder)
+{
     decoder->probs = (uint16_t *)xx_mem_alloc(decoder->probs_count * sizeof(uint16_t));
-    if (!decoder->window || !decoder->probs) {
+    if (!decoder->probs) {
         xx_lzma_release_stream(decoder);
         decoder->alloc_failed = true;
         return false;
     }
     xx_lzma_platform_select()->fill_probs(decoder->probs, decoder->probs_count);
     return true;
+}
+
+/* ------------------------------------------------------ the SDK decoder */
+
+static bool xx_lzma_all_zero(const uint8_t *data, size_t size)
+{
+    size_t index;
+    for (index = 0U; index < size; ++index) {
+        if (data[index] != 0U) return false;
+    }
+    return true;
+}
+
+/* Give the SDK decoder what input there is; at the end of the input it is
+ * still called (with nothing), because a match held over a window boundary
+ * needs no input to be finished. */
+static void xx_lzma_fast_fill(xx_lzma_stream_decoder *decoder, bool *input_ended)
+{
+    if (decoder->in_pos == decoder->in_len && !*input_ended && !xx_lzma_refill(decoder)) {
+        *input_ended = true;
+        decoder->in_pos = 0U;
+        decoder->in_len = 0U;
+    }
+}
+
+/*
+ * Decode a stream with the SDK decoder.  The caller has prepared the window
+ * and buffered the first input block, which holds at least the five bytes
+ * that start the range coder.  What the reference decoder defines is kept:
+ *   - the window, and so the distances a stream may use, is the reference
+ *     decoder's (prop.dicSize is set to its limit; the SDK tests a distance
+ *     against the bytes decoded so far until that many are held);
+ *   - a known-size stream stops at its size; a match that would cross it is
+ *     an error, or is cut there by a lenient decoder; with the coder not at
+ *     rest only an end marker may follow, which the SDK tests itself when it
+ *     is asked to finish (LZMA_FINISH_END) with no room for output;
+ *   - both decoders have normalized the range coder when a symbol ends, so
+ *     the bytes counted are the same wherever a stream stops;
+ *   - input that ends inside a symbol fails the stream.
+ */
+static xx_lzma_stream_result xx_lzma_decode_stream_fast(xx_lzma_stream_decoder *decoder, const xx_lzma_stream_props *header, xx_lzma_stream_info *info)
+{
+    CLzmaDec *sdk = &decoder->sdk;
+    const bool known = header->declared_size != XX_LZMA_STREAM_UNKNOWN_SIZE;
+    const uint64_t target = known ? header->declared_size : UINT64_MAX;
+    uint8_t head[XX_LZMA_HEAD_SIZE];
+    uint8_t raw_props[LZMA_PROPS_SIZE];
+    size_t head_size = decoder->in_len < XX_LZMA_HEAD_SIZE ? decoder->in_len : XX_LZMA_HEAD_SIZE;
+    bool marker = false;
+    bool marker_code_left = false;
+    bool mismatch = false;
+    bool input_ended = false;
+    ELzmaStatus status = LZMA_STATUS_NOT_SPECIFIED;
+    SizeT in_size;
+    SRes res;
+
+    xx_rt_memcpy(head, decoder->in_buffer, head_size);
+    raw_props[0] = (uint8_t)((header->pb * 5U + header->lp) * 9U + header->lc);
+    raw_props[1] = raw_props[2] = raw_props[3] = raw_props[4] = 0U;
+    res = LzmaDec_AllocateProbs(sdk, raw_props, LZMA_PROPS_SIZE, &g_xx_lzma_stream_sz_alloc);
+    if (res != SZ_OK) {
+        if (res == SZ_ERROR_MEM) decoder->alloc_failed = true;
+        return XX_LZMA_STREAM_FAILED;
+    }
+    sdk->prop.dicSize = decoder->window_limit;
+    sdk->dic = decoder->window;
+    sdk->dicBufSize = decoder->window_size;
+    LzmaDec_Init(sdk);
+
+    /* Start the range coder: with no room for output the SDK reads the five
+     * initial bytes and stops.  It refuses a first byte that is not zero and
+     * a code that could only open the stream with a repeat. */
+    in_size = decoder->in_len;
+    res = LzmaDec_DecodeToDic(sdk, 0U, decoder->in_buffer, &in_size, LZMA_FINISH_ANY, &status);
+    decoder->in_pos = in_size;
+    decoder->consumed = in_size;
+    if (res != SZ_OK || in_size != 5U) return XX_LZMA_STREAM_FAILED;
+
+    while (decoder->produced != target) {
+        SizeT limit;
+        SizeT before;
+        if (decoder->produced >= decoder->next_pd_check) {
+            decoder->next_pd_check = decoder->produced + XX_LZMA_PD_STEP;
+            if (decoder->pd && xx_pd_is_stopped(decoder->pd)) return XX_LZMA_STREAM_FAILED;
+        }
+        if (sdk->dicPos == decoder->window_size) {
+            decoder->window_pos = (uint32_t)sdk->dicPos;
+            if (!xx_lzma_window_advance(decoder)) return XX_LZMA_STREAM_FAILED;
+            sdk->dic = decoder->window;
+            sdk->dicBufSize = decoder->window_size;
+            sdk->dicPos = decoder->window_pos;
+        }
+        limit = decoder->window_size;
+        if (target - decoder->produced < (uint64_t)(limit - sdk->dicPos)) limit = sdk->dicPos + (SizeT)(target - decoder->produced);
+        xx_lzma_fast_fill(decoder, &input_ended);
+        before = sdk->dicPos;
+        in_size = decoder->in_len - decoder->in_pos;
+        res = LzmaDec_DecodeToDic(sdk, limit, decoder->in_buffer + decoder->in_pos, &in_size, LZMA_FINISH_ANY, &status);
+        decoder->in_pos += in_size;
+        decoder->consumed += in_size;
+        decoder->produced += sdk->dicPos - before;
+        decoder->window_pos = (uint32_t)sdk->dicPos;
+        if (res != SZ_OK) {
+            /* An end marker that leaves the coder not at rest is an error to
+             * the SDK; what it means is decided below. */
+            if (res != SZ_ERROR_DATA || sdk->remainLen != XX_LZMA_SDK_MARKER_SEEN) return XX_LZMA_STREAM_FAILED;
+            marker = true;
+            marker_code_left = true;
+            break;
+        }
+        if (status == LZMA_STATUS_FINISHED_WITH_MARK) {
+            marker = true;
+            break;
+        }
+        if (input_ended && (status == LZMA_STATUS_NEEDS_MORE_INPUT || (in_size == 0U && sdk->dicPos == before && sdk->dicPos < limit))) {
+            return XX_LZMA_STREAM_FAILED;
+        }
+        if (decoder->window_pos - decoder->flush_pos >= XX_LZMA_FLUSH_STEP && !xx_lzma_flush(decoder, decoder->window_pos)) return XX_LZMA_STREAM_FAILED;
+    }
+
+    if (marker) {
+        /* Before the declared size, or with the coder not at rest, an end
+         * marker is only taken leniently, and only as an early end. */
+        if (known && decoder->produced != header->declared_size) {
+            if (!decoder->lenient) return XX_LZMA_STREAM_FAILED;
+            mismatch = true;
+        } else if (marker_code_left) {
+            return XX_LZMA_STREAM_FAILED;
+        }
+    } else if (sdk->remainLen != 0U) {
+        /* A match runs past the declared size. */
+        if (!decoder->lenient) return XX_LZMA_STREAM_FAILED;
+        mismatch = true;
+    } else if (sdk->code != 0U) {
+        if (decoder->lenient) {
+            mismatch = true;
+        } else {
+            /* Known size reached with the coder not at rest: only an end
+             * marker may follow. */
+            for (;;) {
+                xx_lzma_fast_fill(decoder, &input_ended);
+                in_size = decoder->in_len - decoder->in_pos;
+                res = LzmaDec_DecodeToDic(sdk, sdk->dicPos, decoder->in_buffer + decoder->in_pos, &in_size, LZMA_FINISH_END, &status);
+                decoder->in_pos += in_size;
+                decoder->consumed += in_size;
+                if (res != SZ_OK) return XX_LZMA_STREAM_FAILED;
+                if (status == LZMA_STATUS_FINISHED_WITH_MARK) break;
+                if (status != LZMA_STATUS_NEEDS_MORE_INPUT || input_ended) return XX_LZMA_STREAM_FAILED;
+            }
+            marker = true;
+        }
+    }
+    if (!xx_lzma_flush(decoder, decoder->window_pos)) return XX_LZMA_STREAM_FAILED;
+    info->produced = decoder->produced;
+    info->consumed = decoder->consumed;
+    info->size_mismatch = mismatch;
+    info->end_marker = marker;
+    /* This decoder only runs when a data byte among the first sixteen is not
+     * zero, so the data read was all zeros only if it ended before that byte. */
+    info->zero_data = decoder->consumed <= (uint64_t)head_size && xx_lzma_all_zero(head + 1U, (size_t)decoder->consumed - 1U);
+    return XX_LZMA_STREAM_FINISHED;
 }
 
 /*
@@ -366,6 +578,16 @@ static xx_lzma_stream_result xx_lzma_decode_stream_data(xx_lzma_stream_decoder *
     if (!xx_lzma_prepare_stream(decoder, header, data_offset, data_end)) {
         return XX_LZMA_STREAM_FAILED;
     }
+    /* Everything but a probe, and data that opens with seventeen zero bytes
+     * (or is nothing but fewer zero bytes), goes to the SDK decoder. */
+    if (probe_output == 0U && xx_lzma_refill(decoder)) {
+        const uint64_t available = (uint64_t)(data_end - data_offset);
+        const size_t head_size = available < XX_LZMA_HEAD_SIZE ? (size_t)available : XX_LZMA_HEAD_SIZE;
+        if (decoder->in_len >= head_size && !xx_lzma_all_zero(decoder->in_buffer + 1U, head_size - 1U)) {
+            return xx_lzma_decode_stream_fast(decoder, header, info);
+        }
+    }
+    if (!xx_lzma_prepare_model(decoder)) return XX_LZMA_STREAM_FAILED;
     probs = decoder->probs;
     if (xx_lzma_next_byte(decoder) != 0U) return XX_LZMA_STREAM_FAILED;
     decoder->range = UINT32_C(0xFFFFFFFF);
@@ -531,6 +753,7 @@ xx_lzma_stream_decoder *xx_lzma_stream_decoder_create(xx_io_device *device, xx_i
     }
     decoder->in_buffer = (uint8_t *)(decoder + 1);
     decoder->io_capacity = io_capacity;
+    LzmaDec_CONSTRUCT(&decoder->sdk)
     decoder->device = device;
     decoder->destination = destination;
     decoder->pd = pd;

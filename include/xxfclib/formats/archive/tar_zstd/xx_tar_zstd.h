@@ -19,7 +19,7 @@ typedef struct xx_tar_zstd xx_tar_zstd;
 typedef struct xx_tar_zstd xx_tar_zstd_t;
 typedef struct xx_tar_zstd XTarZstd;
 
-/* The ids are defined by src/datastructs/tar.xxds and must match it. */
+/* The ids are defined by xxdatastructs src/datastructs/tar.xxds and must match it. */
 /** TAR structure identifiers, expressed in decoded TAR offsets. */
 typedef xx_tar_data_struct_id_t xx_tar_zstd_data_struct_id_t;
 

@@ -74,6 +74,11 @@ typedef struct {
     uint32_t code;
     bool eof;
     bool error;
+    /* Set by callers whose device input can be read again from any offset:
+     * the stream's first byte is at dev_offset.  It lets an LZMA2 stream be
+     * walked ahead of the decoder (multi-threaded decoding). */
+    bool rewindable;
+    int64_t dev_offset;
 } lzma_range_dec;
 
 /* =========================================================================

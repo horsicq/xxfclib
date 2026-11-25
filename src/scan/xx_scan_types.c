@@ -3,6 +3,7 @@
  */
 
 #include "xx_scan_types_internal.h"
+#include "xx_scan_floppy_internal.h"
 #include "xxfclib/memory/xx_memory.h"
 
 typedef struct xx_scan_type_window {
@@ -169,6 +170,12 @@ static xx_list_t *xx_scan_detect_type_window(xx_io_device *device, const xx_scan
     if (xx_scan_type_is_java_class(head, head_size)) return xx_scan_type_list(XX_FILE_TYPE_JAVA_CLASS, pd);
     type = xx_scan_type_detect_macho(head, head_size);
     if (type != XX_FILE_TYPE_UNKNOWN) return xx_scan_type_list(type, pd);
+    /* Floppy disk images, where XFormats tests them: after the executables
+     * with a magic and before everything else, so a FAT image whose boot
+     * sector opens with the GEMDOS branch 0x601A, or that ends in a ZIP
+     * directory, is the image. */
+    if (xx_scan_floppy_is_fat(device, size)) return xx_scan_type_list(XX_FILE_TYPE_FAT, pd);
+    if (head_size >= 2U && head[0] == 0x0EU && head[1] == 0x0FU && xx_scan_floppy_is_msa(device, size)) return xx_scan_type_list(XX_FILE_TYPE_ATARI_ST_MSA, pd);
     type = xx_scan_type_detect_gzip(device, head, head_size, pd);
     if (type != XX_FILE_TYPE_UNKNOWN) return xx_scan_type_list(type, pd);
     type = xx_scan_type_detect_dex(head, head_size);

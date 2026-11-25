@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 #include "xx_scan_archives_internal.h"
+#include "xx_scan_floppy_internal.h"
 #include "xxfclib/formats/archive/zip/xx_zip.h"
 #include "xxfclib/formats/archive/lha/xx_lha.h"
 #include "xxfclib/formats/archive/gz/xx_gz.h"
@@ -270,6 +271,10 @@ static bool xx_scan_archive_is_scanable_header(const uint8_t *data, size_t size,
     if (size >= 7 && data[2] == '-' && data[3] == 'l' && (data[4] == 'h' || data[4] == 'z') && data[6] == '-') {
         return true;
     }
+    /* GEMDOS program */
+    if (data[0] == 0x60 && data[1] == 0x1a) return true;
+    /* Floppy disk images: a raw FAT12/FAT16 image (by its BPB) and MSA */
+    if (xx_scan_floppy_head_may_be_image(data, size)) return true;
     /* compress (a .tar.Z is FT_ARCHIVE), RIB and SPIS/TCompress */
     if (data[0] == 0x1f && data[1] == 0x9d) return true;
     if (size >= 8 && !memcmp(data, "RIB\0", 4)) return true;
@@ -984,6 +989,80 @@ static bool xx_scan_archive_compressed_stream(xx_io_device *view, xx_file_type_t
     return result || xx_scan_archive_error(pd, XXFC_ERR_INVALID_ARG, "Cannot decode complete compressed archive stream");
 }
 
+/* The files of a raw FAT12/FAT16 floppy image, in the order and under the
+ * names XFATImage lists them (xx_scan_floppy_internal.h). Each is copied out
+ * of its cluster chain as a "Store" member. A contiguous file reports the
+ * offset of its first cluster; a fragmented one has no extent in the image
+ * and reports offset 0, as XScanEngine prints an archive-stream record. A
+ * file that cannot be read is skipped. */
+static bool xx_scan_archive_fat_stream(xx_io_device *view, int64_t origin, int64_t range_size, uint64_t member_limit, uint64_t total_limit, uint32_t count_limit,
+                                       bool filter_scanable, xx_scan_archive_callback callback, void *context, xx_pd_struct *pd)
+{
+    bool oom = false;
+    xx_scan_fat_image *image = xx_scan_fat_open(view, range_size, &oom);
+    uint64_t consumed = 0U;
+    size_t index, count;
+    bool result = false;
+    if (!image) return oom ? xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate FAT image directory") : !xx_scan_archive_stopped(pd);
+    count = xx_scan_fat_count(image);
+    for (index = 0; index < count && index < count_limit; ++index) {
+        const xx_scan_fat_record *record = xx_scan_fat_record_at(image, index);
+        xx_scan_archive_sink sink;
+        xx_io_device destination;
+        bool decoded, visited = true;
+        if (xx_scan_archive_stopped(pd)) goto done;
+        if (record->size > member_limit || record->size > (total_limit > consumed ? total_limit - consumed : 0U)) continue;
+        if (!xx_scan_archive_sink_init(&sink, &destination, record->size, record->size, false, record->name, filter_scanable, pd)) {
+            xx_scan_archive_sink_cleanup(&sink);
+            goto done;
+        }
+        sink.method = "Store";
+        decoded = !sink.unavailable && xx_scan_fat_read(image, index, &destination) && !sink.failed && !sink.unavailable && !sink.overflow && sink.size == record->size &&
+                  !xx_scan_archive_stopped(pd);
+        if (decoded && xx_scan_archive_sink_finish(&sink) && !sink.filtered && !sink.discard)
+            visited = xx_scan_archive_publish(&sink, record->name, record->contiguous ? origin + record->offset : 0, (int64_t)record->size, true, callback, context, pd);
+        if (!xx_scan_archive_sink_cleanup(&sink) || sink.failed || xx_pd_is_stopped(pd)) goto done;
+        if (!visited) {
+            result = !xx_scan_archive_stopped(pd);
+            goto done;
+        }
+        if (xx_scan_archive_stopped(pd)) goto done;
+        consumed += record->size;
+    }
+    result = !xx_scan_archive_stopped(pd);
+done:
+    xx_scan_fat_close(image);
+    return result || xx_scan_archive_error(pd, XXFC_ERR_INVALID_ARG, "Cannot enumerate FAT image members");
+}
+
+/* The decoded disk image of an Atari MSA file, its one member, as XMSA
+ * unpacks it: "msa-content", method "RLE". It is an archive-stream record
+ * without an extent, printed with offset 0 and its decoded size. An image
+ * that does not decode is skipped. */
+static bool xx_scan_archive_msa_stream(xx_io_device *view, int64_t range_size, uint64_t member_limit, uint64_t total_limit, bool filter_scanable,
+                                       xx_scan_archive_callback callback, void *context, xx_pd_struct *pd)
+{
+    static const char name[] = "msa-content";
+    xx_scan_archive_sink sink;
+    xx_io_device destination;
+    int64_t image_size = 0;
+    bool decoded, oom = false, result;
+    if (!xx_scan_msa_info(view, range_size, NULL, &image_size)) return !xx_scan_archive_stopped(pd);
+    if ((uint64_t)image_size > member_limit || (uint64_t)image_size > total_limit) return true;
+    if (!xx_scan_archive_sink_init(&sink, &destination, (uint64_t)image_size, (uint64_t)image_size, false, name, filter_scanable, pd)) {
+        xx_scan_archive_sink_cleanup(&sink);
+        return false;
+    }
+    sink.method = "RLE";
+    decoded = !sink.unavailable && xx_scan_msa_decode(view, range_size, &destination, &oom) && !sink.failed && !sink.unavailable && !sink.overflow &&
+              sink.size == (uint64_t)image_size && !xx_scan_archive_stopped(pd);
+    if (decoded && xx_scan_archive_sink_finish(&sink) && !sink.filtered && !sink.discard)
+        (void)xx_scan_archive_publish(&sink, name, 0, image_size, true, callback, context, pd);
+    result = xx_scan_archive_sink_cleanup(&sink) && !sink.failed && !xx_scan_archive_stopped(pd);
+    if (oom) return xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate MSA track buffer");
+    return result || xx_scan_archive_error(pd, XXFC_ERR_INVALID_ARG, "Cannot decode MSA disk image");
+}
+
 bool xx_scan_visit_archives_ex(xx_io_device *device, const xx_scan_options *options, xx_scan_archive_callback callback, xx_scan_archive_report_callback report,
                                void *context, xx_pd_struct *pd)
 {
@@ -1000,7 +1079,9 @@ bool xx_scan_visit_archives_ex(xx_io_device *device, const xx_scan_options *opti
         return xx_scan_archive_error(pd, XXFC_ERR_INVALID_ARG, "Invalid archive scan range");
     type = options->file_type;
     if (type == XX_FILE_TYPE_NPM) type = XX_FILE_TYPE_GZ;
-    if (!xx_scan_archive_is_zip(type) && type != XX_FILE_TYPE_LHA && type != XX_FILE_TYPE_GZ && type != XX_FILE_TYPE_BZ2) return true;
+    if (!xx_scan_archive_is_zip(type) && type != XX_FILE_TYPE_LHA && type != XX_FILE_TYPE_GZ && type != XX_FILE_TYPE_BZ2 && type != XX_FILE_TYPE_FAT &&
+        type != XX_FILE_TYPE_ATARI_ST_MSA)
+        return true;
     filter_scanable = !options->aggressive_scan;
     member_limit = options->archive_max_member_size ? options->archive_max_member_size : XX_SCAN_ARCHIVE_MEMBER_DEFAULT;
     total_limit = options->archive_max_total_size ? options->archive_max_total_size : XX_SCAN_ARCHIVE_TOTAL_DEFAULT;
@@ -1019,7 +1100,11 @@ bool xx_scan_visit_archives_ex(xx_io_device *device, const xx_scan_options *opti
         xx_scan_archive_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot create bounded archive scan view");
         goto done;
     }
-    if (type == XX_FILE_TYPE_GZ || type == XX_FILE_TYPE_BZ2) {
+    if (type == XX_FILE_TYPE_FAT) {
+        result = xx_scan_archive_fat_stream(view, options->offset, range_size, member_limit, total_limit, count_limit, filter_scanable, callback, context, pd);
+    } else if (type == XX_FILE_TYPE_ATARI_ST_MSA) {
+        result = xx_scan_archive_msa_stream(view, range_size, member_limit, total_limit, filter_scanable, callback, context, pd);
+    } else if (type == XX_FILE_TYPE_GZ || type == XX_FILE_TYPE_BZ2) {
         result = xx_scan_archive_compressed_stream(view, type, options->offset, member_limit < total_limit ? member_limit : total_limit, callback, context, pd);
     } else if (type == XX_FILE_TYPE_LHA) {
         xx_lha reader;

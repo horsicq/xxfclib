@@ -61,6 +61,7 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_resources.c
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_archives.c
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_archive_probe.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_floppy.c
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_result.c
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_result_format.c
     ${CMAKE_CURRENT_LIST_DIR}/src/scan/xx_scan_color.c

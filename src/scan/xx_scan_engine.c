@@ -298,12 +298,15 @@ typedef struct xx_scan_resources_context {
 } xx_scan_resources_context;
 
 /* XScanEngine expands ZIP, 7Z, RAR, CAB and ISO 9660 containers, so also
- * JAR, APK and IPA, which are ZIP files. cdie reads members of the ZIP family
- * only; the shipped XScanEngine types 7Z and CAB files as Binary and expands
- * neither. GZIP, BZIP2, LHA, Mach-O FAT and the rest are never expanded. */
+ * JAR, APK and IPA, which are ZIP files, and the floppy disk images: a raw
+ * FAT12/FAT16 image and an Atari MSA image. cdie reads members of the ZIP
+ * family and of the floppy images; the shipped XScanEngine types 7Z and CAB
+ * files as Binary and expands neither. GZIP, BZIP2, LHA, Mach-O FAT and the
+ * rest are never expanded. */
 static bool xx_scan_expands_archive(xx_file_type_t type)
 {
-    return type == XX_FILE_TYPE_ZIP || type == XX_FILE_TYPE_ZIP64 || type == XX_FILE_TYPE_JAR || type == XX_FILE_TYPE_APK || type == XX_FILE_TYPE_IPA;
+    return type == XX_FILE_TYPE_ZIP || type == XX_FILE_TYPE_ZIP64 || type == XX_FILE_TYPE_JAR || type == XX_FILE_TYPE_APK || type == XX_FILE_TYPE_IPA ||
+           type == XX_FILE_TYPE_FAT || type == XX_FILE_TYPE_ATARI_ST_MSA;
 }
 
 /* Report the pending archive error in result, as the "Last error" record of
@@ -342,6 +345,10 @@ static bool xx_scan_is_scanable_type(xx_file_type_t type)
         case XX_FILE_TYPE_MACHOFAT:
         case XX_FILE_TYPE_DEX:
         case XX_FILE_TYPE_PDF:
+        /* GEMDOS programs are what an Atari floppy image holds. */
+        case XX_FILE_TYPE_ATARIST:
+        case XX_FILE_TYPE_FAT:
+        case XX_FILE_TYPE_ATARI_ST_MSA:
         case XX_FILE_TYPE_ARCHIVE:
         case XX_FILE_TYPE_ZIP:
         case XX_FILE_TYPE_JAR:
@@ -368,8 +375,8 @@ static bool xx_scan_is_scanable_types(const xx_list_t *types)
 }
 
 /* XScanEngine::isScanable for a resource or archive member, which a
- * non-aggressive scan scans only when it is an executable, DEX, PDF or
- * archive. XFormats also types a TAR as an archive, which the common
+ * non-aggressive scan scans only when it is an executable (GEMDOS programs
+ * included), DEX, PDF or archive (floppy disk images included). XFormats also types a TAR as an archive, which the common
  * detector names Binary. */
 static bool xx_scan_child_is_scanable(xx_scan_engine *engine, xx_io_device *device, const xx_scan_options *options, xx_pd_struct *pd)
 {

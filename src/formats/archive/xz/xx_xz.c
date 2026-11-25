@@ -11,6 +11,7 @@
 #include "xxfclib/algo/crc/xx_crc.h"
 #include "../../../algo/lzma/xx_lzma_stream_internal.h"
 #include "../../../algo/lzma/xx_lzma2_filters_internal.h"
+#include "../../../algo/lzma/xx_lzma_mt_internal.h"
 #include "../7zip/xx_7zip_branch.h"
 #include "../7zip/xx_7zip_defs.h"
 #include "xx_xz_riscv_native.h"
@@ -807,7 +808,7 @@ static bool xx_xz_lzma2_fills_extent(xx_io_device *device, int64_t offset, int64
 }
 
 static bool xx_xz_verify_filter_chain_block(Abstractformat *self, const xx_xz_stream *stream, const xx_xz_block *block, const xx_list_s *options, xx_io_device *target,
-                                            xx_pd_struct *pd)
+                                            xx_pd_struct *pd, unsigned threads)
 {
     xx_xz_filter_sink *sink;
     xx_lzma2_decoded_info decoded;
@@ -844,8 +845,9 @@ static bool xx_xz_verify_filter_chain_block(Abstractformat *self, const xx_xz_st
         goto cleanup;
     }
     if (!xx_xz_lzma2_fills_extent(self->device, block->data_offset, block->compressed_size, pd) ||
-        !xx_lzma2_unpack_filtered_checked_device(self->device, block->data_offset, block->compressed_size, block->lzma2_property,
-                                                 block->delta_after_bcj ? 0U : block->delta_distance, block->uncompressed_size, &sink->device, 0U, &decoded, pd) ||
+        !xx_lzma2_unpack_filtered_checked_device_threads(self->device, block->data_offset, block->compressed_size, block->lzma2_property,
+                                                         block->delta_after_bcj ? 0U : block->delta_distance, block->uncompressed_size, &sink->device, 0U, &decoded,
+                                                         pd, threads) ||
         sink->failed || decoded.written != block->uncompressed_size || (pd && xx_pd_is_stopped(pd)) || !xx_xz_filter_push(sink, 0U, NULL, 0U, true) ||
         sink->written != block->uncompressed_size || !xx_lzma_stream_read_exact_at(self->device, block->check_offset, expected, (size_t)block->check_size, pd) ||
         (pd && xx_pd_is_stopped(pd)))
@@ -862,15 +864,17 @@ cleanup:
     return valid;
 }
 
+/* threads: 0 lets the LZMA2 decoder use threads of its own, 1 keeps the
+ * whole Block on the calling thread (see xx_lzma2_unpack_device_threads). */
 static bool xx_xz_verify_block(Abstractformat *self, const xx_xz_stream *stream, const xx_xz_block *block, const xx_list_s *options, xx_io_device *target,
-                               xx_pd_struct *pd)
+                               xx_pd_struct *pd, unsigned threads)
 {
     xx_lzma2_decoded_info decoded;
     uint8_t expected[XX_SHA256_DIGEST_SIZE];
     unsigned check_mask;
     bool valid = false;
     if (!self || !stream || !block || !block->extractable) return false;
-    if (block->bcj_method != 0U || block->chain_kind[0] != 0U) return xx_xz_verify_filter_chain_block(self, stream, block, options, target, pd);
+    if (block->bcj_method != 0U || block->chain_kind[0] != 0U) return xx_xz_verify_filter_chain_block(self, stream, block, options, target, pd, threads);
     switch (stream->check_type) {
         case XX_XZ_CHECK_NONE: check_mask = 0U; break;
         case XX_XZ_CHECK_CRC32: check_mask = XX_LZMA2_CALC_CRC32; break;
@@ -879,8 +883,8 @@ static bool xx_xz_verify_block(Abstractformat *self, const xx_xz_stream *stream,
         default: return false;
     }
     if (!xx_xz_lzma2_fills_extent(self->device, block->data_offset, block->compressed_size, pd) ||
-        !xx_lzma2_unpack_filtered_checked_device(self->device, block->data_offset, block->compressed_size, block->lzma2_property, block->delta_distance,
-                                                 block->uncompressed_size, target, check_mask, &decoded, pd) ||
+        !xx_lzma2_unpack_filtered_checked_device_threads(self->device, block->data_offset, block->compressed_size, block->lzma2_property, block->delta_distance,
+                                                         block->uncompressed_size, target, check_mask, &decoded, pd, threads) ||
         !xx_lzma_stream_read_exact_at(self->device, block->check_offset, expected, (size_t)block->check_size, pd)) {
         return false;
     }
@@ -894,19 +898,289 @@ static bool xx_xz_verify_block(Abstractformat *self, const xx_xz_stream *stream,
     return valid;
 }
 
+static bool xx_xz_extract_blocks(Abstractformat *self, const xx_xz_private *priv, const xx_list_s *options, xx_io_device *target, xx_pd_struct *pd)
+{
+    for (size_t s = 0U; s < priv->stream_count; ++s) {
+        const xx_xz_stream *stream = &priv->streams[s];
+        for (size_t b = 0U; b < stream->block_count; ++b) {
+            const xx_xz_block *block = &priv->blocks[stream->first_block + b];
+            if (!xx_xz_verify_block(self, stream, block, options, target, pd, 0U)) return false;
+        }
+    }
+    return true;
+}
+
+#if XX_LZMA_MT
+/* ------------------------------------------------ Blocks on worker threads */
+
+/* The Blocks of an xz file are independent: each has its own filter chain,
+ * dictionary and check, and the index gives its extent.  With several of
+ * them, each is decoded and checked on a worker thread, from a copy of its
+ * bytes into a buffer of its own, by the very code that decodes a Block in
+ * place (xx_xz_verify_block on a memory device).  This thread reads the
+ * input and writes the output, in order.  A Block a worker refuses is
+ * decoded again here, into the target, so a damaged file fails -- and leaves
+ * the output -- exactly as it does without threads.  A Block too large for
+ * the memory budget is decoded here as well, once the Blocks before it are
+ * written; its LZMA2 stream may then use threads of its own. */
+
+typedef struct xx_xz_mt_memory_s {
+    xx_io_device device;
+    const uint8_t *data;
+    size_t size;
+    size_t position;
+} xx_xz_mt_memory;
+
+static ssize_t xx_xz_mt_memory_read(xx_io_device *device, void *buffer, size_t size)
+{
+    xx_xz_mt_memory *memory = (xx_xz_mt_memory *)device->priv;
+    size_t available = memory->size - memory->position;
+    if (size > available) size = available;
+    if (size != 0U) xx_mem_copy(buffer, memory->data + memory->position, size);
+    memory->position += size;
+    return (ssize_t)size;
+}
+
+static int xx_xz_mt_memory_seek64(xx_io_device *device, int64_t offset, int whence)
+{
+    xx_xz_mt_memory *memory = (xx_xz_mt_memory *)device->priv;
+    int64_t base = whence == SEEK_SET ? 0 : (whence == SEEK_CUR ? (int64_t)memory->position : (int64_t)memory->size);
+    if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END) return -1;
+    if (offset < -base || offset > (int64_t)memory->size - base) return -1;
+    memory->position = (size_t)(base + offset);
+    return 0;
+}
+
+static int xx_xz_mt_memory_seek(xx_io_device *device, long offset, int whence)
+{
+    return xx_xz_mt_memory_seek64(device, (int64_t)offset, whence);
+}
+
+static int64_t xx_xz_mt_memory_tell(xx_io_device *device)
+{
+    return (int64_t)((xx_xz_mt_memory *)device->priv)->position;
+}
+
+static int64_t xx_xz_mt_memory_size(xx_io_device *device)
+{
+    return (int64_t)((xx_xz_mt_memory *)device->priv)->size;
+}
+
+typedef struct xx_xz_mt_job_s {
+    const xx_xz_stream *stream;
+    const xx_xz_block *block; /* as the reader holds it */
+    xx_xz_block local;        /* the same Block, with offsets into input */
+    uint8_t *input;
+    size_t in_size;
+    uint8_t *output;
+    size_t out_size;
+    size_t out_position;
+    xx_io_device sink;
+    bool keep_output;
+    uint64_t memory;
+    xx_pd_struct *stop;
+} xx_xz_mt_job;
+
+static ssize_t xx_xz_mt_sink_write(xx_io_device *device, const void *data, size_t size)
+{
+    xx_xz_mt_job *job = (xx_xz_mt_job *)device->priv;
+    if (size > job->out_size - job->out_position) return -1;
+    if (size != 0U) xx_mem_copy(job->output + job->out_position, data, size);
+    job->out_position += size;
+    return (ssize_t)size;
+}
+
+static void xx_xz_mt_job_free(xx_xz_mt_job *job)
+{
+    if (!job) return;
+    xx_mem_free(job->input);
+    xx_mem_free(job->output);
+    xx_mem_free(job);
+}
+
+/* What the Block takes in memory; false when it is not one to hand to a
+ * worker (the sequential code then says what it is). */
+static bool xx_xz_mt_block_fits(const xx_xz_block *block, bool keep_output, uint64_t limit, uint64_t *need)
+{
+    uint64_t span;
+    if (!block->extractable || block->data_offset < 0 || block->compressed_size <= 0 || block->check_size < 0 || block->check_size > XX_SHA256_DIGEST_SIZE ||
+        block->check_offset < block->data_offset || block->check_offset - block->data_offset < block->compressed_size) {
+        return false;
+    }
+    span = (uint64_t)(block->check_offset - block->data_offset) + (uint64_t)block->check_size;
+    if (span > limit || block->uncompressed_size > limit) return false;
+    *need = span + (keep_output ? block->uncompressed_size : 0U);
+    return true;
+}
+
+/* The Block's bytes (data, padding and check) are read here, on the calling
+ * thread.  NULL when memory or the input fails. */
+static xx_xz_mt_job *xx_xz_mt_job_create(xx_io_device *device, const xx_xz_stream *stream, const xx_xz_block *block, bool keep_output, uint64_t need, xx_pd_struct *stop,
+                                         xx_pd_struct *pd)
+{
+    xx_xz_mt_job *job = (xx_xz_mt_job *)xx_mem_calloc(1U, sizeof(*job));
+    if (!job) return NULL;
+    job->stream = stream;
+    job->block = block;
+    job->local = *block;
+    job->local.data_offset = 0;
+    job->local.check_offset = block->check_offset - block->data_offset;
+    job->local.padding_offset = block->padding_offset - block->data_offset;
+    job->in_size = (size_t)((uint64_t)(block->check_offset - block->data_offset) + (uint64_t)block->check_size);
+    job->out_size = keep_output ? (size_t)block->uncompressed_size : 0U;
+    job->keep_output = keep_output;
+    job->memory = need;
+    job->stop = stop;
+    job->sink.write = xx_xz_mt_sink_write;
+    job->sink.priv = job;
+    job->input = (uint8_t *)xx_mem_alloc(job->in_size);
+    if (job->out_size != 0U) job->output = (uint8_t *)xx_mem_alloc(job->out_size);
+    if (!job->input || (job->out_size != 0U && !job->output) || !xx_lzma_stream_read_exact_at(device, block->data_offset, job->input, job->in_size, pd)) {
+        xx_xz_mt_job_free(job);
+        return NULL;
+    }
+    return job;
+}
+
+static bool xx_xz_mt_work(void *argument, volatile long *cancel)
+{
+    xx_xz_mt_job *job = (xx_xz_mt_job *)argument;
+    xx_xz_mt_memory source;
+    Abstractformat format;
+    bool ok;
+    (void)cancel; /* the stop object, shared by the jobs, carries it */
+    xx_mem_zero(&source, sizeof(source));
+    source.data = job->input;
+    source.size = job->in_size;
+    source.device.read = xx_xz_mt_memory_read;
+    source.device.seek = xx_xz_mt_memory_seek;
+    source.device.seek64 = xx_xz_mt_memory_seek64;
+    source.device.tell = xx_xz_mt_memory_tell;
+    source.device.total_size = xx_xz_mt_memory_size;
+    source.device.get_total_size = xx_xz_mt_memory_size;
+    source.device.size = xx_xz_mt_memory_size;
+    source.device.priv = &source;
+    xx_mem_zero(&format, sizeof(format));
+    format.device = &source.device;
+    ok = xx_xz_verify_block(&format, job->stream, &job->local, NULL, job->keep_output ? &job->sink : NULL, job->stop, 1U) &&
+         (!job->keep_output || job->out_position == job->out_size);
+    /* The compressed copy is not needed any more. */
+    xx_mem_free(job->input);
+    job->input = NULL;
+    return ok;
+}
+
+/* A Block's output goes out in pieces of a mebibyte: one write of a whole
+ * Block of a hundred megabytes is several times slower than the same bytes
+ * in small writes (Windows stops caching very large writes). */
+static bool xx_xz_mt_write(xx_io_device *target, const uint8_t *data, size_t size, xx_pd_struct *pd)
+{
+    size_t done = 0U;
+    while (done < size) {
+        size_t request = size - done < ((size_t)1U << 20) ? size - done : ((size_t)1U << 20);
+        ssize_t amount;
+        if (pd && xx_pd_is_stopped(pd)) return false;
+        amount = xx_io_write(target, data + done, request);
+        if (amount <= 0 || (size_t)amount > request) return false;
+        done += (size_t)amount;
+    }
+    return true;
+}
+
+static bool xx_xz_extract_blocks_mt(Abstractformat *self, const xx_xz_private *priv, const xx_list_s *options, xx_io_device *target, xx_pd_struct *pd, unsigned threads)
+{
+    const uint64_t memory = xx_lzma_mt_memory();
+    uint64_t limit = memory / 2U;
+    xx_lzma_mt_pipe *pipe = xx_lzma_mt_pipe_create(threads);
+    xx_pd_struct stop = xx_pd_init();
+    uint64_t used = 0U;
+    size_t s = 0U;
+    size_t b = 0U;
+    bool refused = false; /* the Block at (s, b) is decoded on this thread */
+    bool ok = true;
+
+    if (!pipe) return xx_xz_extract_blocks(self, priv, options, target, pd);
+    if (limit > (uint64_t)(SIZE_MAX / 2U)) limit = (uint64_t)(SIZE_MAX / 2U);
+    for (;;) {
+        xx_xz_mt_job *job;
+        int state;
+        if (pd && xx_pd_is_stopped(pd)) {
+            ok = false;
+            break;
+        }
+        for (;;) {
+            const xx_xz_stream *stream;
+            const xx_xz_block *block;
+            uint64_t need = 0U;
+            while (s < priv->stream_count && b >= priv->streams[s].block_count) {
+                ++s;
+                b = 0U;
+            }
+            if (s == priv->stream_count) break;
+            stream = &priv->streams[s];
+            block = &priv->blocks[stream->first_block + b];
+            job = NULL;
+            if (!refused && xx_xz_mt_block_fits(block, target != NULL, limit, &need)) {
+                /* One job more than there are workers, so that none waits
+                 * while this thread writes. */
+                if (xx_lzma_mt_pipe_count(pipe) > (size_t)threads || (xx_lzma_mt_pipe_count(pipe) != 0U && need > memory - used)) break;
+                job = xx_xz_mt_job_create(self->device, stream, block, target != NULL, need, &stop, pd);
+                if (job && !xx_lzma_mt_pipe_push(pipe, xx_xz_mt_work, job)) {
+                    xx_xz_mt_job_free(job);
+                    job = NULL;
+                }
+            }
+            if (!job) {
+                /* Decoded here, once the Blocks before it are written. */
+                if (xx_lzma_mt_pipe_count(pipe) != 0U) {
+                    refused = true;
+                    break;
+                }
+                if (!xx_xz_verify_block(self, stream, block, options, target, pd, 0U)) {
+                    ok = false;
+                    break;
+                }
+                refused = false;
+            } else {
+                used += need;
+            }
+            ++b;
+        }
+        if (!ok || xx_lzma_mt_pipe_count(pipe) == 0U) break;
+        state = xx_lzma_mt_pipe_wait(pipe, 50U);
+        if (state < 0) continue;
+        job = (xx_xz_mt_job *)xx_lzma_mt_pipe_pop(pipe);
+        if (state == 1) {
+            ok = !target || xx_xz_mt_write(target, job->output, job->out_size, pd);
+        } else {
+            /* The sequential code decides, and fails as it always did. */
+            ok = xx_xz_verify_block(self, job->stream, job->block, options, target, pd, 0U);
+        }
+        used -= job->memory;
+        xx_xz_mt_job_free(job);
+        if (!ok) break;
+    }
+    xx_pd_stop(&stop);
+    xx_lzma_mt_pipe_stop(pipe);
+    while (xx_lzma_mt_pipe_count(pipe) != 0U) xx_xz_mt_job_free((xx_xz_mt_job *)xx_lzma_mt_pipe_pop(pipe));
+    xx_lzma_mt_pipe_free(pipe);
+    return ok;
+}
+
+#endif /* XX_LZMA_MT */
+
 static bool xx_xz_extract_all(Abstractformat *self, const xx_list_s *options, xx_io_device *target, xx_pd_struct *pd)
 {
     xx_xz_private *priv;
     if (!self || !(priv = (xx_xz_private *)((xx_xz *)self)->internal) || !priv->can_extract || (pd && xx_pd_is_stopped(pd))) return false;
     if (priv->uncompressed_size > xx_xz_limit(self, options, XX_META_ID_OPT_MAX_MEMBER_SIZE, UINT64_MAX)) return false;
-    for (size_t s = 0U; s < priv->stream_count; ++s) {
-        const xx_xz_stream *stream = &priv->streams[s];
-        for (size_t b = 0U; b < stream->block_count; ++b) {
-            const xx_xz_block *block = &priv->blocks[stream->first_block + b];
-            if (!xx_xz_verify_block(self, stream, block, options, target, pd)) return false;
-        }
+#if XX_LZMA_MT
+    if (priv->block_count >= 2U) {
+        unsigned threads = xx_lzma_mt_threads();
+        if (threads >= 2U) return xx_xz_extract_blocks_mt(self, priv, options, target, pd, threads);
     }
-    return true;
+#endif
+    return xx_xz_extract_blocks(self, priv, options, target, pd);
 }
 
 static bool xx_xz_copy_options(xx_list_s *destination, const xx_list_s *source)
@@ -1208,7 +1482,11 @@ static bool xx_xz_decode_chunks(xx_io_device *device, const xx_xz_block *block, 
     volumes[count++].size = 1;
     data = xx_io_multivolume_open(volumes, count, false);
     if (data) {
-        (void)xx_lzma2_unpack_filtered_checked_device(data, 0, size, block->lzma2_property, block->delta_distance, expected, &counter.device, 0U, &decoded, pd);
+        /* What a failed decode leaves in the destination is the result
+         * here, so it is decoded on this thread alone: decoding units in
+         * parallel writes out a different amount before the failure. */
+        (void)xx_lzma2_unpack_filtered_checked_device_threads(data, 0, size, block->lzma2_property, block->delta_distance, expected, &counter.device, 0U, &decoded,
+                                                              pd, 1U);
         result = counter.written >= walk->size && !(pd && xx_pd_is_stopped(pd));
     }
 done:
@@ -1322,10 +1600,12 @@ static bool xx_xz_decode_forward(xx_io_device *device, int64_t base_address, xx_
             block.check_size = (int64_t)check_size;
             if ((has_compressed && declared_compressed != (uint64_t)block.compressed_size) || (has_uncompressed && declared_uncompressed != size)) goto done;
             if (probe && plain) {
-                /* The whole first Block is shorter than the probe. */
+                /* The whole first Block is shorter than the probe.  A probe
+                 * takes what the decoder wrote, also when it fails: decoded
+                 * on this thread alone, as in xx_xz_decode_chunks. */
                 xx_lzma2_decoded_info decoded;
-                (void)xx_lzma2_unpack_filtered_checked_device(device, block.data_offset, block.compressed_size, block.lzma2_property, block.delta_distance, size,
-                                                              destination, 0U, &decoded, pd);
+                (void)xx_lzma2_unpack_filtered_checked_device_threads(device, block.data_offset, block.compressed_size, block.lzma2_property, block.delta_distance,
+                                                                      size, destination, 0U, &decoded, pd, 1U);
                 goto done;
             }
             if (total_size - block.check_offset < block.check_size) {
@@ -1345,7 +1625,7 @@ static bool xx_xz_decode_forward(xx_io_device *device, int64_t base_address, xx_
                 for (int64_t p = 0; p < block.padding_size; ++p)
                     if (padding[p] != 0U) goto done;
             }
-            if (!xx_xz_verify_block(&xz.format, &stream, &block, NULL, destination, pd) || probe) goto done;
+            if (!xx_xz_verify_block(&xz.format, &stream, &block, NULL, destination, pd, probe ? 1U : 0U) || probe) goto done;
             /* Checked as far as every Block so far has a check. */
             if (checked && check_type != XX_XZ_CHECK_NONE && *checked == decoded_total) *checked += size;
             decoded_total += size;

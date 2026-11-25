@@ -851,6 +851,9 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
             return 0;
         }
         pEngine->nBits = (script_map && pEngine->fileType != XFT_LE && pEngine->fileType != XFT_LX) ? 16 : 32;
+        /* XELF::getMode / XMACH::getMode: a 64-bit class or magic is MODE_64,
+         * which is what Binary_Script::is64() and the disassembler mode read. */
+        if ((pEngine->bHasElf && pEngine->elf.bIs64) || (pEngine->bHasMach && pEngine->mach.bIs64)) pEngine->nBits = 64;
         if (!script_map) {
             /* Forced-format callbacks still run on nonmatching input. Keep
              * their previous flat-map fallback when no matching header exists. */
@@ -937,7 +940,9 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
             xx_pd_set_current(pd, progress, (uint64_t)i);
             if (xx_pd_is_stopped(pd)) break;
             if (should_execute(&pDb->pRecords[i], pEngine->fileType, pEngine->bIsCliAssembly, pOptions)) {
-                if (debug) {
+                /* Profiling stores the elapsed time in the record it is given;
+                 * the database is shared by concurrent scans, so time a copy. */
+                if (debug || pOptions->profiling) {
                     DBSignature record = pDb->pRecords[i];
                     run_script(pEngine, &record, 1);
                 } else {

@@ -521,7 +521,10 @@ bool xx_data_struct_record_populate(xx_data_struct_record *rec, xx_io_device *de
     as_hex = (field->property & (XX_DATA_STRUCT_RECORD_PROPERTY_ID | XX_DATA_STRUCT_RECORD_PROPERTY_FLAGS | XX_DATA_STRUCT_RECORD_PROPERTY_SIGNATURE |
                                  XX_DATA_STRUCT_RECORD_PROPERTY_CHECKSUM)) != 0;
     if (is_floating) display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), is_float32 ? "%.9g" : "%.17g", floating_value);
-    else if (as_hex) display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), "0x%08llX", (unsigned long long)raw_value);
+    /* Hexadecimal roles show the field's own width: 0x5A4D for a uint16, 0x0000014C for a uint32. */
+    else if (as_hex)
+        display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), "0x%0*llX", (int)(field->size >= 1 && field->size <= 8 ? field->size * 2 : 8),
+                                        (unsigned long long)raw_value);
     else if (is_signed) display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), "%lld", (long long)signed_value);
     else display_length = xx_rt_snprintf(display_ascii, sizeof(display_ascii), "%llu", (unsigned long long)raw_value);
     if (display_length < 0 || (size_t)display_length >= sizeof(display_ascii)) goto fail;
@@ -735,6 +738,7 @@ const char *xx_data_struct_type_to_string(xx_data_struct_type_t type)
         case XX_DATA_STRUCT_TYPE_FOOTER: return "footer";
         case XX_DATA_STRUCT_TYPE_LOCATOR: return "locator";
         case XX_DATA_STRUCT_TYPE_RAW_DATA: return "raw_data";
+        case XX_DATA_STRUCT_TYPE_SPEC: return "spec";
         default: return "unknown";
     }
 }

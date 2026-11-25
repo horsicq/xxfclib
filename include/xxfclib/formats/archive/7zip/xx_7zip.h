@@ -38,7 +38,7 @@ typedef struct xx_7zip xx_7zip;
 typedef struct xx_7zip xx_7zip_t;
 typedef struct xx_7zip X7Zip;
 
-/* The ids are defined by src/datastructs/7zip.xxds and must match it. */
+/* The ids are defined by xxdatastructs src/datastructs/7zip.xxds and must match it. */
 typedef enum xx_7zip_data_struct_id_e {
     XX_7ZIP_DS_UNKNOWN = 0,
     XX_7ZIP_DS_SIGNATURE_HEADER,

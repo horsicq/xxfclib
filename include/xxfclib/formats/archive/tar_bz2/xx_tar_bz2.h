@@ -26,7 +26,7 @@ typedef struct xx_tar_bz2 xx_tar_bz2;
 typedef struct xx_tar_bz2 xx_tar_bz2_t;
 typedef struct xx_tar_bz2 XTarBz2;
 
-/* The ids are defined by src/datastructs/tar.xxds and must match it. */
+/* The ids are defined by xxdatastructs src/datastructs/tar.xxds and must match it. */
 /** TAR structure identifiers, expressed in decoded (logical) TAR offsets. */
 typedef xx_tar_data_struct_id_t xx_tar_bz2_data_struct_id_t;
 

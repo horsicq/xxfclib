@@ -26,7 +26,9 @@ typedef bool (*xx_scan_archive_callback)(void *context, const xx_scan_archive_me
  * not map. The string is static. */
 typedef void (*xx_scan_archive_report_callback)(void *context, const char *message);
 
-/* Visit verified ZIP/LHA payloads and decoded concatenated GZIP/BZIP2 streams
+/* Visit verified ZIP/LHA payloads, decoded concatenated GZIP/BZIP2 streams,
+ * the files of a raw FAT12/FAT16 floppy image and the decoded image of an
+ * Atari MSA file (xx_scan_floppy_internal.h; neither carries a checksum)
  * within options.offset/size, as XScanEngine walks an archive. ZIP Store and
  * ordinary LHA LH0/LZ4 use bounded xx_io_sub source views after their checksum
  * is verified. Decoded output stays in memory only below

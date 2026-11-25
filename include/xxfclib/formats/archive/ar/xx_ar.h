@@ -41,7 +41,7 @@ typedef struct xx_ar xx_ar;
 typedef struct xx_ar xx_ar_t;
 typedef struct xx_ar XAr;
 
-/* The ids are defined by src/datastructs/ar.xxds and must match it. */
+/* The ids are defined by xxdatastructs src/datastructs/ar.xxds and must match it. */
 typedef enum xx_ar_data_struct_id_e {
     XX_AR_DS_UNKNOWN = 0,
     XX_AR_DS_GLOBAL_HEADER,

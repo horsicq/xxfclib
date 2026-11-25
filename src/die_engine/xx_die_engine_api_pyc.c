@@ -19,7 +19,7 @@ bool die_engine_api_dispatch_pyc(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int 
             char *pValue = arg_string(pCtx, nArgc, pArgv, 0);
             int bResult = pEngine->bHasPyc ? xx_pyc_const_present(&pEngine->pyc, pValue) : 0;
 
-            xx_str_free(pValue);
+            cd_free(pValue);
 
             *pResult = js_bool(bResult);
             return true;

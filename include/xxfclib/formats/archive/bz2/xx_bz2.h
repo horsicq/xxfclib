@@ -38,7 +38,7 @@ typedef struct xx_bz2 xx_bz2;
 typedef struct xx_bz2 xx_bz2_t;
 typedef struct xx_bz2 XBz2;
 
-/* The ids are defined by src/datastructs/bz2.xxds and must match it. */
+/* The ids are defined by xxdatastructs src/datastructs/bz2.xxds and must match it. */
 typedef enum xx_bz2_data_struct_id_e {
     XX_BZ2_DS_UNKNOWN = 0,
     XX_BZ2_DS_STREAM_HEADER,

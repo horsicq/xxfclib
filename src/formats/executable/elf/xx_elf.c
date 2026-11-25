@@ -618,6 +618,179 @@ static bool xx_elf_map_sections(xx_elf *elf, xx_memory_map *output, uint64_t mod
     return true;
 }
 
+/* ---- XX_MEMORY_MAP_MODE_DATA: the data structures of the file ----------------- */
+
+#define XX_ELF_DATA_MAX_SECTIONS UINT64_C(65536)
+
+/* Records are ordered by file offset; equal offsets keep the order they were added in. */
+static int xx_elf_compare_data_records(const void *left, const void *right, void *context)
+{
+    const xx_memory_record *a = (const xx_memory_record *)left;
+    const xx_memory_record *b = (const xx_memory_record *)right;
+    (void)context;
+    if (a->offset != b->offset) return a->offset < b->offset ? -1 : 1;
+    return a->index < b->index ? -1 : (a->index > b->index ? 1 : 0);
+}
+
+/* Add one structure given by its offset inside the binary. The range is clamped
+ * to the binary; a range outside it is skipped, which is not an error. */
+static bool xx_elf_data_add(xx_memory_map *output, uint64_t relative_offset, uint64_t size, uint64_t address, xx_file_part_t file_part, int32_t file_part_number,
+                            const char *name)
+{
+    uint64_t available = (uint64_t)output->binary_size;
+    int64_t offset;
+    if (size == 0U || relative_offset >= available) return true;
+    if (size > available - relative_offset) size = available - relative_offset;
+    if (!xx_elf_absolute_offset(output->binary_offset, relative_offset, &offset)) return true;
+    if (address != XX_INVALID_ADDRESS && size > XX_INVALID_ADDRESS - address) address = XX_INVALID_ADDRESS;
+    return xx_memory_map_add_part(output, offset, (int64_t)size, address, (int64_t)size, file_part, file_part_number, name, false);
+}
+
+/* The address of a file range that lies inside the file bytes of one PT_LOAD segment. */
+static uint64_t xx_elf_data_range_address(const xx_elf *elf, uint64_t relative_offset, uint64_t size, uint64_t preferred, uint64_t module)
+{
+    uint64_t index;
+    for (index = 0U; index < elf->program_header_count; ++index) {
+        const xx_elf_program_header *program = &elf->program_headers[index];
+        uint64_t delta;
+        uint64_t address;
+        if (program->type != XX_ELF_PROGRAM_LOAD || relative_offset < program->offset) continue;
+        delta = relative_offset - program->offset;
+        if (delta >= program->file_size || size > program->file_size - delta || delta > UINT64_MAX - program->virtual_address) continue;
+        if (xx_elf_relocate_address(program->virtual_address + delta, preferred, module, &address)) return address;
+    }
+    return XX_INVALID_ADDRESS;
+}
+
+static bool xx_elf_name_has_prefix(const char *name, const char *prefix)
+{
+    while (*prefix) {
+        if (*name++ != *prefix++) return false;
+    }
+    return true;
+}
+
+static xx_file_part_t xx_elf_data_section_part(const xx_elf_section_header *section, const char *name)
+{
+    switch (section->type) {
+        case XX_ELF_SECTION_SYMTAB:
+        case XX_ELF_SECTION_DYNSYM:
+        case XX_ELF_SECTION_RELA:
+        case XX_ELF_SECTION_REL:
+        case XX_ELF_SECTION_RELR:
+        case XX_ELF_SECTION_HASH:
+        case XX_ELF_SECTION_GNU_HASH:
+        case XX_ELF_SECTION_DYNAMIC:
+        case XX_ELF_SECTION_INIT_ARRAY:
+        case XX_ELF_SECTION_FINI_ARRAY:
+        case XX_ELF_SECTION_PREINIT_ARRAY: return XX_FILE_PART_TABLE;
+        case XX_ELF_SECTION_PROGBITS: return xx_elf_name_has_prefix(name, ".debug") ? XX_FILE_PART_DEBUG : XX_FILE_PART_DATA;
+        default: return XX_FILE_PART_DATA;
+    }
+}
+
+static bool xx_elf_data_finish(xx_memory_map *output)
+{
+    uint64_t minimum = XX_INVALID_ADDRESS;
+    uint64_t maximum = 0U;
+    size_t i;
+    xx_sort_context(output->records, output->record_count, sizeof(*output->records), xx_elf_compare_data_records, NULL);
+    for (i = 0U; i < output->record_count; ++i) {
+        const xx_memory_record *record = &output->records[i];
+        if (record->address == XX_INVALID_ADDRESS) continue;
+        if (record->address < minimum) minimum = record->address;
+        if (record->address + (uint64_t)record->size > maximum) maximum = record->address + (uint64_t)record->size;
+    }
+    /* An address span the map cannot describe: keep the offsets, drop the addresses. */
+    if (minimum != XX_INVALID_ADDRESS && maximum - minimum > (uint64_t)INT64_MAX) {
+        for (i = 0U; i < output->record_count; ++i) output->records[i].address = XX_INVALID_ADDRESS;
+    }
+    return xx_memory_map_finalize(output);
+}
+
+static bool xx_elf_get_data_memory_map(Abstractformat *format, xx_memory_map *output, xx_pd_struct *pd)
+{
+    xx_elf *elf = (xx_elf *)format;
+    int64_t total;
+    int64_t binary_size;
+    uint64_t preferred = XX_INVALID_ADDRESS;
+    uint64_t module;
+    uint64_t entry;
+    uint64_t table_size;
+    uint64_t section_count;
+    uint64_t index;
+    total = xx_io_total_size(format->device);
+    if (total < format->base_address) return false;
+    binary_size = total - format->base_address;
+    /* The image base of the segment view; of the section view when nothing is loaded. */
+    for (index = 0U; index < elf->program_header_count; ++index) {
+        const xx_elf_program_header *program = &elf->program_headers[index];
+        if (program->type == XX_ELF_PROGRAM_LOAD && program->memory_size > 0U && (preferred == XX_INVALID_ADDRESS || program->virtual_address < preferred)) {
+            preferred = program->virtual_address;
+        }
+    }
+    if (preferred == XX_INVALID_ADDRESS) {
+        for (index = 0U; index < elf->section_header_count; ++index) {
+            const xx_elf_section_header *section = &elf->section_headers[index];
+            if ((section->flags & XX_ELF_SECTION_FLAG_ALLOC) != 0U && section->size > 0U && (preferred == XX_INVALID_ADDRESS || section->address < preferred)) {
+                preferred = section->address;
+            }
+        }
+    }
+    if (preferred == XX_INVALID_ADDRESS) preferred = 0U;
+    module = format->module_address != XX_INVALID_ADDRESS ? format->module_address : preferred;
+    output->binary_offset = format->base_address;
+    output->module_address = module;
+    output->is_image = format->is_mapped;
+    output->binary_size = binary_size;
+    output->entry_point_address = XX_INVALID_ADDRESS;
+    output->code_base = -1;
+    output->start_load_offset = -1;
+    output->file_type = format->file_type;
+    output->format_type = format->format_type;
+    output->endian = format->endian;
+    output->arch = format->arch;
+    output->mode = XX_MEMORY_MAP_MODE_DATA;
+
+    table_size = elf->elf_class == XX_ELF_CLASS_64 ? XX_ELF_HEADER64_SIZE : XX_ELF_HEADER32_SIZE;
+    if (!xx_elf_data_add(output, 0U, table_size, xx_elf_data_range_address(elf, 0U, table_size, preferred, module), XX_FILE_PART_HEADER, -1, "ELF header")) return false;
+    if (elf->program_header_count != 0U && xx_elf_product_is_valid(elf->program_header_count, elf->program_header_entry_size, &table_size) &&
+        !xx_elf_data_add(output, elf->program_header_offset, table_size, xx_elf_data_range_address(elf, elf->program_header_offset, table_size, preferred, module),
+                         XX_FILE_PART_TABLE, -1, "Program headers")) {
+        return false;
+    }
+    if (elf->section_header_count != 0U && xx_elf_product_is_valid(elf->section_header_count, elf->section_header_entry_size, &table_size) &&
+        !xx_elf_data_add(output, elf->section_header_offset, table_size, xx_elf_data_range_address(elf, elf->section_header_offset, table_size, preferred, module),
+                         XX_FILE_PART_TABLE, -1, "Section headers")) {
+        return false;
+    }
+    section_count = elf->section_header_count < XX_ELF_DATA_MAX_SECTIONS ? elf->section_header_count : XX_ELF_DATA_MAX_SECTIONS;
+    for (index = 0U; index < section_count; ++index) {
+        const xx_elf_section_header *section = &elf->section_headers[index];
+        uint64_t address = XX_INVALID_ADDRESS;
+        char name[XX_MEMORY_RECORD_NAME_SIZE];
+        if (section->type == XX_ELF_SECTION_NULL || section->type == XX_ELF_SECTION_NOBITS || section->size == 0U) continue;
+        if (xx_pd_is_stopped(pd)) return false;
+        if ((section->flags & XX_ELF_SECTION_FLAG_ALLOC) != 0U && !xx_elf_relocate_address(section->address, preferred, module, &address)) {
+            address = XX_INVALID_ADDRESS;
+        }
+        xx_elf_get_section_name(elf, section, index, name);
+        if (!xx_elf_data_add(output, section->offset, section->size, address, xx_elf_data_section_part(section, name), (int32_t)index, name)) return false;
+    }
+    if (!xx_elf_data_finish(output)) return false;
+    /* The entry point is kept when a listed structure or a loaded segment holds it. */
+    if (xx_elf_relocate_address(elf->entry_point, preferred, module, &entry)) {
+        bool mapped = xx_memory_map_record_by_address(output, entry) != NULL;
+        for (index = 0U; !mapped && index < elf->program_header_count; ++index) {
+            const xx_elf_program_header *program = &elf->program_headers[index];
+            mapped = program->type == XX_ELF_PROGRAM_LOAD && elf->entry_point >= program->virtual_address &&
+                     elf->entry_point - program->virtual_address < program->memory_size;
+        }
+        if (mapped) output->entry_point_address = entry;
+    }
+    return !xx_pd_is_stopped(pd);
+}
+
 bool xx_elf_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd)
 {
     xx_elf *elf = (xx_elf *)format;
@@ -631,6 +804,7 @@ bool xx_elf_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx
     if (!format || !output || !format->device || !format->base_info_handled || format->base_address < 0 || xx_pd_is_stopped(pd)) {
         return false;
     }
+    if (mode == XX_MEMORY_MAP_MODE_DATA) return xx_elf_get_data_memory_map(format, output, pd);
     if (mode == XX_MEMORY_MAP_MODE_UNKNOWN) mode = XX_MEMORY_MAP_MODE_SEGMENTS;
     if (mode != XX_MEMORY_MAP_MODE_SEGMENTS && mode != XX_MEMORY_MAP_MODE_SECTIONS) {
         return false;

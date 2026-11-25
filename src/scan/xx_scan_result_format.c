@@ -262,8 +262,10 @@ static const char *record_file_type(const xx_scan_result *result, const xx_scan_
         case XX_FILE_TYPE_MACHO64: return "Mach-O64";
         case XX_FILE_TYPE_MACHOFAT: return "Mach-O FAT";
         case XX_FILE_TYPE_ISO9660: return "ISO 9660";
+        case XX_FILE_TYPE_FAT: return "FAT";
+        case XX_FILE_TYPE_ATARI_ST_MSA: return "MSA";
         case XX_FILE_TYPE_AMIGAHUNK: return "Amiga Hunk";
-        case XX_FILE_TYPE_ATARIST: return "Atari ST";
+        case XX_FILE_TYPE_ATARIST: return "GEMDOS";
         case XX_FILE_TYPE_JAVA_CLASS: return "Java Class";
         case XX_FILE_TYPE_PYC: return "Python Bytecode";
         case XX_FILE_TYPE_DOS16M: return "DOS/16M";

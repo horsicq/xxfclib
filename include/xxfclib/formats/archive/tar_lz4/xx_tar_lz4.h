@@ -17,7 +17,7 @@ typedef struct xx_tar_lz4 xx_tar_lz4;
 typedef struct xx_tar_lz4 xx_tar_lz4_t;
 typedef struct xx_tar_lz4 XTarLz4;
 
-/* The ids are defined by src/datastructs/tar.xxds and must match it. */
+/* The ids are defined by xxdatastructs src/datastructs/tar.xxds and must match it. */
 typedef enum xx_tar_lz4_data_struct_id_e {
     XX_TAR_LZ4_DS_UNKNOWN = 0,
     XX_TAR_LZ4_DS_TAR

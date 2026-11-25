@@ -90,7 +90,28 @@ XXFC_API bool xx_dotnet_inspect_method_body(xx_dotnet_inspection *state, uint32_
  * every existing extent/token/count check remains enabled. The strict API
  * above is identical to calling _ex with flags=0. */
 #define XX_DOTNET_METHOD_BODY_ALLOW_UNALIGNED_FAT UINT32_C(1)
+/* Historical producers stored an EH section's DataSize as the clause bytes
+ * only (count * clause size), without the 4-byte section header. With this
+ * flag such a size is admitted when the canonical form (4 + count * clause
+ * size) does not fit; the two forms can never both match one value. */
+#define XX_DOTNET_METHOD_BODY_ALLOW_LEGACY_EH_SIZE UINT32_C(2)
 XXFC_API bool xx_dotnet_inspect_method_body_ex(xx_dotnet_inspection *state, uint32_t rva, uint32_t flags, xx_dotnet_method_body *body);
+
+/* One CIL method-data section header (ECMA-335 II.25.4.5), EH kind only. */
+typedef struct xx_dotnet_method_eh_section {
+    bool fat, more;
+    uint32_t size;         /* Section bytes including the 4-byte header. */
+    uint32_t clause_size;  /* 12 (small) or 24 (fat). */
+    uint32_t clause_count; /* Clauses in this section. */
+} xx_dotnet_method_eh_section;
+
+/* Decode the 4-byte header at `header`; `available` is the number of bytes
+ * from `header` to the end of the method extent. `flags` accepts only the
+ * XX_DOTNET_METHOD_BODY_* options. `prior_clauses` is the number of clauses in
+ * earlier sections; the total is limited to 4096. On failure *section is
+ * zeroed. Clause contents are not validated here. */
+XXFC_API bool xx_dotnet_method_eh_section_decode(const uint8_t *header, uint64_t available, uint32_t flags, uint32_t prior_clauses,
+                                                 xx_dotnet_method_eh_section *section);
 
 #ifdef __cplusplus
 }

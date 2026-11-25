@@ -214,6 +214,16 @@ typedef struct StreamSymbols {
 /** Compatibility spelling requested by older callers. */
 typedef StreamSymbols StreamSymols;
 
+/* DataStructs come from a provider outside xxfclib: the xxdatastructs
+ * library (its .xxds script host) installs itself here with
+ * xx_datastructs_register(). With no provider installed every format
+ * reports no DataStructs. Install it once at startup, before the first
+ * DataStructs call; NULL removes it. Thread-safe to set and read; removing
+ * the provider while another thread is inside a DataStructs call is not. */
+typedef const StreamDataStructs *(*xx_format_datastructs_provider)(Abstractformat *format);
+XXFC_API void xx_format_set_datastructs_provider(xx_format_datastructs_provider provider);
+XXFC_API xx_format_datastructs_provider xx_format_get_datastructs_provider(void);
+
 XXFC_API const StreamDataStructs *xx_format_get_stream_datastructs(Abstractformat *format);
 XXFC_API const StreamImport *xx_format_get_stream_import(Abstractformat *format);
 XXFC_API const StreamExport *xx_format_get_stream_export(Abstractformat *format);

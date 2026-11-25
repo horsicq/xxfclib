@@ -12,7 +12,18 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/xxformats.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/xxsettings.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/xxterminal.cmake")
 
+# Threads are part of the hosted runtime: hosts that share this target with
+# xxwidgets (XXWIDGETS_USE_XXFCLIB_TARGET) need xx_thread_* / xx_mutex_* /
+# xx_atomic_* from it.
+if(WIN32)
+    set(_xxfc_formats_thread_platform src/threads/platforms/xx_threads_windows.c)
+else()
+    set(_xxfc_formats_thread_platform src/threads/platforms/xx_threads_posix.c)
+endif()
+
 set(XXFC_FORMATS_PROFILE_SOURCES
+    src/threads/xx_threads.c
+    ${_xxfc_formats_thread_platform}
     src/translation/xx_translation.c
     src/translation/xx_translation_io.c
     src/history/xx_history.c
@@ -27,6 +38,7 @@ xxfclib_configure_streams(xxfclib)
 target_compile_features(xxfclib PUBLIC c_std_11)
 target_compile_definitions(xxfclib
     PUBLIC XXFC_STATIC XXFC_FORMATS_ONLY=1
+    PRIVATE XX_LZMA_MT=1
     PRIVATE XXFC_NO_EXTERNAL_HELPERS=1)
 target_include_directories(xxfclib
     PUBLIC
@@ -242,3 +254,5 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_dwc_tests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_freearc_4x4_tests.cmake")
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_freearc_tor_tests.cmake")
+
+include("${CMAKE_CURRENT_LIST_DIR}/xxfclib_visualization_tests.cmake")

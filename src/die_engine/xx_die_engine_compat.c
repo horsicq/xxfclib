@@ -17,6 +17,7 @@
  */
 
 #include "xx_die_engine_compat.h"
+#include "../global/xx_tls.h"
 
 /* ------------------------------ allocation, containers, strings -------- */
 
@@ -49,41 +50,78 @@ X_NORETURN static void cd_out_of_memory(void)
  * failure and the end of the scan while costing the scan nothing it needed. */
 #define CD_OOM_RESERVE 0x10000
 
-static void *g_pOomReserve = NULL;
-static int g_bOomSoft = 0;
-static int g_bOomRaised = 0;
+/* The window is per thread: die_ops advertises concurrent and reentrant
+ * scans, and one scan ending must neither disarm the policy nor free the
+ * reserve under another thread's scan, nor may one thread's failure end the
+ * scans of the others. The state lives in an xx_tls slot (see xx_tls.h for
+ * why not a thread-local variable) and exists only between the outermost
+ * begin and its matching end; nDepth lets a nested scan on the same thread
+ * leave the outer scan's window armed. */
+typedef struct {
+    void *pReserve;
+    int nDepth;
+    int bRaised;
+} cd_oom_state;
+
+static xx_tls_key g_oomKey;
+
+static cd_oom_state *cd_oom_current(void)
+{
+    return (cd_oom_state *)xx_tls_get(&g_oomKey);
+}
 
 int cd_alloc_begin_soft_oom(void)
 {
-    if (g_bOomSoft) {
+    cd_oom_state *pState = cd_oom_current();
+
+    if (pState) {
+        pState->nDepth++;
         return 1;
     }
 
-    /* x_malloc, not cd_malloc: failing to take the reserve must not be the
-     * first thing that ends the process. */
-    g_pOomReserve = x_malloc(CD_OOM_RESERVE);
+    /* x_calloc/x_malloc, not cd_malloc: failing to take the reserve must not
+     * be the first thing that ends the process. */
+    pState = (cd_oom_state *)x_calloc(1, sizeof(*pState));
 
-    if (g_pOomReserve == NULL) {
+    if (pState == NULL) {
         return 0;
     }
 
-    g_bOomSoft = 1;
-    g_bOomRaised = 0;
+    pState->pReserve = x_malloc(CD_OOM_RESERVE);
+
+    if ((pState->pReserve == NULL) || !xx_tls_set(&g_oomKey, pState)) {
+        x_free(pState->pReserve);
+        x_free(pState);
+        return 0;
+    }
+
+    pState->nDepth = 1;
 
     return 1;
 }
 
 void cd_alloc_end_soft_oom(void)
 {
-    x_free(g_pOomReserve);
-    g_pOomReserve = NULL;
-    g_bOomSoft = 0;
-    g_bOomRaised = 0;
+    cd_oom_state *pState = cd_oom_current();
+
+    if (pState == NULL) {
+        return;
+    }
+
+    if (--pState->nDepth > 0) {
+        return;
+    }
+
+    (void)xx_tls_set(&g_oomKey, NULL);
+    x_free(pState->pReserve);
+    x_free(pState);
 }
 
 int cd_alloc_oom(void)
 {
-    return g_bOomRaised;
+    cd_oom_state *pState = cd_oom_current();
+
+    return pState ? pState->bRaised : 0;
 }
 
 /* Raises the sticky flag and releases the reserve, so that the caller's
@@ -92,32 +130,47 @@ int cd_alloc_oom(void)
  * the caller ends the process as before.                                    */
 static int cd_out_of_memory_retry(void)
 {
-    if (!g_bOomSoft) {
+    cd_oom_state *pState = cd_oom_current();
+
+    if (pState == NULL) {
         return 0;
     }
 
-    g_bOomRaised = 1;
+    pState->bRaised = 1;
 
-    if (g_pOomReserve == NULL) {
+    if (pState->pReserve == NULL) {
         return 0;
     }
 
-    x_free(g_pOomReserve);
-    g_pOomReserve = NULL;
+    x_free(pState->pReserve);
+    pState->pReserve = NULL;
 
     return 1;
 }
 
+/* The sticky flag belongs to the window: with no window open nothing would
+ * ever clear it, and one failed cd_try_* call (a signature file too large to
+ * load, say) would end every later scan at its first script. */
+static void cd_oom_raise(void)
+{
+    cd_oom_state *pState = cd_oom_current();
+
+    if (pState) {
+        pState->bRaised = 1;
+    }
+}
+
 /* The non-aborting variants. These are the way out for a caller that can
- * report a failure instead of needing the memory: they raise the sticky flag
- * and return NULL, under either policy, and never end the process. A caller
- * that cannot cope with NULL must keep using cd_malloc.                    */
+ * report a failure instead of needing the memory: they return NULL under
+ * either policy, raise the sticky flag when a soft window is open, and never
+ * end the process. A caller that cannot cope with NULL must keep using
+ * cd_malloc.                                                               */
 void *cd_try_malloc(size_t nSize)
 {
     void *pResult = x_malloc(nSize ? nSize : 1);
 
     if (pResult == NULL) {
-        g_bOomRaised = 1;
+        cd_oom_raise();
     }
 
     return pResult;
@@ -128,7 +181,7 @@ void *cd_try_calloc(size_t nCount, size_t nSize)
     void *pResult = x_calloc(nCount ? nCount : 1, nSize ? nSize : 1);
 
     if (pResult == NULL) {
-        g_bOomRaised = 1;
+        cd_oom_raise();
     }
 
     return pResult;
@@ -139,7 +192,7 @@ void *cd_try_realloc(void *pPtr, size_t nSize)
     void *pResult = x_realloc(pPtr, nSize ? nSize : 1);
 
     if (pResult == NULL) {
-        g_bOomRaised = 1;
+        cd_oom_raise();
     }
 
     return pResult;

@@ -101,6 +101,18 @@ static char *xx_pe_abstract_get_version(xx_io_device *device, int64_t base_addre
     return xx_format_search_get_version(&k_desc, device, base_address, is_mapped);
 }
 
+/* Reader factory (xx_format_create_reader): the same reader the format search
+ * opens, so PE / PE64 have a generic reader like the generated extractors. */
+static Abstractformat *xx_pe_abstract_create_reader(xx_io_device *device)
+{
+    return xx_pe_search_open(device);
+}
+
+static void xx_pe_abstract_free_reader(Abstractformat *format)
+{
+    xx_pe_search_close(format);
+}
+
 static Abstractextractor xx_pe_abstract_extractor = {.file_type = xx_pe_file_type,
                                                      .fast_detect = xx_pe_fast_detect,
                                                      .size = xx_pe_size,
@@ -108,7 +120,9 @@ static Abstractextractor xx_pe_abstract_extractor = {.file_type = xx_pe_file_typ
                                                      .create_format_search = xx_pe_abstract_create_format_search,
                                                      .get_current_format_info = xx_pe_abstract_get_current_format_info,
                                                      .format_search_find_next = xx_pe_abstract_format_search_find_next,
-                                                     .free_format_search = xx_pe_abstract_free_format_search};
+                                                     .free_format_search = xx_pe_abstract_free_format_search,
+                                                     .create_reader = xx_pe_abstract_create_reader,
+                                                     .free_reader = xx_pe_abstract_free_reader};
 
 Abstractextractor *xx_pe_get_abstract_extractor(void)
 {

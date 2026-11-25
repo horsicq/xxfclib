@@ -322,6 +322,185 @@ static bool xx_pe_map_offset(int64_t base, uint64_t relative, int64_t *result)
 
 #include "xx_sort_pe.inc"
 
+/* ---- XX_MEMORY_MAP_MODE_DATA: the data structures of the file ----------------- */
+
+typedef struct xx_pe_data_directory_info_s {
+    const char *name;
+    xx_file_part_t file_part;
+} xx_pe_data_directory_info;
+
+/* Indexed by the data directory number. Directory 4 (Certificate) holds a file
+ * offset, every other one an RVA. Directory 15 is reserved and is not listed. */
+static const xx_pe_data_directory_info xx_pe_data_directories[16] = {
+    {"Export", XX_FILE_PART_TABLE},         {"Import", XX_FILE_PART_TABLE},       {"Resources", XX_FILE_PART_RESOURCE}, {"Exception", XX_FILE_PART_TABLE},
+    {"Certificate", XX_FILE_PART_SIGNATURE}, {"Relocations", XX_FILE_PART_TABLE},  {"Debug", XX_FILE_PART_DEBUG},        {"Architecture", XX_FILE_PART_TABLE},
+    {"Global pointer", XX_FILE_PART_TABLE}, {"TLS", XX_FILE_PART_TABLE},          {"Load config", XX_FILE_PART_TABLE},  {"Bound import", XX_FILE_PART_TABLE},
+    {"IAT", XX_FILE_PART_TABLE},            {"Delay import", XX_FILE_PART_TABLE}, {".NET", XX_FILE_PART_DATA},          {NULL, XX_FILE_PART_UNKNOWN}};
+
+/* Records are ordered by file offset; equal offsets keep the order they were added in. */
+static int xx_pe_compare_data_records(const void *left, const void *right, void *context)
+{
+    const xx_memory_record *a = (const xx_memory_record *)left;
+    const xx_memory_record *b = (const xx_memory_record *)right;
+    (void)context;
+    if (a->offset != b->offset) return a->offset < b->offset ? -1 : 1;
+    return a->index < b->index ? -1 : (a->index > b->index ? 1 : 0);
+}
+
+/* Add one structure given by its offset inside the binary. The range is clamped
+ * to the binary; a range outside it is skipped, which is not an error. */
+static bool xx_pe_data_add(xx_memory_map *output, uint64_t relative_offset, uint64_t size, uint64_t address, xx_file_part_t file_part, int32_t file_part_number,
+                           const char *name)
+{
+    uint64_t available = (uint64_t)output->binary_size;
+    int64_t offset;
+    if (size == 0U || relative_offset >= available) return true;
+    if (size > available - relative_offset) size = available - relative_offset;
+    if (!xx_pe_map_offset(output->binary_offset, relative_offset, &offset)) return true;
+    if (address != XX_INVALID_ADDRESS && size > XX_INVALID_ADDRESS - address) address = XX_INVALID_ADDRESS;
+    return xx_memory_map_add_part(output, offset, (int64_t)size, address, (int64_t)size, file_part, file_part_number, name, false);
+}
+
+/* The same, with the address taken from the section map (invalid when the offset is not mapped). */
+static bool xx_pe_data_add_by_offset(xx_memory_map *output, const xx_memory_map *sections, uint64_t relative_offset, uint64_t size, xx_file_part_t file_part,
+                                     int32_t file_part_number, const char *name)
+{
+    uint64_t address = XX_INVALID_ADDRESS;
+    int64_t offset;
+    if (xx_pe_map_offset(output->binary_offset, relative_offset, &offset)) address = xx_memory_map_offset_to_address(sections, offset);
+    return xx_pe_data_add(output, relative_offset, size, address, file_part, file_part_number, name);
+}
+
+/* RVA range -> device offset by the section map, as the other readers of this
+ * file do. A directory that runs past the file bytes of its section keeps the
+ * part that is in the file (*size is reduced). -1: the RVA has no file bytes. */
+static int64_t xx_pe_data_directory_offset(const xx_memory_map *sections, uint32_t rva, uint64_t *size)
+{
+    int64_t offset = xx_pe_relative_range_to_offset(sections, rva, *size);
+    uint64_t address;
+    size_t i;
+    if (offset >= 0) return offset;
+    offset = xx_pe_relative_range_to_offset(sections, rva, 1U);
+    if (offset < 0) return -1;
+    address = xx_memory_map_relative_address_to_address(sections, (int64_t)rva);
+    if (address == XX_INVALID_ADDRESS) return -1;
+    for (i = sections->record_count; i != 0U; --i) {
+        const xx_memory_record *record = &sections->records[i - 1U];
+        uint64_t left;
+        if (record->is_virtual || record->offset < 0 || record->size <= 0 || record->address == XX_INVALID_ADDRESS || address < record->address ||
+            address - record->address >= (uint64_t)record->size)
+            continue;
+        left = (uint64_t)record->size - (address - record->address);
+        if (*size > left) *size = left;
+        break;
+    }
+    return offset;
+}
+
+static bool xx_pe_data_finish(xx_memory_map *output)
+{
+    uint64_t minimum = XX_INVALID_ADDRESS;
+    uint64_t maximum = 0U;
+    size_t i;
+    xx_sort_context(output->records, output->record_count, sizeof(*output->records), xx_pe_compare_data_records, NULL);
+    for (i = 0U; i < output->record_count; ++i) {
+        const xx_memory_record *record = &output->records[i];
+        if (record->address == XX_INVALID_ADDRESS) continue;
+        if (record->address < minimum) minimum = record->address;
+        if (record->address + (uint64_t)record->size > maximum) maximum = record->address + (uint64_t)record->size;
+    }
+    /* An address span the map cannot describe: keep the offsets, drop the addresses. */
+    if (minimum != XX_INVALID_ADDRESS && maximum - minimum > (uint64_t)INT64_MAX) {
+        for (i = 0U; i < output->record_count; ++i) output->records[i].address = XX_INVALID_ADDRESS;
+    }
+    return xx_memory_map_finalize(output);
+}
+
+static bool xx_pe_get_data_memory_map(Abstractformat *format, xx_memory_map *output, xx_pd_struct *pd)
+{
+    xx_pe *pe = (xx_pe *)format;
+    xx_memory_map sections;
+    int64_t total;
+    int64_t binary_size;
+    uint64_t module_address;
+    uint64_t nt_size;
+    uint32_t directory_count;
+    uint32_t i;
+    size_t record_index;
+    bool has_sections;
+    bool ok = false;
+    total = xx_io_total_size(format->device);
+    if (total < format->base_address) return false;
+    binary_size = total - format->base_address;
+    module_address = format->module_address != XX_INVALID_ADDRESS ? format->module_address : pe->image_base;
+
+    output->binary_offset = format->base_address;
+    output->module_address = module_address;
+    output->is_image = format->is_mapped;
+    output->binary_size = binary_size;
+    output->file_type = format->file_type;
+    output->format_type = format->format_type;
+    output->endian = format->endian;
+    output->arch = format->arch;
+    output->mode = XX_MEMORY_MAP_MODE_DATA;
+    output->entry_point_address = XX_INVALID_ADDRESS;
+    (void)xx_pe_map_address(module_address, pe->entry_point_rva, &output->entry_point_address);
+
+    /* The section map gives the RVA -> offset rules and the addresses. Without
+     * it the structures that need no RVA are still listed. */
+    xx_memory_map_init(&sections);
+    has_sections = xx_pe_get_memory_map(format, XX_MEMORY_MAP_MODE_SECTIONS, &sections, pd);
+    if (!has_sections) xx_memory_map_cleanup(&sections);
+    if (xx_pd_is_stopped(pd)) goto done;
+
+    nt_size = (uint64_t)4U + XX_PE_FILE_HEADER_SIZE + pe->optional_header_size;
+    if (!xx_pe_data_add_by_offset(output, &sections, 0U, XX_PE_DOS_HEADER_SIZE, XX_FILE_PART_HEADER, -1, "DOS header")) goto done;
+    if (pe->pe_offset > XX_PE_DOS_HEADER_SIZE &&
+        !xx_pe_data_add_by_offset(output, &sections, XX_PE_DOS_HEADER_SIZE, (uint64_t)pe->pe_offset - XX_PE_DOS_HEADER_SIZE, XX_FILE_PART_HEADER, -1, "DOS stub"))
+        goto done;
+    if (!xx_pe_data_add_by_offset(output, &sections, pe->pe_offset, nt_size, XX_FILE_PART_HEADER, -1, "NT headers")) goto done;
+    if (!xx_pe_data_add_by_offset(output, &sections, (uint64_t)pe->pe_offset + nt_size, (uint64_t)pe->number_of_sections * XX_PE_SECTION_HEADER_SIZE,
+                                  XX_FILE_PART_TABLE, -1, "Section table"))
+        goto done;
+
+    directory_count = pe->number_of_data_directories < 16U ? pe->number_of_data_directories : 16U;
+    for (i = 0U; i < directory_count; ++i) {
+        const xx_pe_data_directory_info *info = &xx_pe_data_directories[i];
+        uint32_t rva = pe->data_directory_rva[i];
+        uint64_t size = pe->data_directory_size[i];
+        if (!info->name || !rva || !size) continue;
+        if (i == XX_PE_DIRECTORY_SECURITY) {
+            /* A file offset; the certificate table is not part of a mapped image. */
+            if (format->is_mapped) continue;
+            if (!xx_pe_data_add_by_offset(output, &sections, rva, size, info->file_part, (int32_t)i, info->name)) goto done;
+        } else {
+            int64_t offset = xx_pe_data_directory_offset(&sections, rva, &size);
+            if (offset < format->base_address) continue;
+            if (!xx_pe_data_add(output, (uint64_t)(offset - format->base_address), size, xx_memory_map_relative_address_to_address(&sections, (int64_t)rva),
+                                info->file_part, (int32_t)i, info->name))
+                goto done;
+        }
+    }
+
+    if (has_sections) {
+        for (record_index = 0U; record_index < sections.record_count; ++record_index) {
+            const xx_memory_record *record = &sections.records[record_index];
+            if (record->file_part != XX_FILE_PART_OVERLAY || record->is_virtual || record->offset < format->base_address || record->size <= 0) continue;
+            if (!xx_pe_data_add(output, (uint64_t)(record->offset - format->base_address), (uint64_t)record->size, XX_INVALID_ADDRESS, XX_FILE_PART_OVERLAY,
+                                record->file_part_number, "Overlay"))
+                goto done;
+        }
+    } else if (format->overlay_size > 0 && format->overlay_offset >= format->base_address) {
+        if (!xx_pe_data_add(output, (uint64_t)(format->overlay_offset - format->base_address), (uint64_t)format->overlay_size, XX_INVALID_ADDRESS,
+                            XX_FILE_PART_OVERLAY, (int32_t)pe->number_of_sections + 1, "Overlay"))
+            goto done;
+    }
+    ok = xx_pe_data_finish(output);
+done:
+    xx_memory_map_cleanup(&sections);
+    return ok;
+}
+
 bool xx_pe_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd)
 {
     xx_pe *pe = (xx_pe *)format;
@@ -338,6 +517,7 @@ bool xx_pe_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_
     uint16_t *section_indices;
     uint16_t i;
     if (!format || !output || !format->device || !format->base_info_handled || format->base_address < 0 || xx_pd_is_stopped(pd)) return false;
+    if (mode == XX_MEMORY_MAP_MODE_DATA) return xx_pe_get_data_memory_map(format, output, pd);
     if (mode == XX_MEMORY_MAP_MODE_UNKNOWN) mode = XX_MEMORY_MAP_MODE_SECTIONS;
     if (mode != XX_MEMORY_MAP_MODE_SECTIONS) return false;
     total = xx_io_total_size(format->device);

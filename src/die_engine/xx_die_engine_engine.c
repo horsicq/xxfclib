@@ -223,6 +223,8 @@ xx_file_type_t die_engine_native_from_xft(XFileType type)
         case XFT_DOS16M: return XX_FILE_TYPE_DOS16M;
         case XFT_DOS4G: return XX_FILE_TYPE_DOS4G;
         case XFT_CLI_ASSEMBLY: return XX_FILE_TYPE_DOTNET;
+        case XFT_FAT: return XX_FILE_TYPE_FAT;
+        case XFT_MSA: return XX_FILE_TYPE_ATARI_ST_MSA;
         default: return XX_FILE_TYPE_UNKNOWN;
     }
 }
@@ -271,6 +273,8 @@ XFileType die_engine_xft_from_native(xx_file_type_t type)
         case XX_FILE_TYPE_DOS16M: return XFT_DOS16M;
         case XX_FILE_TYPE_DOS4G: return XFT_DOS4G;
         case XX_FILE_TYPE_DOTNET: return XFT_CLI_ASSEMBLY;
+        case XX_FILE_TYPE_FAT: return XFT_FAT;
+        case XX_FILE_TYPE_ATARI_ST_MSA: return XFT_MSA;
         default: return XFT_UNKNOWN;
     }
 }

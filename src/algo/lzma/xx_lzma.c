@@ -21,6 +21,7 @@
 
 #include "xxfclib/rt/xx_rt.h"
 #include "xx_lzma_internal.h"
+#include "xx_lzma2_filters_internal.h"
 #include "platforms/xx_lzma_platform.h"
 #include "../../memory/platforms/xx_memory_platform.h"
 #include "xxfclib/algo/crc/xx_crc.h"
@@ -154,6 +155,12 @@ bool xx_lzma_decompress_memory(const void *src_buf, size_t src_size, const uint8
 
 bool xx_lzma2_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, uint8_t props2_byte, xx_io_device *dst_dev, xx_pd_struct *pd)
 {
+    return xx_lzma2_unpack_device_threads(src_dev, src_offset, comp_size, props2_byte, dst_dev, pd, 0U);
+}
+
+bool xx_lzma2_unpack_device_threads(xx_io_device *src_dev, int64_t src_offset, int64_t comp_size, uint8_t props2_byte, xx_io_device *dst_dev, xx_pd_struct *pd,
+                                    unsigned threads)
+{
     if (!src_dev || !dst_dev) return false;
     if (comp_size <= 0 || src_offset < 0) return false;
     if (src_offset >= 0)
@@ -164,6 +171,10 @@ bool xx_lzma2_unpack_device(xx_io_device *src_dev, int64_t src_offset, int64_t c
     rd.dev = src_dev;
     rd.remaining = comp_size;
     rd.range = 0xFFFFFFFFu;
+    /* The device is read from an offset the caller names, so the stream can
+     * be walked ahead of the decoder (multi-threaded decoding). */
+    rd.rewindable = threads != 1U;
+    rd.dev_offset = src_offset;
     bool ok = xx_lzma2_decompress_stream(&rd, props2_byte, dst_dev, NULL, 0, NULL, pd);
     lzma_rd_free(&rd);
     return ok;

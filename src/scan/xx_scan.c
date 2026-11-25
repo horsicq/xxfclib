@@ -40,8 +40,10 @@ const char *xx_scan_file_type_name(xx_file_type_t type)
         case XX_FILE_TYPE_PNG: return "PNG";
         case XX_FILE_TYPE_RAR: return "RAR";
         case XX_FILE_TYPE_ISO9660: return "ISO 9660";
+        case XX_FILE_TYPE_FAT: return "FAT";
+        case XX_FILE_TYPE_ATARI_ST_MSA: return "MSA";
         case XX_FILE_TYPE_AMIGAHUNK: return "Amiga Hunk";
-        case XX_FILE_TYPE_ATARIST: return "Atari ST";
+        case XX_FILE_TYPE_ATARIST: return "GEMDOS";
         case XX_FILE_TYPE_JAVA_CLASS: return "Java Class";
         case XX_FILE_TYPE_PYC: return "Python Bytecode";
         case XX_FILE_TYPE_DOS16M: return "DOS/16M";

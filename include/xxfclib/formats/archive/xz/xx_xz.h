@@ -18,7 +18,7 @@ typedef struct xx_xz xx_xz;
 typedef struct xx_xz xx_xz_t;
 typedef struct xx_xz XXz;
 
-/* The ids are defined by src/datastructs/xz.xxds and must match it. */
+/* The ids are defined by xxdatastructs src/datastructs/xz.xxds and must match it. */
 typedef enum xx_xz_data_struct_id_e {
     XX_XZ_DS_UNKNOWN = 0,
     XX_XZ_DS_STREAM_HEADER,

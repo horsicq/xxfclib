@@ -1940,6 +1940,25 @@ static bool xx_fat_confirm(Abstractformat *self, const xx_fat_geometry *geometry
     return id_ok && copies_ok && xx_fat_root_plausible(self, geometry);
 }
 
+/* Both FAT copies agree over their first sector, are not blank, and the root
+ * directory is sane: the corroboration for a boot sector whose media
+ * descriptor says nothing (see xx_fat_read_geometry). A single-FAT volume
+ * cannot pass. */
+static bool xx_fat_confirm_copies(Abstractformat *self, const xx_fat_geometry *geometry)
+{
+    uint8_t first[XX_FAT_PROBE_FAT_BYTES];
+    uint8_t second[XX_FAT_PROBE_FAT_BYTES];
+    int64_t second_offset;
+    if (geometry->num_fats < 2U || geometry->mirroring_disabled) return false;
+    if (!xx_fat_read_at(self->device, geometry->fat_offset, first, sizeof(first))) return false;
+    if (!xx_fat_add(geometry->fat_offset, (uint64_t)geometry->fat_bytes, &second_offset) ||
+        !xx_fat_range_within(geometry->total_size, second_offset, (int64_t)sizeof(second)) || !xx_fat_read_at(self->device, second_offset, second, sizeof(second))) {
+        return false;
+    }
+    if (xx_rt_memcmp(first, second, sizeof(first)) != 0 || xx_fat_is_uniform(first, sizeof(first))) return false;
+    return xx_fat_root_plausible(self, geometry);
+}
+
 /* DOS 1.x wrote no BPB: the boot sector is all code, and the geometry follows
  * from the disk size alone, confirmed by the media byte that opens the FAT.
  * These are the four IBM PC formats of that era (PC DOS 1.0 / 1.1), with the
@@ -2013,6 +2032,8 @@ static bool xx_fat_read_geometry(Abstractformat *self, xx_fat_geometry *geometry
     xx_fat_bpb bpb;
     bool x86_jump;
     bool pc_signature;
+    bool foreign_media = false;
+    uint8_t stored_media;
 
     geometry->base = self->base_address;
     geometry->total_size = xx_io_total_size(self->device);
@@ -2034,7 +2055,24 @@ static bool xx_fat_read_geometry(Abstractformat *self, xx_fat_geometry *geometry
          * here, behind an x86 jump, and must stay rejected. */
         bpb.reserved_sectors = 1U;
     }
+    stored_media = bpb.media;
+    if (!x86_jump && bpb.media < XX_FAT_MIN_MEDIA) {
+        /* TOS never reads the media descriptor, and several Atari ST
+         * formatters and disk copiers leave it at zero (often together with
+         * a zero reserved-sector count and a zeroed FAT id). Such a boot
+         * sector is laid out as if it carried 0xF8, and the volume then has
+         * to pass the strictest corroboration there is without a FAT id:
+         * two agreeing, non-blank FAT copies and a sane root directory.
+         * Behind an x86 jump a low media byte stays a rejection. */
+        foreign_media = true;
+        bpb.media = 0xF8U;
+    }
     if (xx_fat_layout(geometry, &bpb)) {
+        geometry->media = stored_media;
+        if (foreign_media) {
+            geometry->boot_kind = XX_FAT_BOOT_FOREIGN;
+            return !geometry->truncated && xx_fat_confirm_copies(self, geometry);
+        }
         if (x86_jump && pc_signature) {
             geometry->boot_kind = XX_FAT_BOOT_PC;
             /* A short image has lost the size check that corroborates the

@@ -80,12 +80,6 @@
 #ifndef XXFC_STREAM_HAS_VXWORKS
 #define XXFC_STREAM_HAS_VXWORKS 1
 #endif
-#ifndef XXFC_STREAM_HAS_XXDS
-#define XXFC_STREAM_HAS_XXDS 0
-#endif
-#if XXFC_ENABLE_STREAM_DATASTRUCTS && XXFC_STREAM_HAS_XXDS
-#include "xxfclib/datastructs/xx_xxds.h"
-#endif
 
 #if XXFC_STREAM_HAS_PE && \
     (XXFC_ENABLE_STREAM_IMPORT || XXFC_ENABLE_STREAM_EXPORT || XXFC_ENABLE_STREAM_RESOURCES || XXFC_ENABLE_STREAM_METADATA || XXFC_ENABLE_STREAM_SYMBOLS)
@@ -170,19 +164,50 @@ extern const StreamSymbols *xx_xtac_get_stream_symbols(void);
 #endif
 #endif
 
+/* Set by the provider library (xxdatastructs), normally once at startup.
+ * The pointer is published with release/acquire ordering so a lazy
+ * registration from one thread is seen whole by the others. Kept as an
+ * integer so no function/data pointer conversion is needed, and without
+ * xx_threads, which some profiles do not compile. */
+#if defined(_MSC_VER) && defined(_WIN64)
+#include <intrin.h>
+static __int64 volatile g_xx_datastructs_provider = 0;
+#define XXFC_PROVIDER_STORE(value) ((void)_InterlockedExchange64(&g_xx_datastructs_provider, (__int64)(value)))
+#define XXFC_PROVIDER_LOAD() (_InterlockedCompareExchange64(&g_xx_datastructs_provider, 0, 0))
+#elif defined(_MSC_VER)
+#include <intrin.h>
+static long volatile g_xx_datastructs_provider = 0;
+#define XXFC_PROVIDER_STORE(value) ((void)_InterlockedExchange(&g_xx_datastructs_provider, (long)(value)))
+#define XXFC_PROVIDER_LOAD() (_InterlockedCompareExchange(&g_xx_datastructs_provider, 0, 0))
+#elif defined(__GNUC__) || defined(__clang__)
+static intptr_t g_xx_datastructs_provider = 0;
+#define XXFC_PROVIDER_STORE(value) __atomic_store_n(&g_xx_datastructs_provider, (intptr_t)(value), __ATOMIC_RELEASE)
+#define XXFC_PROVIDER_LOAD() __atomic_load_n(&g_xx_datastructs_provider, __ATOMIC_ACQUIRE)
+#else
+static volatile intptr_t g_xx_datastructs_provider = 0;
+#define XXFC_PROVIDER_STORE(value) (g_xx_datastructs_provider = (intptr_t)(value))
+#define XXFC_PROVIDER_LOAD() (g_xx_datastructs_provider)
+#endif
+
+void xx_format_set_datastructs_provider(xx_format_datastructs_provider provider)
+{
+    XXFC_PROVIDER_STORE((intptr_t)provider);
+}
+
+xx_format_datastructs_provider xx_format_get_datastructs_provider(void)
+{
+    return (xx_format_datastructs_provider)(intptr_t)XXFC_PROVIDER_LOAD();
+}
+
 const StreamDataStructs *xx_format_get_stream_datastructs(Abstractformat *format)
 {
 #if XXFC_ENABLE_STREAM_DATASTRUCTS
+    xx_format_datastructs_provider provider;
     if (!format) return NULL;
-#if XXFC_STREAM_HAS_XXDS
-    {
-        /* A DataStructs script (src/datastructs/<fmt>.xxds) serves the format;
-         * there is no per-format C provider. */
-        const StreamDataStructs *scripted = xx_xxds_get_stream_datastructs(format);
-        if (scripted) return scripted;
-    }
-#endif
-    return NULL;
+    /* A DataStructs script (xxdatastructs, src/datastructs/<fmt>.xxds) serves
+     * the format; there is no per-format C provider. */
+    provider = xx_format_get_datastructs_provider();
+    return provider ? provider(format) : NULL;
 #else
     (void)format;
     return NULL;

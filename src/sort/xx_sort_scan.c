@@ -71,7 +71,7 @@ static int signature_file_type_order(XFileType fileType)
         [XFT_MACHO32] = 22, [XFT_MACHO64] = 23,  [XFT_ZIP] = 68,          [XFT_JAR] = 52,       [XFT_APK] = 30,     [XFT_IPA] = 51,       [XFT_DEX] = 44,
         [XFT_NPM] = 84,     [XFT_MACHOFAT] = 54, [XFT_ARCHIVE] = 42,      [XFT_PDF] = 55,       [XFT_CFBF] = 90,    [XFT_IMAGE] = 48,     [XFT_JPEG] = 53,
         [XFT_PNG] = 58,     [XFT_RAR] = 59,      [XFT_ISO9660] = 102,     [XFT_AMIGAHUNK] = 24, [XFT_ATARIST] = 25, [XFT_JAVACLASS] = 88, [XFT_PYC] = 89,
-        [XFT_DOS16M] = 10,  [XFT_DOS4G] = 11,    [XFT_CLI_ASSEMBLY] = 26,
+        [XFT_DOS16M] = 10,  [XFT_DOS4G] = 11,    [XFT_CLI_ASSEMBLY] = 26, [XFT_FAT] = 868,      [XFT_MSA] = 869,
     };
 
     return ((int)fileType >= 0 && fileType < XFT_COUNT) ? order[fileType] : (int)fileType;

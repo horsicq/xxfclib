@@ -63,7 +63,8 @@ static const struct {
                      {"DOS16M", XFT_DOS16M},
                      {"DOS4G", XFT_DOS4G},
                      {"Amiga", XFT_AMIGAHUNK},
-                     {"AtariST", XFT_ATARIST},
+                     {"GEMDOS", XFT_ATARIST},
+                     {"AtariST", XFT_ATARIST}, /* legacy name of GEMDOS */
                      {"JavaClass", XFT_JAVACLASS},
                      {"PYC", XFT_PYC},
                      {"PDF", XFT_PDF},
@@ -73,6 +74,8 @@ static const struct {
                      {"PNG", XFT_PNG},
                      {"RAR", XFT_RAR},
                      {"ISO9660", XFT_ISO9660},
+                     {"FAT", XFT_FAT},
+                     {"MSA", XFT_MSA},
                      {NULL, XFT_UNKNOWN}};
 
 typedef struct db_metadata_blob {
@@ -1001,7 +1004,16 @@ int db_load_tar(DBase *pDb, const char *pTarPath, DBKind kind)
         typeflag = header[156];
 
         if (header[345] != '\0') {
-            xx_rt_snprintf(sName, sizeof(sName), "%s/%s", &header[345], header);
+            /* Neither ustar field has to be NUL-terminated: bound both copies
+             * (name: 100 bytes at 0, prefix: 155 bytes at 345). */
+            char sShortName[101];
+            char sPrefix[156];
+
+            x_memcpy(sShortName, header, 100);
+            sShortName[100] = '\0';
+            x_memcpy(sPrefix, &header[345], 155);
+            sPrefix[155] = '\0';
+            xx_rt_snprintf(sName, sizeof(sName), "%s/%s", sPrefix, sShortName);
         } else {
             xx_rt_strncpy(sName, header, 100);
             sName[100] = '\0';
@@ -1015,6 +1027,18 @@ int db_load_tar(DBase *pDb, const char *pTarPath, DBKind kind)
         if (nSize >= (uint64_t)SIZE_MAX) {
             bReadError = 1;
             break;
+        }
+        /* A member cannot be larger than what is left of the archive. Reject
+         * it before cd_malloc, which ends the process when it cannot serve a
+         * corrupt multi-gigabyte size field. */
+        {
+            int64_t nTotal = xx_io_total_size(pFile);
+            int64_t nPosition = xx_io_tell(pFile);
+
+            if (nTotal >= 0 && nPosition >= 0 && (nPosition > nTotal || nSize > (uint64_t)(nTotal - nPosition))) {
+                bReadError = 1;
+                break;
+            }
         }
         pData = (char *)cd_malloc((size_t)nSize + 1U);
         if (!pData) {
@@ -1149,6 +1173,8 @@ int db_load(DBase *pDb, const char *pPath, DBKind kind)
 void db_free(DBase *pDb)
 {
     int i = 0;
+
+    if (!pDb) return;
 
     for (i = 0; i < pDb->nCount; i++) {
         cd_free(pDb->pRecords[i].pName);

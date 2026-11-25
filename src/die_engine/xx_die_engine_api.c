@@ -503,10 +503,13 @@ static JSVal fn_remove_result(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArg
     pEngine->pBlackList[pEngine->nBlackListCount].pName = cd_strdup(pName);
     pEngine->nBlackListCount++;
 
-    for (i = 0; i < pEngine->pResult->nCount; i++) {
+    /* Remove every result of the type whose name matches; an empty name is a
+     * wildcard for the whole type, the same rule the blacklist applies to
+     * later results (engine_add_result). */
+    for (i = 0; i < pEngine->pResult->nCount;) {
         xx_scan_record *pRecord = &pEngine->pResult->pRecords[i];
 
-        if ((cd_stricmp_ascii(pRecord->type, pType) == 0) && ((cd_stricmp_ascii(pRecord->name, pName) == 0) || (pRecord->name[0] == 0))) {
+        if ((cd_stricmp_ascii(pRecord->type, pType) == 0) && ((pName[0] == 0) || (cd_stricmp_ascii(pRecord->name, pName) == 0))) {
             cd_free((void *)pRecord->type);
             cd_free((void *)pRecord->name);
             cd_free((void *)pRecord->version);
@@ -516,7 +519,8 @@ static JSVal fn_remove_result(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal *pArg
             cd_free((void *)pRecord->source_ref);
             x_memmove(pEngine->pResult->pRecords + i, pEngine->pResult->pRecords + i + 1, (size_t)(pEngine->pResult->nCount - i - 1) * sizeof(xx_scan_record));
             pEngine->pResult->nCount--;
-            break;
+        } else {
+            i++;
         }
     }
 
@@ -768,7 +772,11 @@ void die_engine_install_api(DieEngine *pEngine)
                         {XFT_ARCHIVE, "Archive"},
                         {XFT_IMAGE, "Image"},
                         {XFT_AMIGAHUNK, "Amiga"},
-                        {XFT_ATARIST, "AtariST"},
+                        {XFT_ATARIST, "GEMDOS"},
+                        {XFT_ATARIST, "AtariST"}, /* legacy name of GEMDOS */
+                        /* Floppy disk images: the Binary methods under the folder's name. */
+                        {XFT_FAT, "FAT"},
+                        {XFT_MSA, "MSA"},
                         {XFT_JAVACLASS, "JavaClass"},
                         {XFT_PYC, "PYC"},
                         {XFT_DOS16M, "DOS16M"},
