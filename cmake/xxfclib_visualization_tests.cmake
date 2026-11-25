@@ -1,0 +1,17 @@
+# Binary visualization (formats/xx_visualization.h) test; CXVis turns it on.
+option(XXFC_BUILD_VISUALIZATION_TESTS "Build the binary visualization test" OFF)
+if(XXFC_BUILD_VISUALIZATION_TESTS)
+    enable_testing()
+    add_executable(xxfc_visualization_test "${CMAKE_CURRENT_LIST_DIR}/../tests/visualization/test_visualization.c")
+    target_link_libraries(xxfc_visualization_test PRIVATE xxfclib::xxfclib)
+    if(MSVC)
+        target_compile_options(xxfc_visualization_test PRIVATE /W4 /utf-8)
+        target_compile_definitions(xxfc_visualization_test PRIVATE _CRT_SECURE_NO_WARNINGS)
+    endif()
+    add_test(NAME xxfclib.visualization COMMAND xxfc_visualization_test)
+    if(WIN32 AND EXISTS "$ENV{SystemRoot}/System32/notepad.exe")
+        # a real PE: sections as regions, data directories as highlights
+        add_test(NAME xxfclib.visualization.pe COMMAND xxfc_visualization_test "$ENV{SystemRoot}/System32/notepad.exe")
+        set_tests_properties(xxfclib.visualization.pe PROPERTIES PASS_REGULAR_EXPRESSION "highlights: [1-9]")
+    endif()
+endif()
