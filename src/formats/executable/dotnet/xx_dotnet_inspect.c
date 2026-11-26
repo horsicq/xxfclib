@@ -561,29 +561,6 @@ static int64_t dotnet_rva_range(xx_dotnet_inspection *state, uint32_t rva, uint3
     return offset;
 }
 
-static int read_compressed_uint(xx_executable_input *input, int64_t offset, int64_t remaining, int *bytes, uint32_t *value)
-{
-    uint8_t first;
-    if (remaining < 1) return 0;
-    first = xx_exec_u8(input, offset);
-    if (!(first & 0x80)) {
-        *bytes = 1;
-        *value = first;
-    } else if ((first & 0xC0) == 0x80) {
-        if (remaining < 2) return 0;
-        *bytes = 2;
-        *value = ((uint32_t)(first & 0x3F) << 8) | xx_exec_u8(input, offset + 1);
-        if (*value < 0x80U) return 0;
-    } else if ((first & 0xE0) == 0xC0) {
-        if (remaining < 4) return 0;
-        *bytes = 4;
-        *value = ((uint32_t)(first & 0x1F) << 24) | ((uint32_t)xx_exec_u8(input, offset + 1) << 16) | ((uint32_t)xx_exec_u8(input, offset + 2) << 8) |
-                 xx_exec_u8(input, offset + 3);
-        if (*value < 0x4000U) return 0;
-    } else return 0;
-    return !input->failed;
-}
-
 #if XX_DOTNET_HAVE_NEON
 /* Narrow consecutive ASCII UTF-16LE units in 16- and 8-unit vectors. A small
  * stack batch amortizes buffer calls without changing the Unicode fallback. */
@@ -761,24 +738,24 @@ static void parse_heaps(xx_dotnet_inspection *state)
     strings.count = strings.capacity = 0;
     xx_list_cleanup(&strings);
 
+    /* XCLIAssembly::getUnicodeStrings walks #US with a one-byte length (0x80
+     * read as 0) and takes length / 2 UTF-16 units after it; it stops at a
+     * length that leaves the heap instead of failing. Follow it, so that a
+     * malformed or long (multi-byte length) entry gives the reference's
+     * strings rather than rejecting the whole assembly. The reference may
+     * read one byte past the heap, its QByteArray terminator, taken as 0. */
     xx_list_init(&strings, sizeof(char *), NULL);
-    pos = 0;
-    while (pos < cli->nUSSize && strings.count < 100000 && !input->failed && !xx_pd_is_stopped(input->pd)) {
-        int bytes;
-        uint32_t length;
+    pos = 1;
+    while (cli->nUSSize > 1 && pos < cli->nUSSize && strings.count < 100000 && !input->failed && !xx_pd_is_stopped(input->pd)) {
+        uint32_t length = xx_exec_u8(input, cli->nUSOffset + pos);
         size_t payload_size;
+        size_t available;
         char *item;
-        if (!read_compressed_uint(input, cli->nUSOffset + pos, cli->nUSSize - pos, &bytes, &length)) {
-            input->failed = true;
-            break;
-        }
-        pos += bytes;
-        if (!length) continue;
-        if (!(length & 1U) || length > 0x100000U || length > (uint64_t)(cli->nUSSize - pos)) {
-            input->failed = true;
-            break;
-        }
-        payload_size = (size_t)length - 1U;
+        if (length == 0x80U) length = 0U;
+        if ((int64_t)length > cli->nUSSize - pos) break;
+        ++pos;
+        if (pos > cli->nUSSize) break;
+        payload_size = (size_t)(length / 2U) * 2U;
         if (payload_size > user_string_capacity) {
             uint8_t *resized = (uint8_t *)xx_mem_realloc(user_string_bytes, payload_size);
             if (!resized) {
@@ -788,12 +765,16 @@ static void parse_heaps(xx_dotnet_inspection *state)
             user_string_bytes = resized;
             user_string_capacity = payload_size;
         }
-        if ((payload_size && !xx_exec_read(input, cli->nUSOffset + pos, user_string_bytes, payload_size)) ||
+        available = (int64_t)payload_size <= cli->nUSSize - pos ? payload_size : (size_t)(cli->nUSSize - pos);
+        if (payload_size > available) xx_rt_memset(user_string_bytes + available, 0, payload_size - available);
+        if ((available && !xx_exec_read(input, cli->nUSOffset + pos, user_string_bytes, available)) ||
             !(item = decode_user_string(input, user_string_bytes, payload_size / 2U, use_neon, use_sse2, use_avx2))) {
             input->failed = true;
             break;
         }
-        if (!xx_list_append(&strings, &item)) {
+        if (!*item) {
+            xx_mem_free(item);
+        } else if (!xx_list_append(&strings, &item)) {
             xx_mem_free(item);
             input->failed = true;
             break;
@@ -803,7 +784,6 @@ static void parse_heaps(xx_dotnet_inspection *state)
     xx_mem_free(user_string_bytes);
     state->ppNetUnicodeStrings = (char **)strings.data;
     state->nNetUnicodeCount = (int)strings.count;
-    if (strings.count >= 100000 && pos < cli->nUSSize) input->failed = true;
     strings.data = NULL;
     strings.count = strings.capacity = 0;
     xx_list_cleanup(&strings);

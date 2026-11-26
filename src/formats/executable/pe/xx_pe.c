@@ -15,6 +15,7 @@
 #define XX_PE_FILE_HEADER_SIZE 20U
 #define XX_PE_SECTION_HEADER_SIZE 40U
 #define XX_PE_MAX_SECTIONS 4096U
+#define XX_PE_QT_MAX_SECTIONS 0x60U /* XPE_DEF::S_MAX_SECTIONCOUNT */
 #define XX_PE_MAX_IMPORTS 65536U
 #define XX_PE_MAX_RESOURCE_DEPTH 32U
 
@@ -207,7 +208,11 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_stru
     available_directories = (parsed->optional_size - directory_offset) / 8U;
     if (parsed->directory_count > available_directories) parsed->directory_count = available_directories;
     if (parsed->directory_count > 16U) parsed->directory_count = 16U;
-    for (i = 0U; i < parsed->directory_count; ++i) {
+    /* XPE::getOptionalHeader_DataDirectory reads all 16 entries whatever
+     * NumberOfRvaAndSizes and SizeOfOptionalHeader say ("there are some
+     * protectors with false NumberOfRvaAndSizes"); directory_count keeps the
+     * declared count for the structure views. */
+    for (i = 0U; i < 16U; ++i) {
         int64_t entry_offset = optional_offset + directory_offset + i * 8U;
         parsed->directory_rva[i] = xx_io_get_u32(format->device, entry_offset, false);
         parsed->directory_size[i] = xx_io_get_u32(format->device, entry_offset + 4, false);
@@ -216,8 +221,10 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_stru
     if (section_offset > total || (uint64_t)parsed->section_count * XX_PE_SECTION_HEADER_SIZE > (uint64_t)(total - section_offset)) goto done;
     parsed->sections = (xx_pe_section *)xx_mem_calloc(parsed->section_count, sizeof(*parsed->sections));
     if (!parsed->sections) goto done;
-    image_end = section_offset - format->base_address + (int64_t)parsed->section_count * XX_PE_SECTION_HEADER_SIZE;
-    if (image_end < parsed->headers_size) image_end = parsed->headers_size < (uint64_t)relative_size ? (int64_t)parsed->headers_size : relative_size;
+    /* XPE::getFileParts: the overlay starts after the header (SizeOfHeaders,
+     * clamped to the file) and the raw data of the first 0x60 sections, each
+     * clamped to the file rather than rejected (corrupted files). */
+    image_end = parsed->headers_size < (uint64_t)relative_size ? (int64_t)parsed->headers_size : relative_size;
     for (i = 0U; i < parsed->section_count; ++i) {
         xx_pe_section *section = &parsed->sections[i];
         int64_t entry_offset = section_offset + (int64_t)i * XX_PE_SECTION_HEADER_SIZE;
@@ -231,9 +238,13 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_stru
         section->raw_size = xx_io_get_u32(format->device, entry_offset + 16, false);
         section->raw_offset = xx_io_get_u32(format->device, entry_offset + 20, false);
         section->characteristics = xx_io_get_u32(format->device, entry_offset + 36, false);
-        if (!format->is_mapped && section->raw_size) {
-            if (section->raw_offset > (uint64_t)relative_size || section->raw_size > (uint64_t)relative_size - section->raw_offset) goto done;
-            raw_end = (int64_t)section->raw_offset + section->raw_size;
+        if (!format->is_mapped && i < XX_PE_QT_MAX_SECTIONS) {
+            uint32_t raw_offset = section->raw_offset;
+            uint32_t raw_size = section->raw_size;
+            if ((int64_t)raw_offset > relative_size) raw_offset = 0U;
+            /* The reference compares the 32-bit (wrapping) sum. */
+            if ((int64_t)(uint32_t)(raw_offset + raw_size) > relative_size) raw_size = (uint32_t)(relative_size - (int64_t)raw_offset);
+            raw_end = (int64_t)raw_offset + (int64_t)raw_size;
             if (raw_end > image_end) image_end = raw_end;
         }
     }

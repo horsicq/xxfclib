@@ -611,6 +611,9 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine, xx_io_device 
     xx_scan_result *part;
     bool found;
     bool appended;
+    bool preserve_metadata;
+    xx_file_type_t parent_type = XX_FILE_TYPE_UNKNOWN;
+    int64_t parent_size = 0;
 
     if (pd && pd->is_stop) goto failed;
     found = xx_scan_get_overlay(engine, device, options, &offset, &size, pd);
@@ -630,7 +633,8 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine, xx_io_device 
     total_size = xx_io_total_size(device);
     range_size = options->size;
     if (range_size < 0 && total_size >= 0) range_size = total_size - options->offset;
-    if (size < 0 || offset <= options->offset || offset > INT64_MAX - size || (total_size >= 0 && (offset > total_size || size > total_size - offset)) ||
+    /* XLE and XAtariST give the whole input as overlay (offset zero). */
+    if (size < 0 || offset < options->offset || offset > INT64_MAX - size || (total_size >= 0 && (offset > total_size || size > total_size - offset)) ||
         (range_size >= 0 && (offset - options->offset > range_size || size > range_size - (offset - options->offset)))) {
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Invalid scan overlay range");
         goto failed;
@@ -659,7 +663,18 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine, xx_io_device 
         xx_scan_free_result(engine, part);
         goto failed;
     }
+    /* As for a resource at offset zero: keep the input's metadata, which the
+     * standard merger would otherwise take from the overlay's pass. */
+    preserve_metadata = offset == options->offset;
+    if (preserve_metadata) {
+        parent_type = result->file_type;
+        parent_size = result->nFileSize;
+    }
     appended = xx_scan_append_result(engine, result, part, offset, pd);
+    if (preserve_metadata) {
+        result->file_type = parent_type;
+        result->nFileSize = parent_size;
+    }
     xx_scan_free_result(engine, part);
     if (!appended || (pd && pd->is_stop)) {
         if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Cannot append scan overlay result");

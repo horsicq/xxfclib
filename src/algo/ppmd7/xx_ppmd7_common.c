@@ -249,7 +249,7 @@ static void *ShrinkUnits(CPpmd7 *p, void *oldPtr, unsigned oldNU, unsigned newNU
     return oldPtr;
 }
 
-#define SUCCESSOR(p) ((CPpmd_Void_Ref)((p)->SuccessorLow | ((uint32_t)(p)->SuccessorHigh << 16)))
+#define SUCCESSOR(p) Ppmd7_GetSuccessor(p)
 
 static void SetSuccessor(CPpmd_State *p, CPpmd_Void_Ref v)
 {
@@ -375,14 +375,7 @@ static CTX_PTR CreateSuccessors(CPpmd7 *p, bool skip)
     return c;
 }
 
-static void SwapStates(CPpmd_State *t1, CPpmd_State *t2)
-{
-    CPpmd_State tmp = *t1;
-    *t1 = *t2;
-    *t2 = tmp;
-}
-
-static void UpdateModel(CPpmd7 *p)
+void xx_ppmd7_update_model(CPpmd7 *p)
 {
     CPpmd_Void_Ref successor, fSuccessor = SUCCESSOR(p->FoundState);
     CTX_PTR c;
@@ -400,7 +393,7 @@ static void UpdateModel(CPpmd7 *p)
                     s++;
                 } while (s->Symbol != p->FoundState->Symbol);
                 if (s[0].Freq >= s[-1].Freq) {
-                    SwapStates(&s[0], &s[-1]);
+                    ppmd7_swap_states(&s[0], &s[-1]);
                     s--;
                 }
             }
@@ -501,7 +494,7 @@ static void UpdateModel(CPpmd7 *p)
     p->MaxContext = p->MinContext = CTX(fSuccessor);
 }
 
-static void Rescale(CPpmd7 *p)
+void xx_ppmd7_rescale(CPpmd7 *p)
 {
     unsigned i, adder, sumFreq, escFreq;
     CPpmd_State *stats = STATS(p->MinContext);
@@ -558,66 +551,33 @@ static void Rescale(CPpmd7 *p)
     p->FoundState = STATS(p->MinContext);
 }
 
+#undef Ppmd7_Update1
+#undef Ppmd7_Update1_0
+#undef Ppmd7_Update2
+#undef Ppmd7_UpdateBin
+#undef Ppmd7_MakeEscFreq
+
 CPpmd_See *Ppmd7_MakeEscFreq(CPpmd7 *p, unsigned numMasked, uint32_t *escFreq)
 {
-    CPpmd_See *see;
-    unsigned nonMasked = p->MinContext->NumStats - numMasked;
-    if (p->MinContext->NumStats != 256) {
-        see = p->See[(unsigned)p->NS2Indx[(size_t)nonMasked - 1]] + (nonMasked < (unsigned)SUFFIX(p->MinContext)->NumStats - p->MinContext->NumStats) +
-              2 * (unsigned)(p->MinContext->SummFreq < 11 * p->MinContext->NumStats) + 4 * (unsigned)(numMasked > nonMasked) + p->HiBitsFlag;
-        {
-            unsigned r = (see->Summ >> see->Shift);
-            see->Summ = (uint16_t)(see->Summ - r);
-            *escFreq = r + (r == 0);
-        }
-    } else {
-        see = &p->DummySee;
-        *escFreq = 1;
-    }
-    return see;
-}
-
-static void NextContext(CPpmd7 *p)
-{
-    CTX_PTR c = CTX(SUCCESSOR(p->FoundState));
-    if (p->OrderFall == 0 && (uint8_t *)c > p->Text) p->MinContext = p->MaxContext = c;
-    else UpdateModel(p);
+    return ppmd7_make_esc_freq(p, numMasked, escFreq);
 }
 
 void Ppmd7_Update1(CPpmd7 *p)
 {
-    CPpmd_State *s = p->FoundState;
-    s->Freq += 4;
-    p->MinContext->SummFreq += 4;
-    if (s[0].Freq > s[-1].Freq) {
-        SwapStates(&s[0], &s[-1]);
-        p->FoundState = --s;
-        if (s->Freq > MAX_FREQ) Rescale(p);
-    }
-    NextContext(p);
+    ppmd7_update1(p);
 }
 
 void Ppmd7_Update1_0(CPpmd7 *p)
 {
-    p->PrevSuccess = (2 * p->FoundState->Freq > p->MinContext->SummFreq);
-    p->RunLength += p->PrevSuccess;
-    p->MinContext->SummFreq += 4;
-    if ((p->FoundState->Freq += 4) > MAX_FREQ) Rescale(p);
-    NextContext(p);
+    ppmd7_update1_0(p);
 }
 
 void Ppmd7_UpdateBin(CPpmd7 *p)
 {
-    p->FoundState->Freq = (uint8_t)(p->FoundState->Freq + (p->FoundState->Freq < 128 ? 1 : 0));
-    p->PrevSuccess = 1;
-    p->RunLength++;
-    NextContext(p);
+    ppmd7_update_bin(p);
 }
 
 void Ppmd7_Update2(CPpmd7 *p)
 {
-    p->MinContext->SummFreq += 4;
-    if ((p->FoundState->Freq += 4) > MAX_FREQ) Rescale(p);
-    p->RunLength = p->InitRL;
-    UpdateModel(p);
+    ppmd7_update2(p);
 }

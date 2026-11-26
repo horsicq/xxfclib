@@ -432,10 +432,15 @@ static ResIdName resource_id_name(xx_pe_inspection *pPE, int64_t nResourceOffset
     if (nName & 0x80000000u) {
         int64_t nStringOffset = nResourceOffset + (int64_t)(nName & 0x7FFFFFFFu);
         uint16_t nLength = xx_exec_u16(pPE->pInput, nStringOffset, false);
+        int64_t nAvailable;
         if (nLength > 1024) {
             nLength = 1024;
         }
-        result.pName = xx_exec_unicode_units(pPE->pInput, nStringOffset + 2, nLength, 0);
+        /* XPE::getResourcesIDName reads with read_array, which stops at the
+         * end of the file: a name running past it is truncated, not an error. */
+        nAvailable = (nStringOffset >= 0 && nStringOffset + 2 <= pPE->pInput->size) ? (pPE->pInput->size - nStringOffset - 2) / 2 : 0;
+        if ((int64_t)nLength > nAvailable) nLength = (uint16_t)nAvailable;
+        result.pName = nAvailable ? xx_exec_unicode_units(pPE->pInput, nStringOffset + 2, nLength, 0) : xx_exec_copy_string(pPE->pInput, "");
     } else {
         result.nId = nName;
     }

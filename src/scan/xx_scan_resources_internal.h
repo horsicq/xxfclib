@@ -15,8 +15,10 @@
  * device but must not close it or change its contents. */
 typedef bool (*xx_scan_resource_callback)(void *context, const xx_resource_record *record, xx_pd_struct *pd);
 
-/* Visit PE/PE64/.NET resources and ELF GResources in their stored form using
- * the existing format streams. Other formats succeed without callbacks.
+/* Visit PE/PE64/.NET resources (as XPE::getFileParts(FILEPART_RESOURCE)
+ * lists them: a record that is unmapped or leaves the input is skipped, a
+ * malformed directory ends the walk, neither is an error) and ELF
+ * GResources in their stored form. Other formats succeed without callbacks.
  * size == -1 selects the remainder of the device. Empty payloads are skipped.
  * The device remains owned by the caller and its position is restored on
  * return. Malformed input, cancellation, allocation failure and exceeding

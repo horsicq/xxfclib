@@ -27,6 +27,11 @@
 typedef struct cab_folder_s {
     uint32_t data_offset;
     uint16_t blocks, type;
+    /* Filled while cab_parse walks the CFDATA headers: the folder's data
+     * area (headers and packed bytes of every block), the offset of its last
+     * block's packed bytes (both relative to data_offset), and the sum of
+     * the blocks' plain sizes. */
+    uint32_t raw_size, last_payload, plain_total;
 } cab_folder;
 typedef struct cab_file_s {
     uint32_t size, folder_offset;
@@ -172,7 +177,8 @@ static bool cab_parse(Abstractformat *f, cab_context **out)
         if (!c->files[i].name) goto fail;
     }
     for (i = 0; i < nfolders; i++) {
-        int64_t p = f->base_address + c->folders[i].data_offset;
+        const int64_t start = f->base_address + c->folders[i].data_offset;
+        int64_t p = start;
         uint16_t j;
         uint64_t unpacked = 0;
         for (j = 0; j < c->folders[i].blocks; j++) {
@@ -183,10 +189,14 @@ static bool cab_parse(Abstractformat *f, cab_context **out)
             plain = xx_data_get_u16(b + 6, 2, 0, false);
             p += 8 + c->data_reserve;
             if (p > end || packed > (uint64_t)(end - p) || !plain) goto fail;
+            c->folders[i].last_payload = (uint32_t)(p - start);
             p += packed;
             unpacked += plain;
             if (unpacked > UINT32_MAX) goto fail;
         }
+        /* p - start <= cabinet size (a uint32_t), unpacked <= UINT32_MAX. */
+        c->folders[i].raw_size = (uint32_t)(p - start);
+        c->folders[i].plain_total = (uint32_t)unpacked;
     }
     *out = c;
     return true;
@@ -253,36 +263,64 @@ static bool cab_record(xx_archive_record *r, const cab_context *c, size_t i)
            xx_archive_record_set_meta_bool(r, XX_META_ID_IS_ENCRYPTED, false);
 }
 
+/* Reads a folder's whole data area (CFDATA headers and packed bytes, as
+ * measured by cab_parse) with one read instead of two seeks and reads per
+ * block. */
+static bool cab_load_raw(Abstractformat *f, const cab_folder *folder, uint8_t **out)
+{
+    const int64_t start = f->base_address + (int64_t)folder->data_offset;
+    uint8_t *raw;
+    *out = NULL;
+    /* The per-block reads this replaces required every header and payload
+     * start to be seekable with a long offset; keep rejecting the rest. */
+    if (start < 0 || start > LONG_MAX || (int64_t)folder->last_payload > LONG_MAX - start) return false;
+    raw = (uint8_t *)xx_mem_alloc(folder->raw_size ? folder->raw_size : 1U);
+    if (!raw) return false;
+    if (folder->raw_size && !cab_read(f->device, start, raw, folder->raw_size)) {
+        xx_mem_free(raw);
+        return false;
+    }
+    *out = raw;
+    return true;
+}
+
+/* Steps over one CFDATA header in a loaded data area.  The area was read
+ * again from the device, so every size is checked against it. */
+static bool cab_next_block(const cab_context *c, const uint8_t *raw, size_t raw_size, size_t *off, const uint8_t **data, uint16_t *packed, uint16_t *plain)
+{
+    size_t header = 8U + c->data_reserve;
+    if (*off > raw_size || header > raw_size - *off) return false;
+    *packed = xx_data_get_u16(raw + *off + 4, 2, 0, false);
+    *plain = xx_data_get_u16(raw + *off + 6, 2, 0, false);
+    *off += header;
+    if (!*packed || !*plain || *packed > raw_size - *off) return false;
+    *data = raw + *off;
+    *off += *packed;
+    return true;
+}
+
 static bool cab_decode_folder_advanced(Abstractformat *f, const cab_context *c, const cab_folder *folder, uint16_t method, uint8_t **out, size_t *out_size)
 {
-    uint8_t **blocks = NULL, *result = NULL;
-    size_t *packed_sizes = NULL, *plain_sizes = NULL, total = 0, wrote = 0, i;
-    int64_t p = f->base_address + folder->data_offset;
+    const uint8_t **blocks = NULL;
+    uint8_t *raw = NULL, *result = NULL;
+    size_t *packed_sizes = NULL, *plain_sizes = NULL, total = 0, wrote = 0, off = 0, i;
     bool ok = false;
     unsigned window_bits = (folder->type >> 8U) & 31U;
-    blocks = (uint8_t **)xx_mem_calloc(folder->blocks, sizeof(*blocks));
+    blocks = (const uint8_t **)xx_mem_calloc(folder->blocks, sizeof(*blocks));
     packed_sizes = (size_t *)xx_mem_calloc(folder->blocks, sizeof(*packed_sizes));
     plain_sizes = (size_t *)xx_mem_calloc(folder->blocks, sizeof(*plain_sizes));
-    if (!blocks || !packed_sizes || !plain_sizes) goto done;
+    if (!blocks || !packed_sizes || !plain_sizes || !cab_load_raw(f, folder, &raw)) goto done;
     for (i = 0; i < folder->blocks; i++) {
-        uint8_t h[8];
         uint16_t packed, plain;
-        if (!cab_read(f->device, p, h, 8)) goto done;
-        packed = xx_data_get_u16(h + 4, 2, 0, false);
-        plain = xx_data_get_u16(h + 6, 2, 0, false);
-        p += 8 + c->data_reserve;
-        if (!packed || !plain || plain > SIZE_MAX - total) goto done;
-        blocks[i] = (uint8_t *)xx_mem_alloc(packed);
-        if (!blocks[i] || !cab_read(f->device, p, blocks[i], packed)) goto done;
-        p += packed;
+        if (!cab_next_block(c, raw, folder->raw_size, &off, &blocks[i], &packed, &plain) || plain > SIZE_MAX - total) goto done;
         packed_sizes[i] = packed;
         plain_sizes[i] = plain;
         total += plain;
     }
     result = (uint8_t *)xx_mem_alloc(total);
     if (!result) goto done;
-    if (method == CAB_METHOD_LZX) ok = xx_lzx_cab_decode((const uint8_t *const *)blocks, packed_sizes, plain_sizes, folder->blocks, window_bits, result, total, &wrote);
-    else ok = xx_quantum_cab_decode((const uint8_t *const *)blocks, packed_sizes, plain_sizes, folder->blocks, window_bits, result, total, &wrote);
+    if (method == CAB_METHOD_LZX) ok = xx_lzx_cab_decode(blocks, packed_sizes, plain_sizes, folder->blocks, window_bits, result, total, &wrote);
+    else ok = xx_quantum_cab_decode(blocks, packed_sizes, plain_sizes, folder->blocks, window_bits, result, total, &wrote);
     if (!ok || wrote != total) {
         ok = false;
         goto done;
@@ -292,11 +330,8 @@ static bool cab_decode_folder_advanced(Abstractformat *f, const cab_context *c, 
     result = NULL;
 done:
     if (result) xx_mem_free(result);
-    if (blocks) {
-        for (i = 0; i < folder->blocks; i++)
-            if (blocks[i]) xx_mem_free(blocks[i]);
-        xx_mem_free(blocks);
-    }
+    if (raw) xx_mem_free(raw);
+    if (blocks) xx_mem_free((void *)blocks);
     if (packed_sizes) xx_mem_free(packed_sizes);
     if (plain_sizes) xx_mem_free(plain_sizes);
     return ok;
@@ -306,66 +341,50 @@ static bool cab_decode_folder(Abstractformat *f, const cab_context *c, uint16_t 
 {
     const cab_folder *folder = &c->folders[fi];
     uint16_t method = folder->type & 15U, j;
-    int64_t p = f->base_address + folder->data_offset;
-    size_t cap = 0, used = 0;
-    uint8_t *result = NULL;
+    size_t cap = 0, used = 0, off = 0;
+    uint8_t *raw = NULL, *result = NULL;
     if (method == CAB_METHOD_LZX || method == CAB_METHOD_QUANTUM) return cab_decode_folder_advanced(f, c, folder, method, out, out_size);
     if (method != CAB_METHOD_STORE && method != CAB_METHOD_MSZIP) return false;
+    if (!cab_load_raw(f, folder, &raw)) return false;
     for (j = 0; j < folder->blocks; j++) {
-        uint8_t h[8];
+        const uint8_t *in;
         uint16_t packed, plain;
-        uint8_t *in = NULL, *grown;
         size_t wrote = 0;
-        if (!cab_read(f->device, p, h, 8)) {
-            goto fail;
-        }
-        packed = xx_data_get_u16(h + 4, 2, 0, false);
-        plain = xx_data_get_u16(h + 6, 2, 0, false);
-        p += 8 + c->data_reserve;
-        if (!packed || !plain) {
-            goto fail;
-        }
-        in = (uint8_t *)xx_mem_alloc(packed);
-        if (!in || !cab_read(f->device, p, in, packed)) {
-            if (in) xx_mem_free(in);
-            goto fail;
-        }
-        p += packed;
-        if (used > SIZE_MAX - plain) {
-            xx_mem_free(in);
-            goto fail;
-        }
+        if (!cab_next_block(c, raw, folder->raw_size, &off, &in, &packed, &plain) || used > SIZE_MAX - plain) goto fail;
         if (used + plain > cap) {
-            grown = (uint8_t *)xx_mem_realloc(result, used + plain);
-            if (!grown) {
-                xx_mem_free(in);
-                goto fail;
-            }
+            /* Grow geometrically (the old code grew by one block, copying
+             * the whole output each time), but only as far as blocks have
+             * decoded: a small corrupt cabinet that declares gigabytes of
+             * output fails before allocating them. */
+            size_t want = cap > SIZE_MAX / 2U ? SIZE_MAX : cap * 2U;
+            uint8_t *grown;
+            if (want < 65536U) want = 65536U;
+            if (want > folder->plain_total) want = folder->plain_total;
+            if (want < used + plain) want = used + plain;
+            grown = (uint8_t *)xx_mem_realloc(result, want);
+            if (!grown) goto fail;
             result = grown;
-            cap = used + plain;
+            cap = want;
         }
         if (method == CAB_METHOD_STORE) {
-            if (packed != plain) {
-                xx_mem_free(in);
-                goto fail;
-            }
+            if (packed != plain) goto fail;
             xx_mem_copy(result + used, in, plain);
             wrote = plain;
         } else if (packed < 2 || in[0] != 'C' || in[1] != 'K' ||
                    !xx_deflate_decompress_memory_with_dictionary(in + 2, packed - 2, result + used, plain, &wrote, result + used - (used > 32768U ? 32768U : used),
                                                                  used > 32768U ? 32768U : used, false) ||
                    wrote != plain) {
-            xx_mem_free(in);
             goto fail;
         }
-        xx_mem_free(in);
         used += plain;
     }
+    xx_mem_free(raw);
     *out = result;
     *out_size = used;
     return true;
 fail:
     if (result) xx_mem_free(result);
+    xx_mem_free(raw);
     return false;
 }
 

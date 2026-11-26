@@ -457,6 +457,29 @@ static const char *pe_machine_name(unsigned int nMachine)
     return "Unknown";
 }
 
+/* XDEX::getVersion: read_ansiString(4), the Latin-1 text after "dex\n" up to
+ * a NUL (at most 256 bytes), whether or not the DEX tables validate. */
+static void dex_get_magic_version(xx_io_device *pFile, char *sBuf, size_t nBufSize)
+{
+    size_t nOut = 0;
+    int64_t nTotal = pFile ? xx_io_total_size(pFile) : -1;
+    int64_t i;
+    sBuf[0] = '\0';
+    for (i = 4; i < 4 + 256 && i < nTotal; ++i) {
+        cd_u8 c = xx_io_get_u8(pFile, i);
+        if (!c) break;
+        if (c < 0x80) {
+            if (nOut + 1 >= nBufSize) break;
+            sBuf[nOut++] = (char)c;
+        } else {
+            if (nOut + 2 >= nBufSize) break;
+            sBuf[nOut++] = (char)(0xC0 | (c >> 6));
+            sBuf[nOut++] = (char)(0x80 | (c & 0x3F));
+        }
+    }
+    sBuf[nOut] = '\0';
+}
+
 static void javaclass_get_version(xx_io_device *pFile, char *sBuf, size_t nBufSize)
 {
     cd_u16 nMinor, nMajor;
@@ -1398,6 +1421,13 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
                 *pResult = js_num((double)pEngine->elf.nOverlayOffset);
                 return true;
             }
+            if (!pEngine->bHasPE && pEngine->fileType == XFT_BINARY) {
+                /* XBinary's memory map is one record over the whole input,
+                 * so _calculateRawSize, the overlay offset, is its size. */
+                cd_i64 nSize = pFile ? xx_io_total_size(pFile) : -1;
+                *pResult = js_num((double)(nSize > 0 ? nSize : -1));
+                return true;
+            }
 
             *pResult = js_num((double)(pEngine->bHasPE ? pPE->nOverlayOffset : -1));
             return true;
@@ -1652,11 +1682,30 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             *pResult = js_str(pCtx, hex);
             return true;
         }
-        case A_calculateCRC32: *pResult = js_num((double)xx_crc32_device(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0), 0)); return true;
-        case A_crc32:
-            *pResult =
-                js_num((double)xx_crc32_device(pFile, arg_i64(pCtx, nArgc, pArgv, 0, 0), arg_i64(pCtx, nArgc, pArgv, 1, 0), (cd_u32)arg_i64(pCtx, nArgc, pArgv, 2, 0)));
+        case A_calculateCRC32:
+        case A_crc32: {
+            /* Binary_Script::calculateCRC32 / crc32 call XBinary::_getCRC32(
+             * offset, size, init): the reflected EDB88320 register starts at
+             * init itself (0 for calculateCRC32, no pre-inversion) and a
+             * valid, nonempty range gets a final XOR; an invalid range or a
+             * failed read returns 0. With the native standard CRC32 (which
+             * inverts on entry and exit) that is a start value of ~init. */
+            cd_i64 nOffset = arg_i64(pCtx, nArgc, pArgv, 0, 0);
+            cd_i64 nSize = arg_i64(pCtx, nArgc, pArgv, 1, 0);
+            cd_u32 nInit = (id == A_crc32) ? (cd_u32)arg_i64(pCtx, nArgc, pArgv, 2, 0) : 0U;
+            cd_u32 nResult;
+            if (nOffset < 0 || nSize < -1 || !xx_io_range_clamp(pFile, nOffset, &nSize) || !nSize || xx_io_buffer_failed(pFile) || xx_pd_is_stopped(pEngine->pd)) {
+                *pResult = js_num(0);
+                return true;
+            }
+            nResult = xx_crc32_device(pFile, nOffset, nSize, ~nInit);
+            if (xx_io_buffer_failed(pFile) || xx_pd_is_stopped(pEngine->pd)) {
+                *pResult = js_num(0);
+                return true;
+            }
+            *pResult = js_num((double)nResult);
             return true;
+        }
         case A_crc16: {
             cd_i64 nOffset = arg_i64(pCtx, nArgc, pArgv, 0, 0);
             cd_i64 nSize = arg_i64(pCtx, nArgc, pArgv, 1, 0);
@@ -2190,6 +2239,13 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
 
             if (pEngine->bHasDex) {
                 *pResult = js_str(pCtx, xx_dex_get_version(&pEngine->dex));
+                return true;
+            }
+
+            if (pEngine->fileType == XFT_DEX) {
+                char sVer[1024];
+                dex_get_magic_version(pFile, sVer, sizeof(sVer));
+                *pResult = js_str(pCtx, sVer);
                 return true;
             }
 

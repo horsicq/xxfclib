@@ -143,6 +143,7 @@ extern const uint8_t PPMD7_kExpEscape[16];
 #define Ppmd7_GetPtr(p, offs) ((void *)((p)->Base + (offs)))
 #define Ppmd7_GetContext(p, offs) ((CPpmd7_Context *)Ppmd7_GetPtr((p), (offs)))
 #define Ppmd7_GetStats(p, ctx) ((CPpmd_State *)Ppmd7_GetPtr((p), ((ctx)->Stats)))
+#define Ppmd7_GetSuccessor(p) ((CPpmd_Void_Ref)((p)->SuccessorLow | ((uint32_t)(p)->SuccessorHigh << 16)))
 
 #define Ppmd7_GetBinSumm(p)                                                                                                                                             \
     &p->BinSumm[(size_t)(unsigned)Ppmd7Context_OneState(p->MinContext)->Freq - 1]                                                                                       \
@@ -159,6 +160,87 @@ void Ppmd7_Update1_0(CPpmd7 *p);
 void Ppmd7_Update2(CPpmd7 *p);
 void Ppmd7_UpdateBin(CPpmd7 *p);
 CPpmd_See *Ppmd7_MakeEscFreq(CPpmd7 *p, unsigned numMasked, uint32_t *scale);
+
+void xx_ppmd7_update_model(CPpmd7 *p);
+void xx_ppmd7_rescale(CPpmd7 *p);
+
+static inline void ppmd7_swap_states(CPpmd_State *t1, CPpmd_State *t2)
+{
+    CPpmd_State tmp = *t1;
+    *t1 = *t2;
+    *t2 = tmp;
+}
+
+static inline void ppmd7_next_context(CPpmd7 *p)
+{
+    CPpmd7_Context *c = Ppmd7_GetContext(p, Ppmd7_GetSuccessor(p->FoundState));
+    if (p->OrderFall == 0 && (uint8_t *)c > p->Text) p->MinContext = p->MaxContext = c;
+    else xx_ppmd7_update_model(p);
+}
+
+static inline void ppmd7_update1(CPpmd7 *p)
+{
+    CPpmd_State *s = p->FoundState;
+    s->Freq += 4;
+    p->MinContext->SummFreq += 4;
+    if (s[0].Freq > s[-1].Freq) {
+        ppmd7_swap_states(&s[0], &s[-1]);
+        p->FoundState = --s;
+        if (s->Freq > PPMD7_MAX_FREQ) xx_ppmd7_rescale(p);
+    }
+    ppmd7_next_context(p);
+}
+
+static inline void ppmd7_update1_0(CPpmd7 *p)
+{
+    p->PrevSuccess = (2 * p->FoundState->Freq > p->MinContext->SummFreq);
+    p->RunLength += p->PrevSuccess;
+    p->MinContext->SummFreq += 4;
+    if ((p->FoundState->Freq += 4) > PPMD7_MAX_FREQ) xx_ppmd7_rescale(p);
+    ppmd7_next_context(p);
+}
+
+static inline void ppmd7_update_bin(CPpmd7 *p)
+{
+    p->FoundState->Freq = (uint8_t)(p->FoundState->Freq + (p->FoundState->Freq < 128 ? 1 : 0));
+    p->PrevSuccess = 1;
+    p->RunLength++;
+    ppmd7_next_context(p);
+}
+
+static inline void ppmd7_update2(CPpmd7 *p)
+{
+    p->MinContext->SummFreq += 4;
+    if ((p->FoundState->Freq += 4) > PPMD7_MAX_FREQ) xx_ppmd7_rescale(p);
+    p->RunLength = p->InitRL;
+    xx_ppmd7_update_model(p);
+}
+
+static inline CPpmd_See *ppmd7_make_esc_freq(CPpmd7 *p, unsigned numMasked, uint32_t *escFreq)
+{
+    CPpmd_See *see;
+    unsigned nonMasked = p->MinContext->NumStats - numMasked;
+    if (p->MinContext->NumStats != 256) {
+        see = p->See[(unsigned)p->NS2Indx[(size_t)nonMasked - 1]] +
+              (nonMasked < (unsigned)Ppmd7_GetContext(p, p->MinContext->Suffix)->NumStats - p->MinContext->NumStats) +
+              2 * (unsigned)(p->MinContext->SummFreq < 11 * p->MinContext->NumStats) + 4 * (unsigned)(numMasked > nonMasked) + p->HiBitsFlag;
+        {
+            unsigned r = (see->Summ >> see->Shift);
+            see->Summ = (uint16_t)(see->Summ - r);
+            *escFreq = r + (r == 0);
+        }
+    } else {
+        see = &p->DummySee;
+        *escFreq = 1;
+    }
+    return see;
+}
+
+#define Ppmd7_Update1(p) ppmd7_update1(p)
+#define Ppmd7_Update1_0(p) ppmd7_update1_0(p)
+#define Ppmd7_Update2(p) ppmd7_update2(p)
+#define Ppmd7_UpdateBin(p) ppmd7_update_bin(p)
+#define Ppmd7_MakeEscFreq(p, numMasked, escFreq) ppmd7_make_esc_freq((p), (numMasked), (escFreq))
 
 /* =========================================================================
  * Range decoder

@@ -12,7 +12,16 @@ bool xx_scan_type_is_java_class(const uint8_t *head, size_t head_size)
 
 xx_file_type_t xx_scan_type_detect_dex(const uint8_t *head, size_t head_size)
 {
-    return head_size >= 8U && !memcmp(head, "dex\n", 4) && head[7] == 0U ? XX_FILE_TYPE_DEX : XX_FILE_TYPE_UNKNOWN;
+    uint32_t version = 0U;
+    size_t i;
+    if (head_size < 8U || memcmp(head, "dex\n", 4) || head[7] != 0U) return XX_FILE_TYPE_UNKNOWN;
+    /* XDEX::isValid also needs getVersion().toUInt() >= 35: the magic's
+     * version text must be a decimal number of at least 35. */
+    for (i = 4U; i < 7U && head[i]; ++i) {
+        if (head[i] < '0' || head[i] > '9') return XX_FILE_TYPE_UNKNOWN;
+        version = version * 10U + (uint32_t)(head[i] - '0');
+    }
+    return i > 4U && version >= 35U ? XX_FILE_TYPE_DEX : XX_FILE_TYPE_UNKNOWN;
 }
 
 xx_file_type_t xx_scan_type_detect_pyc(const uint8_t *head, size_t head_size)

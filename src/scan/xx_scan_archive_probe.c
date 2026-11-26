@@ -43,7 +43,9 @@ bool xx_scan_archive_is_tar(xx_io_device *device)
         return true;
     }
     xx_tar_init(&tar, device, 0);
-    valid = xx_tar_check_is_valid(&tar.format, NULL);
+    /* XTAR::_collectRecords also needs at least one visible member: a stream
+     * that starts with a zero block (an empty TAR) is no TAR to XFormats. */
+    valid = xx_tar_handle_base_info(&tar.format, NULL) && xx_tar_get_number_of_records(&tar) > 0U;
     xx_tar_destroy(&tar);
     if (position >= 0) (void)xx_io_seek64(device, position, SEEK_SET);
     return valid;

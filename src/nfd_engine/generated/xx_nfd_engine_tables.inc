@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  * Generated from SpecAbstract live NFD tables. DO NOT EDIT.
  * Source: modules/nfd_*.cpp; command: python tools/nfd/generate_nfd_tables.py
- * Generator: 1; manifest SHA-256: ca30dfd9c6760d4c746f154d7ecef6bc98348e9e612e5d41565c64bed51e516f
+ * Generator: 1; manifest SHA-256: f67fed671670b1ad3c1a71f72c3b0c1f98e7f7c6cde47191785bcc5587360feb
  */
 
 static const xx_nfd_string_row xx_nfd_table_0_rows[] = {
@@ -5683,7 +5683,7 @@ static const xx_nfd_signature_row xx_nfd_table_20_rows[] = {
     {{0, "PE32", "LINKER", "WATCOMLINKER", "", "WinNT/RTLexe"}, {xx_nfd_sig_20_46_records, 1}, "'MZ'80000100000004000000FFFF0000B800000000000000400000000000000000000000000000000000000000000000000000000000000000000000900000000E1FBA0E00B409CD21B8014CCD21'this is a Windows NT character-mode (own RTL) executable\r\n'24", {"module_array", "modules/nfd_pe.cpp", UINT32_C(114)}},
     {{0, "PE32", "LINKER", "WATCOMLINKER", "", "WinNT/exe"}, {xx_nfd_sig_20_47_records, 3}, "'MZ'80000100000004000000FFFF0000B800000000000000400000000000000000000000000000000000000000000000000000000000000000000000800000000E1FBA0E00B409CD21B8014CCD21..'his is a Windows NT character-mode executable\r\n'24", {"module_array", "modules/nfd_pe.cpp", UINT32_C(117)}},
     {{0, "PE32", "LINKER", "WATCOMLINKER", "", "Win95/exe"}, {xx_nfd_sig_20_48_records, 1}, "'MZ'80000100000004000000FFFF0000B800000000000000400000000000000000000000000000000000000000000000000000000000000000000000700000000E1FBA0E00B409CD21B8014CCD21'This is a Windows 95 executable\r\n'24", {"module_array", "modules/nfd_pe.cpp", UINT32_C(120)}},
-    {{0, "PE", "STUB", "VALVE", "", ""}, {xx_nfd_sig_20_49_records, 3}, "'MZ'............................................................................................................................'VLV'", {"module_array", "modules/nfd_pe.cpp", UINT32_C(123)}},
+    {{0, "PE", "TOOL", "VALVE", "", ""}, {xx_nfd_sig_20_49_records, 3}, "'MZ'............................................................................................................................'VLV'", {"module_array", "modules/nfd_pe.cpp", UINT32_C(123)}},
     {{0, "PE", "LINKER", "UNILINK", "", ""}, {xx_nfd_sig_20_50_records, 3}, "'MZ'....................................................'UniLink!'", {"module_array", "modules/nfd_pe.cpp", UINT32_C(125)}},
     {{0, "PE32", "PACKER", "CRINKLER", "", ""}, {xx_nfd_sig_20_51_records, 1}, "'MZ'B80000420031DB43EB58'PE'0000", {"module_array", "modules/nfd_pe.cpp", UINT32_C(127)}},
 };
@@ -9305,7 +9305,7 @@ static const xx_nfd_string_row xx_nfd_table_28_rows[] = {
     {{0, "PE", "COMPILER", "GO", "1.XX", ""}, ".symtab", 7U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(960)}},
     {{0, "PE", "INSTALLER", "GENTEEINSTALLER", "", ""}, ".gentee", 7U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(961)}},
     {{0, "PE32", "PROTECTOR", "HMIMYSPROTECTOR", "0.1", ""}, "hmimys", 6U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(962)}},
-    {{0, "PE32", "PETOOL", "HOODLUM", "", ""}, ".HOODLUM", 8U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(963)}},
+    {{0, "PE32", "TOOL", "HOODLUM", "", ""}, ".HOODLUM", 8U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(963)}},
     {{0, "PE32", "PROTECTOR", "INQUARTOSOBFUSCATOR", "", ""}, ".inq", 4U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(964)}},
     {{0, "PE32", "PACKER", "JDPACK", "", ""}, ".jdpack", 7U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(965)}},
     {{0, "PE32", "PROTECTOR", "KAOSPEDLLEXECUTABLEUNDETECTER", "", ""}, ".Kaos12", 7U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(966)}},
@@ -9395,7 +9395,7 @@ static const xx_nfd_string_row xx_nfd_table_28_rows[] = {
     {{0, "PE", "PROTECTOR", "VMPROTECT", "", ""}, ".vmp1", 5U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1050)}},
     {{0, "PE", "PROTECTOR", "VMPROTECT", "", ""}, ".vmp2", 5U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1051)}},
     {{0, "PE", "PROTECTOR", "VMPROTECT", "", ""}, ".vmp3", 5U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1052)}},
-    {{0, "PE", "PETOOL", "VMUNPACKER", "", ""}, ".dswlab", 7U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1053)}},
+    {{0, "PE", "TOOL", "VMUNPACKER", "", ""}, ".dswlab", 7U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1053)}},
     {{0, "PE32", "PROTECTOR", "WINKRIPT", "1.0", ""}, ".wkt0", 5U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1054)}},
     {{0, "PE32", "PACKER", "WINUPACK", "", ""}, ".Upack", 6U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1055)}},
     {{0, "PE", "INSTALLER", "WISE", "", ""}, ".WISE", 5U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1056)}},
@@ -9405,7 +9405,7 @@ static const xx_nfd_string_row xx_nfd_table_28_rows[] = {
     {{0, "PE", "PROTECTOR", "XTREMEPROTECTOR", "", ""}, ".idata  ", 8U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1060)}},
     {{0, "PE", "PROTECTOR", "XTREMEPROTECTOR", "", ""}, "XPROT   ", 8U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1061)}},
     {{0, "PE", "PROTECTOR", "XTREAMLOK", "", ""}, ".xlok", 5U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1062)}},
-    {{0, "PE", "PETOOL", "XVOLKOLAK", "", ""}, ".xvlk", 5U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1063)}},
+    {{0, "PE", "TOOL", "XVOLKOLAK", "", ""}, ".xvlk", 5U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1063)}},
     {{0, "PE32", "PROTECTOR", "YODASCRYPTER", "1.X", ""}, "yC", 2U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1064)}},
     {{0, "PE32", "PROTECTOR", "YODASPROTECTOR", "1.0b", ""}, "yC", 2U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1065)}},
     {{0, "PE32", "PROTECTOR", "YODASPROTECTOR", "", ""}, ".yP", 3U, false, {"module_array", "modules/nfd_pe.cpp", UINT32_C(1066)}},
@@ -9762,5 +9762,5 @@ static const xx_nfd_table xx_nfd_tables[] = {
 };
 #define XX_NFD_GENERATED_TABLE_COUNT 35U
 #define XX_NFD_GENERATED_ROW_COUNT 1745U
-#define XX_NFD_GENERATED_CONTENT_SHA256 "30603cd45cbe59bfb715aca24dce18f557ca632f09a60b604a9ea139320104d1"
-#define XX_NFD_GENERATED_DATA_VERSION "nfd-30603cd45cbe-1745"
+#define XX_NFD_GENERATED_CONTENT_SHA256 "ec9d346c7a83f0538c0daf7d2965679a00f0edb0a091543b5ef7e8170aa5fcd7"
+#define XX_NFD_GENERATED_DATA_VERSION "nfd-ec9d346c7a83-1745"

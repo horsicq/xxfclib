@@ -360,7 +360,7 @@ static bool xx_jpeg_parse(Abstractformat *self, xx_jpeg_parsed *parsed, xx_pd_st
 
 typedef struct xx_jpeg_analysis_s {
     char version[32];
-    char comment[101];
+    char comment[201]; /* 100 Latin-1 characters as UTF-8 */
     char dqt_md5[33];
     char *camera;
     bool markers[256];
@@ -557,9 +557,20 @@ bool xx_jpeg_analyze(xx_jpeg *jpeg, xx_pd_struct *pd)
         (void)xx_md5_init(&hash);
     }
     {
+        /* XJpeg::getComment reads each COM text with read_ansiString, which
+         * decodes Latin-1: bytes 0x80-0xFF become U+0080-U+00FF. */
+        uint8_t raw[100];
         size_t i, out = 0;
-        for (i = 0; i < comment_size; ++i)
-            if (info->comment[i] != '\r' && info->comment[i] != '\n') info->comment[out++] = info->comment[i];
+        for (i = 0; i < comment_size; ++i) raw[i] = (uint8_t)info->comment[i];
+        for (i = 0; i < comment_size; ++i) {
+            if (raw[i] == '\r' || raw[i] == '\n') continue;
+            if (raw[i] < 0x80U) {
+                info->comment[out++] = (char)raw[i];
+            } else {
+                info->comment[out++] = (char)(0xC0U | (raw[i] >> 6));
+                info->comment[out++] = (char)(0x80U | (raw[i] & 0x3FU));
+            }
+        }
         info->comment[out] = 0;
     }
     if (!xx_md5_final(&hash, digest, sizeof(digest)) || !xx_data_to_hex(digest, sizeof(digest), info->dqt_md5, sizeof(info->dqt_md5))) goto done;

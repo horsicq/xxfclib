@@ -65,5 +65,8 @@ xx_file_type_t xx_scan_type_detect_macho(const uint8_t *head, size_t head_size)
 {
     if (head_size < 28U || !xx_scan_is_macho_magic(head)) return XX_FILE_TYPE_UNKNOWN;
     if (head[3] == 0xCEU || head[0] == 0xCEU) return XX_FILE_TYPE_MACHO32;
-    return head_size >= 32U ? XX_FILE_TYPE_MACHO64 : XX_FILE_TYPE_UNKNOWN;
+    if (head_size < 32U) return XX_FILE_TYPE_UNKNOWN;
+    /* XMACH::getMode compares the little-endian read of the magic with
+     * MH_MAGIC_64 only, so a big-endian 64-bit file is typed Mach-O32. */
+    return head[0] == 0xCFU ? XX_FILE_TYPE_MACHO64 : XX_FILE_TYPE_MACHO32;
 }

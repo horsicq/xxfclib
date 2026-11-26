@@ -31,6 +31,14 @@
 
 #define kTopValue (1u << 24)
 
+#if defined(_MSC_VER)
+#define PPMD7_NOINLINE __declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
+#define PPMD7_NOINLINE __attribute__((noinline))
+#else
+#define PPMD7_NOINLINE
+#endif
+
 static bool ppmd7_rd_refill(ppmd7_range_dec *rd)
 {
     if (rd->error) return false;
@@ -58,13 +66,19 @@ static bool ppmd7_rd_refill(ppmd7_range_dec *rd)
     return true;
 }
 
-static uint8_t ppmd7_rd_byte(ppmd7_range_dec *rd)
+PPMD7_NOINLINE static int ppmd7_rd_byte_slow(ppmd7_range_dec *rd)
 {
     if (!ppmd7_rd_refill(rd)) {
         rd->error = true;
-        return 0;
+        return -1;
     }
-    return rd->ibuf[rd->ibuf_pos++];
+    return (int)rd->ibuf[rd->ibuf_pos++];
+}
+
+static inline uint8_t ppmd7_rd_byte(ppmd7_range_dec *rd)
+{
+    int b = (rd->ibuf_pos < rd->ibuf_len) ? (int)rd->ibuf[rd->ibuf_pos++] : ppmd7_rd_byte_slow(rd);
+    return b < 0 ? 0 : (uint8_t)b;
 }
 
 bool ppmd7_rd_init(ppmd7_range_dec *rd, xx_io_device *dev, const uint8_t *mem, size_t mem_size, int64_t remaining)
@@ -86,7 +100,7 @@ bool ppmd7_rd_init(ppmd7_range_dec *rd, xx_io_device *dev, const uint8_t *mem, s
     return !rd->error;
 }
 
-static void Range_Normalize(ppmd7_range_dec *rd)
+static inline void Range_Normalize(ppmd7_range_dec *rd)
 {
     if (rd->range < kTopValue) {
         rd->code = (rd->code << 8) | ppmd7_rd_byte(rd);
@@ -98,98 +112,74 @@ static void Range_Normalize(ppmd7_range_dec *rd)
     }
 }
 
-static uint32_t Range_GetThreshold(ppmd7_range_dec *rd, uint32_t total)
-{
-    return rd->code / (rd->range /= total);
-}
-
-static void Range_Decode(ppmd7_range_dec *rd, uint32_t start, uint32_t size)
+static inline void Range_Decode(ppmd7_range_dec *rd, uint32_t start, uint32_t size)
 {
     rd->code -= start * rd->range;
     rd->range *= size;
     Range_Normalize(rd);
 }
 
-static uint32_t Range_DecodeBit(ppmd7_range_dec *rd, uint32_t size0)
+static inline bool ppmd7_rd_byte_local(ppmd7_range_dec *rd, const uint8_t **cur_p, const uint8_t **end_p, uint8_t *out)
 {
-    uint32_t newBound = (rd->range >> 14) * size0;
-    uint32_t symbol;
-    if (rd->code < newBound) {
-        symbol = 0;
-        rd->range = newBound;
-    } else {
-        symbol = 1;
-        rd->code -= newBound;
-        rd->range -= newBound;
+    const uint8_t *cur = *cur_p;
+    if (cur < *end_p) {
+        *cur_p = cur + 1;
+        *out = *cur;
+        return true;
     }
-    Range_Normalize(rd);
-    return symbol;
+    rd->ibuf_pos = (size_t)(cur - rd->ibuf);
+    int nb = ppmd7_rd_byte_slow(rd);
+    if (nb < 0) return false;
+    *out = (uint8_t)nb;
+    *cur_p = rd->ibuf + rd->ibuf_pos;
+    *end_p = rd->ibuf + rd->ibuf_len;
+    return true;
+}
+
+static inline bool ppmd7_norm_local(ppmd7_range_dec *rd, uint32_t *range_p, uint32_t *code_p, const uint8_t **cur_p, const uint8_t **end_p)
+{
+    uint32_t range = *range_p;
+    if (range < kTopValue) {
+        uint8_t b;
+        if (!ppmd7_rd_byte_local(rd, cur_p, end_p, &b)) return false;
+        uint32_t code = (*code_p << 8) | b;
+        range <<= 8;
+        if (range < kTopValue) {
+            if (!ppmd7_rd_byte_local(rd, cur_p, end_p, &b)) {
+                *range_p = range;
+                *code_p = code;
+                return false;
+            }
+            code = (code << 8) | b;
+            range <<= 8;
+        }
+        *range_p = range;
+        *code_p = code;
+    }
+    return true;
 }
 
 #define MASK(sym) ((int8_t *)charMask)[sym]
 
-int Ppmd7_DecodeSymbol(CPpmd7 *p, ppmd7_range_dec *rc)
+PPMD7_NOINLINE static int ppmd7_decode_escape_loop(CPpmd7 *p, ppmd7_range_dec *rd, size_t *charMask)
 {
-    size_t charMask[256 / sizeof(size_t)];
-    if (p->MinContext->NumStats != 1) {
-        CPpmd_State *s = Ppmd7_GetStats(p, p->MinContext);
-        unsigned i;
-        uint32_t count, hiCnt;
-        if ((count = Range_GetThreshold(rc, p->MinContext->SummFreq)) < (hiCnt = s->Freq)) {
-            uint8_t symbol;
-            Range_Decode(rc, 0, s->Freq);
-            p->FoundState = s;
-            symbol = s->Symbol;
-            Ppmd7_Update1_0(p);
-            return (int)symbol;
-        }
-        p->PrevSuccess = 0;
-        i = p->MinContext->NumStats - 1;
-        do {
-            if ((hiCnt += (++s)->Freq) > count) {
-                uint8_t symbol;
-                Range_Decode(rc, hiCnt - s->Freq, s->Freq);
-                p->FoundState = s;
-                symbol = s->Symbol;
-                Ppmd7_Update1(p);
-                return (int)symbol;
-            }
-        } while (--i);
-
-        if (count >= p->MinContext->SummFreq) return -2;
-
-        p->HiBitsFlag = p->HB2Flag[p->FoundState->Symbol];
-        Range_Decode(rc, hiCnt, p->MinContext->SummFreq - hiCnt);
-        PPMD_SetAllBitsIn256Bytes(charMask);
-        MASK(s->Symbol) = 0;
-        i = p->MinContext->NumStats - 1;
-        do {
-            MASK((--s)->Symbol) = 0;
-        } while (--i);
-    } else {
-        uint16_t *prob = Ppmd7_GetBinSumm(p);
-        if (Range_DecodeBit(rc, *prob) == 0) {
-            uint8_t symbol;
-            *prob = (uint16_t)PPMD_UPDATE_PROB_0(*prob);
-            symbol = (p->FoundState = Ppmd7Context_OneState(p->MinContext))->Symbol;
-            Ppmd7_UpdateBin(p);
-            return (int)symbol;
-        }
-        *prob = (uint16_t)PPMD_UPDATE_PROB_1(*prob);
-        p->InitEsc = PPMD7_kExpEscape[*prob >> 10];
-        PPMD_SetAllBitsIn256Bytes(charMask);
-        MASK(Ppmd7Context_OneState(p->MinContext)->Symbol) = 0;
-        p->PrevSuccess = 0;
-    }
+    uint32_t range = rd->range;
+    uint32_t code = rd->code;
+    const uint8_t *cur = rd->ibuf + rd->ibuf_pos;
+    const uint8_t *end = rd->ibuf + rd->ibuf_len;
+    int ret;
 
     for (;;) {
         CPpmd_State *ps[256], *s;
-        uint32_t freqSum, count, hiCnt;
+        uint32_t freqSum, escFreq, hiCnt;
         CPpmd_See *see;
         unsigned i, num, numMasked = p->MinContext->NumStats;
         do {
             p->OrderFall++;
-            if (!p->MinContext->Suffix) return -1;
+            if (!p->MinContext->Suffix) {
+                ret = -1;
+                goto done;
+            }
             p->MinContext = Ppmd7_GetContext(p, p->MinContext->Suffix);
         } while (p->MinContext->NumStats == numMasked);
 
@@ -204,31 +194,200 @@ int Ppmd7_DecodeSymbol(CPpmd7 *p, ppmd7_range_dec *rc)
             i -= (unsigned)k;
         } while (i != num);
 
-        see = Ppmd7_MakeEscFreq(p, numMasked, &freqSum);
-        freqSum += hiCnt;
-        count = Range_GetThreshold(rc, freqSum);
+        see = Ppmd7_MakeEscFreq(p, numMasked, &escFreq);
+        freqSum = escFreq + hiCnt;
+        range /= freqSum;
+        uint64_t hi_bound = (uint64_t)range * hiCnt;
 
-        if (count < hiCnt) {
+        if ((uint64_t)code < hi_bound) {
             uint8_t symbol;
-            CPpmd_State **pps = ps;
-            for (hiCnt = 0; (hiCnt += (*pps)->Freq) <= count; pps++);
-            s = *pps;
-            Range_Decode(rc, hiCnt - s->Freq, s->Freq);
+            if (num == 1) {
+                s = ps[0];
+            } else {
+                uint32_t count = code / range;
+                CPpmd_State **pps = ps;
+                for (hiCnt = 0; (hiCnt += (*pps)->Freq) <= count; pps++);
+                s = *pps;
+                code -= (hiCnt - s->Freq) * range;
+            }
+            range *= s->Freq;
+            if (!ppmd7_norm_local(rd, &range, &code, &cur, &end)) {
+                ret = -2;
+                goto done;
+            }
             Ppmd_See_Update(see);
             p->FoundState = s;
             symbol = s->Symbol;
             Ppmd7_Update2(p);
-            return (int)symbol;
+            ret = (int)symbol;
+            goto done;
         }
 
-        if (count >= freqSum) return -2;
+        if ((uint64_t)code >= (uint64_t)range * freqSum) {
+            ret = -2;
+            goto done;
+        }
 
-        Range_Decode(rc, hiCnt, freqSum - hiCnt);
+        code -= (uint32_t)hi_bound;
+        range *= escFreq;
+        if (!ppmd7_norm_local(rd, &range, &code, &cur, &end)) {
+            ret = -2;
+            goto done;
+        }
         see->Summ = (uint16_t)(see->Summ + freqSum);
         do {
             MASK(ps[--i]->Symbol) = 0;
         } while (i != 0);
     }
+
+done:
+    rd->range = range;
+    rd->code = code;
+    rd->ibuf_pos = (size_t)(cur - rd->ibuf);
+    return ret;
+}
+
+PPMD7_NOINLINE static int ppmd7_decode_escape_multi(CPpmd7 *p, ppmd7_range_dec *rd, uint32_t hiCnt, CPpmd_State *s)
+{
+    size_t charMask[256 / sizeof(size_t)];
+    p->HiBitsFlag = p->HB2Flag[p->FoundState->Symbol];
+    Range_Decode(rd, hiCnt, p->MinContext->SummFreq - hiCnt);
+    if (rd->error) return -2;
+    PPMD_SetAllBitsIn256Bytes(charMask);
+    MASK(s->Symbol) = 0;
+    unsigned i = p->MinContext->NumStats - 1;
+    do {
+        MASK((--s)->Symbol) = 0;
+    } while (--i);
+    return ppmd7_decode_escape_loop(p, rd, charMask);
+}
+
+PPMD7_NOINLINE static int ppmd7_decode_escape_bin(CPpmd7 *p, ppmd7_range_dec *rd, uint16_t *prob)
+{
+    size_t charMask[256 / sizeof(size_t)];
+    *prob = (uint16_t)PPMD_UPDATE_PROB_1(*prob);
+    p->InitEsc = PPMD7_kExpEscape[*prob >> 10];
+    PPMD_SetAllBitsIn256Bytes(charMask);
+    MASK(Ppmd7Context_OneState(p->MinContext)->Symbol) = 0;
+    p->PrevSuccess = 0;
+    return ppmd7_decode_escape_loop(p, rd, charMask);
+}
+
+static size_t ppmd7_decode_chunk(CPpmd7 *p, ppmd7_range_dec *rd, uint8_t *outbuf, size_t max_count, int *out_stop_sym)
+{
+    uint32_t range = rd->range;
+    uint32_t code = rd->code;
+    const uint8_t *cur = rd->ibuf + rd->ibuf_pos;
+    const uint8_t *end = rd->ibuf + rd->ibuf_len;
+    uint8_t *out_ptr = outbuf;
+    uint8_t *const out_end = outbuf + max_count;
+
+    while (out_ptr < out_end) {
+        CPpmd7_Context *min_ctx = p->MinContext;
+        int sym;
+        if (min_ctx->NumStats != 1) {
+            CPpmd_State *s = Ppmd7_GetStats(p, min_ctx);
+            uint32_t hiCnt = s->Freq;
+            range /= min_ctx->SummFreq;
+            if ((uint64_t)code < (uint64_t)range * hiCnt) {
+                uint8_t symbol = s->Symbol;
+                range *= hiCnt;
+                if (!ppmd7_norm_local(rd, &range, &code, &cur, &end)) {
+                    *out_stop_sym = -2;
+                    goto done;
+                }
+                p->FoundState = s;
+                Ppmd7_Update1_0(p);
+                *out_ptr++ = symbol;
+                continue;
+            }
+            uint32_t count = code / range;
+            p->PrevSuccess = 0;
+            unsigned i = min_ctx->NumStats - 1;
+            do {
+                if ((hiCnt += (++s)->Freq) > count) {
+                    uint8_t symbol = s->Symbol;
+                    code -= (hiCnt - s->Freq) * range;
+                    range *= s->Freq;
+                    if (!ppmd7_norm_local(rd, &range, &code, &cur, &end)) {
+                        *out_stop_sym = -2;
+                        goto done;
+                    }
+                    p->FoundState = s;
+                    Ppmd7_Update1(p);
+                    *out_ptr++ = symbol;
+                    goto next_sym;
+                }
+            } while (--i);
+
+            if (count >= min_ctx->SummFreq) {
+                *out_stop_sym = -2;
+                goto done;
+            }
+
+            rd->range = range;
+            rd->code = code;
+            rd->ibuf_pos = (size_t)(cur - rd->ibuf);
+            sym = ppmd7_decode_escape_multi(p, rd, hiCnt, s);
+            goto on_escape;
+        } else {
+            uint16_t *prob = Ppmd7_GetBinSumm(p);
+            uint32_t newBound = (range >> 14) * *prob;
+            if (code < newBound) {
+                range = newBound;
+                if (!ppmd7_norm_local(rd, &range, &code, &cur, &end)) {
+                    *out_stop_sym = -2;
+                    goto done;
+                }
+                *prob = (uint16_t)PPMD_UPDATE_PROB_0(*prob);
+                CPpmd_State *s = Ppmd7Context_OneState(min_ctx);
+                p->FoundState = s;
+                uint8_t symbol = s->Symbol;
+                Ppmd7_UpdateBin(p);
+                *out_ptr++ = symbol;
+                continue;
+            } else {
+                range -= newBound;
+                code -= newBound;
+                if (!ppmd7_norm_local(rd, &range, &code, &cur, &end)) {
+                    *out_stop_sym = -2;
+                    goto done;
+                }
+                rd->range = range;
+                rd->code = code;
+                rd->ibuf_pos = (size_t)(cur - rd->ibuf);
+                sym = ppmd7_decode_escape_bin(p, rd, prob);
+            }
+        }
+    on_escape:
+        if (sym < 0 || rd->error) {
+            *out_stop_sym = (rd->error || sym < -1) ? -2 : -1;
+            goto done_synced;
+        }
+        range = rd->range;
+        code = rd->code;
+        cur = rd->ibuf + rd->ibuf_pos;
+        end = rd->ibuf + rd->ibuf_len;
+        *out_ptr++ = (uint8_t)sym;
+    next_sym:;
+    }
+
+done:
+    rd->range = range;
+    rd->code = code;
+    rd->ibuf_pos = (size_t)(cur - rd->ibuf);
+done_synced:
+    return (size_t)(out_ptr - outbuf);
+}
+
+int Ppmd7_DecodeSymbol(CPpmd7 *p, ppmd7_range_dec *rc)
+{
+    uint8_t sym_byte = 0;
+    int stop_sym = 0;
+    if (ppmd7_decode_chunk(p, rc, &sym_byte, 1U, &stop_sym) == 1U) {
+        return (int)sym_byte;
+    }
+    return stop_sym;
 }
 
 static bool xx_ppmd7_decompress_stream_impl(ppmd7_range_dec *rd, int order, uint32_t mem_size, xx_io_device *dst_dev, uint8_t *mem_dst, size_t mem_cap,
@@ -254,7 +413,9 @@ static bool xx_ppmd7_decompress_stream_impl(ppmd7_range_dec *rd, int order, uint
     size_t opos = 0;
     uint64_t tot = 0U;
     size_t io_capacity = rd->io_capacity;
-    uint8_t *staging = io_capacity <= (size_t)-1 / 2U ? (uint8_t *)xx_mem_alloc(io_capacity * 2U) : NULL;
+    if (io_capacity == 0U) io_capacity = XX_DEFAULT_FILE_BUFFER_SIZE;
+    if (io_capacity > ((size_t)-1 >> 1)) io_capacity = (size_t)-1 >> 1;
+    uint8_t *staging = (uint8_t *)xx_mem_alloc(io_capacity * 2U);
     uint8_t *outbuf;
     if (!staging) {
         xx_io_note_alloc_failure();
@@ -267,6 +428,7 @@ static bool xx_ppmd7_decompress_stream_impl(ppmd7_range_dec *rd, int order, uint
     rd->ibuf_pos = rd->ibuf_len = 0U;
     outbuf = staging + io_capacity;
     bool ok = true;
+    const size_t cancel_quantum = 65536U;
 
     while (ok) {
         if (pd && xx_pd_is_stopped(pd)) {
@@ -274,18 +436,31 @@ static bool xx_ppmd7_decompress_stream_impl(ppmd7_range_dec *rd, int order, uint
             break;
         }
         if (size_defined && tot + (uint64_t)opos == expected_size) break;
-
-        int sym = Ppmd7_DecodeSymbol(&ppmd, rd);
-        if (rd->error || sym < -1) {
-            ok = false;
+        if (mem_dst && tot + (uint64_t)opos >= (uint64_t)mem_cap) {
+            if (tot + (uint64_t)opos == 0U && mem_cap == 0U) {
+                uint8_t dummy;
+                int stop_sym = 0;
+                size_t got_syms = ppmd7_decode_chunk(&ppmd, rd, &dummy, 1U, &stop_sym);
+                if (rd->error || stop_sym < -1 || got_syms > 0U) ok = false;
+            }
             break;
         }
-        if (sym == -1) {
-            /* End of stream */
-            break;
+
+        size_t chunk = io_capacity - opos;
+        if (chunk > cancel_quantum) chunk = cancel_quantum;
+        if (size_defined) {
+            uint64_t rem = expected_size - (tot + (uint64_t)opos);
+            if (rem < (uint64_t)chunk) chunk = (size_t)rem;
+        }
+        if (mem_dst) {
+            size_t rem_mem = (size_t)((uint64_t)mem_cap - (tot + (uint64_t)opos));
+            if (rem_mem < chunk) chunk = rem_mem;
         }
 
-        outbuf[opos++] = (uint8_t)sym;
+        int stop_sym = 0;
+        size_t n = ppmd7_decode_chunk(&ppmd, rd, outbuf + opos, chunk, &stop_sym);
+        opos += n;
+
         if (opos >= io_capacity) {
             if (dst_dev) {
                 ssize_t w = xx_io_write(dst_dev, outbuf, opos);
@@ -294,20 +469,29 @@ static bool xx_ppmd7_decompress_stream_impl(ppmd7_range_dec *rd, int order, uint
                     break;
                 }
             } else if (mem_dst) {
-                if (tot + opos > mem_cap) {
+                if (tot + (uint64_t)opos > (uint64_t)mem_cap) {
                     ok = false;
                     break;
                 }
                 xx_rt_memcpy(mem_dst + (size_t)tot, outbuf, opos);
             }
-            tot += opos;
+            tot += (uint64_t)opos;
             opos = 0;
-            if (pd && pd_level >= 0) xx_pd_set_current(pd, pd_level, (uint64_t)tot);
+            if (pd && pd_level >= 0) xx_pd_set_current(pd, pd_level, tot);
         }
 
-        if (mem_dst && (tot + opos >= mem_cap)) {
+        if (rd->error || stop_sym < -1) {
+            ok = false;
             break;
         }
+        if (stop_sym == -1) {
+            /* End of stream */
+            break;
+        }
+    }
+
+    if (ok && pd && xx_pd_is_stopped(pd)) {
+        ok = false;
     }
 
     if (ok && opos > 0) {
@@ -315,11 +499,11 @@ static bool xx_ppmd7_decompress_stream_impl(ppmd7_range_dec *rd, int order, uint
             ssize_t w = xx_io_write(dst_dev, outbuf, opos);
             if (w < 0 || (size_t)w != opos) ok = false;
         } else if (mem_dst) {
-            if (tot + opos <= mem_cap) xx_rt_memcpy(mem_dst + (size_t)tot, outbuf, opos);
+            if (tot + (uint64_t)opos <= (uint64_t)mem_cap) xx_rt_memcpy(mem_dst + (size_t)tot, outbuf, opos);
             else ok = false;
         }
-        tot += opos;
-        if (pd && pd_level >= 0) xx_pd_set_current(pd, pd_level, (uint64_t)tot);
+        tot += (uint64_t)opos;
+        if (pd && pd_level >= 0) xx_pd_set_current(pd, pd_level, tot);
     }
 
     if (out_written) *out_written = (size_t)tot;
@@ -331,6 +515,9 @@ static bool xx_ppmd7_decompress_stream_impl(ppmd7_range_dec *rd, int order, uint
 
     if (pd && pd_level >= 0) {
         xx_pd_leave_level(pd, pd_level);
+    }
+    if (ok && pd && xx_pd_is_stopped(pd)) {
+        ok = false;
     }
 
     return ok && (!size_defined || tot == expected_size);
