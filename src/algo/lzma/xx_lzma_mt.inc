@@ -540,7 +540,9 @@ xx_lzma2_mt_result xx_lzma2_mt_decode(const xx_lzma2_mt_source *source, uint8_t 
     }
     xx_lzma_mt_pipe_free(pipe);
     if (result == XX_LZMA2_MT_FAILED) return result;
-    *resume = written_to;
+    /* Finished: the stream's end marker (one 0x00 control byte) follows the
+     * last unit and is consumed too, as the sequential decoder does. */
+    *resume = ended ? written_to + 1U : written_to;
     return ended ? XX_LZMA2_MT_FINISHED : XX_LZMA2_MT_RESUME;
 }
 

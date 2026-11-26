@@ -103,6 +103,7 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dex/xx_dex.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dex/xx_dex_yx.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dex/xx_dex_inspect.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dex/xx_dex_legacy.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/dos16m/xx_dos16m.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/elf/xx_elf_inspect.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/elf/xx_elf.c
@@ -180,6 +181,7 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/bzip2/xx_bzip2.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/bzip2/xx_bzip2_bwt.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/bzip2/xx_bzip2_dec.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/algo/bzip2/xx_bzip2_dec_mt.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/bzip2/xx_bzip2_enc.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/bzip2/xx_bzip2_huffman.c
     ${CMAKE_CURRENT_LIST_DIR}/src/algo/bzip2/xx_bzip2_mtf.c

@@ -626,8 +626,12 @@ bool bz2_work_init(bz2_block_work *w, int block_bytes)
         bz2_work_free(w);
         return false;
     }
-    /* The slack is read, never used: keep it defined. */
+    /* The slack is read, never used: keep it defined.  The inverse BWT
+     * prefetches through tt / tt2 entries past n, so their slack must hold
+     * in-range indices from the first block on (0 is one). */
     xx_rt_memset(w->mid + block_bytes, 0, BZ2_WORK_PAD);
+    xx_rt_memset(w->tt + block_bytes, 0, BZ2_WORK_PAD * sizeof(uint32_t));
+    xx_rt_memset(w->tt2 + block_bytes, 0, BZ2_WORK_PAD * sizeof(uint32_t));
     w->block_cap = block_bytes;
 #if BZ2_X86_SIMD
     /* SSE4.2 is the level the library detects; it includes SSSE3. */

@@ -5740,7 +5740,7 @@ function(xxfclib_configure_target target is_shared)
     endif()
 
     # Multi-threaded LZMA2 / xz decoding: this target compiles src/threads.
-    target_compile_definitions(${target} PRIVATE XX_LZMA_MT=1)
+    target_compile_definitions(${target} PRIVATE XX_LZMA_MT=1 XX_BZIP2_MT=1)
     if(is_shared)
         target_compile_definitions(${target} PRIVATE XXFC_BUILD_SHARED)
         set_target_properties(${target} PROPERTIES

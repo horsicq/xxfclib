@@ -29,6 +29,8 @@ static const ApiEntry g_elf_api_table[] = {{"isStringInTablePresent", A_isString
                                            {"getGeneralOptions", A_getGeneralOptions, 0},
                                            {"isLibraryPresent", A_isLibraryPresent, 2},
                                            {"getSectionNumber", A_getSectionNumber, 1},
+                                           /* APKiD ELF */
+                                           {"getSectionName", A_getSectionName, 1},
                                            {NULL, A_NONE, 0}};
 
 void die_engine_api_register_elf(JSCtx *pCtx, JSVal object)
@@ -40,7 +42,16 @@ bool die_engine_api_dispatch_elf(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int 
     switch (id) {
         case A_getNumberOfSections: *pResult = js_num((double)pEngine->elf.nShnum); return true;
 
-        case A_getSectionName: *pResult = js_str(pCtx, ""); return true;
+        case A_getSectionName: {
+            /* Section name resolved via e_shstrndx; "" for an index outside the section table. */
+            int nNumber = (int)arg_i64(pCtx, nArgc, pArgv, 0, -1);
+            const char *pName = "";
+            if (pEngine->bHasElf && nNumber >= 0 && nNumber < pEngine->elf.nSectionCount && pEngine->elf.pSections[nNumber].pName) {
+                pName = pEngine->elf.pSections[nNumber].pName;
+            }
+            *pResult = js_str(pCtx, pName);
+            return true;
+        }
 
         case A_getSectionVirtualSize:
         case A_getSectionVirtualAddress:

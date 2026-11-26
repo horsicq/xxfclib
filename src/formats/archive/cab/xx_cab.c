@@ -544,3 +544,44 @@ void xx_cab_free_archive_records_reading(Abstractformat *f, xx_archive_record_st
     (void)f;
     xx_archive_record_state_free(s);
 }
+
+bool xx_cab_unpack_file_to_device(xx_io_device *device, int64_t base_address, size_t index, xx_io_device *out,
+                                  char *name, size_t name_size)
+{
+    xx_cab cab;
+    cab_context *c = NULL;
+    uint8_t *folder = NULL;
+    size_t folder_size = 0;
+    const cab_file *x;
+    size_t at = 0;
+    bool ok = false;
+
+    if (name && name_size) name[0] = 0;
+    if (!device || !out) return false;
+    xx_cab_init(&cab, device, base_address);
+    if (!cab_parse(&cab.format, &c)) goto done;
+    if (index >= c->file_count) goto done;
+    x = &c->files[index];
+    if (name && name_size && x->name) {
+        size_t n = xx_str_len(x->name);
+        if (n >= name_size) n = name_size - 1;
+        xx_mem_copy(name, x->name, n);
+        name[n] = 0;
+    }
+    if (!cab_decode_folder(&cab.format, c, x->folder, &folder, &folder_size)) goto done;
+    if (x->folder_offset > folder_size || x->size > folder_size - x->folder_offset) goto done;
+    ok = true;
+    while (at < x->size) {
+        ssize_t n = xx_io_write(out, folder + x->folder_offset + at, x->size - at);
+        if (n <= 0 || (size_t)n > x->size - at) {
+            ok = false;
+            break;
+        }
+        at += (size_t)n;
+    }
+done:
+    if (folder) xx_mem_free(folder);
+    if (c) cab_free(c);
+    xx_cab_destroy(&cab);
+    return ok;
+}

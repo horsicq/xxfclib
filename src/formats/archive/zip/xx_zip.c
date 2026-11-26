@@ -3228,6 +3228,8 @@ bool xx_zip_unpack_current_archive_record(Abstractformat *self, xx_archive_recor
                     stage = xx_io_file_open(dest_path_utf8, "wbx");
                 }
             } else if (overwrite || !xx_io_file_exists_a(dest_path_utf8)) {
+                /* the stage file needs the folder too: do not trust the cache */
+                (void)xx_zip_ensure_parent((xx_zip *)self, full_dest_w, true);
                 stage = xx_zip_open_stage_file(dest_path_utf8, &stage_path);
             }
             if (stage) {

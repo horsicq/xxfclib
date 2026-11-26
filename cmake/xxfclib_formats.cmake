@@ -38,7 +38,7 @@ xxfclib_configure_streams(xxfclib)
 target_compile_features(xxfclib PUBLIC c_std_11)
 target_compile_definitions(xxfclib
     PUBLIC XXFC_STATIC XXFC_FORMATS_ONLY=1
-    PRIVATE XX_LZMA_MT=1
+    PRIVATE XX_LZMA_MT=1 XX_BZIP2_MT=1
     PRIVATE XXFC_NO_EXTERNAL_HELPERS=1)
 target_include_directories(xxfclib
     PUBLIC

@@ -47,6 +47,7 @@
 #include "xxfclib/formats/document/pdf/xxpdf.h"
 #include "xxfclib/formats/executable/elf/xx_elf.h"
 #include "xxfclib/formats/executable/dex/xx_dex.h"
+#include "xxfclib/formats/executable/dex/xx_dex_legacy.h"
 #include "xxfclib/formats/executable/macho/xx_macho.h"
 #include "xxfclib/formats/executable/pyc/xx_pyc.h"
 #include "xxfclib/formats/archive/zip/xx_zip.h"
@@ -92,6 +93,10 @@ struct DieEngine {
     int bHasElf;
     xx_dex dex;
     int bHasDex;
+    /* APKiD DEX: YARA 3.11 legacy dex module values (DEX.getUnicodeMemberNameCount),
+     * computed on first use. */
+    xx_dex_legacy dexLegacy;
+    int bDexLegacyDone;
     xx_macho_inspection mach;
     int bHasMach;
     xx_pyc pyc;

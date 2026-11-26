@@ -28,7 +28,7 @@ static void autoplay_locate(Abstractformat *f, const xx_list_s *opts, demolition
 {
     uint8_t h[10], digest[16], *config = NULL;
     const uint8_t *pid, *enabled;
-    size_t n, pid_size, enabled_size, i, end;
+    size_t n = 0, pid_size, enabled_size, i, end;
     int64_t overlay, cab, cabend, cursor = xx_io_tell(f->device);
     uint64_t budget = 1048576U;
     char password[33];

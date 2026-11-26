@@ -286,6 +286,12 @@ typedef enum {
     A_isDexItemStringPresent,
     A_getMapItemsHash,
 
+    /* APKiD DEX */
+    A_isStringPoolSorted,
+    A_getUnicodeMemberNameCount,
+    A_isDexStringPresentExp,
+    A_isStringPoolSortedByHeader,
+
     /* ---- ELF / Mach-O ---- */
     A_isStringInTablePresent,
     A_getNumberOfPrograms,

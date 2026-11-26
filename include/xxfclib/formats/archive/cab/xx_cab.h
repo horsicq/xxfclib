@@ -24,6 +24,14 @@ XXFC_API const xx_archive_record *xx_cab_get_current_archive_record(Abstractform
 XXFC_API bool xx_cab_unpack_current_archive_record(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
 XXFC_API bool xx_cab_archive_record_move_to_next(Abstractformat *, xx_archive_record_state *, xx_pd_struct *);
 XXFC_API void xx_cab_free_archive_records_reading(Abstractformat *, xx_archive_record_state *);
+/* Unpacks file number `index` (0 = the first) of the cabinet at
+ * device:base_address into out (written from its current position). name
+ * (may be NULL) receives the file's stored name, cut to name_size. False
+ * when the cabinet is invalid, has no such file, or decoding / writing fails.
+ * A compressed symbol store file (".pd_", ".dl_", ".ex_": makecab output)
+ * is a one-file cabinet. */
+XXFC_API bool xx_cab_unpack_file_to_device(xx_io_device *device, int64_t base_address, size_t index, xx_io_device *out,
+                                           char *name, size_t name_size);
 /* BEGIN GENERATED ABSTRACT EXTRACTOR */
 #ifdef __cplusplus
 extern "C" {

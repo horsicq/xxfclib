@@ -57,6 +57,7 @@
 #define XX_RAR29_MAX_BITS 15u
 #define XX_RAR29_MAX_PROGRAMS 1024u
 #define XX_RAR29_MAX_FILTERS 8192u
+#define XX_RAR29_FILTER_BYTES_PER_SLOT 256u
 #define XX_RAR29_VM_WORK_SIZE 0x3c000u
 #define XX_RAR29_VM_HALF_SIZE 0x20000u
 #define XX_RAR29_PPM_MAX_ORDER 64u
@@ -68,8 +69,50 @@ typedef struct xx_rar29_bits_s {
     xx_rarx_status_t error;
 } xx_rar29_bits;
 
-#define XX_RAR29_FAST_BITS 10u
-#define XX_RAR29_FAST_SIZE (1u << XX_RAR29_FAST_BITS)
+#if defined(__SSE2__) || defined(_M_X64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+#include <emmintrin.h>
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+#define XX_RAR29_USE_SSE2 1
+#endif
+
+/* Direct-lookup widths of the per-alphabet decode tables.  An entry is
+ * (symbol << 4) | code_length; XX_RAR29_FAST_INVALID marks an index whose code
+ * is longer than the table width (or unassigned) and needs the canonical
+ * search in xx_rar29_decode_symbol_slow. */
+#define XX_RAR29_FAST_BITS_MAX 11u
+#define XX_RAR29_FAST_SIZE (1u << XX_RAR29_FAST_BITS_MAX)
+#define XX_RAR29_MAIN_FAST_BITS 11u
+#define XX_RAR29_DISTANCE_FAST_BITS 9u
+#define XX_RAR29_LOW_FAST_BITS 7u
+#define XX_RAR29_LENGTH_FAST_BITS 8u
+#define XX_RAR29_LEVEL_FAST_BITS 7u
+#define XX_RAR29_FAST_INVALID 0xffffu
+
+/* The fast LZ loop reads the main and the distance alphabet through packed
+ * 32-bit tables derived from the 16-bit ones, so that one load gives
+ * everything needed to consume a symbol together with its extra bits:
+ *   main:     symbol << 18 | base << 9 | extra_bits << 6 | (code_length + extra_bits)
+ *             base/extra_bits describe the match length (symbols 271..) or the
+ *             short distance (263..270) and are zero for every other symbol;
+ *   distance: (slot base + 1) << 10 | direct_bits << 6 | (code_length + direct_bits)
+ *             direct_bits are the bits read straight from the stream (for
+ *             slots above 9 the low four bits are coded separately).
+ * The low six bits are always the number of bits to drop. */
+#define XX_RAR29_PACKED_INVALID 0xffffffffu
+#define XX_RAR29_PACKED_SYMBOL_SHIFT 18u
+/* Main entries below this value are literals (symbol < 256). */
+#define XX_RAR29_PACKED_LITERAL_END (256u << XX_RAR29_PACKED_SYMBOL_SHIFT)
+
+/* The fast LZ loop runs only while this much input and output remains, so one
+ * iteration (five literals, or up to two literals plus one match; two 8-byte refills; wide
+ * copies that overshoot the match end by up to 30 bytes) cannot leave either
+ * buffer.  The longest LZ match is 260 bytes. */
+#define XX_RAR29_FAST_INPUT_MARGIN 16u
+#define XX_RAR29_FAST_OUTPUT_MARGIN 320u
+#define XX_RAR29_FAST_MAX_MATCH 260u
+#define XX_RAR29_FAST_BURST ((size_t)1u << 20)
 
 typedef struct xx_rar29_huffman_s {
     uint16_t count[XX_RAR29_MAX_BITS + 1u];
@@ -78,8 +121,11 @@ typedef struct xx_rar29_huffman_s {
     uint32_t first_code[XX_RAR29_MAX_BITS + 1u];
     uint16_t fast_table[XX_RAR29_FAST_SIZE];
     uint16_t symbol_count;
+    uint8_t fast_bits;
     bool valid;
 } xx_rar29_huffman;
+
+enum { XX_RAR29_CODE_MAIN = 0, XX_RAR29_CODE_DISTANCE, XX_RAR29_CODE_LOW, XX_RAR29_CODE_LENGTH, XX_RAR29_CODE_COUNT };
 
 typedef enum xx_rar29_filter_type_e {
     XX_RAR29_FILTER_E8 = 1,
@@ -123,10 +169,12 @@ struct xx_rarx29_state {
     size_t history_size;
 
     uint8_t previous_lengths[XX_RAR29_TABLE_LENGTHS];
-    xx_rar29_huffman main_code;
-    xx_rar29_huffman distance_code;
-    xx_rar29_huffman low_code;
-    xx_rar29_huffman length_code;
+    /* Two table sets: a new set is built in the inactive one and becomes
+     * active only when the whole table record was valid. */
+    xx_rar29_huffman codes[2][XX_RAR29_CODE_COUNT];
+    uint32_t main_packed[2][1u << XX_RAR29_MAIN_FAST_BITS];
+    uint32_t distance_packed[2][1u << XX_RAR29_DISTANCE_FAST_BITS];
+    unsigned active_codes;
     bool tables_valid;
     bool table_required;
 
@@ -239,7 +287,7 @@ static bool xx_rar29_align_byte(xx_rar29_bits *bits)
     return true;
 }
 
-static bool xx_rar29_build_huffman(xx_rar29_huffman *code, const uint8_t *lengths, size_t symbol_count)
+static bool xx_rar29_build_huffman(xx_rar29_huffman *code, const uint8_t *lengths, size_t symbol_count, unsigned fast_bits)
 {
     uint32_t next_code = 0;
     uint32_t used = 0;
@@ -250,8 +298,12 @@ static bool xx_rar29_build_huffman(xx_rar29_huffman *code, const uint8_t *length
     if (!code || !lengths || symbol_count == 0 || symbol_count > XX_RAR29_TABLE_LENGTHS) {
         return false;
     }
-    xx_rt_memset(code, 0, sizeof(*code));
+    xx_rt_memset(code->count, 0, sizeof(code->count));
+    code->first_symbol[0] = 0;
+    code->first_code[0] = 0;
     code->symbol_count = (uint16_t)symbol_count;
+    code->fast_bits = (uint8_t)fast_bits;
+    code->valid = false;
 
     for (symbol = 0; symbol < symbol_count; ++symbol) {
         if (lengths[symbol] > XX_RAR29_MAX_BITS) return false;
@@ -262,7 +314,10 @@ static bool xx_rar29_build_huffman(xx_rar29_huffman *code, const uint8_t *length
     }
     /* RAR permits an unused auxiliary alphabet to contain only zero lengths.
      * Keep it invalid for decoding, but do not reject the surrounding table. */
-    if (used == 0) return true;
+    if (used == 0) {
+        xx_rt_memset(code->fast_table, 0xff, ((size_t)1u << fast_bits) * sizeof(code->fast_table[0]));
+        return true;
+    }
 
     for (length = 1; length <= XX_RAR29_MAX_BITS; ++length) {
         available = available * 2 - (int32_t)code->count[length];
@@ -281,35 +336,44 @@ static bool xx_rar29_build_huffman(xx_rar29_huffman *code, const uint8_t *length
         }
     }
 
-    /* Build fast lookup table for codes with length <= XX_RAR29_FAST_BITS */
-    for (length = 1; length <= XX_RAR29_FAST_BITS; ++length) {
-        uint16_t cnt = code->count[length];
-        uint32_t first = code->first_code[length];
-        uint16_t fidx = code->first_symbol[length];
-        unsigned shift = XX_RAR29_FAST_BITS - length;
-        uint32_t step = 1u << shift;
-        uint16_t k;
+    /* Build the direct lookup table for codes of at most fast_bits bits.  The
+     * code is canonical, so these codes fill the table from index 0 upwards
+     * without gaps; everything after them belongs to longer or unassigned
+     * codes and is marked invalid. */
+    {
+        uint32_t filled = 0;
+        uint32_t table_size = 1u << fast_bits;
+        for (length = 1; length <= fast_bits; ++length) {
+            uint16_t cnt = code->count[length];
+            uint32_t first = code->first_code[length];
+            uint16_t fidx = code->first_symbol[length];
+            unsigned shift = fast_bits - length;
+            uint32_t step = 1u << shift;
+            uint16_t k;
 
-        for (k = 0; k < cnt; ++k) {
-            uint32_t sym_code = first + (uint32_t)k;
-            uint16_t sym = code->symbols[fidx + k];
-            uint16_t cur_entry = (uint16_t)((sym << 4) | length);
-            uint32_t base_pattern = sym_code << shift;
-            uint32_t p = 0;
+            for (k = 0; k < cnt; ++k) {
+                uint32_t sym_code = first + (uint32_t)k;
+                uint16_t sym = code->symbols[fidx + k];
+                uint16_t cur_entry = (uint16_t)((sym << 4) | length);
+                uint32_t base_pattern = sym_code << shift;
+                uint32_t p = 0;
 
-            if (step >= 4) {
-                uint32_t cur2 = ((uint32_t)cur_entry << 16) | cur_entry;
-                uint64_t cur4 = ((uint64_t)cur2 << 32) | cur2;
-                while (p + 4 <= step) {
-                    xx_mem_store64(&code->fast_table[base_pattern + p], cur4);
-                    p += 4;
+                if (step >= 4) {
+                    uint32_t cur2 = ((uint32_t)cur_entry << 16) | cur_entry;
+                    uint64_t cur4 = ((uint64_t)cur2 << 32) | cur2;
+                    while (p + 4 <= step) {
+                        xx_mem_store64(&code->fast_table[base_pattern + p], cur4);
+                        p += 4;
+                    }
                 }
-            }
-            while (p < step) {
-                code->fast_table[base_pattern + p] = cur_entry;
-                p++;
+                while (p < step) {
+                    code->fast_table[base_pattern + p] = cur_entry;
+                    p++;
+                }
+                filled = base_pattern + step;
             }
         }
+        if (filled < table_size) xx_rt_memset(&code->fast_table[filled], 0xff, (size_t)(table_size - filled) * sizeof(code->fast_table[0]));
     }
 
     code->valid = true;
@@ -344,7 +408,7 @@ static bool xx_rar29_decode_symbol_slow(xx_rar29_bits *bits, const xx_rar29_huff
         return false;
     }
 
-    for (length = XX_RAR29_FAST_BITS + 1u; length <= XX_RAR29_MAX_BITS; ++length) {
+    for (length = (unsigned)code->fast_bits + 1u; length <= XX_RAR29_MAX_BITS; ++length) {
         uint32_t cur = peek15 >> (XX_RAR29_MAX_BITS - length);
         if (cur < code->first_code[length]) continue;
         uint32_t delta = cur - code->first_code[length];
@@ -371,9 +435,9 @@ static inline bool xx_rar29_decode_symbol(xx_rar29_bits *bits, const xx_rar29_hu
         if (bits) bits->error = XX_RARX_STATUS_CORRUPT;
         return false;
     }
-    if (xx_rar29_peek_bits(bits, XX_RAR29_FAST_BITS, &peek)) {
+    if (xx_rar29_peek_bits(bits, code->fast_bits, &peek)) {
         uint32_t entry = code->fast_table[peek];
-        if (entry != 0) {
+        if (entry != XX_RAR29_FAST_INVALID) {
             *symbol = entry >> 4;
             bits->bit += (entry & 0x0Fu);
             return true;
@@ -382,15 +446,63 @@ static inline bool xx_rar29_decode_symbol(xx_rar29_bits *bits, const xx_rar29_hu
     return xx_rar29_decode_symbol_slow(bits, code, symbol);
 }
 
+static inline uint32_t xx_rar29_pack_main(uint32_t symbol, uint32_t length)
+{
+    uint32_t base = 0;
+    uint32_t extra_bits = 0;
+    if (symbol >= 271u && symbol - 271u < XX_RAR29_LENGTH_SYMBOLS) {
+        base = (uint32_t)xx_rar29_length_base[symbol - 271u] + 3u;
+        extra_bits = xx_rar29_length_bits[symbol - 271u];
+    } else if (symbol >= 263u && symbol < 271u) {
+        base = (uint32_t)xx_rar29_short_base[symbol - 263u] + 1u;
+        extra_bits = xx_rar29_short_bits[symbol - 263u];
+    }
+    return (symbol << XX_RAR29_PACKED_SYMBOL_SHIFT) | (base << 9) | (extra_bits << 6) | (length + extra_bits);
+}
+
+static inline uint32_t xx_rar29_pack_distance(uint32_t slot, uint32_t length)
+{
+    uint32_t direct_bits;
+    if (slot >= XX_RAR29_DISTANCE_SYMBOLS) return XX_RAR29_PACKED_INVALID;
+    direct_bits = xx_rar29_distance_bits[slot];
+    if (slot > 9u) direct_bits -= 4u;
+    return ((xx_rar29_distance_base[slot] + 1u) << 10) | (direct_bits << 6) | (length + direct_bits);
+}
+
+/* Builds one packed fast-loop table (see XX_RAR29_PACKED_INVALID for the
+ * layout) of 1 << table_bits entries from a built code.  The codes of at most
+ * table_bits bits fill the table from index 0 upwards in canonical order; the
+ * rest of the table is invalid. */
+static void xx_rar29_build_packed(const xx_rar29_huffman *code, uint32_t *table, unsigned table_bits, bool distance)
+{
+    uint32_t table_size = 1u << table_bits;
+    uint32_t position = 0;
+    unsigned length;
+
+    if (code->valid) {
+        for (length = 1; length <= table_bits; ++length) {
+            uint32_t step = 1u << (table_bits - length);
+            const uint16_t *symbols = &code->symbols[code->first_symbol[length]];
+            uint32_t remaining = code->count[length];
+            for (; remaining != 0; --remaining) {
+                uint32_t symbol = *symbols++;
+                uint32_t packed = distance ? xx_rar29_pack_distance(symbol, length) : xx_rar29_pack_main(symbol, length);
+                uint32_t i;
+                if (step > table_size - position) break; /* cannot happen for a prefix code */
+                for (i = 0; i < step; ++i) table[position + i] = packed;
+                position += step;
+            }
+        }
+    }
+    for (; position < table_size; ++position) table[position] = XX_RAR29_PACKED_INVALID;
+}
+
 static xx_rarx_status_t xx_rar29_read_tables(xx_rarx29_state *state, xx_rar29_bits *bits, bool *ppm_mode)
 {
     uint8_t level_lengths[XX_RAR29_LEVEL_SYMBOLS];
     uint8_t lengths[XX_RAR29_TABLE_LENGTHS];
     xx_rar29_huffman level_code;
-    xx_rar29_huffman main_code;
-    xx_rar29_huffman distance_code;
-    xx_rar29_huffman low_code;
-    xx_rar29_huffman length_code;
+    xx_rar29_huffman *next_codes;
     uint32_t value;
     size_t i;
 
@@ -426,7 +538,7 @@ static xx_rarx_status_t xx_rar29_read_tables(xx_rarx29_state *state, xx_rar29_bi
         }
         level_lengths[i++] = (uint8_t)encoded;
     }
-    if (!xx_rar29_build_huffman(&level_code, level_lengths, XX_RAR29_LEVEL_SYMBOLS) || !level_code.valid) {
+    if (!xx_rar29_build_huffman(&level_code, level_lengths, XX_RAR29_LEVEL_SYMBOLS, XX_RAR29_LEVEL_FAST_BITS) || !level_code.valid) {
         return XX_RARX_STATUS_CORRUPT;
     }
 
@@ -458,19 +570,26 @@ static xx_rarx_status_t xx_rar29_read_tables(xx_rarx29_state *state, xx_rar29_bi
         }
     }
 
-    if (!xx_rar29_build_huffman(&main_code, lengths, XX_RAR29_MAIN_SYMBOLS) ||
-        !xx_rar29_build_huffman(&distance_code, lengths + XX_RAR29_MAIN_SYMBOLS, XX_RAR29_DISTANCE_SYMBOLS) ||
-        !xx_rar29_build_huffman(&low_code, lengths + XX_RAR29_MAIN_SYMBOLS + XX_RAR29_DISTANCE_SYMBOLS, XX_RAR29_LOW_SYMBOLS) ||
-        !xx_rar29_build_huffman(&length_code, lengths + XX_RAR29_MAIN_SYMBOLS + XX_RAR29_DISTANCE_SYMBOLS + XX_RAR29_LOW_SYMBOLS, XX_RAR29_LENGTH_SYMBOLS) ||
-        !main_code.valid) {
+    /* Build into the inactive set, so a rejected table record leaves the
+     * tables of the state exactly as they were. */
+    next_codes = state->codes[(state->active_codes ^ 1u) & 1u];
+    if (!xx_rar29_build_huffman(&next_codes[XX_RAR29_CODE_MAIN], lengths, XX_RAR29_MAIN_SYMBOLS, XX_RAR29_MAIN_FAST_BITS) ||
+        !xx_rar29_build_huffman(&next_codes[XX_RAR29_CODE_DISTANCE], lengths + XX_RAR29_MAIN_SYMBOLS, XX_RAR29_DISTANCE_SYMBOLS, XX_RAR29_DISTANCE_FAST_BITS) ||
+        !xx_rar29_build_huffman(&next_codes[XX_RAR29_CODE_LOW], lengths + XX_RAR29_MAIN_SYMBOLS + XX_RAR29_DISTANCE_SYMBOLS, XX_RAR29_LOW_SYMBOLS,
+                                XX_RAR29_LOW_FAST_BITS) ||
+        !xx_rar29_build_huffman(&next_codes[XX_RAR29_CODE_LENGTH], lengths + XX_RAR29_MAIN_SYMBOLS + XX_RAR29_DISTANCE_SYMBOLS + XX_RAR29_LOW_SYMBOLS,
+                                XX_RAR29_LENGTH_SYMBOLS, XX_RAR29_LENGTH_FAST_BITS) ||
+        !next_codes[XX_RAR29_CODE_MAIN].valid) {
         return XX_RARX_STATUS_CORRUPT;
     }
 
     xx_rt_memcpy(state->previous_lengths, lengths, sizeof(lengths));
-    state->main_code = main_code;
-    state->distance_code = distance_code;
-    state->low_code = low_code;
-    state->length_code = length_code;
+    {
+        unsigned next_set = (state->active_codes ^ 1u) & 1u;
+        xx_rar29_build_packed(&next_codes[XX_RAR29_CODE_MAIN], state->main_packed[next_set], XX_RAR29_MAIN_FAST_BITS, false);
+        xx_rar29_build_packed(&next_codes[XX_RAR29_CODE_DISTANCE], state->distance_packed[next_set], XX_RAR29_DISTANCE_FAST_BITS, true);
+    }
+    state->active_codes = (state->active_codes ^ 1u) & 1u;
     state->tables_valid = true;
     state->table_required = false;
     return XX_RARX_STATUS_OK;
@@ -771,14 +890,17 @@ static xx_rarx_status_t xx_rar29_reserve_program(xx_rarx29_state *state)
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rar29_append_filter(xx_rar29_filter_list *list, const xx_rar29_filter *filter)
+static xx_rarx_status_t xx_rar29_append_filter(xx_rar29_filter_list *list, const xx_rar29_filter *filter, size_t output_size)
 {
     xx_rar29_filter *grown;
     size_t capacity;
-    if (list->count >= XX_RAR29_MAX_FILTERS) return XX_RARX_STATUS_LIMIT;
+    /* Filters run after the whole member is decoded, so the bound covers all
+     * filters of the member and scales with its size (see xx_rarx50.c). */
+    size_t limit = XX_RAR29_MAX_FILTERS + output_size / XX_RAR29_FILTER_BYTES_PER_SLOT;
+    if (list->count >= limit) return XX_RARX_STATUS_LIMIT;
     if (list->count == list->capacity) {
         capacity = list->capacity ? list->capacity * 2u : 8u;
-        if (capacity > XX_RAR29_MAX_FILTERS) capacity = XX_RAR29_MAX_FILTERS;
+        if (capacity > limit) capacity = limit;
         if (capacity > SIZE_MAX / sizeof(*grown)) return XX_RARX_STATUS_LIMIT;
         grown = (xx_rar29_filter *)xx_rarx_clear_resize(list->items, list->capacity * sizeof(*grown), capacity * sizeof(*grown));
         if (!grown) return XX_RARX_STATUS_NO_MEMORY;
@@ -954,7 +1076,7 @@ static xx_rarx_status_t xx_rar29_read_filter(xx_rarx29_state *state, xx_rar29_bi
     ++program->executions;
     state->last_program = selected;
     state->last_program_valid = true;
-    status = xx_rar29_append_filter(filters, &filter);
+    status = xx_rar29_append_filter(filters, &filter, output_size);
 
 done:
     xx_rarx_clear_free(program_bytes, code_size);
@@ -964,20 +1086,59 @@ done:
     return status;
 }
 
-static void xx_rar29_filter_e8(uint8_t *data, size_t size, size_t file_offset, bool include_e9)
+/* Rewrites the 32-bit operand at data + pos (the byte after the opcode). */
+static inline void xx_rar29_filter_e8_operand(uint8_t *data, size_t pos, size_t file_offset)
 {
     const uint32_t file_span = 0x1000000u;
+    uint32_t address = xx_data_get_le32(data + pos);
+    /* RAR3 uses the full 32-bit stream position here; unlike RAR5 it is
+     * not reduced modulo the 16 MiB address span, which only matters
+     * beyond the first 16 MiB of a member. */
+    uint32_t offset = (uint32_t)file_offset + (uint32_t)pos;
+    if ((address & 0x80000000u) != 0) {
+        if (((address + offset) & 0x80000000u) == 0) xx_data_set_le32(data + pos, address + file_span);
+    } else if (address < file_span) {
+        xx_data_set_le32(data + pos, address - offset);
+    }
+}
+
+static void xx_rar29_filter_e8(uint8_t *data, size_t size, size_t file_offset, bool include_e9)
+{
     size_t pos = 0;
-    while (pos + 4u < size) {
+    size_t limit; /* opcodes are looked for at positions below this */
+    if (size < 5u) return;
+    limit = size - 4u;
+#if defined(XX_RAR29_USE_SSE2)
+    {
+        /* 0xe9 & 0xfe == 0xe8, so one compare finds both opcodes. */
+        const __m128i fold = _mm_set1_epi8(include_e9 ? (char)-2 : (char)-1);
+        const __m128i opcode_e8 = _mm_set1_epi8((char)-24);
+        while (pos + 16u <= limit) {
+            __m128i chunk = _mm_loadu_si128((const __m128i *)(const void *)(data + pos));
+            unsigned mask = (unsigned)_mm_movemask_epi8(_mm_cmpeq_epi8(_mm_and_si128(chunk, fold), opcode_e8));
+            if (mask == 0) {
+                pos += 16u;
+                continue;
+            }
+            {
+#if defined(_MSC_VER)
+                unsigned long first;
+                _BitScanForward(&first, (unsigned long)mask);
+#else
+                unsigned first = (unsigned)__builtin_ctz(mask);
+#endif
+                pos += (size_t)first + 1u;
+            }
+            /* The operand is skipped, so the scan restarts right after it. */
+            xx_rar29_filter_e8_operand(data, pos, file_offset);
+            pos += 4u;
+        }
+    }
+#endif
+    while (pos < limit) {
         uint8_t opcode = data[pos++];
         if (opcode == 0xe8u || (include_e9 && opcode == 0xe9u)) {
-            uint32_t address = xx_data_get_le32(data + pos);
-            uint32_t offset = (uint32_t)(((file_offset & 0xffffffu) + (pos & 0xffffffu)) & 0xffffffu);
-            if ((address & 0x80000000u) != 0) {
-                if (((address + offset) & 0x80000000u) == 0) xx_data_set_le32(data + pos, address + file_span);
-            } else if (address < file_span) {
-                xx_data_set_le32(data + pos, address - offset);
-            }
+            xx_rar29_filter_e8_operand(data, pos, file_offset);
             pos += 4u;
         }
     }
@@ -1204,63 +1365,94 @@ static xx_rarx_status_t xx_rar29_apply_filters(uint8_t *destination, size_t dest
     return XX_RARX_STATUS_OK;
 }
 
-static inline xx_rarx_status_t xx_rar29_emit_byte(xx_rarx29_state *state, uint8_t *destination, size_t destination_size, size_t *produced, uint8_t byte)
+/*
+ * Output model.  A member is always decoded into one contiguous destination
+ * buffer, so the bytes already produced for this member are their own match
+ * history.  The dictionary window of the state is therefore not written while
+ * decoding: it keeps the history that existed when the member started (solid
+ * continuation) and is only read for matches that reach back before the start
+ * of this member.  xx_rar29_sync_window copies the tail of the produced data
+ * into the window once, when decoding stops, so the state ends up exactly as
+ * if every byte had also been stored in the window as it was produced.
+ */
+static inline xx_rarx_status_t xx_rar29_emit_byte(uint8_t *destination, size_t destination_size, size_t *produced, uint8_t byte)
 {
     if (*produced >= destination_size) return XX_RARX_STATUS_CORRUPT;
     destination[(*produced)++] = byte;
-    state->window[state->window_pos++] = byte;
-    if (state->window_pos == state->window_size) state->window_pos = 0;
-    if (state->history_size < state->window_size) ++state->history_size;
     return XX_RARX_STATUS_OK;
 }
 
-static xx_rarx_status_t xx_rar29_emit_match(xx_rarx29_state *state, uint8_t *destination, size_t destination_size, size_t *produced, uint32_t distance, uint32_t length)
+static xx_rarx_status_t xx_rar29_emit_match(const xx_rarx29_state *state, uint8_t *destination, size_t destination_size, size_t *produced, uint32_t distance, uint32_t length)
 {
-    if (distance == 0 || distance > state->window_size || distance > state->history_size) return XX_RARX_STATUS_CORRUPT;
-    if ((size_t)length > destination_size - *produced) return XX_RARX_STATUS_CORRUPT;
-
-    size_t wpos = state->window_pos;
+    size_t position = *produced;
     size_t wsize = state->window_size;
-    size_t source = wpos >= (size_t)distance ? (wpos - (size_t)distance) : (wsize - ((size_t)distance - wpos));
+    /* History available now: what the member started with plus what it has
+     * produced, capped by the window size. */
+    size_t history = position >= wsize - state->history_size ? wsize : state->history_size + position;
+    size_t copied = 0;
+    uint8_t *out;
 
-    /* Fast path: non-wrapping window_pos and source */
-    if (wpos + length <= wsize && source + length <= wsize) {
-        uint8_t *dst_win = &state->window[wpos];
-        uint8_t *dst_out = &destination[*produced];
-        const uint8_t *src_win = &state->window[source];
+    if (distance == 0 || distance > wsize || distance > history) return XX_RARX_STATUS_CORRUPT;
+    if ((size_t)length > destination_size - position) return XX_RARX_STATUS_CORRUPT;
+    out = destination + position;
 
-        if (distance >= length) {
-            xx_rt_memcpy(dst_win, src_win, length);
-            xx_rt_memcpy(dst_out, src_win, length);
+    if ((size_t)distance > position) {
+        /* The match starts in the history before this member. */
+        size_t back = (size_t)distance - position; /* 1 .. history_size */
+        size_t wpos = state->window_pos;
+        size_t source = wpos >= back ? wpos - back : wsize - (back - wpos);
+        size_t from_window = back < (size_t)length ? back : (size_t)length;
+        const uint8_t *window = state->window;
+        for (; copied < from_window; ++copied) {
+            out[copied] = window[source];
+            if (++source == wsize) source = 0;
+        }
+    }
+    if (copied < (size_t)length) {
+        size_t remaining = (size_t)length - copied;
+        uint8_t *target = out + copied;
+        const uint8_t *from = target - distance;
+        if ((size_t)distance >= remaining) {
+            xx_rt_memcpy(target, from, remaining);
         } else if (distance == 1) {
-            uint8_t b = *src_win;
-            xx_rt_memset(dst_win, b, length);
-            xx_rt_memset(dst_out, b, length);
+            xx_rt_memset(target, *from, remaining);
         } else {
-            for (uint32_t j = 0; j < length; ++j) {
-                uint8_t b = (j < distance) ? src_win[j] : dst_win[j - distance];
-                dst_win[j] = b;
-                dst_out[j] = b;
-            }
+            size_t j;
+            for (j = 0; j < remaining; ++j) target[j] = from[j];
         }
-        wpos += length;
-        if (wpos == wsize) wpos = 0;
-        state->window_pos = wpos;
-        *produced += length;
-        if (state->history_size < wsize) {
-            state->history_size += length;
-            if (state->history_size > wsize) state->history_size = wsize;
-        }
-        return XX_RARX_STATUS_OK;
     }
-
-    /* Fallback: wrapping window copy */
-    for (uint32_t i = 0; i < length; ++i) {
-        size_t src = state->window_pos >= (size_t)distance ? state->window_pos - (size_t)distance : state->window_size - ((size_t)distance - state->window_pos);
-        xx_rarx_status_t status = xx_rar29_emit_byte(state, destination, destination_size, produced, state->window[src]);
-        if (status != XX_RARX_STATUS_OK) return status;
-    }
+    *produced = position + (size_t)length;
     return XX_RARX_STATUS_OK;
+}
+
+/* Stores the bytes produced for this member in the dictionary window (see the
+ * output model above).  Must run exactly once per decode call, before the
+ * filters modify the destination: the window holds unfiltered data. */
+static void xx_rar29_sync_window(xx_rarx29_state *state, const uint8_t *destination, size_t produced)
+{
+    size_t wsize = state->window_size;
+    size_t wpos = state->window_pos;
+    const uint8_t *source = destination;
+    size_t count = produced;
+    size_t first;
+
+    if (produced == 0 || !state->window || wsize == 0) return;
+    if (count > wsize) {
+        /* Only the last window_size bytes survive. */
+        size_t skipped = count - wsize;
+        source += skipped;
+        wpos = (wpos + skipped % wsize) % wsize;
+        count = wsize;
+    }
+    first = wsize - wpos;
+    if (first > count) first = count;
+    xx_rt_memcpy(state->window + wpos, source, first);
+    if (count > first) xx_rt_memcpy(state->window, source + first, count - first);
+    wpos += count;
+    if (wpos >= wsize) wpos -= wsize;
+    state->window_pos = wpos;
+    if (produced >= wsize - state->history_size) state->history_size = wsize;
+    else state->history_size += produced;
 }
 
 static void xx_rar29_promote_distance(uint32_t distances[4], size_t index)
@@ -1297,7 +1489,7 @@ static xx_rarx_status_t xx_rar29_decode_distance(xx_rarx29_state *state, xx_rar2
     uint32_t slot;
     uint32_t extra = 0;
     unsigned count;
-    if (!xx_rar29_decode_symbol(bits, &state->distance_code, &slot)) return bits->error;
+    if (!xx_rar29_decode_symbol(bits, &state->codes[state->active_codes & 1u][XX_RAR29_CODE_DISTANCE], &slot)) return bits->error;
     if (slot >= XX_RAR29_DISTANCE_SYMBOLS) return XX_RARX_STATUS_CORRUPT;
     count = xx_rar29_distance_bits[slot];
     *distance = xx_rar29_distance_base[slot] + 1u;
@@ -1313,7 +1505,7 @@ static xx_rarx_status_t xx_rar29_decode_distance(xx_rarx29_state *state, xx_rar2
             *distance += state->last_low_distance;
         } else {
             uint32_t low;
-            if (!xx_rar29_decode_symbol(bits, &state->low_code, &low)) return bits->error;
+            if (!xx_rar29_decode_symbol(bits, &state->codes[state->active_codes & 1u][XX_RAR29_CODE_LOW], &low)) return bits->error;
             if (low == 16u) {
                 state->low_distance_repeats = 15u;
                 *distance += state->last_low_distance;
@@ -1329,6 +1521,331 @@ static xx_rarx_status_t xx_rar29_decode_distance(xx_rarx29_state *state, xx_rar2
         *distance += extra;
     }
     return XX_RARX_STATUS_OK;
+}
+
+/* Unaligned 16-byte copy; source and target may overlap when they are at
+ * least 16 bytes apart (the whole source is loaded before anything is stored). */
+static inline void xx_rar29_copy16(uint8_t *target, const uint8_t *source)
+{
+#if defined(XX_RAR29_USE_SSE2)
+    _mm_storeu_si128((__m128i *)(void *)target, _mm_loadu_si128((const __m128i *)(const void *)source));
+#else
+    uint64_t low = xx_mem_load64(source);
+    uint64_t high = xx_mem_load64(source + 8);
+    xx_mem_store64(target, low);
+    xx_mem_store64(target + 8, high);
+#endif
+}
+
+/*
+ * Fast LZ loop.  It decodes literals and matches with a 64-bit bit buffer and
+ * no per-symbol bounds checks, and is only entered (and only keeps running)
+ * while at least XX_RAR29_FAST_INPUT_MARGIN input bytes and
+ * XX_RAR29_FAST_OUTPUT_MARGIN output bytes remain; `output_limit` is the
+ * position at which it must stop.
+ *
+ * It never reports an error and never handles anything unusual itself.  When
+ * it meets a symbol it does not handle (end of block / new tables, a filter
+ * record, a code longer than the lookup table, or a match that fails
+ * validation) it rewinds to the first bit of that symbol with the state
+ * untouched by it and returns; the careful per-symbol code in
+ * xx_rarx29_decode then decodes that symbol again and produces the result or
+ * the error status.  Matches that reach into the history before this member
+ * (solid continuation) are copied by the checked xx_rar29_emit_match.
+ */
+static void xx_rar29_lz_fast(xx_rarx29_state *state, xx_rar29_bits *bits, uint8_t *destination, size_t destination_size, size_t output_limit, size_t *produced)
+{
+    const unsigned set = state->active_codes & 1u;
+    const uint32_t *main_table = state->main_packed[set];
+    const uint32_t *distance_table = state->distance_packed[set];
+    const uint16_t *low_table = state->codes[set][XX_RAR29_CODE_LOW].fast_table;
+    const uint16_t *length_table = state->codes[set][XX_RAR29_CODE_LENGTH].fast_table;
+    const uint8_t *data = bits->data;
+    const uint8_t *in = data + (bits->bit >> 3);
+    /* Highest position at which an iteration may start: its two refills read
+     * at most 16 bytes from there. */
+    const uint8_t *in_limit = data + (bits->size - XX_RAR29_FAST_INPUT_MARGIN);
+    uint8_t *out = destination + *produced;
+    uint8_t *const out_limit = destination + output_limit;
+    const size_t wsize = state->window_size;
+    uint64_t bitbuf = 0; /* next bits of the stream, first bit in bit 63 */
+    unsigned bitcnt = 0; /* number of valid bits in bitbuf */
+    uint32_t old0 = state->old_distance[0];
+    uint32_t old1 = state->old_distance[1];
+    uint32_t old2 = state->old_distance[2];
+    uint32_t old3 = state->old_distance[3];
+    uint32_t last_distance = state->last_distance;
+    uint32_t last_length = state->last_length;
+    uint32_t last_low = state->last_low_distance;
+    uint32_t low_repeats = state->low_distance_repeats;
+
+/* Tops the buffer up to 56..63 valid bits.  Bits below the valid count are
+ * either zero or already the true following bits, so OR-ing is exact. */
+#define XX_RAR29_REFILL()                                 \
+    do {                                                  \
+        bitbuf |= xx_data_get_be64(in) >> bitcnt;         \
+        in += (63u - bitcnt) >> 3;                        \
+        bitcnt |= 56u;                                    \
+    } while (0)
+/* The next n bits, 1 <= n <= 32. */
+#define XX_RAR29_PEEK(n) ((uint32_t)(bitbuf >> (64u - (n))))
+/* Like PEEK, but also valid for n == 0 (gives 0). */
+#define XX_RAR29_PEEK0(n) ((uint32_t)((bitbuf >> 1) >> (63u - (n))))
+#define XX_RAR29_DROP(n)   \
+    do {                   \
+        bitbuf <<= (n);    \
+        bitcnt -= (n);     \
+    } while (0)
+/* Emits the literal of the main-table entry in `entry`. */
+#define XX_RAR29_LITERAL()                                         \
+    do {                                                           \
+        *out++ = (uint8_t)(entry >> XX_RAR29_PACKED_SYMBOL_SHIFT); \
+        XX_RAR29_DROP(entry & 63u);                                \
+    } while (0)
+#if XX_RAR29_MAIN_FAST_BITS > 11
+#error "the literal run in xx_rar29_lz_fast assumes main-table codes of at most 11 bits"
+#endif
+
+    XX_RAR29_REFILL();
+    {
+        unsigned skip = (unsigned)(bits->bit & 7u);
+        XX_RAR29_DROP(skip);
+    }
+
+    while (in <= in_limit && out < out_limit) {
+        uint32_t entry;
+        uint32_t symbol;
+        uint32_t value;
+        uint32_t distance;
+        uint32_t length;
+        unsigned count;
+        const uint8_t *symbol_in;
+        unsigned symbol_bitcnt;
+        uint32_t saved_last_low;
+        uint32_t saved_low_repeats;
+
+        XX_RAR29_REFILL();
+        /* At least 56 bits.  A code found in the main table has at most
+         * XX_RAR29_MAIN_FAST_BITS (11) bits, so up to five literals can be
+         * decoded before the next refill: every lookup still sees at least 11
+         * valid bits (56 - 4 * 11 = 12).  After one or two literals at least
+         * 34 bits are left, enough for a non-literal main symbol with its
+         * extra bits (11 + 6); after more literals a non-literal symbol is
+         * simply looked up again at the top of the loop. */
+        entry = main_table[XX_RAR29_PEEK(XX_RAR29_MAIN_FAST_BITS)];
+        if (entry < XX_RAR29_PACKED_LITERAL_END) {
+            XX_RAR29_LITERAL();
+            entry = main_table[XX_RAR29_PEEK(XX_RAR29_MAIN_FAST_BITS)];
+            if (entry < XX_RAR29_PACKED_LITERAL_END) {
+                XX_RAR29_LITERAL();
+                entry = main_table[XX_RAR29_PEEK(XX_RAR29_MAIN_FAST_BITS)];
+                if (entry < XX_RAR29_PACKED_LITERAL_END) {
+                    XX_RAR29_LITERAL();
+                    entry = main_table[XX_RAR29_PEEK(XX_RAR29_MAIN_FAST_BITS)];
+                    if (entry < XX_RAR29_PACKED_LITERAL_END) {
+                        XX_RAR29_LITERAL();
+                        entry = main_table[XX_RAR29_PEEK(XX_RAR29_MAIN_FAST_BITS)];
+                        if (entry < XX_RAR29_PACKED_LITERAL_END) XX_RAR29_LITERAL();
+                    }
+                    continue;
+                }
+            }
+        }
+
+        /* Not a literal.  Remember where this symbol starts. */
+        symbol_in = in;
+        symbol_bitcnt = bitcnt;
+        saved_last_low = last_low;
+        saved_low_repeats = low_repeats;
+        if (entry == XX_RAR29_PACKED_INVALID) goto bail;
+        symbol = entry >> XX_RAR29_PACKED_SYMBOL_SHIFT;
+        /* The entry carries the code length plus the number of extra bits that
+         * follow the code, and the base those extra bits are added to: the
+         * match length for 271.., the distance for 263..270, nothing else. */
+        count = entry & 63u;
+        value = ((entry >> 9) & 511u) + (XX_RAR29_PEEK(count) & ((1u << ((entry >> 6) & 7u)) - 1u));
+        XX_RAR29_DROP(count);
+        /* At least 56 bits again: enough for everything a match can still
+         * read (a distance code with its high bits, 15 + 14, and a low
+         * distance code, 15; or a length code with extra bits, 15 + 5). */
+        XX_RAR29_REFILL();
+
+        if (symbol >= 271u) {
+            uint32_t extra;
+            entry = distance_table[XX_RAR29_PEEK(XX_RAR29_DISTANCE_FAST_BITS)];
+            if (entry == XX_RAR29_PACKED_INVALID) goto bail;
+            count = entry & 63u;
+            extra = XX_RAR29_PEEK(count) & ((1u << ((entry >> 6) & 15u)) - 1u);
+            distance = entry >> 10; /* slot base + 1 */
+            XX_RAR29_DROP(count);
+            if (distance > 32u) {
+                /* Slots above 9: the bits just read are the distance without
+                 * its low four bits, which come from the low-distance code or
+                 * repeat the previous ones. */
+                distance += extra << 4;
+                if (low_repeats != 0) {
+                    --low_repeats;
+                    distance += last_low;
+                } else {
+                    uint32_t low;
+                    entry = low_table[XX_RAR29_PEEK(XX_RAR29_LOW_FAST_BITS)];
+                    if (entry == XX_RAR29_FAST_INVALID) goto bail;
+                    low = entry >> 4; /* at most 16 */
+                    XX_RAR29_DROP(entry & 15u);
+                    if (low == 16u) {
+                        low_repeats = 15u;
+                        distance += last_low;
+                    } else {
+                        last_low = low;
+                        distance += low;
+                    }
+                }
+            } else {
+                distance += extra;
+            }
+            length = value + (distance >= 0x2000u ? 1u : 0u) + (distance >= 0x40000u ? 1u : 0u);
+            if ((size_t)distance > (size_t)(out - destination) || (size_t)distance > wsize) goto history;
+            old3 = old2;
+            old2 = old1;
+            old1 = old0;
+            old0 = distance;
+        } else if (symbol >= 263u) {
+            distance = value;
+            length = 2u;
+            if ((size_t)distance > (size_t)(out - destination) || (size_t)distance > wsize) goto history;
+            old3 = old2;
+            old2 = old1;
+            old1 = old0;
+            old0 = distance;
+        } else if (symbol >= 259u) {
+            uint32_t slot;
+            entry = length_table[XX_RAR29_PEEK(XX_RAR29_LENGTH_FAST_BITS)];
+            if (entry == XX_RAR29_FAST_INVALID) goto bail;
+            slot = entry >> 4; /* below 28 */
+            XX_RAR29_DROP(entry & 15u);
+            count = xx_rar29_length_bits[slot];
+            length = (uint32_t)xx_rar29_length_base[slot] + 2u + XX_RAR29_PEEK0(count);
+            XX_RAR29_DROP(count);
+            if (symbol == 259u) {
+                distance = old0;
+            } else if (symbol == 260u) {
+                distance = old1;
+            } else if (symbol == 261u) {
+                distance = old2;
+            } else {
+                distance = old3;
+            }
+            if (distance == 0 || (size_t)distance > (size_t)(out - destination) || (size_t)distance > wsize) goto history;
+            /* Move the selected distance to the front. */
+            if (symbol >= 262u) old3 = old2;
+            if (symbol >= 261u) old2 = old1;
+            if (symbol >= 260u) old1 = old0;
+            old0 = distance;
+        } else if (symbol == 258u) {
+            if (last_length == 0) continue;
+            distance = last_distance;
+            length = last_length;
+            if (length > XX_RAR29_FAST_MAX_MATCH) goto bail;
+            if (distance == 0 || (size_t)distance > (size_t)(out - destination) || (size_t)distance > wsize) goto history;
+        } else {
+            /* 256 (end of block / new tables) or 257 (filter record). */
+            goto bail;
+        }
+
+        /* Copy the match.  out + length + 32 stays inside the destination
+         * (output margin), so the copies may overshoot the match end; the
+         * overshoot is overwritten by the following output. */
+        {
+            const uint8_t *from = out - distance;
+            uint8_t *const end = out + length;
+            if (distance >= 16u) {
+                /* Most matches are short: copy 32 bytes without looking at
+                 * the length. */
+                xx_rar29_copy16(out, from);
+                xx_rar29_copy16(out + 16, from + 16);
+                if (length > 32u) {
+                    out += 32;
+                    from += 32;
+                    do {
+                        xx_rar29_copy16(out, from);
+                        out += 16;
+                        from += 16;
+                    } while (out < end);
+                }
+            } else if (distance >= 8u) {
+                do {
+                    xx_mem_store64(out, xx_mem_load64(from));
+                    out += 8;
+                    from += 8;
+                } while (out < end);
+            } else if (distance == 1u) {
+                uint64_t pattern = (uint64_t)from[0] * 0x0101010101010101ull;
+                do {
+                    xx_mem_store64(out, pattern);
+                    out += 8;
+                } while (out < end);
+            } else {
+                do {
+                    *out++ = *from++;
+                } while (out < end);
+            }
+            out = end;
+        }
+        last_distance = distance;
+        last_length = length;
+        continue;
+
+    history:
+        /* The distance is zero, larger than the window, or reaches before this
+         * member (solid continuation).  The checked copy either takes the
+         * bytes from the dictionary window or rejects the match; a rejected
+         * match is left to the careful code, which reports the error.  The
+         * distance history has not been updated yet for this symbol. */
+        {
+            size_t position = (size_t)(out - destination);
+            if (xx_rar29_emit_match(state, destination, destination_size, &position, distance, length) != XX_RARX_STATUS_OK) goto bail;
+            out = destination + position;
+            if (symbol >= 263u) {
+                old3 = old2;
+                old2 = old1;
+                old1 = old0;
+                old0 = distance;
+            } else if (symbol >= 259u) {
+                if (symbol >= 262u) old3 = old2;
+                if (symbol >= 261u) old2 = old1;
+                if (symbol >= 260u) old1 = old0;
+                old0 = distance;
+            }
+            last_distance = distance;
+            last_length = length;
+            continue;
+        }
+
+    bail:
+        in = symbol_in;
+        bitcnt = symbol_bitcnt;
+        last_low = saved_last_low;
+        low_repeats = saved_low_repeats;
+        break;
+    }
+
+#undef XX_RAR29_REFILL
+#undef XX_RAR29_PEEK
+#undef XX_RAR29_PEEK0
+#undef XX_RAR29_DROP
+#undef XX_RAR29_LITERAL
+
+    /* `in` is the first byte not loaded into the bit buffer. */
+    bits->bit = (size_t)(in - data) * 8u - bitcnt;
+    *produced = (size_t)(out - destination);
+    state->old_distance[0] = old0;
+    state->old_distance[1] = old1;
+    state->old_distance[2] = old2;
+    state->old_distance[3] = old3;
+    state->last_distance = last_distance;
+    state->last_length = last_length;
+    state->last_low_distance = last_low;
+    state->low_distance_repeats = low_repeats;
 }
 
 static xx_rarx_status_t xx_rar29_prepare_window(xx_rarx29_state *state, size_t window_size, bool solid)
@@ -1385,9 +1902,11 @@ xx_rarx_status_t xx_rarx29_decode(xx_rarx29_state *state, const uint8_t *source,
     xx_rar29_filter_list filters;
     xx_rarx_status_t status;
     size_t produced = 0;
+    size_t cancel_mark = 0;
     uint64_t operations = 0;
     bool finished = false;
     bool ppm_mode = false;
+    bool window_prepared = false;
 
     if (source_used) *source_used = 0;
     if (!state || (!source && source_size != 0) || (!destination && destination_size != 0) || window_size == 0 || allocation_limit == 0)
@@ -1397,6 +1916,7 @@ xx_rarx_status_t xx_rarx29_decode(xx_rarx29_state *state, const uint8_t *source,
 
     status = xx_rar29_prepare_window(state, window_size, solid);
     if (status != XX_RARX_STATUS_OK) return status;
+    window_prepared = true;
     xx_rt_memset(&bits, 0, sizeof(bits));
     bits.data = source;
     bits.size = source_size;
@@ -1422,12 +1942,28 @@ xx_rarx_status_t xx_rarx29_decode(xx_rarx29_state *state, const uint8_t *source,
             status = XX_RARX_STATUS_CANCELLED;
             goto done;
         }
+        if (!ppm_mode && destination_size - produced > XX_RAR29_FAST_OUTPUT_MARGIN && bits.size >= XX_RAR29_FAST_INPUT_MARGIN && bits.size <= SIZE_MAX / 8u &&
+            (bits.bit >> 3) <= bits.size - XX_RAR29_FAST_INPUT_MARGIN) {
+            /* Ample input and output left: decode literals and matches in the
+             * fast loop until it meets something it leaves to the code below.
+             * Bursts are bounded so that cancellation stays responsive. */
+            size_t output_limit = destination_size - XX_RAR29_FAST_OUTPUT_MARGIN;
+            if (output_limit - produced > XX_RAR29_FAST_BURST) output_limit = produced + XX_RAR29_FAST_BURST;
+            xx_rar29_lz_fast(state, &bits, destination, destination_size, output_limit, &produced);
+            if (progress && produced >= cancel_mark) {
+                if (xx_pd_is_stopped(progress)) {
+                    status = XX_RARX_STATUS_CANCELLED;
+                    goto done;
+                }
+                cancel_mark = produced + 0x10000u;
+            }
+        }
         if (ppm_mode) {
             uint8_t byte;
             status = xx_rar29_ppm_decode_symbol(state, &ppm_coder, &byte);
             if (status != XX_RARX_STATUS_OK) goto done;
             if (byte != state->ppm_escape) {
-                status = xx_rar29_emit_byte(state, destination, destination_size, &produced, byte);
+                status = xx_rar29_emit_byte(destination, destination_size, &produced, byte);
                 if (status != XX_RARX_STATUS_OK) goto done;
                 continue;
             }
@@ -1479,17 +2015,17 @@ xx_rarx_status_t xx_rarx29_decode(xx_rarx29_state *state, const uint8_t *source,
 
             /* Escape action 1 and all reserved values >= 6 encode the escape
              * byte itself as a literal. */
-            status = xx_rar29_emit_byte(state, destination, destination_size, &produced, state->ppm_escape);
+            status = xx_rar29_emit_byte(destination, destination_size, &produced, state->ppm_escape);
             if (status != XX_RARX_STATUS_OK) goto done;
             continue;
         }
 
-        if (!xx_rar29_decode_symbol(&bits, &state->main_code, &symbol)) {
+        if (!xx_rar29_decode_symbol(&bits, &state->codes[state->active_codes & 1u][XX_RAR29_CODE_MAIN], &symbol)) {
             status = bits.error;
             goto done;
         }
         if (symbol < 256u) {
-            status = xx_rar29_emit_byte(state, destination, destination_size, &produced, (uint8_t)symbol);
+            status = xx_rar29_emit_byte(destination, destination_size, &produced, (uint8_t)symbol);
             if (status != XX_RARX_STATUS_OK) goto done;
             continue;
         }
@@ -1529,7 +2065,7 @@ xx_rarx_status_t xx_rarx29_decode(xx_rarx29_state *state, const uint8_t *source,
         } else if (symbol <= 262u) {
             size_t index = (size_t)(symbol - 259u);
             distance = state->old_distance[index];
-            status = xx_rar29_decode_length(&bits, &state->length_code, 2u, &length);
+            status = xx_rar29_decode_length(&bits, &state->codes[state->active_codes & 1u][XX_RAR29_CODE_LENGTH], 2u, &length);
             if (status != XX_RARX_STATUS_OK) goto done;
             xx_rar29_promote_distance(state->old_distance, index);
         } else if (symbol <= 270u) {
@@ -1571,9 +2107,16 @@ xx_rarx_status_t xx_rarx29_decode(xx_rarx29_state *state, const uint8_t *source,
         status = XX_RARX_STATUS_CORRUPT;
         goto done;
     }
+    /* The window receives the unfiltered data, so store it before the filters
+     * run. */
+    xx_rar29_sync_window(state, destination, produced);
+    window_prepared = false;
     status = xx_rar29_apply_filters(destination, destination_size, &filters);
 
 done:
+    /* Every other way out (errors, cancellation): keep the dictionary state
+     * consistent with the bytes that were produced. */
+    if (window_prepared) xx_rar29_sync_window(state, destination, produced);
     if (source_used) {
         size_t bytes = bits.bit / 8u + ((bits.bit & 7u) != 0 ? 1u : 0u);
         if (bytes > source_size) bytes = source_size;

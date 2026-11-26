@@ -104,11 +104,13 @@ bool xx_bzip2_compress_stream(xx_io_device *src_dev, const uint8_t *mem_src, siz
 /* -------------------------------------------------------------------------
  * Block decoder (shared by the sequential and the multi-threaded decoder)
  * ------------------------------------------------------------------------- */
-/* Multi-threaded block decoding: 1 (default) builds it, 0 leaves it out.
- * At run time the environment variable XX_BZIP2_MT=0 turns it off and
- * XX_BZIP2_MT=<n> limits the number of worker threads. */
+/* Multi-threaded block decoding: XX_BZIP2_MT=1 builds it (such a build must
+ * also compile src/threads/xx_threads.c and its platform file); the full and
+ * formats profiles define it, component builds leave it out (0).  At run time
+ * the environment variable XX_BZIP2_MT=0 turns it off and XX_BZIP2_MT=<n>
+ * limits the number of worker threads. */
 #ifndef XX_BZIP2_MT
-#define XX_BZIP2_MT 1
+#define XX_BZIP2_MT 0
 #endif
 
 #define BZ2_HUFF_FAST_BITS 10

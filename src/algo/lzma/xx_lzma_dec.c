@@ -421,10 +421,6 @@ static bool lzma2_decode_units(lzma_range_dec *rd, uint8_t props2_byte, lzma_out
     source.memory = rd->dev ? NULL : rd->mem + rd->mem_pos;
     source.size = (uint64_t)rd->remaining;
     result = xx_lzma2_mt_decode(&source, props2_byte, threads, xx_lzma_mt_memory(), lzma2_mt_write, out, pd, &resume);
-    if (result == XX_LZMA2_MT_FINISHED) {
-        *ok = true;
-        return false;
-    }
     if (result == XX_LZMA2_MT_FAILED || resume > (uint64_t)rd->remaining) return false;
     /* Walking the units moved the device; put the input where decoding
      * continues. */
@@ -434,6 +430,12 @@ static bool lzma2_decode_units(lzma_range_dec *rd, uint8_t props2_byte, lzma_out
         rd->mem_pos += (size_t)resume;
     }
     rd->remaining -= (int64_t)resume;
+    if (result == XX_LZMA2_MT_FINISHED) {
+        /* The whole stream is decoded and the reader stands after its end
+         * marker, where the sequential decoder would leave it. */
+        *ok = true;
+        return false;
+    }
     return true;
 }
 

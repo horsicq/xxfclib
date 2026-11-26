@@ -1555,13 +1555,19 @@ static bool xx_rar_verify_member(const xx_rar_file_info *info, const uint8_t *da
     }
     if (info->has_crc) {
         if (info->crypto_version == 5 && (info->crypto_flags & 2U)) crc = xx_rar5_aes_mac_crc32(hash_key, crc);
-        if (crc != info->data_crc) goto finished;
+        if (crc != info->data_crc) {
+            xx_pd_set_error(pd, XXFC_ERR_GENERIC, "RAR member CRC32 mismatch");
+            goto finished;
+        }
     }
     if (info->has_blake2) {
         if (!xx_blake2sp_final(&blake, digest)) goto finished;
         if (info->crypto_version == 5 && (info->crypto_flags & 2U) && !xx_rar5_aes_mac_hash(hash_key, digest, digest)) goto finished;
         for (i = 0; i < 32U; ++i) difference |= digest[i] ^ info->blake2[i];
-        if (difference) goto finished;
+        if (difference) {
+            xx_pd_set_error(pd, XXFC_ERR_GENERIC, "RAR member BLAKE2 mismatch");
+            goto finished;
+        }
     }
     ok = !xx_pd_is_stopped(pd);
 finished:
@@ -1785,6 +1791,24 @@ static bool xx_rar_resource_limits_allow(const Abstractformat *self, const xx_li
     return true;
 }
 
+static const char *xx_rar_decoder_status_text(xx_rarx_status_t status)
+{
+    switch (status) {
+        case XX_RARX_STATUS_OK: return "RAR decoder output size mismatch";
+        case XX_RARX_STATUS_INVALID_ARGUMENT: return "RAR decoder: invalid argument";
+        case XX_RARX_STATUS_NO_MEMORY: return "RAR decoder: out of memory";
+        case XX_RARX_STATUS_IO_ERROR: return "RAR decoder: I/O error";
+        case XX_RARX_STATUS_TRUNCATED: return "RAR decoder: truncated stream";
+        case XX_RARX_STATUS_CORRUPT: return "RAR decoder: corrupt stream";
+        case XX_RARX_STATUS_UNSUPPORTED_VERSION: return "RAR decoder: unsupported method";
+        case XX_RARX_STATUS_UNSUPPORTED_FILTER: return "RAR decoder: unsupported filter";
+        case XX_RARX_STATUS_LIMIT: return "RAR decoder: internal limit exceeded";
+        case XX_RARX_STATUS_CANCELLED: return "RAR decoder: cancelled";
+        case XX_RARX_STATUS_POISONED: return "RAR decoder: solid chain broken by an earlier error";
+        default: return "RAR decoder failed";
+    }
+}
+
 static bool xx_rar_decode_current_record(Abstractformat *self, xx_rar_stream_state *rar_state, const xx_list_s *options, const char *dest_file_path, bool overwrite,
                                          bool *out_already_written, xx_pd_struct *pd)
 {
@@ -1854,7 +1878,12 @@ static bool xx_rar_decode_current_record(Abstractformat *self, xx_rar_stream_sta
         } else if (packed_size != output_size || !xx_rar_read_member_at(self->device, info->block.data_offset, output, output_size, pd)) goto cleanup;
     } else {
         xx_rarx_result result;
-        if (info->rarx_method == 0 || info->window_size == 0 || (info->solid && rar_state->solid_chain_gap)) goto cleanup;
+        xx_mem_zero(&result, sizeof(result));
+        result.status = XX_RARX_STATUS_IO_ERROR;
+        if (info->rarx_method == 0 || info->window_size == 0 || (info->solid && rar_state->solid_chain_gap)) {
+            xx_pd_set_error(pd, XXFC_ERR_GENERIC, info->rarx_method == 0 ? "RAR member uses an unsupported method" : "RAR solid member follows a failed member");
+            goto cleanup;
+        }
         if (!packed) {
             packed = (uint8_t *)xx_mem_alloc((packed_size != 0 ? packed_size : 1U) + 32U);
             if (packed) xx_mem_zero(packed + packed_size, 32U);
@@ -1886,8 +1915,10 @@ static bool xx_rar_decode_current_record(Abstractformat *self, xx_rar_stream_sta
         if (!packed || (!info->is_encrypted && !xx_rar_read_member_at(self->device, info->block.data_offset, packed, packed_size, pd)) ||
             !xx_rarx_decoder_unpack_memory(rar_state->decoder, packed, packed_size, output, output_size, info->rarx_method, info->window_size, info->solid, &result,
                                            pd) ||
-            result.output_written != (int64_t)output_size)
+            result.output_written != (int64_t)output_size) {
+            if (pd && !xx_pd_is_stopped(pd)) xx_pd_set_error(pd, XXFC_ERR_GENERIC, xx_rar_decoder_status_text(result.status));
             goto cleanup;
+        }
         if (streaming_verify) {
             xx_rarx_decoder_set_chunk_callback(rar_state->decoder, NULL, NULL);
         }

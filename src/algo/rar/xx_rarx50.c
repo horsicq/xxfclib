@@ -56,6 +56,7 @@
 #define XX_RARX50_FAST_BITS 12u
 #define XX_RARX50_FAST_SIZE (1u << XX_RARX50_FAST_BITS)
 #define XX_RARX50_MAX_FILTERS 8192u
+#define XX_RARX50_FILTER_BYTES_PER_SLOT 256u
 #define XX_RARX50_MAX_FILTER_SIZE (1u << 22)
 #define XX_RARX50_X86_FILE_SIZE 0x01000000u
 #define XX_RARX50_POLL_MASK 0x3fffu
@@ -431,6 +432,16 @@ static xx_rarx_status_t xx_rarx50_read_filter_integer(xx_rarx50_bits *bits, uint
     return XX_RARX_STATUS_OK;
 }
 
+/* The filter array grows geometrically; its allocated size follows from the
+ * count alone: 0 for an empty array, else the next power of two (minimum 16). */
+static size_t xx_rarx50_filter_capacity(size_t count)
+{
+    size_t capacity = 16u;
+    if (count == 0) return 0;
+    while (capacity < count) capacity <<= 1;
+    return capacity;
+}
+
 static xx_rarx_status_t xx_rarx50_append_filter(xx_rarx50_filter **filters, size_t *filter_count, size_t current_position, size_t output_size, xx_rarx50_bits *bits)
 {
     xx_rarx50_filter filter;
@@ -443,7 +454,11 @@ static xx_rarx_status_t xx_rarx50_append_filter(xx_rarx50_filter **filters, size
     if (!filters || !filter_count || !bits) {
         return XX_RARX_STATUS_INVALID_ARGUMENT;
     }
-    if (*filter_count >= XX_RARX50_MAX_FILTERS) {
+    /* Filters are applied once the whole member is decoded, so the bound
+     * covers every filter of the member, not only the pending ones as in a
+     * streaming decoder.  Scale it with the output: a large solid member of
+     * many executables carries far more than 8192 x86 filters. */
+    if (*filter_count >= XX_RARX50_MAX_FILTERS + output_size / XX_RARX50_FILTER_BYTES_PER_SLOT) {
         return XX_RARX_STATUS_LIMIT;
     }
     status = xx_rarx50_read_filter_integer(bits, &offset);
@@ -481,15 +496,19 @@ static xx_rarx_status_t xx_rarx50_append_filter(xx_rarx50_filter **filters, size
         filter.channels = (uint8_t)(channels + 1u);
     }
 
-    if (*filter_count == SIZE_MAX / sizeof(**filters)) {
-        return XX_RARX_STATUS_LIMIT;
+    if (*filter_count == xx_rarx50_filter_capacity(*filter_count)) {
+        size_t old_capacity = xx_rarx50_filter_capacity(*filter_count);
+        size_t new_capacity = xx_rarx50_filter_capacity(*filter_count + 1u);
+        if (new_capacity > SIZE_MAX / sizeof(**filters)) {
+            return XX_RARX_STATUS_LIMIT;
+        }
+        resized = (xx_rarx50_filter *)xx_rarx_clear_resize(*filters, old_capacity * sizeof(**filters), new_capacity * sizeof(**filters));
+        if (!resized) {
+            return XX_RARX_STATUS_NO_MEMORY;
+        }
+        *filters = resized;
     }
-    resized = (xx_rarx50_filter *)xx_rarx_clear_resize(*filters, *filter_count * sizeof(**filters), (*filter_count + 1u) * sizeof(**filters));
-    if (!resized) {
-        return XX_RARX_STATUS_NO_MEMORY;
-    }
-    resized[*filter_count] = filter;
-    *filters = resized;
+    (*filters)[*filter_count] = filter;
     (*filter_count)++;
     return XX_RARX_STATUS_OK;
 }
@@ -1660,6 +1679,6 @@ cleanup:
     state->repeated_distance[2] = dist2;
     state->repeated_distance[3] = dist3;
     state->last_length = last_len;
-    xx_rarx_clear_free(filters, filter_count * sizeof(*filters));
+    if (filters) xx_rarx_clear_free(filters, xx_rarx50_filter_capacity(filter_count) * sizeof(*filters));
     return status;
 }

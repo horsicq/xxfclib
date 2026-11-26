@@ -823,10 +823,10 @@ bool xx_gz_decode_prefix(xx_io_device *device, int64_t base_address, void *buffe
     for (;;) {
         xx_gz_member member;
         uint8_t trailer[XX_GZ_TRAILER_SIZE];
-        int64_t consumed;
+        int64_t consumed = 0;
         int64_t after_padding;
-        uint64_t written;
-        uint32_t crc32;
+        uint64_t written = 0;
+        uint32_t crc32 = 0;
         bool inflated;
         if (pd && xx_pd_is_stopped(pd)) break;
         if (!xx_gz_parse_one(&gz.format, total_size, offset, index++, &member, true, pd)) break;

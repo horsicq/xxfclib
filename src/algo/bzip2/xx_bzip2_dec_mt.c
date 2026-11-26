@@ -119,6 +119,8 @@ struct bz2_mt {
     bz2_mt_seg *cur;   /* newest segment: the one candidates are taken from */
     bool input_done;   /* the source has no more bytes */
     bool stalled;      /* an allocation failed: no further segments or tasks */
+    xx_pd_struct *pd;  /* cancel requests, checked while searching for candidates */
+    uint64_t last_found; /* byte offset of the last candidate handed out */
     bool seeded;       /* the reader's buffered bytes were moved into a segment */
     uint8_t *big_buf;  /* output of a block larger than a pooled buffer */
     size_t big_cap;
@@ -409,19 +411,29 @@ static bool bz2_mt_next_segment(bz2_mt *mt, uint64_t *start_bit)
 /* The next candidate at or after bit position from, or false. */
 static bool bz2_mt_next_candidate(bz2_mt *mt, uint64_t from, bz2_mt_seg **seg, uint64_t *bit)
 {
+    /* A compressed block is far shorter than this; a longer stretch with no
+     * block magic (a damaged tail, an overlay after the stream) goes back to
+     * the sequential decoder instead of being read ahead without bound. */
+    const uint64_t lookahead = (uint64_t)mt->block_bytes * 4u + (4u << 20);
     for (;;) {
         bz2_mt_seg *cur = mt->cur;
         uint64_t unused = 0;
         if (mt->stalled) return false;
+        if (mt->pd && xx_pd_is_stopped(mt->pd)) return false;
         while (cur->next_cand < cur->ncand) {
             uint64_t pos = cur->base * 8u + cur->cand[cur->next_cand++];
             if (pos >= from) {
                 *seg = cur;
                 *bit = pos;
+                mt->last_found = pos >> 3;
                 return true;
             }
         }
         if (mt->input_done) return false;
+        if (cur->base + cur->len > ((from >> 3) > mt->last_found ? (from >> 3) : mt->last_found) + lookahead) {
+            mt->stalled = true;
+            return false;
+        }
         if (!bz2_mt_next_segment(mt, &unused)) {
             mt->stalled = true;
             return false;
@@ -529,6 +541,7 @@ int bz2_mt_run(bz2_bit_reader *br, xx_io_device *dst, int block_bytes, uint32_t 
     if (!mt) return BZ2_MT_CONTINUE;
     xx_rt_memset(mt, 0, sizeof(*mt));
     mt->br = br;
+    mt->pd = pd;
     mt->block_bytes = block_bytes;
     mt->out_cap = (size_t)block_bytes * 4;
     mt->lock = xx_mutex_create();

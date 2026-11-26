@@ -1730,7 +1730,7 @@ static bool wise_parse(Abstractformat *format, wise_table **out, xx_pd_struct *p
 
 static bool wise_unpack_member(xx_io_device *device, int64_t base, const wise_member *member, xx_io_device *destination, xx_pd_struct *pd)
 {
-    wise_inflated result;
+    wise_inflated result = {0};
     if (!member->extractable) return false;
     if (member->method == 0U) {
         wise_sink sink;
