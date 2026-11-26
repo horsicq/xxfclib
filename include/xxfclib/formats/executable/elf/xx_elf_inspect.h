@@ -46,6 +46,7 @@ typedef struct {
     uint64_t nOffset;
     uint64_t nVaddr;
     uint64_t nFileSize;
+    uint64_t nAlign; /* p_align */
 } xx_elf_inspect_program;
 
 typedef enum {
@@ -112,6 +113,12 @@ typedef struct {
     char sOsName[24];
     char sOsVersion[24];
     char sArch[24];
+
+    /* e_phnum, e_shnum and e_shstrndx as stored in the header (nPhnum, nShnum
+     * and nShstrndx above are the resolved table sizes and index). */
+    uint16_t nRawPhnum;
+    uint16_t nRawShnum;
+    uint16_t nRawShstrndx;
 } xx_elf_inspection;
 
 /* Independent native inspection for callers that do not need the full reader

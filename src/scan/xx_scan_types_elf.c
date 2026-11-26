@@ -6,7 +6,8 @@
 
 xx_file_type_t xx_scan_type_detect_elf(const uint8_t *head, size_t head_size)
 {
-    if (head_size < 16U || memcmp(head,
+    /* XELF::isValid reads the magic and the class byte, nothing more. */
+    if (head_size < 5U || memcmp(head,
                                   "\x7f"
                                   "ELF",
                                   4))

@@ -40,7 +40,9 @@ void die_engine_api_register_elf(JSCtx *pCtx, JSVal object)
 bool die_engine_api_dispatch_elf(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int nArgc, JSVal *pArgv, JSVal *pResult)
 {
     switch (id) {
-        case A_getNumberOfSections: *pResult = js_num((double)pEngine->elf.nShnum); return true;
+        /* ELF_Script answers the header questions from XELF::getHdr: the
+         * stored e_shnum/e_phnum/e_shstrndx, not the resolved table sizes. */
+        case A_getNumberOfSections: *pResult = js_num((double)pEngine->elf.nRawShnum); return true;
 
         case A_getSectionName: {
             /* Section name resolved via e_shstrndx; "" for an index outside the section table. */
@@ -107,7 +109,7 @@ bool die_engine_api_dispatch_elf(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int 
             return true;
         }
 
-        case A_getNumberOfPrograms: *pResult = js_num((double)(pEngine->bHasElf ? pEngine->elf.nPhnum : 0)); return true;
+        case A_getNumberOfPrograms: *pResult = js_num((double)(pEngine->bHasElf ? pEngine->elf.nRawPhnum : 0)); return true;
 
         case A_getProgramFileOffset:
             *pResult = js_num((double)(pEngine->bHasElf ? xx_elf_inspect_program_offset(&pEngine->elf, (int)arg_i64(pCtx, nArgc, pArgv, 0, 0)) : 0));
@@ -127,15 +129,15 @@ bool die_engine_api_dispatch_elf(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int 
 
         case A_getElfHeader_shoff: *pResult = js_num((double)(pEngine->bHasElf ? pEngine->elf.nShoff : 0)); return true;
 
-        case A_getElfHeader_phnum: *pResult = js_num((double)(pEngine->bHasElf ? pEngine->elf.nPhnum : 0)); return true;
+        case A_getElfHeader_phnum: *pResult = js_num((double)(pEngine->bHasElf ? pEngine->elf.nRawPhnum : 0)); return true;
 
-        case A_getElfHeader_shnum: *pResult = js_num((double)(pEngine->bHasElf ? pEngine->elf.nShnum : 0)); return true;
+        case A_getElfHeader_shnum: *pResult = js_num((double)(pEngine->bHasElf ? pEngine->elf.nRawShnum : 0)); return true;
 
         case A_getElfHeader_shentsize: *pResult = js_num((double)(pEngine->bHasElf ? pEngine->elf.nShentsize : 0)); return true;
 
         case A_getElfHeader_phentsize: *pResult = js_num((double)(pEngine->bHasElf ? pEngine->elf.nPhentsize : 0)); return true;
 
-        case A_getElfHeader_shstrndx: *pResult = js_num((double)(pEngine->bHasElf ? pEngine->elf.nShstrndx : 0)); return true;
+        case A_getElfHeader_shstrndx: *pResult = js_num((double)(pEngine->bHasElf ? pEngine->elf.nRawShstrndx : 0)); return true;
 
         case A_getRunPath: *pResult = js_str(pCtx, (pEngine->bHasElf && pEngine->elf.pRunPath) ? pEngine->elf.pRunPath : ""); return true;
 

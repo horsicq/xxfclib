@@ -21,7 +21,8 @@ static bool xx_scan_resources_stopped(xx_pd_struct *pd)
     return xx_pd_is_stopped(pd) || (pd && pd->last_error);
 }
 
-static bool xx_scan_visit_resource_stream(Abstractformat *format, int64_t origin, int64_t range_size, xx_scan_resource_callback callback, void *context, xx_pd_struct *pd)
+static bool xx_scan_visit_resource_stream(Abstractformat *format, int64_t origin, int64_t range_size, bool unreadable_is_empty, xx_scan_resource_callback callback,
+                                          void *context, xx_pd_struct *pd)
 {
     xx_resource_state *state;
     const xx_resource_record *record;
@@ -29,7 +30,13 @@ static bool xx_scan_visit_resource_stream(Abstractformat *format, int64_t origin
     bool result = false;
 
     if (xx_scan_resources_stopped(pd)) return false;
-    if (!xx_format_handle_base_info(format, pd)) return xx_scan_resource_error(pd, XXFC_ERR_GENERIC, "Cannot read executable resources");
+    if (!xx_format_handle_base_info(format, pd)) {
+        /* The scan types an ELF by its magic and class alone, as XELF::isValid
+         * does. One the reader turns down (a truncated file, a packed .so whose
+         * section table points past the end) has no resources; it is no error. */
+        if (unreadable_is_empty && !xx_scan_resources_stopped(pd)) return true;
+        return xx_scan_resource_error(pd, XXFC_ERR_GENERIC, "Cannot read executable resources");
+    }
     if (xx_scan_resources_stopped(pd)) return false;
     state = xx_format_create_resources_reading(format, pd);
     if (!state) return xx_scan_resource_error(pd, XXFC_ERR_GENERIC, "Cannot create scan resource reader");
@@ -112,12 +119,12 @@ bool xx_scan_visit_resources(xx_io_device *device, xx_file_type_t type, int64_t 
     if (type == XX_FILE_TYPE_ELF || type == XX_FILE_TYPE_ELF32 || type == XX_FILE_TYPE_ELF64) {
         xx_elf reader;
         xx_elf_init(&reader, view, 0);
-        result = xx_scan_visit_resource_stream(&reader.format, offset, range_size, callback, context, pd);
+        result = xx_scan_visit_resource_stream(&reader.format, offset, range_size, true, callback, context, pd);
         xx_elf_destroy(&reader);
     } else {
         xx_pe reader;
         xx_pe_init(&reader, view, 0);
-        result = xx_scan_visit_resource_stream(&reader.format, offset, range_size, callback, context, pd);
+        result = xx_scan_visit_resource_stream(&reader.format, offset, range_size, false, callback, context, pd);
         xx_pe_destroy(&reader);
     }
     xx_io_close(view);

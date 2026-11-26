@@ -113,6 +113,7 @@ typedef struct xx_rar29_bits_s {
 #define XX_RAR29_FAST_OUTPUT_MARGIN 320u
 #define XX_RAR29_FAST_MAX_MATCH 260u
 #define XX_RAR29_FAST_BURST ((size_t)1u << 20)
+#define XX_RAR29_FAST_IDLE_LIMIT ((size_t)1u << 16)
 
 typedef struct xx_rar29_huffman_s {
     uint16_t count[XX_RAR29_MAX_BITS + 1u];
@@ -1612,6 +1613,7 @@ static void xx_rar29_lz_fast(xx_rarx29_state *state, xx_rar29_bits *bits, uint8_
         XX_RAR29_DROP(skip);
     }
 
+    size_t idle_symbols = 0;
     while (in <= in_limit && out < out_limit) {
         uint32_t entry;
         uint32_t symbol;
@@ -1742,7 +1744,14 @@ static void xx_rar29_lz_fast(xx_rarx29_state *state, xx_rar29_bits *bits, uint8_
             if (symbol >= 260u) old1 = old0;
             old0 = distance;
         } else if (symbol == 258u) {
-            if (last_length == 0) continue;
+            if (last_length == 0) {
+                /* A repeat with no previous match produces nothing, so the
+                 * output-based burst bound does not limit a run of them.
+                 * Leave long runs to the careful code, which polls for
+                 * cancellation. */
+                if (++idle_symbols > XX_RAR29_FAST_IDLE_LIMIT) goto bail;
+                continue;
+            }
             distance = last_distance;
             length = last_length;
             if (length > XX_RAR29_FAST_MAX_MATCH) goto bail;
@@ -1949,8 +1958,11 @@ xx_rarx_status_t xx_rarx29_decode(xx_rarx29_state *state, const uint8_t *source,
              * Bursts are bounded so that cancellation stays responsive. */
             size_t output_limit = destination_size - XX_RAR29_FAST_OUTPUT_MARGIN;
             if (output_limit - produced > XX_RAR29_FAST_BURST) output_limit = produced + XX_RAR29_FAST_BURST;
+            size_t produced_before = produced;
             xx_rar29_lz_fast(state, &bits, destination, destination_size, output_limit, &produced);
-            if (progress && produced >= cancel_mark) {
+            /* A burst without output (a long run of empty repeats) is polled
+             * too: the output-based mark alone would not advance. */
+            if (progress && (produced >= cancel_mark || produced == produced_before)) {
                 if (xx_pd_is_stopped(progress)) {
                     status = XX_RARX_STATUS_CANCELLED;
                     goto done;

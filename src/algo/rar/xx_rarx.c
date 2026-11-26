@@ -260,8 +260,17 @@ bool xx_rarx_decoder_unpack_device(xx_rarx_decoder *decoder, xx_io_device *sourc
         return false;
     }
 
-    packed = (uint8_t *)xx_mem_alloc(compressed_size > 0 ? (size_t)compressed_size : 1u);
-    unpacked = (uint8_t *)xx_mem_alloc(expected_size > 0 ? (size_t)expected_size : 1u);
+    /* The method decoders may read and write up to 32 bytes past the packed
+     * input and the output (unchecked wide refills and copies); give both
+     * buffers that zeroed slack, as the RAR format reader does. */
+    if ((uint64_t)compressed_size > (uint64_t)SIZE_MAX - XX_RARX_BUFFER_SLACK || (uint64_t)expected_size > (uint64_t)SIZE_MAX - XX_RARX_BUFFER_SLACK) {
+        xx_rarx_set_status(decoder, result, XX_RARX_STATUS_LIMIT);
+        return false;
+    }
+    packed = (uint8_t *)xx_mem_alloc((size_t)compressed_size + XX_RARX_BUFFER_SLACK);
+    unpacked = (uint8_t *)xx_mem_alloc((size_t)expected_size + XX_RARX_BUFFER_SLACK);
+    if (packed) xx_mem_zero(packed + (size_t)compressed_size, XX_RARX_BUFFER_SLACK);
+    if (unpacked) xx_mem_zero(unpacked + (size_t)expected_size, XX_RARX_BUFFER_SLACK);
     if (!packed || !unpacked) {
         xx_rarx_set_status(decoder, result, XX_RARX_STATUS_NO_MEMORY);
         goto cleanup;
@@ -282,8 +291,8 @@ bool xx_rarx_decoder_unpack_device(xx_rarx_decoder *decoder, xx_io_device *sourc
     ok = true;
 
 cleanup:
-    xx_rarx_clear_free(unpacked, expected_size > 0 ? (size_t)expected_size : 1u);
-    xx_rarx_clear_free(packed, compressed_size > 0 ? (size_t)compressed_size : 1u);
+    if (unpacked) xx_rarx_clear_free(unpacked, (size_t)expected_size + XX_RARX_BUFFER_SLACK);
+    if (packed) xx_rarx_clear_free(packed, (size_t)compressed_size + XX_RARX_BUFFER_SLACK);
     return ok;
 }
 

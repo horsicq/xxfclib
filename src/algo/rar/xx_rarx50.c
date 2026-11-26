@@ -3176,6 +3176,10 @@ static xx_rarx_status_t xx_rarx50_mt_apply_filters(xx_rarx50_mt *mt, uint8_t *de
     mt->filter_destination = NULL;
     xx_atomic_store(&mt->abort_flag, 0);
     xx_mutex_unlock(mt->mutex);
+    /* The workers do not poll the progress object; when they took every
+     * batch, the loop above never checked it.  Report a cancellation that
+     * arrived meanwhile like the sequential filter path would. */
+    if (status == XX_RARX_STATUS_OK && xx_rarx50_cancelled(progress)) status = XX_RARX_STATUS_CANCELLED;
     return status;
 }
 #endif /* XX_RARX50_MT */

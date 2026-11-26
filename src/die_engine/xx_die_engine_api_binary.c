@@ -1436,6 +1436,10 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
                 *pResult = js_num((double)(cd_i64)pMap->entry_point_address);
                 return true;
             }
+            if (pEngine->bHasElf) {
+                *pResult = js_num((double)(cd_i64)pEngine->nElfEntryPointAddress);
+                return true;
+            }
             *pResult = js_num((double)(pEngine->bHasPE ? pPE->nEntryPointAddress : 0));
             return true;
 

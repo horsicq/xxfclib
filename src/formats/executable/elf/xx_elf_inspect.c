@@ -446,7 +446,7 @@ static void elf_parse_core_registers(xx_executable_input *pFile, xx_elf_inspecti
     for (i = 0; i < pElf->nProgramCount && !pFile->failed && !xx_pd_is_stopped(pFile->pd); ++i) {
         uint64_t nHeaderOffset, nSegmentOffset, nSegmentSize, nSegmentEnd, nCursor;
         if (pElf->pPrograms[i].nType != ELF_PT_NOTE) continue;
-        if ((uint64_t)i > (UINT64_MAX - pElf->nPhoff) / pElf->nPhentsize) continue;
+        if (!pElf->nPhentsize || (uint64_t)i > (UINT64_MAX - pElf->nPhoff) / pElf->nPhentsize) continue;
         nHeaderOffset = pElf->nPhoff + (uint64_t)i * pElf->nPhentsize;
         if (nHeaderOffset > (uint64_t)pFile->size || (uint64_t)pElf->nPhentsize > (uint64_t)pFile->size - nHeaderOffset) continue;
         nSegmentOffset =
@@ -1038,6 +1038,106 @@ static void elf_compute_overlay(xx_elf_inspection *pElf, int64_t nFileSize)
     }
 }
 
+/* XBinary::read_uintN: bytes past the end of the file read as zero. */
+static void elf_read_padded(xx_executable_input *pFile, uint64_t nOffset, uint8_t *pBytes, size_t nSize)
+{
+    xx_rt_memset(pBytes, 0, nSize);
+    if (nOffset >= (uint64_t)pFile->size) return;
+    if ((uint64_t)nSize > (uint64_t)pFile->size - nOffset) nSize = (size_t)((uint64_t)pFile->size - nOffset);
+    xx_exec_read(pFile, (int64_t)nOffset, pBytes, nSize);
+}
+
+static uint64_t elf_field(const uint8_t *pBytes, size_t nWidth, bool bBigEndian)
+{
+    uint64_t nValue = 0;
+    size_t i;
+    for (i = 0; i < nWidth; ++i) nValue = (nValue << 8) | pBytes[bBigEndian ? i : nWidth - i - 1];
+    return nValue;
+}
+
+/* ELF_Script takes its lists from getElf_ShdrList(100) / getElf_PhdrList(100). */
+#define ELF_QT_LIST_LIMIT 100U
+
+/* The header and tables the way XELF reads them, for a file the checked reader
+ * turns down: XELF::isValid asks only for the magic and a 32/64-bit class, and
+ * XELF then reads every field where the header says it is, with no range
+ * check (a UPX-packed .so keeps a section table that points past the end of
+ * the packed file). Missing bytes are zeros, EI_DATA other than 2 is little
+ * endian, table entries are sizeof(Elf_Phdr/Elf_Shdr) apart whatever
+ * e_phentsize/e_shentsize say, and a list holds at most 100 entries. */
+static int elf_read_tables_lenient(xx_executable_input *pFile, xx_elf *reader)
+{
+    uint8_t bytes[64];
+    bool be, wide;
+    uint64_t i, offset, count, index;
+    size_t entry;
+    xx_mem_free(reader->program_headers);
+    xx_mem_free(reader->section_headers);
+    reader->program_headers = NULL;
+    reader->section_headers = NULL;
+    elf_read_padded(pFile, 0, bytes, sizeof(bytes));
+    if (xx_rt_memcmp(bytes, "\177ELF", 4) || (bytes[4] != 1 && bytes[4] != 2)) return 0;
+    reader->elf_class = bytes[4];
+    reader->data_encoding = bytes[5];
+    wide = bytes[4] == 2;
+    be = bytes[5] == 2;
+    reader->os_abi = bytes[7];
+    reader->type = (uint16_t)elf_field(bytes + 16, 2, be);
+    reader->machine = (uint16_t)elf_field(bytes + 18, 2, be);
+    reader->version = (uint32_t)elf_field(bytes + 20, 4, be);
+    reader->entry_point = elf_field(bytes + 24, wide ? 8 : 4, be);
+    reader->program_header_offset = elf_field(bytes + (wide ? 32 : 28), wide ? 8 : 4, be);
+    reader->section_header_offset = elf_field(bytes + (wide ? 40 : 32), wide ? 8 : 4, be);
+    reader->flags = (uint32_t)elf_field(bytes + (wide ? 48 : 36), 4, be);
+    reader->header_size = (uint16_t)elf_field(bytes + (wide ? 52 : 40), 2, be);
+    reader->program_header_entry_size = (uint16_t)elf_field(bytes + (wide ? 54 : 42), 2, be);
+    reader->program_header_count = elf_field(bytes + (wide ? 56 : 44), 2, be);
+    reader->section_header_entry_size = (uint16_t)elf_field(bytes + (wide ? 58 : 46), 2, be);
+    count = elf_field(bytes + (wide ? 60 : 48), 2, be);
+    index = elf_field(bytes + (wide ? 62 : 50), 2, be);
+    offset = reader->section_header_offset;
+    if (offset && (!count || !index)) {
+        /* XELF::getNumberOfSections / getSectionStringTable: a zero field is
+         * taken from section 0 (sh_size as quint32, sh_link). */
+        elf_read_padded(pFile, offset, bytes, sizeof(bytes));
+        if (!count) count = (uint32_t)elf_field(bytes + (wide ? 32 : 20), wide ? 8 : 4, be);
+        if (!index) index = elf_field(bytes + (wide ? 40 : 24), 4, be);
+    }
+    reader->section_name_index = index;
+    reader->section_header_count = !offset ? 0 : count < ELF_QT_LIST_LIMIT ? count : ELF_QT_LIST_LIMIT;
+    if (reader->program_header_count > ELF_QT_LIST_LIMIT) reader->program_header_count = ELF_QT_LIST_LIMIT;
+    if (reader->program_header_count) {
+        reader->program_headers = (xx_elf_program_header *)xx_mem_calloc((size_t)reader->program_header_count, sizeof(*reader->program_headers));
+        if (!reader->program_headers) return 0;
+        entry = wide ? 56U : 32U;
+        for (i = 0; i < reader->program_header_count; ++i) {
+            xx_elf_program_header *program = &reader->program_headers[i];
+            elf_read_padded(pFile, reader->program_header_offset + i * entry, bytes, entry);
+            program->type = (uint32_t)elf_field(bytes, 4, be);
+            program->offset = elf_field(bytes + (wide ? 8 : 4), wide ? 8 : 4, be);
+            program->virtual_address = elf_field(bytes + (wide ? 16 : 8), wide ? 8 : 4, be);
+            program->file_size = elf_field(bytes + (wide ? 32 : 16), wide ? 8 : 4, be);
+            program->alignment = elf_field(bytes + (wide ? 48 : 28), wide ? 8 : 4, be);
+        }
+    }
+    if (reader->section_header_count) {
+        reader->section_headers = (xx_elf_section_header *)xx_mem_calloc((size_t)reader->section_header_count, sizeof(*reader->section_headers));
+        if (!reader->section_headers) return 0;
+        entry = wide ? 64U : 40U;
+        for (i = 0; i < reader->section_header_count; ++i) {
+            xx_elf_section_header *section = &reader->section_headers[i];
+            elf_read_padded(pFile, offset + i * entry, bytes, entry);
+            section->name_offset = (uint32_t)elf_field(bytes, 4, be);
+            section->type = (uint32_t)elf_field(bytes + 4, 4, be);
+            section->flags = elf_field(bytes + 8, wide ? 8 : 4, be);
+            section->address = elf_field(bytes + (wide ? 16 : 12), wide ? 8 : 4, be);
+            section->offset = elf_field(bytes + (wide ? 24 : 16), wide ? 8 : 4, be);
+            section->size = elf_field(bytes + (wide ? 32 : 20), wide ? 8 : 4, be);
+        }
+    }
+    return !pFile->failed;
+}
+
 static int inspect_parse_input(xx_executable_input *pFile, xx_elf_inspection *pElf, const xx_elf *reader)
 {
     int b64 = reader->elf_class == 2;
@@ -1065,6 +1165,16 @@ static int inspect_parse_input(xx_executable_input *pFile, xx_elf_inspection *pE
     pElf->nPhnum = reader->program_header_count;
     pElf->nShnum = reader->section_header_count;
     pElf->nShstrndx = reader->section_name_index;
+    {
+        /* The e_phnum, e_shnum and e_shstrndx fields as stored, which is what
+         * ELF_Script returns (XELF::getHdr); the counts above may come from
+         * section 0 or be capped. */
+        uint8_t header[64];
+        elf_read_padded(pFile, 0, header, sizeof(header));
+        pElf->nRawPhnum = (uint16_t)elf_field(header + (b64 ? 56 : 44), 2, pElf->bBigEndian != 0);
+        pElf->nRawShnum = (uint16_t)elf_field(header + (b64 ? 60 : 48), 2, pElf->bBigEndian != 0);
+        pElf->nRawShstrndx = (uint16_t)elf_field(header + (b64 ? 62 : 50), 2, pElf->bBigEndian != 0);
+    }
     if (pElf->nPhnum) {
         pElf->pPrograms = (xx_elf_inspect_program *)xx_mem_calloc((size_t)pElf->nPhnum, sizeof(*pElf->pPrograms));
         if (!pElf->pPrograms) return 0;
@@ -1074,6 +1184,7 @@ static int inspect_parse_input(xx_executable_input *pFile, xx_elf_inspection *pE
             pElf->pPrograms[i].nOffset = program->offset;
             pElf->pPrograms[i].nVaddr = program->virtual_address;
             pElf->pPrograms[i].nFileSize = program->file_size;
+            pElf->pPrograms[i].nAlign = program->alignment;
             ++pElf->nProgramCount;
         }
     }
@@ -1334,7 +1445,7 @@ int xx_elf_inspect_analyze_from_device(xx_elf_inspection *state, xx_io_device *d
 {
     xx_elf reader = {0};
     xx_executable_input *input;
-    bool be, wide;
+    bool be, wide, tables = false;
     uint64_t i;
     int result = 0;
     if (!state) return 0;
@@ -1365,12 +1476,12 @@ int xx_elf_inspect_analyze_from_device(xx_elf_inspection *state, xx_io_device *d
     reader.section_header_count = xx_exec_u16(input, wide ? 60 : 48, be);
     reader.section_name_index = xx_exec_u16(input, wide ? 62 : 50, be);
     if (reader.header_size < (wide ? 64 : 52) || reader.header_size > input->size) goto done;
-    if (reader.section_header_offset && (!reader.section_header_count || reader.program_header_count == 0xffff || reader.section_name_index == 0xffff)) {
+    /* e_phnum is used as stored: XELF does not follow PN_XNUM to section 0. */
+    if (reader.section_header_offset && (!reader.section_header_count || reader.section_name_index == 0xffff)) {
         uint64_t offset = reader.section_header_offset;
         if (offset > (uint64_t)input->size || (uint64_t)(wide ? 64 : 40) > (uint64_t)input->size - offset) goto done;
         if (!reader.section_header_count)
             reader.section_header_count = wide ? xx_exec_u64(input, (int64_t)offset + 32, be) : xx_exec_u32(input, (int64_t)offset + 20, be);
-        if (reader.program_header_count == 0xffff) reader.program_header_count = xx_exec_u32(input, (int64_t)offset + (wide ? 44 : 28), be);
         if (reader.section_name_index == 0xffff) reader.section_name_index = xx_exec_u32(input, (int64_t)offset + (wide ? 40 : 24), be);
     }
     if (reader.program_header_count > 65536 || reader.section_header_count > 65536) goto done;
@@ -1387,6 +1498,7 @@ int xx_elf_inspect_analyze_from_device(xx_elf_inspection *state, xx_io_device *d
             program->offset = wide ? xx_exec_u64(input, offset + 8, be) : xx_exec_u32(input, offset + 4, be);
             program->virtual_address = wide ? xx_exec_u64(input, offset + 16, be) : xx_exec_u32(input, offset + 8, be);
             program->file_size = wide ? xx_exec_u64(input, offset + 32, be) : xx_exec_u32(input, offset + 16, be);
+            program->alignment = wide ? xx_exec_u64(input, offset + 48, be) : xx_exec_u32(input, offset + 28, be);
             if (program->offset > (uint64_t)input->size || program->file_size > (uint64_t)input->size - program->offset) goto done;
         }
     }
@@ -1411,8 +1523,11 @@ int xx_elf_inspect_analyze_from_device(xx_elf_inspection *state, xx_io_device *d
                 goto done;
         }
     }
-    if (!input->failed && !xx_pd_is_stopped(pd)) result = inspect_parse_input(input, state, &reader);
+    tables = true;
 done:
+    /* A header or table the checks above turn down is still an ELF for XELF. */
+    if (!tables && !input->failed && !xx_pd_is_stopped(pd)) tables = elf_read_tables_lenient(input, &reader) != 0;
+    if (tables && !input->failed && !xx_pd_is_stopped(pd)) result = inspect_parse_input(input, state, &reader);
     xx_mem_free(reader.program_headers);
     xx_mem_free(reader.section_headers);
     if (!result || input->failed || xx_pd_is_stopped(pd)) {

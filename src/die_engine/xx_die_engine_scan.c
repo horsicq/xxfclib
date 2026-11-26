@@ -486,6 +486,63 @@ static void script_pe_overlay(xx_pe_inspection *pe)
     pe->nOverlaySize = pe->nOverlayOffset >= 0 ? size - pe->nOverlayOffset : 0;
 }
 
+/* Binary_Script takes the ELF overlay from XELF::getMemoryMap: the file is
+ * used up to the end of the last PT_LOAD segment, rounded out to p_align and
+ * clipped to the file; sections and the section table past it do not count.
+ * XBinary::_calculateRawSize then gives up (no overlay, offset -1) as soon as
+ * one segment record leaves the file. The same map rebases the entry point:
+ * e_entry less the lowest segment address (the module address is 0). */
+static void script_elf_map(xx_elf_inspection *elf, cd_i64 size, cd_u64 *entry_point_address)
+{
+    cd_u64 used = 0, lowest = 0;
+    cd_i64 raw = 0;
+    int i, valid = 1, first = 1;
+    /* XELF::getMemoryMap reads getElf_PhdrList(1000). */
+    for (i = 0; i < elf->nProgramCount && i < 1000; ++i) {
+        const xx_elf_inspect_program *program = &elf->pPrograms[i];
+        cd_u64 align = program->nAlign <= 1 ? 1 : program->nAlign;
+        cd_u64 file_offset, file_delta, virtual_delta, file_size, end, record[3][2];
+        int count = 0, index;
+        if (program->nType != 1) continue; /* PT_LOAD */
+        /* S_ALIGN_DOWN64 / S_ALIGN_UP64, also for an alignment that is no power of two. */
+        file_offset = program->nOffset & ~(align - 1);
+        file_delta = program->nOffset - file_offset;
+        virtual_delta = program->nVaddr - (program->nVaddr & ~(align - 1));
+        /* nMinUsedAddress starts from the first segment's p_vaddr as stored. */
+        if (first) lowest = program->nVaddr;
+        first = 0;
+        if ((program->nVaddr & ~(align - 1)) < lowest) lowest = program->nVaddr & ~(align - 1);
+        file_size = file_delta + program->nFileSize;
+        if (file_size & (align - 1)) file_size = (file_size & ~(align - 1)) + align;
+        if ((cd_i64)(file_offset + file_size) > size) file_size = (cd_u64)size - file_offset;
+        if ((cd_i64)file_size < 0) file_size = 0;
+        end = program->nOffset + program->nFileSize;
+        if (virtual_delta && (cd_i64)virtual_delta >= (cd_i64)file_delta) {
+            record[count][0] = file_offset;
+            record[count++][1] = file_delta;
+        }
+        record[count][0] = program->nOffset;
+        record[count++][1] = program->nFileSize;
+        if (file_offset + file_size != end) {
+            record[count][0] = end;
+            record[count++][1] = file_offset + file_size - end;
+        }
+        for (index = 0; index < count; ++index) {
+            cd_i64 offset = (cd_i64)record[index][0], length = (cd_i64)record[index][1];
+            if (offset == -1) continue; /* a virtual record for XBinary */
+            if (offset < 0 || length < 0 || offset > size || length > size - offset) valid = 0;
+            else if (offset + length > raw) raw = offset + length;
+        }
+        if ((cd_i64)(file_offset + file_size) > (cd_i64)used) used = file_offset + file_size;
+    }
+    /* The overlay record starts where the segments end. */
+    if (size - (cd_i64)used > 0 && (cd_i64)used < raw) raw = (cd_i64)used;
+    if (!valid) raw = 0;
+    elf->nOverlayOffset = raw > 0 && raw <= size ? raw : -1;
+    elf->nOverlaySize = elf->nOverlayOffset >= 0 ? size - elf->nOverlayOffset : 0;
+    *entry_point_address = elf->nEntry - lowest;
+}
+
 /* XLE/XLX scripts see XLE::getFileParts as a memory map: the header
  * (e_lfanew + sizeof(IMAGE_VXD_HEADER)), one contiguous record per object
  * spanning the file bytes of its pages, and the rest of the file as overlay.
@@ -806,6 +863,7 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
         pEngine->bHasPdf = xx_pdf_analyze(&pEngine->pdf, NULL);
     } else if ((pEngine->fileType == XFT_ELF) || (pEngine->fileType == XFT_ELF32) || (pEngine->fileType == XFT_ELF64)) {
         pEngine->bHasElf = xx_elf_inspect_analyze_from_device(&pEngine->elf, pEngine->device, 0, NULL);
+        if (pEngine->bHasElf) script_elf_map(&pEngine->elf, xx_io_total_size(pEngine->device), &pEngine->nElfEntryPointAddress);
     } else if (pEngine->fileType == XFT_DEX) {
         xx_dex_init(&pEngine->dex, pEngine->device, 0);
         pEngine->bHasDex = xx_dex_analyze(&pEngine->dex, NULL);

@@ -91,6 +91,7 @@ struct DieEngine {
     int bHasPdf;
     xx_elf_inspection elf;
     int bHasElf;
+    cd_u64 nElfEntryPointAddress; /* XELF::getMemoryMap nEntryPointAddress */
     xx_dex dex;
     int bHasDex;
     /* APKiD DEX: YARA 3.11 legacy dex module values (DEX.getUnicodeMemberNameCount),

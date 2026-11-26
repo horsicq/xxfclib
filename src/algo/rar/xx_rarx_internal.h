@@ -5,6 +5,11 @@
 #include "xxfclib/algo/rar/xx_rarx.h"
 #include "xxfclib/memory/xx_memory.h"
 
+/* Zeroed bytes callers keep after the packed input and after the output
+ * buffer: the method decoders' unchecked wide refills and copies may touch
+ * them (xx_rar.c and xx_rarx_decoder_unpack_device provide them). */
+#define XX_RARX_BUFFER_SLACK 32u
+
 /* Decoder-owned storage can contain decrypted data even when it only holds
  * compressed bytes or adaptive model state.  Do not release it through realloc,
  * which can discard the original allocation without first clearing it. */
