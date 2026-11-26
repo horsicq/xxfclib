@@ -311,7 +311,8 @@ static bool lzma_decode_block(lzma_range_dec *rd, lzma_decoder *dec, int64_t unc
         }
         if (uncomp_size >= 0) {
             int64_t rem = uncomp_size - total_out;
-            if ((size_t)rem < dic_limit - p->dicPos) {
+            size_t span = dic_limit - p->dicPos;
+            if ((uint64_t)rem < (uint64_t)span) {
                 dic_limit = p->dicPos + (size_t)rem;
             }
         }

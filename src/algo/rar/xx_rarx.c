@@ -125,20 +125,24 @@ void xx_rarx_decoder_set_chunk_callback(xx_rarx_decoder *decoder, xx_rarx_chunk_
 static xx_rarx_status_t xx_rarx_decode_memory(xx_rarx_decoder *decoder, const uint8_t *source, size_t source_size, uint8_t *destination, size_t destination_size,
                                               xx_rarx_method_t method, size_t window_size, bool solid, size_t *source_used, xx_pd_struct *progress)
 {
+    xx_rarx_status_t status;
     switch (method) {
         case XX_RARX_METHOD_15:
             if (!decoder->rar15) decoder->rar15 = xx_rarx15_create();
             if (!decoder->rar15) return XX_RARX_STATUS_NO_MEMORY;
-            return xx_rarx15_decode(decoder->rar15, source, source_size, destination, destination_size, window_size, solid, source_used, progress);
+            status = xx_rarx15_decode(decoder->rar15, source, source_size, destination, destination_size, window_size, solid, source_used, progress);
+            break;
         case XX_RARX_METHOD_20:
             if (!decoder->rar20) decoder->rar20 = xx_rarx20_create();
             if (!decoder->rar20) return XX_RARX_STATUS_NO_MEMORY;
-            return xx_rarx20_decode(decoder->rar20, source, source_size, destination, destination_size, window_size, solid, source_used, progress);
+            status = xx_rarx20_decode(decoder->rar20, source, source_size, destination, destination_size, window_size, solid, source_used, progress);
+            break;
         case XX_RARX_METHOD_29:
             if (!decoder->rar29) decoder->rar29 = xx_rarx29_create();
             if (!decoder->rar29) return XX_RARX_STATUS_NO_MEMORY;
-            return xx_rarx29_decode(decoder->rar29, source, source_size, destination, destination_size, window_size, (size_t)decoder->max_window_size, solid, source_used,
-                                    progress);
+            status = xx_rarx29_decode(decoder->rar29, source, source_size, destination, destination_size, window_size, (size_t)decoder->max_window_size, solid,
+                                      source_used, progress);
+            break;
         case XX_RARX_METHOD_50:
             if (!decoder->rar50) decoder->rar50 = xx_rarx50_create();
             if (!decoder->rar50) return XX_RARX_STATUS_NO_MEMORY;
@@ -147,6 +151,13 @@ static xx_rarx_status_t xx_rarx_decode_memory(xx_rarx_decoder *decoder, const ui
         case XX_RARX_METHOD_70:
         default: return XX_RARX_STATUS_UNSUPPORTED_VERSION;
     }
+    /* The callback observes decoded output (as for RAR5, which streams it
+     * while decoding); it is not a replacement for the device write in
+     * xx_rarx_decoder_unpack_device, which can still fail afterwards. */
+    if (status == XX_RARX_STATUS_OK && decoder->chunk_cb && destination_size > 0) {
+        decoder->chunk_cb(decoder->chunk_user_data, destination, destination_size);
+    }
+    return status;
 }
 
 bool xx_rarx_decoder_unpack_memory(xx_rarx_decoder *decoder, const void *source, size_t compressed_size, void *destination, size_t expected_size, xx_rarx_method_t method,

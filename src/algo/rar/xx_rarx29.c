@@ -1921,6 +1921,10 @@ xx_rarx_status_t xx_rarx29_decode(xx_rarx29_state *state, const uint8_t *source,
     if (!state || (!source && source_size != 0) || (!destination && destination_size != 0) || window_size == 0 || allocation_limit == 0)
         return XX_RARX_STATUS_INVALID_ARGUMENT;
     if (window_size > allocation_limit) return XX_RARX_STATUS_LIMIT;
+    /* The bit reader counts bits in a size_t and rounds bit counts up to
+     * bytes: refuse inputs whose bit count, plus that rounding and a 64-bit
+     * read, would not fit (packed members near 512 MiB on 32-bit builds). */
+    if (source_size > (SIZE_MAX - 128u) / 8u) return XX_RARX_STATUS_LIMIT;
     if (progress && xx_pd_is_stopped(progress)) return XX_RARX_STATUS_CANCELLED;
 
     status = xx_rar29_prepare_window(state, window_size, solid);
