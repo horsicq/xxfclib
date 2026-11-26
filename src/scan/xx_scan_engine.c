@@ -276,10 +276,10 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
 
 /* A deliberate cdie safety limit that XScanEngine does not have: the archive
  * members scanned for one input, at every nesting level together. Nesting
- * multiplies XScanEngine's per-archive limits (21 members, 100,000 when
+ * multiplies XScanEngine's per-archive limits (1001 members, 100,000 when
  * aggressive), so a few kilobytes of nested ZIPs could otherwise ask for
  * millions of scans. A real archive tree stays far below: the default cap is
- * 476 nested archives that each yield the full 21 members, and the aggressive
+ * 9 nested archives that each yield the full 1001 members, and the aggressive
  * cap equals XScanEngine's own limit for a single archive. Reaching it stops
  * the expansion and is reported like other archive errors ("Last error"). */
 #define XX_SCAN_ARCHIVE_SCAN_BUDGET UINT64_C(10000)
@@ -507,7 +507,9 @@ static bool xx_scan_run_archive_member(void *context, const xx_scan_archive_memb
     size_t limit;
 
     if (xx_pd_is_stopped(pd)) return false;
-    limit = scan->options->aggressive_scan ? 100000 : 21;
+    /* XScanEngine scans archive members while its count is at most 1000
+     * (100,000 when aggressive), i.e. 1001 of them. */
+    limit = scan->options->aggressive_scan ? 100000 : 1001;
     if (scan->scanned_count >= limit) return false;
     child_options.offset = 0;
     child_options.size = member->size;

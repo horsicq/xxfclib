@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  * Generated from XScanEngine canonical record tables. DO NOT EDIT.
  * Source: XScanEngine/xscanengine.cpp; command: python tools/nfd/generate_nfd_tables.py
- * Generator: 1; source SHA-256: 74fccd90d4d389e21dc5eaa4af0a5b05e6b250427da7a96477fddeaf80ff25db
+ * Generator: 1; source SHA-256: 4ddabe7c9241de8b2a13de2171e5ebbede51868038704ce9a0fd1c22465c3fa0
  */
 
 static const xx_nfd_name_entry xx_nfd_record_types[] = {
