@@ -1338,29 +1338,132 @@ copy_match:
         
         ; pos = dicPos - rep0 + (dicPos < rep0 ? dicBufSize : 0);
         sub     t0_R, r1
-        jae     @f
+        jae     copy_nowrap
 
         mov     r1, LOC dicBufSize
         add     t0_R, r1
         sub     r1, t0_R
         cmp     cnt_R, r1
         ja      copy_match_cross
-@@:
-        ; if (curLen <= dicBufSize - pos)
-
-; ---------- COPY MATCH FAST ----------
-        ; Byte *dest = dic + dicPos;
-        ; mov     r1, dic
-        ; ptrdiff_t src = (ptrdiff_t)pos - (ptrdiff_t)dicPos;
-        ; sub   t0_R, dicPos
-        ; dicPos += curLen;
-
-        ; const Byte *lim = dest + curLen;
         add     t0_R, dic
+        jmp     copy_byte_setup
+
+copy_nowrap:
+        add     t0_R, dic
+        cmp     cnt_R, 8
+        jb      copy_lt8_nowrap
+        cmp     r1, 8
+        jae     copy_check16_nowrap
+        cmp     r1, 1
+        jne     copy_byte_setup
+        ; rep0 == 1 fast RLE 8-byte broadcast fill
+        movzx   sym, byte ptr [t0_R]
+        mov     t1_R, 0101010101010101h
+        imul    sym_R, t1_R
+        mov     t1_R, dicPos
+        sub     t1_R, cnt_R
+        sub     cnt_R, 8
+copy_rle_loop:
+        mov     qword ptr [t1_R], sym_R
+        add     t1_R, 8
+        sub     cnt_R, 8
+        jae     copy_rle_loop
+        add     cnt_R, 8
+        jz      copy_rle_done
+        mov     qword ptr [dicPos - 8], sym_R
+copy_rle_done:
+        and     sym, 0FFh
+        IsMatchBranch_Pre
+        CheckLimits
+        jmp     lz_end
+
+copy_check16_nowrap:
+        cmp     cnt_R, 16
+        jb      copy_do8
+        cmp     r1, 16
+        jb      copy_do8
+        mov     t1_R, dicPos
+        sub     t1_R, cnt_R
+        sub     cnt_R, 16
+copy_xmm_loop:
+        movdqu  xmm0, xmmword ptr [t0_R]
+        add     t0_R, 16
+        movdqu  xmmword ptr [t1_R], xmm0
+        add     t1_R, 16
+        sub     cnt_R, 16
+        jae     copy_xmm_loop
+        add     cnt_R, 16
+        jz      copy_xmm_done
+        add     t0_R, cnt_R
+        movdqu  xmm0, xmmword ptr [t0_R - 16]
+        movdqu  xmmword ptr [dicPos - 16], xmm0
+copy_xmm_done:
+        psrldq  xmm0, 15
+        movd    sym, xmm0
+        IsMatchBranch_Pre
+        CheckLimits
+        jmp     lz_end
+
+copy_do8:
+        mov     t1_R, dicPos
+        sub     t1_R, cnt_R
+        sub     cnt_R, 8
+copy_qword_loop:
+        mov     sym_R, qword ptr [t0_R]
+        add     t0_R, 8
+        mov     qword ptr [t1_R], sym_R
+        add     t1_R, 8
+        sub     cnt_R, 8
+        jae     copy_qword_loop
+        add     cnt_R, 8
+        jz      copy_fast_done_tail0
+        add     t0_R, cnt_R
+        mov     sym_R, qword ptr [t0_R - 8]
+        mov     qword ptr [dicPos - 8], sym_R
+copy_fast_done_tail0:
+        shr     sym_R, 56
+        IsMatchBranch_Pre
+        CheckLimits
+        jmp     lz_end
+
+copy_lt8_nowrap:
+        cmp     cnt_R, 4
+        jb      copy_lt4_nowrap
+        cmp     r1, 4
+        jb      copy_byte_setup
+        mov     t1_R, dicPos
+        sub     t1_R, cnt_R
+        mov     x1, dword ptr [t0_R]
+        mov     dword ptr [t1_R], x1
+        add     t0_R, cnt_R
+        mov     sym, dword ptr [t0_R - 4]
+        mov     dword ptr [dicPos - 4], sym
+        shr     sym, 24
+        IsMatchBranch_Pre
+        CheckLimits
+        jmp     lz_end
+
+copy_lt4_nowrap:
+        ; A match clipped by the output limit can have one byte left: the word
+        ; store below would write one byte past the limit.
+        cmp     cnt_R, 2
+        jb      copy_byte_setup
+        cmp     r1, 2
+        jb      copy_byte_setup
+        mov     t1_R, dicPos
+        sub     t1_R, cnt_R
+        mov     x1_W, word ptr [t0_R]
+        mov     word ptr [t1_R], x1_W
+        movzx   sym, byte ptr [t0_R + cnt_R - 1]
+        mov     byte ptr [dicPos - 1], sym_L
+        IsMatchBranch_Pre
+        CheckLimits
+        jmp     lz_end
+
+copy_byte_setup:
         movzx   sym, byte ptr[t0_R]
         add     t0_R, cnt_R
         neg     cnt_R
-        ; lea     r1, [dicPos - 1]
 copy_common:
         dec     dicPos
         ; cmp   LOC rep0, 1

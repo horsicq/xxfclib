@@ -239,9 +239,30 @@ void xx_data_struct_set_raw_bytes_full(bool full)
 /* A byte string is not a number: it is shown as its bytes in file order,
  * without a 0x prefix ("2E74657874000000"), and one longer than two edges
  * keeps only its first and last bytes ("AAAA....AAAA"). */
-bool xx_data_struct_record_set_raw_bytes(xx_data_struct_record *rec, xx_io_device *device, int64_t offset, int64_t size)
+/* Hex digits of `count` bytes at `offset`, read in chunks (one device read per chunk instead of one per byte:
+ * a structure viewer builds this text for every field). A chunk that cannot be read in one call is read byte
+ * by byte, exactly as before. */
+static size_t xx_data_struct_raw_hex(xx_io_device *device, int64_t offset, size_t count, wchar_t *raw, size_t position)
 {
     static const wchar_t digits[] = L"0123456789ABCDEF";
+    uint8_t chunk[256];
+    size_t done = 0U, index;
+    while (done < count) {
+        size_t part = count - done < sizeof(chunk) ? count - done : sizeof(chunk);
+        if (!xx_io_read_at(device, offset + (int64_t)done, chunk, part)) {
+            for (index = 0U; index < part; ++index) chunk[index] = xx_io_get_u8(device, offset + (int64_t)(done + index));
+        }
+        for (index = 0U; index < part; ++index) {
+            raw[position++] = digits[chunk[index] >> 4U];
+            raw[position++] = digits[chunk[index] & 0x0FU];
+        }
+        done += part;
+    }
+    return position;
+}
+
+bool xx_data_struct_record_set_raw_bytes(xx_data_struct_record *rec, xx_io_device *device, int64_t offset, int64_t size)
+{
     wchar_t *raw;
     size_t byte_count;
     size_t char_count;
@@ -267,18 +288,10 @@ bool xx_data_struct_record_set_raw_bytes(xx_data_struct_record *rec, xx_io_devic
         raw[position++] = L'0';
         raw[position++] = L'x';
     }
-    for (index = 0U; index < head; ++index) {
-        uint8_t byte = xx_io_get_u8(device, offset + (int64_t)index);
-        raw[position++] = digits[byte >> 4U];
-        raw[position++] = digits[byte & 0x0FU];
-    }
+    position = xx_data_struct_raw_hex(device, offset, head, raw, position);
     if (tail) {
         for (index = 0U; index < 4U; ++index) raw[position++] = L'.';
-        for (index = byte_count - tail; index < byte_count; ++index) {
-            uint8_t byte = xx_io_get_u8(device, offset + (int64_t)index);
-            raw[position++] = digits[byte >> 4U];
-            raw[position++] = digits[byte & 0x0FU];
-        }
+        position = xx_data_struct_raw_hex(device, offset + (int64_t)(byte_count - tail), tail, raw, position);
     }
     raw[position] = L'\0';
     if (rec->raw_value) {

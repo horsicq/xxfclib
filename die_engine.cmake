@@ -130,6 +130,7 @@ set(XXFC_DIE_ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/installer/npm/xx_npm.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/document/pdf/xxpdf.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/document/pdf/xxpdf_decode.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/document/pdf/xxpdf_qscan.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe_inspect.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe_unwind_validate.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/executable/pe/xx_pe_import.c

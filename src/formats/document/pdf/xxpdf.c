@@ -14,6 +14,7 @@
 #include "xxfclib/formats/document/pdf/xxpdf.h"
 #include "xxpdf_decode.h"
 #include "xxpdf_date.h"
+#include "xxpdf_qscan.h"
 #include "xxfclib/memory/xx_memory.h"
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/algo/store/xx_store.h"
@@ -77,7 +78,6 @@ typedef struct pdf_document {
     uint32_t root_id, root_generation;
     uint32_t info_id, info_generation;
     pdf_value *encryption;
-    uint32_t suspicious_raw;
     bool has_info, recovered;
     bool has_root, encrypted, encryption_known;
 } pdf_document;
@@ -814,22 +814,6 @@ static bool pdf_object_stream(pdf_document *d, pdf_entry *container)
     /* Charge retained decoded payload while allocating its object ASTs. */
     if (capacity > d->limit - d->used) goto done;
     d->used += capacity;
-    {
-        static const char *raw_triggers[] = {"/OpenAction", "/AA",         "/JavaScript", "/JS",        "/Launch",   "/EmbeddedFile",
-                                             "/URI",        "/SubmitForm", "/GoToR",      "/RichMedia", "/AcroForm", "/XFA"};
-        size_t t, slen, j;
-        for (t = 0; t < sizeof(raw_triggers) / sizeof(raw_triggers[0]); ++t) {
-            slen = xx_rt_strlen(raw_triggers[t]);
-            if (slen <= size) {
-                for (j = 0; j <= size - slen; ++j) {
-                    if (!xx_rt_memcmp(data + j, raw_triggers[t], slen)) {
-                        d->suspicious_raw |= 1U << t;
-                        break;
-                    }
-                }
-            }
-        }
-    }
     ids = (uint32_t *)pdf_alloc(d, (size_t)count * sizeof(*ids));
     positions = (int64_t *)pdf_alloc(d, (size_t)count * sizeof(*positions));
     c.doc = d;
@@ -1427,6 +1411,9 @@ void xx_pdf_destroy(xx_pdf *pdf)
     if (!pdf) return;
     pdf_document_free((pdf_document *)pdf->document);
     pdf->document = NULL;
+    xx_pdf_qscan_free((xx_pdf_qscan *)pdf->scan);
+    pdf->scan = NULL;
+    pdf->scan_only = false;
     xx_format_cleanup_extra_parameters(&pdf->format);
 }
 void xx_pdf_free(xx_pdf *pdf)
@@ -1666,6 +1653,13 @@ fail:
     pdf_document_free(d);
     return NULL;
 }
+/* The structure scan of the reference implementation, made on first use. */
+static xx_pdf_qscan *pdf_qscan(xx_pdf *pdf, xx_pd_struct *pd)
+{
+    if (!pdf || !pdf->format.device) return NULL;
+    if (!pdf->scan) pdf->scan = xx_pdf_qscan_create(pdf->format.device, pdf->format.base_address, pd);
+    return (xx_pdf_qscan *)pdf->scan;
+}
 bool xx_pdf_analyze(xx_pdf *pdf, xx_pd_struct *pd)
 {
     pdf_document *d;
@@ -1676,8 +1670,21 @@ bool xx_pdf_analyze(xx_pdf *pdf, xx_pd_struct *pd)
         ((pdf_document *)pdf->document)->pd = pd;
         return true;
     }
+    if (pdf->scan_only) return true;
     if (xx_pdf_handle_base_info(&pdf->format, pd)) return true;
-    if (!(d = pdf_recover(&pdf->format, pd))) return false;
+    if (!(d = pdf_recover(&pdf->format, pd))) {
+        /* The reference inspects every file that has a "%PDF" header (XPDF::
+         * isValid). When no object can be parsed here, the report strings
+         * still come from its structure scan; there is no object index and
+         * no security information. */
+        xx_pdf_qscan *scan = xx_pd_is_stopped(pd) ? NULL : pdf_qscan(pdf, pd);
+        if (!scan) return false;
+        xx_pdf_qscan_version(scan, pdf->version);
+        pdf->object_count = pdf->stream_count = 0;
+        pdf->encrypted = false;
+        pdf->scan_only = true;
+        return true;
+    }
     if (!pdf_read(d, d->header_offset, header, sizeof(header))) {
         pdf_document_free(d);
         return false;
@@ -1701,191 +1708,36 @@ bool xx_pdf_is_encrypted(const xx_pdf *pdf)
     return pdf && pdf->encrypted;
 }
 
-/* Text strings use PDFDocEncoding unless a Unicode BOM is present. Strings
- * are decoded once by the parser; octal escapes and nested parentheses never
- * participate in dictionary or suspicious-name matching. */
-static char *pdf_string_text(pdf_value *v)
-{
-    static const uint16_t special[32] = {0x2022, 0x2020, 0x2021, 0x2026, 0x2014, 0x2013, 0x0192, 0x2044, 0x2039, 0x203A, 0x2212, 0x2030, 0x201E, 0x201C, 0x201D, 0x2018,
-                                         0x2019, 0x201A, 0x2122, 0xFB01, 0xFB02, 0x0141, 0x0152, 0x0160, 0x0178, 0x017D, 0x0131, 0x0142, 0x0153, 0x0161, 0x017E, 0xFFFD};
-    static const uint16_t accents[8] = {0x02D8, 0x02C7, 0x02C6, 0x02D9, 0x02DD, 0x02DB, 0x02DA, 0x02DC};
-    size_t i = 0, n = 0, capacity;
-    bool wide = false, little = false;
-    char *out;
-    if (!v || v->type != PV_STRING || v->size > (SIZE_MAX - 1U) / 4U) return NULL;
-    capacity = v->size * 4U + 1U;
-    out = (char *)xx_mem_alloc(capacity);
-    if (!out) return NULL;
-    out[0] = 0;
-    if (v->size >= 3 && !xx_rt_memcmp(v->text, "\xEF\xBB\xBF", 3)) {
-        xx_rt_memcpy(out, v->text + 3, v->size - 3);
-        out[v->size - 3] = 0;
-        return out;
-    }
-    if (v->size >= 2 && ((v->text[0] == 0xFE && v->text[1] == 0xFF) || (v->text[0] == 0xFF && v->text[1] == 0xFE))) {
-        wide = true;
-        little = v->text[0] == 0xFF;
-        i = 2;
-        if ((v->size - i) % 2U) {
-            xx_mem_free(out);
-            return xx_str_create("");
-        }
-    }
-    for (; i < v->size; ++i) {
-        uint32_t cp = v->text[i];
-        if (wide) {
-            cp = little ? v->text[i] | ((uint32_t)v->text[i + 1] << 8) : ((uint32_t)v->text[i] << 8) | v->text[i + 1];
-            ++i;
-            if (cp >= 0xD800 && cp <= 0xDBFF && i + 2 < v->size) {
-                uint32_t low = little ? v->text[i + 1] | ((uint32_t)v->text[i + 2] << 8) : ((uint32_t)v->text[i + 1] << 8) | v->text[i + 2];
-                if (low >= 0xDC00 && low <= 0xDFFF) {
-                    cp = 0x10000 + ((cp - 0xD800) << 10) + low - 0xDC00;
-                    i += 2;
-                }
-            }
-            if (cp >= 0xD800 && cp <= 0xDFFF) cp = 0xFFFD;
-        } else if (cp >= 0x18 && cp <= 0x1F) cp = accents[cp - 0x18];
-        else if (cp >= 0x80 && cp <= 0x9F) cp = special[cp - 0x80];
-        else if (cp == 0xA0) cp = 0x20AC;
-        else if (cp == 0x7F || cp == 0xAD) cp = 0xFFFD;
-        /* JS strings and the legacy API are zero-terminated. */
-        if (!cp) break;
-        if (!pdf_utf8_add(out, capacity, &n, cp)) {
-            xx_mem_free(out);
-            return NULL;
-        }
-    }
-    return out;
-}
-static char *pdf_token_text(pdf_value *v, int delimiter, bool decoded_hex)
-{
-    char text[80];
-    if (delimiter) return xx_str_create(delimiter == 1 ? "<<" : delimiter == 2 ? "[" : delimiter == -1 ? ">>" : "]");
-    if (!v) return xx_str_create("");
-    if (v->type == PV_STRING) return v->hex_string && !decoded_hex ? xx_str_create((char *)v->raw) : pdf_string_text(v);
-    if (v->raw) return xx_str_create((char *)v->raw);
-    if (v->type == PV_NAME) return xx_str_concat("/", (char *)v->text);
-    if (v->type == PV_INT) {
-        (void)xx_rt_snprintf(text, sizeof(text), "%lld", (long long)v->integer);
-        return xx_str_create(text);
-    }
-    if (v->type == PV_REF) {
-        (void)xx_rt_snprintf(text, sizeof(text), "%u %u R", (unsigned)v->integer, (unsigned)v->generation);
-        return xx_str_create(text);
-    }
-    return xx_str_create(v->type == PV_NULL ? "null" : "");
-}
-typedef bool (*pdf_visit_fn)(pdf_document *, pdf_value *, int, void *);
-static bool pdf_visit(pdf_document *d, pdf_value *v, size_t *count, size_t limit, pdf_visit_fn fn, void *context)
-{
-    for (; v && *count < limit; v = v->next) {
-        int delimiter = v->type == PV_DICT ? 1 : v->type == PV_ARRAY ? 2 : 0;
-        if (xx_pd_is_stopped(d->pd)) return false;
-        ++*count;
-        if (!fn(d, v, delimiter, context)) return false;
-        if (delimiter) {
-            if (!pdf_visit(d, v->child, count, limit, fn, context)) return false;
-            if (*count < limit) {
-                ++*count;
-                if (!fn(d, v, -delimiter, context)) return false;
-            }
-        }
-    }
-    return true;
-}
-static void pdf_strings_free(xx_list_s *list)
-{
-    size_t i;
-    for (i = 0; i < list->count; ++i) xx_str_free(*(char **)xx_list_at(list, i));
-    xx_list_cleanup(list);
-}
-static bool pdf_unique(xx_list_s *list, char *text, size_t *used, size_t limit)
-{
-    size_t i, n;
-    if (!text) return false;
-    for (i = 0; i < list->count; ++i) {
-        const char *previous = *(char **)xx_list_at(list, i);
-        if (previous && !xx_rt_strcmp(previous, text)) {
-            xx_str_free(text);
-            return true;
-        }
-    }
-    n = xx_rt_strlen(text) + 1U + sizeof(char *);
-    if (*used > limit || n > limit - *used || !xx_list_append(list, &text)) {
-        xx_str_free(text);
-        return false;
-    }
-    *used += n;
-    return true;
-}
-typedef struct {
-    const char *key;
-    bool strings_only, pending;
-    xx_list_s *out;
-    size_t used, limit;
-} pdf_query;
-static bool pdf_query_token(pdf_document *d, pdf_value *v, int delimiter, void *context)
-{
-    pdf_query *q = (pdf_query *)context;
-    (void)d;
-    if (q->pending && (!q->strings_only || (!delimiter && v->type == PV_STRING && !v->hex_string)))
-        if (!pdf_unique(q->out, pdf_token_text(v, delimiter, false), &q->used, q->limit)) return false;
-    q->pending = !delimiter && pdf_name(v, q->key);
-    return true;
-}
+/* PDF_Script::getValuesByKey / getStringValuesByKey: the values come from the
+ * token lists of the reference scan, so a key is found in every object the
+ * reference lists, damaged documents included. */
 bool xx_pdf_get_values_by_key(xx_pdf *pdf, const char *key, bool strings_only, size_t part_limit, xx_list_s *out, xx_pd_struct *pd)
 {
-    pdf_document *d;
-    pdf_query q;
-    size_t i;
-    if (!key || !out || out->elem_size != sizeof(char *) || !xx_pdf_analyze(pdf, pd)) return false;
-    d = (pdf_document *)pdf->document;
-    xx_mem_zero(&q, sizeof(q));
-    q.key = key[0] == '/' ? key + 1 : key;
-    q.strings_only = strings_only;
-    q.out = out;
-    q.limit = d->limit - d->used;
-    for (i = 0; i < d->count; ++i) {
-        size_t count = 0;
-        q.pending = false;
-        if (!d->entries[i].loaded || d->entries[i].kind != 1) continue;
-        if (!pdf_visit(d, d->entries[i].value, &count, part_limit, pdf_query_token, &q)) return false;
+    xx_pdf_qscan_value *values;
+    size_t count, i;
+    bool ok = true;
+    if (!key || !out || out->elem_size != sizeof(char *) || part_limit > INT32_MAX) return false;
+    if (!xx_pdf_qscan_get_values(pdf_qscan(pdf, pd), key, (int)part_limit, &values, &count, pd)) return false;
+    for (i = 0; i < count; ++i) {
+        if (ok && (!strings_only || values[i].type == XX_PDF_QSCAN_VALUE_STRING)) {
+            if (xx_list_append(out, &values[i].text)) values[i].text = NULL;
+            else ok = false;
+        }
     }
-    return !xx_pd_is_stopped(pd);
+    xx_pdf_qscan_values_free(values, count);
+    return ok && !xx_pd_is_stopped(pd);
 }
-typedef struct {
-    const char *key;
-    bool pending, found;
-} pdf_hex_query;
-static bool pdf_hex_token(pdf_document *d, pdf_value *v, int delimiter, void *context)
-{
-    pdf_hex_query *q = (pdf_hex_query *)context;
-    (void)d;
-    if (q->pending && !delimiter && v->type == PV_STRING && v->hex_string) {
-        q->found = true;
-        return false;
-    }
-    q->pending = !delimiter && pdf_name(v, q->key);
-    return true;
-}
+/* PDF_Script::isValuesHexByKey */
 bool xx_pdf_is_values_hex_by_key(xx_pdf *pdf, const char *key, size_t part_limit, xx_pd_struct *pd)
 {
-    pdf_hex_query q;
-    pdf_document *d;
-    size_t i;
-    if (!key || !xx_pdf_analyze(pdf, pd)) return false;
-    d = (pdf_document *)pdf->document;
-    xx_mem_zero(&q, sizeof(q));
-    q.key = key[0] == '/' ? key + 1 : key;
-    for (i = 0; i < d->count; ++i) {
-        size_t count = 0;
-        q.pending = false;
-        if (!d->entries[i].loaded || d->entries[i].kind != 1) continue;
-        if (!pdf_visit(d, d->entries[i].value, &count, part_limit, pdf_hex_token, &q)) return q.found && !xx_pd_is_stopped(pd);
-    }
-    return false;
+    xx_pdf_qscan_value *values;
+    size_t count, i;
+    bool found = false;
+    if (!key || part_limit > INT32_MAX || !xx_pdf_qscan_get_values(pdf_qscan(pdf, pd), key, (int)part_limit, &values, &count, pd)) return false;
+    for (i = 0; i < count && !found; ++i) found = values[i].type == XX_PDF_QSCAN_VALUE_HEX;
+    xx_pdf_qscan_values_free(values, count);
+    return found;
 }
-#include "xx_sort_pdf_xxpdf_pdf_string_compare.inc"
 static bool pdf_join(char **out, const char *text, const char *separator)
 {
     char *next;
@@ -1904,58 +1756,24 @@ static bool pdf_join(char **out, const char *text, const char *separator)
     *out = next;
     return true;
 }
-typedef struct {
-    xx_list_s names;
-    size_t used, limit;
-    bool pending, found;
-} pdf_filter_query;
-static bool pdf_filter_token(pdf_document *d, pdf_value *v, int delimiter, void *context)
+bool xx_pdf_get_overlay(xx_pdf *pdf, int64_t *offset, int64_t *size, xx_pd_struct *pd)
 {
-    pdf_filter_query *q = (pdf_filter_query *)context;
-    if (q->pending) {
-        pdf_value *p = pdf_resolve(d, v);
-        bool array = p && p->type == PV_ARRAY;
-        q->pending = false;
-        q->found = true;
-        p = array ? p->child : p;
-        for (; p; p = array ? p->next : NULL) {
-            pdf_value *name = pdf_resolve(d, p);
-            if (name && name->type == PV_NAME && !pdf_unique(&q->names, xx_str_concat("/", (char *)name->text), &q->used, q->limit)) return false;
-        }
-    }
-    if (!q->found && !delimiter && pdf_name(v, "Filter")) q->pending = true;
-    return true;
-}
-static char *pdf_filters_text(xx_pdf *pdf, xx_pd_struct *pd, size_t part_limit)
-{
-    pdf_document *d;
-    pdf_filter_query q;
-    size_t i;
-    char *out = NULL;
-    if (!xx_pdf_analyze(pdf, pd)) return NULL;
-    d = (pdf_document *)pdf->document;
-    xx_mem_zero(&q, sizeof(q));
-    q.limit = d->limit - d->used;
-    if (!xx_list_init(&q.names, sizeof(char *), NULL)) return NULL;
-    for (i = 0; i < d->count; ++i) {
-        size_t count = 0;
-        q.pending = q.found = false;
-        if (!d->entries[i].loaded) continue;
-        if (!pdf_visit(d, d->entries[i].value, &count, part_limit, pdf_filter_token, &q)) goto fail;
-    }
-    xx_sort_context(q.names.data, q.names.count, sizeof(char *), pdf_string_compare, NULL);
-    for (i = 0; i < q.names.count; ++i)
-        if (!pdf_join(&out, *(char **)xx_list_at(&q.names, i), ", ")) goto fail;
-    pdf_strings_free(&q.names);
-    return out ? out : xx_str_create("");
-fail:
-    pdf_strings_free(&q.names);
-    xx_str_free(out);
-    return NULL;
+    xx_pdf_qscan *scan;
+    if (offset) *offset = -1;
+    if (size) *size = 0;
+    if (!offset || !size || !(scan = pdf_qscan(pdf, pd))) return false;
+    xx_pdf_qscan_overlay(scan, offset, size);
+    return !xx_pd_is_stopped(pd);
 }
 char *xx_pdf_get_filters(xx_pdf *pdf, xx_pd_struct *pd)
 {
-    return pdf_filters_text(pdf, pd, 100);
+    xx_pdf_qscan_info info;
+    char *out;
+    if (!xx_pdf_analyze(pdf, pd) || !xx_pdf_qscan_get_info(pdf_qscan(pdf, pd), 100, pdf->encrypted, &info, pd)) return NULL;
+    out = info.filters;
+    info.filters = NULL;
+    xx_pdf_qscan_info_free(&info);
+    return out;
 }
 static pdf_value *pdf_security_dict(pdf_document *d)
 {
@@ -2026,103 +1844,14 @@ char *xx_pdf_get_permissions(xx_pdf *pdf, xx_pd_struct *pd)
 }
 char *xx_pdf_get_header_comment_hex(xx_pdf *pdf, xx_pd_struct *pd)
 {
-    pdf_document *d;
-    pdf_cursor c;
-    char text[81];
-    size_t count = 0;
-    int ch;
+    char *text;
     if (!xx_pdf_analyze(pdf, pd)) return NULL;
-    d = (pdf_document *)pdf->document;
-    c.doc = d;
-    c.pos = d->header_offset;
-    c.end = d->span;
-    c.memory = NULL;
-    while (c.pos < c.end && c.pos - d->header_offset < 100 && (ch = pdf_at(&c, c.pos)) != 0 && ch != 10 && ch != 13) ++c.pos;
-    while ((ch = pdf_at(&c, c.pos)) == 10 || ch == 13) ++c.pos;
-    if (pdf_at(&c, c.pos) == '%') {
-        ++c.pos;
-        while (count < 40 && (ch = pdf_at(&c, c.pos++)) > 0 && ch != 10 && ch != 13) {
-            static const char hex[] = "0123456789abcdef";
-            text[count * 2] = hex[(unsigned)ch >> 4];
-            text[count * 2 + 1] = hex[ch & 15];
-            ++count;
-        }
+    text = xx_pdf_qscan_header_comment_hex(pdf_qscan(pdf, pd));
+    if (text && xx_pd_is_stopped(pd)) {
+        xx_str_free(text);
+        text = NULL;
     }
-    if (xx_pd_is_stopped(pd)) return NULL;
-    text[count * 2] = 0;
-    return xx_str_create(text);
-}
-typedef struct {
-    const char *key;
-    char *value;
-    bool pending, ok;
-} pdf_meta_query;
-static bool pdf_meta_token(pdf_document *d, pdf_value *v, int delimiter, void *context)
-{
-    pdf_meta_query *q = (pdf_meta_query *)context;
-    if (q->pending && !q->value && !delimiter) {
-        pdf_value *resolved = pdf_resolve(d, v);
-        char *value = pdf_token_text(resolved, 0, true);
-        if (value && resolved && resolved->type == PV_INT) {
-            char number[32];
-            (void)xx_rt_snprintf(number, sizeof(number), "%lld", (long long)resolved->integer);
-            xx_str_free(value);
-            value = xx_str_create(number);
-        }
-        if (value && resolved && resolved->type == PV_STRING && (!xx_rt_strcmp(q->key, "CreationDate") || !xx_rt_strcmp(q->key, "ModDate"))) {
-            char *date = xx_pdf_date_text(value);
-            xx_str_free(value);
-            value = date;
-        }
-        if (!value) {
-            q->ok = false;
-            return false;
-        }
-        if (*value) q->value = value;
-        else xx_str_free(value);
-    }
-    q->pending = !delimiter && pdf_name(v, q->key);
-    return true;
-}
-static char *pdf_meta_text(pdf_document *d, const char *key)
-{
-    pdf_meta_query q;
-    size_t i, count = 0;
-    xx_mem_zero(&q, sizeof(q));
-    q.key = key;
-    q.ok = true;
-    for (i = 0; !q.value && i < d->count; ++i) {
-        count = 0;
-        q.pending = false;
-        if (!d->entries[i].loaded || d->entries[i].kind != 1) continue;
-        if (!pdf_visit(d, d->entries[i].value, &count, 256, pdf_meta_token, &q)) {
-            xx_str_free(q.value);
-            return NULL;
-        }
-    }
-    return q.ok ? q.value ? q.value : xx_str_create("") : NULL;
-}
-typedef struct {
-    uint32_t suspicious;
-    bool linearized, length_pending;
-    int64_t length;
-} pdf_info_query;
-static bool pdf_info_token(pdf_document *d, pdf_value *v, int delimiter, void *context)
-{
-    static const char *names[] = {"OpenAction", "AA", "JavaScript", "JS", "Launch", "EmbeddedFile", "URI", "SubmitForm", "GoToR", "RichMedia", "AcroForm", "XFA"};
-    pdf_info_query *q = (pdf_info_query *)context;
-    size_t i;
-    if (q->length_pending && !delimiter) {
-        pdf_value *r = pdf_resolve(d, v);
-        if (r && r->type == PV_INT) q->length = r->integer;
-    }
-    q->length_pending = !delimiter && pdf_name(v, "L");
-    if (!delimiter && v->type == PV_NAME) {
-        if (pdf_name(v, "Linearized")) q->linearized = true;
-        for (i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
-            if (pdf_name(v, names[i])) q->suspicious |= 1U << i;
-    }
-    return true;
+    return text;
 }
 static bool pdf_labeled_info(char **out, const char *label, const char *text)
 {
@@ -2137,24 +1866,15 @@ static bool pdf_labeled_info(char **out, const char *label, const char *text)
 }
 char *xx_pdf_get_info(xx_pdf *pdf, xx_pd_struct *pd)
 {
-    static const char *keys[] = {"Title", "Author", "Subject", "Keywords", "Creator", "Producer", "CreationDate", "ModDate"};
-    static const char *suspicious[] = {"/OpenAction", "/AA",         "/JavaScript", "/JS",        "/Launch",   "/EmbeddedFile",
-                                       "/URI",        "/SubmitForm", "/GoToR",      "/RichMedia", "/AcroForm", "/XFA"};
-    pdf_document *d;
-    char *out = NULL, *text, *line, *flags = NULL;
-    char linearized[128];
+    xx_pdf_qscan_info scan;
+    char *out = NULL;
     size_t i;
-    uint32_t mask = 0;
-    bool has_linearized = false;
     if (!xx_pdf_analyze(pdf, pd)) return NULL;
-    d = (pdf_document *)pdf->document;
-    text = pdf_filters_text(pdf, pd, 256);
-    if (!text) goto fail;
-    {
-        bool ok = pdf_labeled_info(&out, "Filters", text);
-        xx_str_free(text);
-        if (!ok) goto fail;
-    }
+    /* The filter, metadata, linearization and trigger lines follow
+     * XPDF::getInfo: they are read from the token lists of the objects found
+     * by its structure scan, with 256 tokens per object. */
+    if (!xx_pdf_qscan_get_info(pdf_qscan(pdf, pd), 256, pdf->encrypted, &scan, pd)) return NULL;
+    if (!pdf_labeled_info(&out, "Filters", scan.filters)) goto fail;
     /* DIE's bundled PDF script appends the dedicated security getters.
      * Ciphertext metadata is omitted from this general options string. */
     if (pdf->encrypted) {
@@ -2166,55 +1886,21 @@ char *xx_pdf_get_info(xx_pdf *pdf, xx_pd_struct *pd)
         xx_str_free(enc);
         xx_str_free(perm);
     } else {
-        for (i = 0; i < sizeof(keys) / sizeof(keys[0]); ++i) {
-            text = pdf_meta_text(d, keys[i]);
-            if (!text) goto fail;
-            {
-                bool ok = pdf_labeled_info(&out, keys[i], text);
-                xx_str_free(text);
-                if (!ok) goto fail;
-            }
-        }
+        for (i = 0; i < XX_PDF_QSCAN_META_COUNT; ++i)
+            if (!pdf_labeled_info(&out, xx_pdf_qscan_meta_keys[i] + 1, scan.meta[i])) goto fail;
     }
-    mask |= d->suspicious_raw;
-    for (i = 0; i < d->count; ++i) {
-        pdf_info_query q;
-        size_t count = 0;
-        xx_mem_zero(&q, sizeof(q));
-        if (!d->entries[i].loaded) continue;
-        if (!pdf_visit(d, d->entries[i].value, &count, 256, pdf_info_token, &q)) goto fail;
-        mask |= q.suspicious;
-        if (q.linearized && !has_linearized) {
-            has_linearized = true;
-            if (q.length > 0 && q.length != d->span)
-                (void)xx_rt_snprintf(linearized, sizeof(linearized), "Linearized (declared L=%lld, actual=%lld)", (long long)q.length, (long long)d->span);
-            else (void)xx_rt_snprintf(linearized, sizeof(linearized), "Linearized");
-            if (!pdf_join(&out, linearized, "; ")) goto fail;
-        }
-    }
-    for (i = 0; i < sizeof(suspicious) / sizeof(suspicious[0]); ++i)
-        if ((mask & (1U << i)) && !pdf_join(&flags, suspicious[i], ", ")) goto fail;
-    if (flags) {
-        line = xx_str_concat("Suspicious: ", flags);
-        if (!line) goto fail;
-        {
-            bool ok = pdf_join(&out, line, "; ");
-            xx_str_free(line);
-            if (!ok) goto fail;
-        }
-    }
-    xx_str_free(flags);
-    flags = NULL;
+    if (!pdf_join(&out, scan.linearized, "; ") || !pdf_labeled_info(&out, "Suspicious", scan.suspicious)) goto fail;
+    xx_pdf_qscan_info_free(&scan);
     if (out) {
         char *normalized;
         size_t n = xx_rt_strlen(out), extra = 0, at = 0;
         for (i = 0; i < n; ++i)
-            if (out[i] == '\n' || out[i] == '\r') ++extra;
+            if (out[i] == '\n') ++extra;
         if (extra > PDF_MAX_TEXT - n) goto fail;
         normalized = (char *)xx_mem_alloc(n + extra + 1);
         if (!normalized) goto fail;
         for (i = 0; i < n; ++i) {
-            if (out[i] == '\n' || out[i] == '\r') {
+            if (out[i] == '\n') {
                 normalized[at++] = ';';
                 normalized[at++] = ' ';
             } else normalized[at++] = out[i];
@@ -2225,7 +1911,7 @@ char *xx_pdf_get_info(xx_pdf *pdf, xx_pd_struct *pd)
     }
     return out ? out : xx_str_create("");
 fail:
+    xx_pdf_qscan_info_free(&scan);
     xx_str_free(out);
-    xx_str_free(flags);
     return NULL;
 }

@@ -25,6 +25,14 @@
 #include "xx_js_internal.h"
 #include "../regex/xx_regex_js_strings.h"
 
+/* Inline equivalents of the public value helpers (xx_js_internal.h). */
+#define js_undefined jsv_undefined
+#define js_null jsv_null
+#define js_bool jsv_bool
+#define js_num jsv_num
+#define js_dup jsv_dup
+#define js_release jsv_release
+
 #define ARG(i) (((i) < nArgc) ? pArgv[i] : js_undefined())
 
 /* Upper bounds on the two places where a nominal array length is turned
@@ -1114,6 +1122,34 @@ static JSVal fn_string_fromcharcode(JSCtx *pCtx, JSVal thisVal, int nArgc, JSVal
 
     (void)thisVal;
     (void)pUser;
+
+    /* The usual single code unit below 256 is one byte: no buffer needed.
+     * The conversion is the same call, made once, as in the loop below. */
+    if (nArgc == 1) {
+        uint32_t nCode = (uint32_t)js_to_int32(pCtx, pArgv[0]) & 0xFFFF;
+
+        if (nCode < 0x100) {
+            char cByte = (char)nCode;
+
+            return js_strn(pCtx, &cByte, 1);
+        }
+
+        xx_buf_init(&buf);
+
+        if (nCode < 0x800) {
+            xx_buf_append_char(&buf, (char)(0xC0 | (nCode >> 6)));
+            xx_buf_append_char(&buf, (char)(0x80 | (nCode & 0x3F)));
+        } else {
+            xx_buf_append_char(&buf, (char)(0xE0 | (nCode >> 12)));
+            xx_buf_append_char(&buf, (char)(0x80 | ((nCode >> 6) & 0x3F)));
+            xx_buf_append_char(&buf, (char)(0x80 | (nCode & 0x3F)));
+        }
+
+        result = js_strn(pCtx, buf.data, buf.size);
+        xx_buf_free(&buf);
+
+        return result;
+    }
 
     xx_buf_init(&buf);
 

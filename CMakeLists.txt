@@ -2126,6 +2126,7 @@ set(XXFCLIB_SOURCES
     src/formats/installer/apk/xx_apk_inspect.c
     src/formats/document/pdf/xxpdf.c
     src/formats/document/pdf/xxpdf_decode.c
+    src/formats/document/pdf/xxpdf_qscan.c
     src/formats/document/pdf/xxpdf_extractor.c
     src/formats/executable/elf/xx_elf_inspect.c
     src/formats/executable/dex/xx_dex_inspect.c

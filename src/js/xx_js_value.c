@@ -22,22 +22,97 @@
 /* js_value.c - values, strings, property maps and objects. */
 
 #include "xx_js_internal.h"
+#include "xx_js_ast.h"
+
+/* ----------------------------------------------------------------- pools  */
+
+static const size_t g_jspool_size[JS_POOL_COUNT] = {
+    sizeof(JSObj),
+    sizeof(JSScope),
+    sizeof(JSStr) + JS_STR_INLINE0 + 1,
+    sizeof(JSStr) + JS_STR_INLINE1 + 1,
+    sizeof(JSStr) + JS_STR_INLINE2 + 1,
+    sizeof(JSStr),
+    JS_PROPS_INITIAL * sizeof(JSProp),
+    JS_PROPS_INITIAL_INDEX * sizeof(int32_t),
+};
+
+static void *jspool_get(JSCtx *pCtx, int nClass)
+{
+    void *pBlock = pCtx->pPool[nClass];
+    if (pBlock) {
+        pCtx->pPool[nClass] = *(void **)pBlock;
+        pCtx->nPool[nClass]--;
+        return pBlock;
+    }
+    return xx_js_malloc(g_jspool_size[nClass]);
+}
+
+static void jspool_put(JSCtx *pCtx, int nClass, void *pBlock)
+{
+    if (pCtx->nPool[nClass] >= JS_POOL_LIMIT) {
+        xx_js_free(pBlock);
+        return;
+    }
+    *(void **)pBlock = pCtx->pPool[nClass];
+    pCtx->pPool[nClass] = pBlock;
+    pCtx->nPool[nClass]++;
+}
+
+void jspool_release(JSCtx *pCtx)
+{
+    int nClass;
+    for (nClass = 0; nClass < JS_POOL_COUNT; nClass++) {
+        void *pBlock = pCtx->pPool[nClass];
+        while (pBlock) {
+            void *pNext = *(void **)pBlock;
+            xx_js_free(pBlock);
+            pBlock = pNext;
+        }
+        pCtx->pPool[nClass] = NULL;
+        pCtx->nPool[nClass] = 0;
+    }
+}
+
+static inline void js_copy_bytes(char *pTo, const char *pFrom, size_t nSize)
+{
+    if (nSize < 32) {
+        size_t i;
+        for (i = 0; i < nSize; i++) pTo[i] = pFrom[i];
+    } else {
+        xx_rt_memcpy(pTo, pFrom, nSize);
+    }
+}
 
 /* --------------------------------------------------------------- strings  */
 
+/* Short strings keep their bytes in the header's block. A string that later
+ * outgrows it (js_concat_str_assign) moves to a separate buffer; pData is
+ * the only way to reach the bytes either way. */
 JSStr *jsstr_new(JSCtx *pCtx, const char *pData, size_t nSize)
 {
     JSStr *pStr;
     if (!nSize && pCtx->pEmptyStr) return jsstr_ref(pCtx->pEmptyStr);
-    pStr = (JSStr *)xx_js_malloc(sizeof(JSStr));
+    if (nSize <= JS_STR_INLINE2) {
+        int nClass = nSize <= JS_STR_INLINE0 ? JS_POOL_STR0 : (nSize <= JS_STR_INLINE1 ? JS_POOL_STR1 : JS_POOL_STR2);
+        pStr = (JSStr *)jspool_get(pCtx, nClass);
+        pStr->bInline = 1;
+        pStr->nPoolClass = (uint8_t)nClass;
+        pStr->nCapacity = nClass == JS_POOL_STR0 ? JS_STR_INLINE0 : (nClass == JS_POOL_STR1 ? JS_STR_INLINE1 : JS_STR_INLINE2);
+        pStr->pData = (char *)(pStr + 1);
+    } else {
+        pStr = (JSStr *)jspool_get(pCtx, JS_POOL_STRHDR);
+        pStr->bInline = 0;
+        pStr->nPoolClass = JS_POOL_STRHDR;
+        pStr->nCapacity = nSize;
+        pStr->pData = (char *)xx_js_malloc(nSize + 1);
+    }
 
     pStr->nRef = 1;
     pStr->nSize = nSize;
-    pStr->nCapacity = nSize;
-    pStr->pData = (char *)xx_js_malloc(nSize + 1);
 
     if (nSize && pData) {
-        xx_rt_memcpy(pStr->pData, pData, nSize);
+        js_copy_bytes(pStr->pData, pData, nSize);
     }
 
     pStr->pData[nSize] = 0;
@@ -69,7 +144,9 @@ JSVal js_str_take(JSCtx *pCtx, char *pData, size_t nSize, size_t nCapacity)
         xx_js_free(pData);
         return result;
     }
-    pStr = (JSStr *)xx_js_malloc(sizeof(*pStr));
+    pStr = (JSStr *)jspool_get(pCtx, JS_POOL_STRHDR);
+    pStr->bInline = 0;
+    pStr->nPoolClass = JS_POOL_STRHDR;
     pStr->nRef = 1;
     pStr->nSize = nSize;
     pStr->nCapacity = nCapacity - 1;
@@ -113,8 +190,8 @@ void jsstr_unref(JSCtx *pCtx, JSStr *pStr)
         pStr->pNextAll->pPrevAll = pStr->pPrevAll;
     }
 
-    xx_js_free(pStr->pData);
-    xx_js_free(pStr);
+    if (!pStr->bInline) xx_js_free(pStr->pData);
+    jspool_put(pCtx, pStr->nPoolClass, pStr);
 }
 
 /* -------------------------------------------------------------- property  */
@@ -147,6 +224,44 @@ void jsprop_store(JSCtx *pCtx, JSProp *pProp, JSVal value)
     js_release(pCtx, old);
 }
 
+/* The initial entry and index tables are recycled per context; every other
+ * size is an ordinary allocation. */
+static JSProp *jsprops_entries_alloc(JSCtx *pCtx, size_t nCapacity)
+{
+    if (nCapacity == JS_PROPS_INITIAL) return (JSProp *)jspool_get(pCtx, JS_POOL_ENTRIES);
+    return (JSProp *)xx_js_malloc(nCapacity * sizeof(JSProp));
+}
+
+static void jsprops_entries_free(JSCtx *pCtx, JSProp *pEntries, size_t nCapacity)
+{
+    if (!pEntries) return;
+    if (nCapacity == JS_PROPS_INITIAL) jspool_put(pCtx, JS_POOL_ENTRIES, pEntries);
+    else xx_js_free(pEntries);
+}
+
+static JSProp *jsprops_entries_resize(JSCtx *pCtx, JSProp *pEntries, size_t nOldCapacity, size_t nUsed, size_t nCapacity)
+{
+    JSProp *pNew;
+    if (nOldCapacity != JS_PROPS_INITIAL && nCapacity != JS_PROPS_INITIAL) return (JSProp *)xx_js_realloc(pEntries, nCapacity * sizeof(JSProp));
+    pNew = jsprops_entries_alloc(pCtx, nCapacity);
+    if (nUsed) xx_rt_memcpy(pNew, pEntries, nUsed * sizeof(JSProp));
+    jsprops_entries_free(pCtx, pEntries, nOldCapacity);
+    return pNew;
+}
+
+static int32_t *jsprops_index_alloc(JSCtx *pCtx, size_t nIndexSize)
+{
+    if (nIndexSize == JS_PROPS_INITIAL_INDEX) return (int32_t *)jspool_get(pCtx, JS_POOL_INDEX);
+    return (int32_t *)xx_js_malloc(nIndexSize * sizeof(int32_t));
+}
+
+static void jsprops_index_free(JSCtx *pCtx, int32_t *pIndex, size_t nIndexSize)
+{
+    if (!pIndex) return;
+    if (nIndexSize == JS_PROPS_INITIAL_INDEX) jspool_put(pCtx, JS_POOL_INDEX, pIndex);
+    else xx_js_free(pIndex);
+}
+
 void jsprops_free(JSCtx *pCtx, JSPropMap *pMap)
 {
     size_t i = 0;
@@ -163,19 +278,19 @@ void jsprops_free(JSCtx *pCtx, JSPropMap *pMap)
         }
     }
 
-    xx_js_free(pMap->pEntries);
-    xx_js_free(pMap->pIndex);
+    jsprops_entries_free(pCtx, pMap->pEntries, pMap->nCapacity);
+    jsprops_index_free(pCtx, pMap->pIndex, pMap->nIndexSize);
     jsprops_init(pMap);
 }
 
 /* -1 is empty; -2 is a deleted hash slot. Deleted entries release their
  * key immediately; insertion appends a new entry, preserving key order. */
-static void jsprops_rehash(JSPropMap *pMap)
+static void jsprops_rehash(JSCtx *pCtx, JSPropMap *pMap)
 {
     size_t nNew = 16, i;
     while (nNew < (pMap->nLive + 1) * 2) nNew *= 2;
-    xx_js_free(pMap->pIndex);
-    pMap->pIndex = (int32_t *)xx_js_malloc(nNew * sizeof(int32_t));
+    jsprops_index_free(pCtx, pMap->pIndex, pMap->nIndexSize);
+    pMap->pIndex = jsprops_index_alloc(pCtx, nNew);
     pMap->nIndexSize = nNew;
     for (i = 0; i < nNew; i++) pMap->pIndex[i] = -1;
     for (i = 0; i < pMap->nSize; i++) {
@@ -190,19 +305,20 @@ static void jsprops_rehash(JSPropMap *pMap)
 /* Compaction invalidates entry pointers. Call only at the end of insertion
  * or public object deletion, after internal JSProp users have finished.
  * for-in and Object.keys use owned key snapshots. */
-static void jsprops_compact(JSPropMap *pMap)
+static void jsprops_compact(JSCtx *pCtx, JSPropMap *pMap)
 {
     size_t i, nOut = 0, nNew = 8;
+    if (pCtx->pGlobal && pMap == &pCtx->pGlobal->props) pCtx->nGlobalEpoch++;
     for (i = 0; i < pMap->nSize; i++) {
         if (!pMap->pEntries[i].bDeleted) pMap->pEntries[nOut++] = pMap->pEntries[i];
     }
     pMap->nSize = nOut;
     while (nNew < nOut + 1) nNew *= 2;
     if (nNew < pMap->nCapacity) {
-        pMap->pEntries = (JSProp *)xx_js_realloc(pMap->pEntries, nNew * sizeof(JSProp));
+        pMap->pEntries = jsprops_entries_resize(pCtx, pMap->pEntries, pMap->nCapacity, nOut, nNew);
         pMap->nCapacity = nNew;
     }
-    jsprops_rehash(pMap);
+    jsprops_rehash(pCtx, pMap);
 }
 
 JSProp *jsprops_find_hashed(JSPropMap *pMap, const char *pKey, size_t nKeySize, uint32_t nHash)
@@ -215,7 +331,7 @@ JSProp *jsprops_find_hashed(JSPropMap *pMap, const char *pKey, size_t nKeySize, 
         if (nIndex == -1) return NULL;
         if (nIndex >= 0) {
             JSProp *pProp = &pMap->pEntries[nIndex];
-            if (pProp->nHash == nHash && pProp->nKeySize == nKeySize && !xx_rt_memcmp(pProp->pKey, pKey, nKeySize)) return pProp;
+            if (pProp->nHash == nHash && pProp->nKeySize == nKeySize && jskey_equal(pProp->pKey, pKey, nKeySize)) return pProp;
         }
         nSlot = (nSlot + 1) & (pMap->nIndexSize - 1);
     }
@@ -227,15 +343,13 @@ JSProp *jsprops_find(JSPropMap *pMap, const char *pKey, size_t nKeySize)
     return pMap->nIndexSize ? jsprops_find_hashed(pMap, pKey, nKeySize, xx_js_hash_str(pKey, nKeySize)) : NULL;
 }
 
-static JSProp *jsprops_put_impl(JSCtx *pCtx, JSPropMap *pMap, const char *pKey, size_t nKeySize, int bBorrowedKey)
+static JSProp *jsprops_put_hashed_impl(JSCtx *pCtx, JSPropMap *pMap, const char *pKey, size_t nKeySize, uint32_t nHash, int bBorrowedKey)
 {
-    uint32_t nHash = xx_js_hash_str(pKey, nKeySize);
     size_t nSlot, nProbe, nDeleted = (size_t)-1;
     JSProp *pProp = jsprops_find_hashed(pMap, pKey, nKeySize, nHash);
-    (void)pCtx;
     if (pProp) return pProp;
-    if (pMap->nSize > 32 && pMap->nSize - pMap->nLive > pMap->nLive) jsprops_compact(pMap);
-    if (!pMap->nIndexSize || (pMap->nLive + 1) * 2 > pMap->nIndexSize) jsprops_rehash(pMap);
+    if (pMap->nSize > 32 && pMap->nSize - pMap->nLive > pMap->nLive) jsprops_compact(pCtx, pMap);
+    if (!pMap->nIndexSize || (pMap->nLive + 1) * 2 > pMap->nIndexSize) jsprops_rehash(pCtx, pMap);
     nSlot = nHash & (pMap->nIndexSize - 1);
     for (nProbe = 0; nProbe < pMap->nIndexSize; nProbe++) {
         if (pMap->pIndex[nSlot] == -1) break;
@@ -245,7 +359,7 @@ static JSProp *jsprops_put_impl(JSCtx *pCtx, JSPropMap *pMap, const char *pKey, 
     if (nDeleted != (size_t)-1) nSlot = nDeleted;
     if (pMap->nSize + 1 > pMap->nCapacity) {
         size_t nNew = pMap->nCapacity ? pMap->nCapacity * 2 : 8;
-        pMap->pEntries = (JSProp *)xx_js_realloc(pMap->pEntries, nNew * sizeof(JSProp));
+        pMap->pEntries = pMap->nCapacity ? jsprops_entries_resize(pCtx, pMap->pEntries, pMap->nCapacity, pMap->nSize, nNew) : jsprops_entries_alloc(pCtx, nNew);
         pMap->nCapacity = nNew;
     }
     pProp = &pMap->pEntries[pMap->nSize];
@@ -260,6 +374,16 @@ static JSProp *jsprops_put_impl(JSCtx *pCtx, JSPropMap *pMap, const char *pKey, 
     return pProp;
 }
 
+static JSProp *jsprops_put_impl(JSCtx *pCtx, JSPropMap *pMap, const char *pKey, size_t nKeySize, int bBorrowedKey)
+{
+    return jsprops_put_hashed_impl(pCtx, pMap, pKey, nKeySize, xx_js_hash_str(pKey, nKeySize), bBorrowedKey);
+}
+
+JSProp *jsprops_put_borrowed_hashed(JSCtx *pCtx, JSPropMap *pMap, const char *pKey, size_t nKeySize, uint32_t nHash)
+{
+    return jsprops_put_hashed_impl(pCtx, pMap, pKey, nKeySize, nHash, 1);
+}
+
 JSProp *jsprops_put(JSCtx *pCtx, JSPropMap *pMap, const char *pKey, size_t nKeySize)
 {
     return jsprops_put_impl(pCtx, pMap, pKey, nKeySize, 0);
@@ -270,6 +394,7 @@ int jsprops_del(JSCtx *pCtx, JSPropMap *pMap, const char *pKey)
     size_t nKeySize = xx_rt_strlen(pKey), nSlot, nProbe;
     uint32_t nHash = xx_js_hash_str(pKey, nKeySize);
     if (!pMap->nIndexSize) return 0;
+    if (pCtx->pGlobal && pMap == &pCtx->pGlobal->props) pCtx->nGlobalEpoch++;
     nSlot = nHash & (pMap->nIndexSize - 1);
     for (nProbe = 0; nProbe < pMap->nIndexSize; nProbe++) {
         int32_t nIndex = pMap->pIndex[nSlot];
@@ -280,15 +405,15 @@ int jsprops_del(JSCtx *pCtx, JSPropMap *pMap, const char *pKey)
             continue;
         }
         pProp = &pMap->pEntries[nIndex];
-        if (pProp->nHash == nHash && pProp->nKeySize == nKeySize && !xx_rt_memcmp(pProp->pKey, pKey, nKeySize)) {
+        if (pProp->nHash == nHash && pProp->nKeySize == nKeySize && jskey_equal(pProp->pKey, pKey, nKeySize)) {
             jsprop_store(pCtx, pProp, js_undefined());
             if (!pProp->bBorrowedKey) xx_js_free(pProp->pKey);
             pProp->pKey = NULL;
             pProp->bDeleted = 1;
             pMap->pIndex[nSlot] = -2;
             if (!--pMap->nLive) {
-                xx_js_free(pMap->pEntries);
-                xx_js_free(pMap->pIndex);
+                jsprops_entries_free(pCtx, pMap->pEntries, pMap->nCapacity);
+                jsprops_index_free(pCtx, pMap->pIndex, pMap->nIndexSize);
                 jsprops_init(pMap);
             }
             return 1;
@@ -464,10 +589,16 @@ int js_array_unshift_dense(JSCtx *pCtx, JSObj *pObj, int nArgc, JSVal *pArgv)
 
 /* --------------------------------------------------------------- objects  */
 
+/* All-zero images: a structure assignment clears a recycled block without
+ * going through the dispatching xx_rt_memset. */
+static const JSObj g_jsobj_zero = {0};
+static const JSScope g_jsscope_zero = {0};
+
 JSObj *jsobj_new(JSCtx *pCtx, JSClass cls, JSObj *pProto)
 {
-    JSObj *pObj = (JSObj *)xx_js_calloc(1, sizeof(JSObj));
+    JSObj *pObj = (JSObj *)jspool_get(pCtx, JS_POOL_OBJ);
 
+    *pObj = g_jsobj_zero;
     pObj->nRef = 1;
     pObj->cls = cls;
     pObj->pProto = pProto ? jsobj_ref(pProto) : NULL;
@@ -564,11 +695,11 @@ void jsobj_unref(JSCtx *pCtx, JSObj *pObj)
             if (pObj->pArrayData[pObj->nArrayStart + j].tag == JT_OBJ) pObj->pArrayData[pObj->nArrayStart + j].u.o->nMapRefs--;
             js_release(pCtx, pObj->pArrayData[pObj->nArrayStart + j]);
         }
-        xx_js_free(pObj->pArrayData);
+        if (pObj->pArrayData) xx_js_free(pObj->pArrayData);
     }
-    jsobj_unref(pCtx, pObj->pProto);
-    jsobj_unref(pCtx, pObj->pBoundTarget);
-    jsscope_unref(pCtx, pObj->pScope);
+    if (pObj->pProto) jsobj_unref(pCtx, pObj->pProto);
+    if (pObj->pBoundTarget) jsobj_unref(pCtx, pObj->pBoundTarget);
+    if (pObj->pScope) jsscope_unref(pCtx, pObj->pScope);
     js_release(pCtx, pObj->primitive);
     js_release(pCtx, pObj->boundThis);
 
@@ -578,21 +709,22 @@ void jsobj_unref(JSCtx *pCtx, JSObj *pObj)
 
     pCtx->nFreeDepth--;
 
-    xx_js_free(pObj->pUint32Data);
-    xx_js_free(pObj->pBoundArgs);
-    if (!pObj->bBorrowedFnName) xx_js_free(pObj->pFnName);
+    if (pObj->pUint32Data) xx_js_free(pObj->pUint32Data);
+    if (pObj->pBoundArgs) xx_js_free(pObj->pBoundArgs);
+    if (!pObj->bBorrowedFnName && pObj->pFnName) xx_js_free(pObj->pFnName);
 
     if (pObj->pRegExp) {
         xx_regex_free(pObj->pRegExp);
     }
 
-    xx_js_free(pObj);
+    jspool_put(pCtx, JS_POOL_OBJ, pObj);
 }
 
 JSScope *jsscope_new(JSCtx *pCtx, JSScope *pParent)
 {
-    JSScope *pScope = (JSScope *)xx_js_calloc(1, sizeof(JSScope));
+    JSScope *pScope = (JSScope *)jspool_get(pCtx, JS_POOL_SCOPE);
 
+    *pScope = g_jsscope_zero;
     pScope->nRef = 1;
     pScope->pVars = jsobj_new(pCtx, JCLASS_SCOPE, NULL);
     pScope->pParent = pParent ? jsscope_ref(pParent) : NULL;
@@ -605,6 +737,28 @@ JSScope *jsscope_new(JSCtx *pCtx, JSScope *pParent)
     }
 
     pCtx->pAllScopes = pScope;
+
+    return pScope;
+}
+
+JSScope *jsscope_new_layout(JSCtx *pCtx, JSScope *pParent, const JSScopeLayout *pLayout)
+{
+    JSScope *pScope = jsscope_new(pCtx, pParent);
+    JSObj *pVars = pScope->pVars;
+
+    if (pLayout->nCount) {
+        size_t i;
+
+        pVars->props.pEntries = jsprops_entries_alloc(pCtx, pLayout->nCapacity);
+        pVars->props.pIndex = jsprops_index_alloc(pCtx, pLayout->nIndexSize);
+        for (i = 0; i < pLayout->nCount; i++) pVars->props.pEntries[i] = pLayout->pEntries[i];
+        for (i = 0; i < pLayout->nIndexSize; i++) pVars->props.pIndex[i] = pLayout->pIndex[i];
+        pVars->props.nSize = pVars->props.nLive = pLayout->nCount;
+        pVars->props.nCapacity = pLayout->nCapacity;
+        pVars->props.nIndexSize = pLayout->nIndexSize;
+    }
+
+    pVars->pLayout = pLayout;
 
     return pScope;
 }
@@ -650,7 +804,7 @@ void jsscope_unref(JSCtx *pCtx, JSScope *pScope)
     jsscope_unref(pCtx, pScope->pParent);
     pCtx->nFreeDepth--;
 
-    xx_js_free(pScope);
+    jspool_put(pCtx, JS_POOL_SCOPE, pScope);
 }
 
 /* Trial deletion runs only after an interpreted frame relinquishes its scope.
@@ -1417,9 +1571,17 @@ int64_t js_to_int64(JSCtx *pCtx, JSVal value)
 
 int32_t js_to_int32(JSCtx *pCtx, JSVal value)
 {
-    double nValue = js_to_number(pCtx, value);
+    double nValue;
     double nTrunc = 0;
     uint32_t nBits = 0;
+    int32_t nFast = 0;
+
+    /* An integer already in range needs neither floor nor fmod. */
+    if (value.tag == JT_NUM && jsv_int32_fast(value.u.n, &nFast)) {
+        return nFast;
+    }
+
+    nValue = js_to_number(pCtx, value);
 
     if ((nValue != nValue) || (nValue == xx_rt_inf()) || (nValue == (-xx_rt_inf()))) {
         return 0;
@@ -1458,13 +1620,59 @@ JSVal js_concat_str_assign(JSCtx *pCtx, JSVal left, JSVal right)
             }
             nCapacity *= 2;
         }
-        pStr->pData = (char *)xx_js_realloc(pStr->pData, nCapacity + 1);
+        if (pStr->bInline) {
+            char *pData = (char *)xx_js_malloc(nCapacity + 1);
+            js_copy_bytes(pData, pStr->pData, pStr->nSize);
+            pStr->pData = pData;
+            pStr->bInline = 0;
+        } else {
+            pStr->pData = (char *)xx_js_realloc(pStr->pData, nCapacity + 1);
+        }
         pStr->nCapacity = nCapacity;
     }
-    if (right.u.s->nSize) xx_rt_memcpy(pStr->pData + pStr->nSize, right.u.s->pData, right.u.s->nSize);
+    if (right.u.s->nSize) js_copy_bytes(pStr->pData + pStr->nSize, right.u.s->pData, right.u.s->nSize);
     pStr->nSize = nNeeded;
     pStr->pData[nNeeded] = 0;
     return js_dup(left);
+}
+
+int js_concat_primitive(JSCtx *pCtx, JSVal left, JSVal right, JSVal *pResult)
+{
+    char sLeft[32], sRight[32];
+    const char *pLeft, *pRight;
+    size_t nLeft, nRight;
+    JSStr *pStr;
+
+    if (left.tag == JT_STR) {
+        pLeft = left.u.s->pData;
+        nLeft = left.u.s->nSize;
+    } else if (left.tag == JT_NUM) {
+        int nSize = js_int_to_buf(sLeft, left.u.n);
+        if (nSize <= 0) return 0;
+        pLeft = sLeft;
+        nLeft = (size_t)nSize;
+    } else return 0;
+
+    if (right.tag == JT_STR) {
+        pRight = right.u.s->pData;
+        nRight = right.u.s->nSize;
+    } else if (right.tag == JT_NUM) {
+        int nSize = js_int_to_buf(sRight, right.u.n);
+        if (nSize <= 0) return 0;
+        pRight = sRight;
+        nRight = (size_t)nSize;
+    } else return 0;
+
+    /* The general path reports this one. */
+    if (nRight > SIZE_MAX - nLeft - 1) return 0;
+
+    pStr = jsstr_new(pCtx, NULL, nLeft + nRight);
+    js_copy_bytes(pStr->pData, pLeft, nLeft);
+    js_copy_bytes(pStr->pData + nLeft, pRight, nRight);
+    pStr->pData[nLeft + nRight] = 0;
+    *pResult = jsval_str(pStr);
+
+    return 1;
 }
 
 JSVal js_concat_str(JSCtx *pCtx, JSVal left, JSVal right)
@@ -1507,7 +1715,7 @@ static JSVal jsobj_get_own_hashed(JSCtx *pCtx, JSObj *pObj, const char *pKey, si
 
     if (pObj->cls == JCLASS_UINT32_ARRAY) {
         int64_t index;
-        if ((nKeySize == 6 && xx_rt_memcmp(pKey, "length", 6) == 0) || (nKeySize == 10 && xx_rt_memcmp(pKey, "byteLength", 10) == 0)) {
+        if ((nKeySize == 6 && jskey_equal(pKey, "length", 6)) || (nKeySize == 10 && jskey_equal(pKey, "byteLength", 10))) {
             if (pbFound) *pbFound = 1;
             return js_num((double)pObj->nArrayLen * (nKeySize == 10 ? 4 : 1));
         }
@@ -1529,7 +1737,7 @@ static JSVal jsobj_get_own_hashed(JSCtx *pCtx, JSObj *pObj, const char *pKey, si
     }
 
     /* Array/String length and string indices are computed. */
-    if ((nKeySize == 6) && (xx_rt_memcmp(pKey, "length", 6) == 0)) {
+    if ((nKeySize == 6) && jskey_equal(pKey, "length", 6)) {
         if (pObj->cls == JCLASS_ARRAY) {
             if (pbFound) {
                 *pbFound = 1;
@@ -1590,31 +1798,44 @@ JSVal jsobj_get_own(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize,
     return jsobj_get_own_hashed(pCtx, pObj, pKey, nKeySize, xx_js_hash_str(pKey, nKeySize), pbFound);
 }
 
-/* The key hash is computed once and reused for the whole prototype walk. */
-JSVal jsobj_get(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize)
+/* The key hash is computed once and reused for the whole prototype walk.
+ * Only arrays, uint32 arrays and String wrappers have computed properties
+ * (jsobj_get_own_hashed); every other class is its property map. */
+JSVal jsobj_get_hashed(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, uint32_t nHash)
 {
     JSObj *pCurrent = pObj;
-    uint32_t nHash = 0;
-
-    if (pCurrent == NULL) {
-        return js_undefined();
-    }
-
-    nHash = xx_js_hash_str(pKey, nKeySize);
 
     while (pCurrent) {
-        int bFound = 0;
-        JSVal value = jsobj_get_own_hashed(pCtx, pCurrent, pKey, nKeySize, nHash, &bFound);
+        if (pCurrent->cls == JCLASS_ARRAY || pCurrent->cls == JCLASS_UINT32_ARRAY || pCurrent->cls == JCLASS_STRING) {
+            int bFound = 0;
+            JSVal value = jsobj_get_own_hashed(pCtx, pCurrent, pKey, nKeySize, nHash, &bFound);
 
-        if (bFound) {
-            return value;
+            if (bFound) {
+                return value;
+            }
+
+            js_release(pCtx, value);
+        } else {
+            JSProp *pProp = jsprops_find_hashed(&pCurrent->props, pKey, nKeySize, nHash);
+
+            if (pProp) {
+                return js_dup(pProp->value);
+            }
         }
 
-        js_release(pCtx, value);
         pCurrent = pCurrent->pProto;
     }
 
     return js_undefined();
+}
+
+JSVal jsobj_get(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize)
+{
+    if (pObj == NULL) {
+        return js_undefined();
+    }
+
+    return jsobj_get_hashed(pCtx, pObj, pKey, nKeySize, xx_js_hash_str(pKey, nKeySize));
 }
 
 int jsobj_has(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize)
@@ -1644,7 +1865,7 @@ int jsobj_has(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize)
     return 0;
 }
 
-void jsobj_put(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, JSVal value)
+static void jsobj_put_impl(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, const uint32_t *pnHash, int bBorrowedKey, JSVal value)
 {
     JSProp *pProp = NULL;
 
@@ -1655,7 +1876,7 @@ void jsobj_put(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, JSVa
 
     if (pObj->cls == JCLASS_UINT32_ARRAY) {
         int64_t index;
-        if ((nKeySize == 6 && xx_rt_memcmp(pKey, "length", 6) == 0) || (nKeySize == 10 && xx_rt_memcmp(pKey, "byteLength", 10) == 0)) {
+        if ((nKeySize == 6 && jskey_equal(pKey, "length", 6)) || (nKeySize == 10 && jskey_equal(pKey, "byteLength", 10))) {
             js_release(pCtx, value);
             return;
         }
@@ -1666,7 +1887,7 @@ void jsobj_put(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, JSVa
         }
     }
 
-    if ((pObj->cls == JCLASS_ARRAY) && (nKeySize == 6) && (xx_rt_memcmp(pKey, "length", 6) == 0)) {
+    if ((pObj->cls == JCLASS_ARRAY) && (nKeySize == 6) && jskey_equal(pKey, "length", 6)) {
         int64_t nNewLen = js_to_int64(pCtx, value);
         if (nNewLen < 0) {
             nNewLen = 0;
@@ -1700,7 +1921,7 @@ void jsobj_put(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, JSVa
                 int64_t nIndex;
                 if (!pEntry->bDeleted && js_is_array_index(pEntry->pKey, pEntry->nKeySize, &nIndex) && nIndex >= nNewLen) jsprops_del(pCtx, &pObj->props, pEntry->pKey);
             }
-            if (pObj->props.nSize > 8 && pObj->props.nLive < pObj->props.nSize / 4) jsprops_compact(&pObj->props);
+            if (pObj->props.nSize > 8 && pObj->props.nLive < pObj->props.nSize / 4) jsprops_compact(pCtx, &pObj->props);
         }
 
         pObj->nArrayLen = nNewLen;
@@ -1721,8 +1942,23 @@ void jsobj_put(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, JSVa
     }
 
     if (pObj->cls == JCLASS_ARRAY) pObj->bArrayMapOrder = 1;
-    pProp = jsprops_put(pCtx, &pObj->props, pKey, nKeySize);
+    pProp = jsprops_put_hashed_impl(pCtx, &pObj->props, pKey, nKeySize, pnHash ? *pnHash : xx_js_hash_str(pKey, nKeySize), bBorrowedKey);
     jsprop_store(pCtx, pProp, value);
+}
+
+void jsobj_put(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, JSVal value)
+{
+    jsobj_put_impl(pCtx, pObj, pKey, nKeySize, NULL, 0, value);
+}
+
+void jsobj_put_hashed(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, uint32_t nHash, JSVal value)
+{
+    jsobj_put_impl(pCtx, pObj, pKey, nKeySize, &nHash, 0, value);
+}
+
+void jsobj_put_borrowed_hashed(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, uint32_t nHash, JSVal value)
+{
+    jsobj_put_impl(pCtx, pObj, pKey, nKeySize, &nHash, 1, value);
 }
 
 void jsobj_put_hidden(JSCtx *pCtx, JSObj *pObj, const char *pKey, JSVal value)
@@ -1765,7 +2001,7 @@ int jsobj_del(JSCtx *pCtx, JSObj *pObj, const char *pKey)
     bDeleted = jsprops_del(pCtx, &pObj->props, pKey);
     /* No JSProp pointer from lookup or an active mutation is retained here.
      * Script callbacks never run in deletion or refcount reclamation. */
-    if (bDeleted && pObj->props.nSize > 8 && pObj->props.nLive < pObj->props.nSize / 4) jsprops_compact(&pObj->props);
+    if (bDeleted && pObj->props.nSize > 8 && pObj->props.nLive < pObj->props.nSize / 4) jsprops_compact(pCtx, &pObj->props);
     return bDeleted;
 }
 

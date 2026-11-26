@@ -63,6 +63,30 @@ static const char *section_name(DieEngine *pEngine, int nNumber, char *pBuffer)
     return pBuffer;
 }
 
+/* XBinary::_processMemoryMap numbers a memory record by the position of its
+ * file part after std::sort by virtual address (header first, then the
+ * sections), not by the section-table index. The two differ when the table is
+ * not in ascending address order or holds a section at RVA 0, and the
+ * *Section() functions of PE_Script return that position less one.
+ * (Equal addresses keep table order: the sort is stable for the usual small
+ * part counts.) */
+static int pe_section_number(const xx_pe_inspection *pPE, const xx_memory_record *pRecord)
+{
+    int nIndex;
+    int nRank = 0;
+    int i;
+    if (!pRecord || pRecord->file_part_number <= 0) return 0;
+    nIndex = pRecord->file_part_number - 1;
+    if (pRecord->file_part != XX_FILE_PART_SECTION || nIndex >= pPE->nSectionCount) return nIndex;
+    for (i = 0; i < pPE->nSectionCount; i++) {
+        if (pPE->pSections[i].nVirtualAddress < pPE->pSections[nIndex].nVirtualAddress ||
+            (pPE->pSections[i].nVirtualAddress == pPE->pSections[nIndex].nVirtualAddress && i < nIndex)) {
+            nRank++;
+        }
+    }
+    return nRank;
+}
+
 static int pe_directory_section(DieEngine *pEngine, int nDirectory)
 {
     const xx_memory_record *pRecord;
@@ -75,7 +99,7 @@ static int pe_directory_section(DieEngine *pEngine, int nDirectory)
     }
 
     pRecord = xx_memory_map_record_by_address(&pEngine->pe.map, pEngine->pe.nImageBase + pEngine->pe.pDirRVA[nDirectory]);
-    return pRecord && pRecord->file_part_number > 0 ? pRecord->file_part_number - 1 : 0;
+    return pe_section_number(&pEngine->pe, pRecord);
 }
 
 /* PE image types, mirroring xx_pe_inspection::getType() / xx_pe_inspection::typeIdToString(). */
@@ -324,7 +348,10 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
     xx_io_device *pFile = pEngine->device;
 
     switch (id) {
-        case A_getNumberOfSections: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nSectionCount : 0)); return true;
+        /* PE_Script::getNumberOfSections is the raw FileHeader.NumberOfSections;
+         * the section list itself stops at S_MAX_SECTIONCOUNT (0x60), and a
+         * section past it reads as empty. */
+        case A_getNumberOfSections: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nNumberOfSections : 0)); return true;
 
         case A_getSectionName: {
             char sName[256];
@@ -693,14 +720,22 @@ bool die_engine_api_dispatch_pe(DieEngine *pEngine, JSCtx *pCtx, ApiId id, int n
             pRecord = xx_memory_map_record_by_address(&pPE->map, pPE->nEntryPointAddress);
             /* xx_pe_inspection preserves the header/default memory-record number zero;
              * only positive section record numbers are decremented. */
-            *pResult = js_num((double)(pRecord && pRecord->file_part_number > 0 ? pRecord->file_part_number - 1 : 0));
+            *pResult = js_num((double)pe_section_number(pPE, pRecord));
             return true;
         }
 
         case A_getMajorLinkerVersion: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nMajorLinkerVersion : 0)); return true;
         case A_getMinorLinkerVersion: *pResult = js_num((double)(pEngine->bHasPE ? pPE->nMinorLinkerVersion : 0)); return true;
 
-        case A_getManifest: *pResult = js_str(pCtx, (pEngine->bHasPE && pPE->pManifest) ? pPE->pManifest : ""); return true;
+        case A_getManifest:
+            /* The shared script object also serves JAR/APK: JAR_Script::getManifest
+             * returns the decompressed META-INF/MANIFEST.MF. */
+            if (!pEngine->bHasPE && pEngine->bHasZip) {
+                *pResult = js_str(pCtx, xx_zip_get_manifest(&pEngine->zip));
+                return true;
+            }
+            *pResult = js_str(pCtx, (pEngine->bHasPE && pPE->pManifest) ? pPE->pManifest : "");
+            return true;
 
         case A_getVersionStringInfo: {
             char *pKey = arg_string(pCtx, nArgc, pArgv, 0);

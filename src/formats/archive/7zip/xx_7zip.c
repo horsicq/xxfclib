@@ -1361,6 +1361,52 @@ static bool xx_7zip_folder_decode_input(xx_7zip_folder_decode *context, uint64_t
     return true;
 }
 
+/* BCJ2's pipelined main stream: from this size on (smaller ones are not
+ * worth a thread), and while the folder's other packed streams fit in this
+ * much memory. */
+#define XX_7ZIP_PIPE_MIN_SIZE (UINT64_C(4) << 20)
+#define XX_7ZIP_PIPE_PRELOAD_MAX (UINT64_C(256) << 20)
+/* 7zAES decrypted on a worker thread from this size on. */
+#define XX_7ZIP_ASYNC_MIN_SIZE (UINT64_C(4) << 20)
+
+/* Reads every packed stream of the folder not yet opened into memory (with
+ * its CRC checked as xx_7zip_folder_decode_input does), so that decoding them
+ * reads the archive no more. */
+static bool xx_7zip_folder_preload_packed(xx_7zip_folder_decode *context)
+{
+    uint64_t packed, total = 0U;
+    for (packed = 0U; packed < context->folder->packed_count; ++packed) {
+        uint64_t input_index = context->folder->packed_indices[packed], global_pack, packed_size;
+        int64_t offset;
+        if (input_index >= context->folder->total_in || context->input_data[input_index]) continue;
+        if (context->folder->first_pack_index > UINT64_MAX - packed) return false;
+        global_pack = context->folder->first_pack_index + packed;
+        if (!xx_7zip_pack_offset(context->format, context->streams, global_pack, &offset, &packed_size) || !xx_7zip_u64_add(total, packed_size, &total) ||
+            total > XX_7ZIP_PIPE_PRELOAD_MAX)
+            return false;
+    }
+    for (packed = 0U; packed < context->folder->packed_count; ++packed) {
+        uint64_t input_index = context->folder->packed_indices[packed], global_pack = context->folder->first_pack_index + packed, packed_size;
+        int64_t offset;
+        xx_io_device *memory;
+        if (input_index >= context->folder->total_in || context->input_data[input_index]) continue;
+        if (!xx_7zip_pack_offset(context->format, context->streams, global_pack, &offset, &packed_size) ||
+            (context->streams->pack_crc_defined[global_pack] &&
+             !xx_crc_verify_device(context->format->device, offset, (int64_t)packed_size, XX_CRC_TYPE_CRC32, context->streams->pack_crcs[global_pack], context->pd)))
+            return false;
+        memory = xx_7zip_mem_temp_open((size_t)packed_size);
+        if (!memory) return false;
+        if (!xx_7zip_copy_range(context->format->device, (uint64_t)offset, packed_size, memory, context->pd) || xx_io_seek64(memory, 0, SEEK_SET) != 0 ||
+            xx_io_total_size(memory) != (int64_t)packed_size) {
+            xx_io_close(memory);
+            return false;
+        }
+        context->input_data[input_index] = memory;
+        context->input_sizes[input_index] = packed_size;
+    }
+    return true;
+}
+
 static bool xx_7zip_folder_decode_output(xx_7zip_folder_decode *context, uint64_t output_index, xx_io_device **data, uint64_t *size)
 {
     uint64_t input_base = 0U, output_base = 0U, expected, input_size = 0U;
@@ -1388,7 +1434,8 @@ static bool xx_7zip_folder_decode_output(xx_7zip_folder_decode *context, uint64_
     if (!coder || coder->num_out != 1U || output_index != output_base || (coder->method == XX_7ZIP_METHOD_BCJ2 ? coder->num_in != 4U : coder->num_in != 1U)) return false;
     expected = context->folder->unpack_sizes[output_index];
     if (expected > INT64_MAX || (context->pd && xx_pd_is_stopped(context->pd))) return false;
-    bool bcj2_streamed = false;
+    bool bcj2_streamed = false, filter_streamed = false;
+    xx_7zip_pipe *pipe = NULL;
     uint64_t u_out_idx = UINT64_MAX;
     const xx_7zip_coder *u_coder = NULL;
     uint64_t u_in_base = 0U, u_out_base = 0U;
@@ -1420,17 +1467,88 @@ static bool xx_7zip_folder_decode_output(xx_7zip_folder_decode *context, uint64_
             }
         }
 
+        /* A large main stream is decoded on a worker thread while this one
+         * decodes the other three and then runs BCJ2 on its output. The
+         * worker reads its input alone: the other packed streams are read
+         * into memory first. */
+        if (u_coder && context->folder->unpack_sizes[u_out_idx] >= XX_7ZIP_PIPE_MIN_SIZE) {
+            bool have_input;
+            context->output_busy[u_out_idx] = 1U;
+            have_input = xx_7zip_folder_decode_input(context, u_in_base, &u_input, &u_input_size);
+            if (have_input && xx_7zip_folder_preload_packed(context)) {
+                u_expected = context->folder->unpack_sizes[u_out_idx];
+                pipe = xx_7zip_pipe_start(u_coder->method, u_coder->properties, u_coder->properties_size, u_input, u_input_size, u_expected, context->password,
+                                          context->password_size);
+            }
+            if (!pipe) context->output_busy[u_out_idx] = 0U;
+        }
+
         for (i = 1U; i < 4U; ++i) {
             if (!xx_7zip_folder_decode_input(context, input_base + i, &inputs[i], &input_sizes[i])) goto failed;
         }
 
-        if (u_coder && xx_7zip_folder_decode_input(context, u_in_base, &u_input, &u_input_size)) {
+        if (pipe) {
+            /* Decoded by the worker. */
+        } else if (u_coder && xx_7zip_folder_decode_input(context, u_in_base, &u_input, &u_input_size)) {
             u_expected = context->folder->unpack_sizes[u_out_idx];
             bcj2_streamed = true;
         } else {
             if (!xx_7zip_folder_decode_input(context, input_base + 0U, &inputs[0], &input_sizes[0])) goto failed;
         }
-    } else if (!xx_7zip_folder_decode_input(context, input_base, &input, &input_size)) goto failed;
+    } else {
+        /* A length-preserving filter fed by a one-input coder (LZMA2 and the
+         * like) takes that coder's output as it is written: no intermediate
+         * device, and a multi-threaded decoder keeps its threads. */
+        if (xx_7zip_stream_filter_method(coder->method)) {
+            uint64_t bind;
+            for (bind = 0U; bind < context->folder->bind_count; ++bind) {
+                if (context->folder->bind_inputs[bind] == input_base) {
+                    u_out_idx = context->folder->bind_outputs[bind];
+                    break;
+                }
+            }
+            if (u_out_idx != UINT64_MAX && u_out_idx < context->folder->total_out && !context->output_data[u_out_idx] && !context->output_busy[u_out_idx] &&
+                context->folder->unpack_sizes[u_out_idx] == expected) {
+                size_t c_idx;
+                for (c_idx = 0U; c_idx < context->folder->coder_count; ++c_idx) {
+                    const xx_7zip_coder *cand = &context->folder->coders[c_idx];
+                    if (u_out_idx >= u_out_base && u_out_idx < u_out_base + cand->num_out) {
+                        if (cand->num_in == 1U && cand->num_out == 1U && u_out_idx == u_out_base) u_coder = cand;
+                        break;
+                    }
+                    u_in_base += cand->num_in;
+                    u_out_base += cand->num_out;
+                }
+            }
+            if (u_coder) {
+                bool have_input;
+                context->output_busy[u_out_idx] = 1U;
+                have_input = xx_7zip_folder_decode_input(context, u_in_base, &u_input, &u_input_size);
+                context->output_busy[u_out_idx] = 0U;
+                if (!have_input) goto failed;
+                u_expected = expected;
+                filter_streamed = true;
+            }
+        }
+        if (!filter_streamed && !xx_7zip_folder_decode_input(context, input_base, &input, &input_size)) goto failed;
+        /* 7zAES feeding another coder (LZMA2) decrypts on a worker thread
+         * into memory that its consumer reads as it fills. Only with one
+         * packed stream: nothing else reads the archive meanwhile. */
+        if (!filter_streamed && coder->method == XX_7ZIP_METHOD_AES && output_index != context->folder->final_output_index && expected >= XX_7ZIP_ASYNC_MIN_SIZE &&
+            expected <= 512U * 1024U * 1024U && context->folder->packed_count == 1U) {
+            output = xx_7zip_async_open(coder->method, coder->properties, coder->properties_size, input, input_size, expected, context->password,
+                                        context->password_size, context->pd);
+            if (output) {
+                if (context->level >= 0) context->written += expected;
+                context->output_busy[output_index] = 0U;
+                context->output_data[output_index] = output;
+                context->output_sizes[output_index] = expected;
+                *data = output;
+                *size = expected;
+                return true;
+            }
+        }
+    }
 
     if (output_index == context->folder->final_output_index) {
         output = context->destination;
@@ -1444,7 +1562,16 @@ static bool xx_7zip_folder_decode_output(xx_7zip_folder_decode *context, uint64_
     /* The decoders only write their output. */
     xx_7zip_progress_sink_init(&counted, output, context);
 
-    if (bcj2_streamed) {
+    if (pipe) {
+        result = xx_7zip_pipe_bcj2_finish(pipe, &inputs[1], &input_sizes[1], coder->properties, coder->properties_size, expected, &counted.device, context->pd);
+        pipe = NULL;
+        context->output_busy[u_out_idx] = 0U;
+        if (result) {
+            context->output_data[u_out_idx] = xx_io_mem_open(NULL, 0);
+            context->output_sizes[u_out_idx] = u_expected;
+            if (context->level >= 0) context->written += u_expected;
+        }
+    } else if (bcj2_streamed) {
         result = xx_7zip_stream_bcj2_streaming(&inputs[1], &input_sizes[1], coder->properties, coder->properties_size, u_expected, expected, u_input, 0, u_input_size,
                                                u_coder->method, u_coder->properties, u_coder->properties_size, &counted.device, context->password, context->password_size,
                                                context->pd);
@@ -1453,6 +1580,17 @@ static bool xx_7zip_folder_decode_output(xx_7zip_folder_decode *context, uint64_
             context->output_sizes[u_out_idx] = u_expected;
             context->output_busy[u_out_idx] = 0U;
             if (context->level >= 0) context->written += u_expected;
+        }
+    } else if (filter_streamed) {
+        result = xx_7zip_stream_filter_streaming(coder->method, coder->properties, coder->properties_size, expected, u_input, 0, u_input_size, u_coder->method,
+                                                 u_coder->properties, u_coder->properties_size, &counted.device, context->password, context->password_size,
+                                                 context->pd);
+        if (result) {
+            /* The upstream output went through: a placeholder marks it. */
+            context->output_data[u_out_idx] = xx_io_mem_open(NULL, 0);
+            context->output_sizes[u_out_idx] = u_expected;
+            if (!context->output_data[u_out_idx]) result = false;
+            else if (context->level >= 0) context->written += u_expected;
         }
     } else if (coder->method == XX_7ZIP_METHOD_BCJ2) {
         result = xx_7zip_stream_bcj2(inputs, input_sizes, coder->properties, coder->properties_size, expected, &counted.device, context->pd);
@@ -1468,6 +1606,10 @@ static bool xx_7zip_folder_decode_output(xx_7zip_folder_decode *context, uint64_
     *size = expected;
     return true;
 failed:
+    if (pipe) {
+        xx_7zip_pipe_abort(pipe);
+        context->output_busy[u_out_idx] = 0U;
+    }
     if (output && output != context->destination) xx_io_close(output);
     context->output_busy[output_index] = 0U;
     return false;
@@ -1477,6 +1619,9 @@ static void xx_7zip_folder_decode_cleanup(xx_7zip_folder_decode *context)
 {
     uint64_t i;
     if (!context || !context->folder) return;
+    /* Worker threads end before the inputs they read are closed. */
+    for (i = 0U; i < context->folder->total_out; ++i)
+        if (context->output_data && xx_7zip_async_is(context->output_data[i])) (void)xx_7zip_async_finish(context->output_data[i], true);
     for (i = 0U; i < context->folder->total_in; ++i)
         if (context->input_data && context->input_data[i]) xx_io_close(context->input_data[i]);
     for (i = 0U; i < context->folder->total_out; ++i)
@@ -1634,6 +1779,10 @@ static bool xx_7zip_decode_folder(Abstractformat *self, const xx_7zip_streams *s
      * cycles must not disappear just because the final stream is reachable. */
     for (i = 0U; i < folder->total_out; ++i)
         if (!context.output_data[i]) goto cleanup;
+    /* A coder decoded by a worker must have succeeded too, whether or not
+     * its consumer read all of it. */
+    for (i = 0U; i < folder->total_out; ++i)
+        if (xx_7zip_async_is(context.output_data[i]) && !xx_7zip_async_finish(context.output_data[i], false)) goto cleanup;
     if (folder->unpack_size == 0) {
         context.has_final_crc = true;
         context.final_crc = 0;
@@ -2769,6 +2918,13 @@ static bool xx_7zip_extract_folder_on_the_fly(Abstractformat *self, xx_7zip_priv
     if (sink.cur_dev) {
         xx_io_close(sink.cur_dev);
         sink.cur_dev = NULL;
+        /* A member cut short by a failed decode is not left behind when it
+         * was written in place (the staged case is removed below). */
+        if (!sink.cur_stage_path && sink.current < sink.member_count) {
+            const xx_7zip_extract_member *m = &sink.members[sink.current];
+            if (m->path_w) (void)xx_io_file_remove_w(m->path_w);
+            else if (m->utf8_path) (void)xx_io_file_remove_a(m->utf8_path);
+        }
     }
     if (sink.cur_stage_path) {
         (void)xx_io_file_remove_a(sink.cur_stage_path);
@@ -2806,6 +2962,9 @@ bool xx_7zip_unpack_current_archive_record(Abstractformat *self, xx_archive_reco
     priv = (xx_7zip_private *)((xx_7zip *)self)->internal;
     if (!priv || (uint64_t)state->current_index >= priv->num_files) return false;
     file = &priv->files[state->current_index];
+    /* A password given in the state's options (as the zip reader takes it)
+     * applies as one given when the state was created. */
+    if (!xx_7zip_apply_password_option(self, &state->options)) return false;
     {
         const xx_var *limit = xx_format_resolve_extra_parameter(self, &state->options, XX_META_ID_OPT_MAX_MEMBER_SIZE);
         if (limit && !file->is_folder && file->size > xx_var_get_u64(limit)) return false;

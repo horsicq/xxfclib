@@ -34,6 +34,7 @@ list(APPEND XXFORMATS_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/installer/fead/encoder/compress.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/document/pdf/xxpdf.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/document/pdf/xxpdf_decode.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/formats/document/pdf/xxpdf_qscan.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/document/pdf/xxpdf_extractor.c
     ${CMAKE_CURRENT_LIST_DIR}/src/formats/installer/nsis/nsis_bzip2.c
     ${CMAKE_CURRENT_LIST_DIR}/src/rt/xx_rt.c

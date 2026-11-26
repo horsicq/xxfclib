@@ -159,74 +159,259 @@ static bool xx_7zip_stream_write_exact(xx_io_device *destination, const uint8_t 
     return true;
 }
 
+/* Length-preserving filters (Copy, Delta, Swap2/4 and the branch converters)
+ * run on one owned buffer: XX_7ZIP_FILTER_HISTORY bytes of Delta history,
+ * then up to XX_7ZIP_FILTER_CHUNK bytes of input. Each full buffer is
+ * converted in place, its converted prefix is written on, and the
+ * unconverted suffix (at most 15 bytes: an incomplete instruction or swap
+ * group) is kept for the next chunk. The same state machine serves the pull
+ * loop (input read from a device) and the push device that a decoder writes
+ * its output into, so a decoder and its filter run without an intermediate. */
+#define XX_7ZIP_FILTER_CHUNK (256U * 1024U)
+#define XX_7ZIP_FILTER_HISTORY 256U
+#define XX_7ZIP_FILTER_SUFFIX 16U
+
+typedef struct xx_7zip_filter_sink_s {
+    xx_io_device device;
+    xx_io_device *target;
+    xx_pd_struct *pd;
+    uint64_t method;
+    uint64_t expected_size, accepted, emitted;
+    xx_7zip_branch_state branch;
+    uint8_t *memory; /**< History, then the data buffer. */
+    uint8_t *data;
+    size_t used;
+    unsigned distance, swap;
+    bool error, finished;
+} xx_7zip_filter_sink;
+
+#if defined(_M_X64) || defined(__x86_64__) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2) || defined(__SSE2__)
+#define XX_7ZIP_FILTER_SSE2 1
+#include <emmintrin.h>
+#endif
+
+/* y[i] = x[i] + y[i - distance]; data[-XX_7ZIP_FILTER_HISTORY..-1] holds the
+ * previous decoded bytes (zeros at stream start). */
+static void xx_7zip_delta_decode(uint8_t *data, size_t size, unsigned distance)
+{
+    size_t i = 0U;
+#if defined(XX_7ZIP_FILTER_SSE2)
+    if (distance >= 16U) {
+        for (; i + 16U <= size; i += 16U) {
+            __m128i x = _mm_loadu_si128((const __m128i *)(const void *)(data + i));
+            __m128i y = _mm_loadu_si128((const __m128i *)(const void *)(data + i - distance));
+            _mm_storeu_si128((__m128i *)(void *)(data + i), _mm_add_epi8(x, y));
+        }
+    } else if (distance == 1U || distance == 2U || distance == 4U || distance == 8U) {
+        /* Prefix sums with stride `distance` inside 16 bytes, plus the last
+         * `distance` decoded bytes repeated (distance divides 16). */
+        __m128i previous = _mm_loadu_si128((const __m128i *)(const void *)(data - 16));
+        for (; i + 16U <= size; i += 16U) {
+            __m128i v = _mm_loadu_si128((const __m128i *)(const void *)(data + i));
+            __m128i carry;
+            if (distance == 1U) {
+                v = _mm_add_epi8(v, _mm_slli_si128(v, 1));
+                v = _mm_add_epi8(v, _mm_slli_si128(v, 2));
+                v = _mm_add_epi8(v, _mm_slli_si128(v, 4));
+                v = _mm_add_epi8(v, _mm_slli_si128(v, 8));
+                carry = _mm_unpackhi_epi8(previous, previous);
+                carry = _mm_shufflehi_epi16(carry, 0xFF);
+                carry = _mm_shuffle_epi32(carry, 0xFF);
+            } else if (distance == 2U) {
+                v = _mm_add_epi8(v, _mm_slli_si128(v, 2));
+                v = _mm_add_epi8(v, _mm_slli_si128(v, 4));
+                v = _mm_add_epi8(v, _mm_slli_si128(v, 8));
+                carry = _mm_shufflehi_epi16(previous, 0xFF);
+                carry = _mm_shuffle_epi32(carry, 0xFF);
+            } else if (distance == 4U) {
+                v = _mm_add_epi8(v, _mm_slli_si128(v, 4));
+                v = _mm_add_epi8(v, _mm_slli_si128(v, 8));
+                carry = _mm_shuffle_epi32(previous, 0xFF);
+            } else {
+                v = _mm_add_epi8(v, _mm_slli_si128(v, 8));
+                carry = _mm_unpackhi_epi64(previous, previous);
+            }
+            previous = _mm_add_epi8(v, carry);
+            _mm_storeu_si128((__m128i *)(void *)(data + i), previous);
+        }
+    }
+#endif
+    /* The first `distance` bytes add the history kept in front of `data`; form
+     * that address with pointer arithmetic (data + i - distance), not with an
+     * unsigned index i - distance that would wrap below zero. */
+    for (; i < size; ++i) data[i] = (uint8_t)(data[i] + *(data + i - distance));
+}
+
+/* Reverses each complete group of `swap` (2 or 4) bytes; returns the bytes
+ * covered. */
+static size_t xx_7zip_swap_decode(uint8_t *data, size_t size, unsigned swap)
+{
+    size_t processed = size & ~(size_t)(swap - 1U);
+    size_t i = 0U;
+#if defined(XX_7ZIP_FILTER_SSE2)
+    for (; i + 16U <= processed; i += 16U) {
+        __m128i v = _mm_loadu_si128((const __m128i *)(const void *)(data + i));
+        v = _mm_or_si128(_mm_slli_epi16(v, 8), _mm_srli_epi16(v, 8));
+        if (swap == 4U) {
+            v = _mm_shufflelo_epi16(v, _MM_SHUFFLE(2, 3, 0, 1));
+            v = _mm_shufflehi_epi16(v, _MM_SHUFFLE(2, 3, 0, 1));
+        }
+        _mm_storeu_si128((__m128i *)(void *)(data + i), v);
+    }
+#endif
+    for (; i < processed; i += swap) {
+        uint8_t byte = data[i];
+        if (swap == 2U) {
+            data[i] = data[i + 1U];
+            data[i + 1U] = byte;
+        } else {
+            data[i] = data[i + 3U];
+            data[i + 3U] = byte;
+            byte = data[i + 1U];
+            data[i + 1U] = data[i + 2U];
+            data[i + 2U] = byte;
+        }
+    }
+    return processed;
+}
+
+static bool xx_7zip_filter_sink_init(xx_7zip_filter_sink *sink, uint64_t method, const uint8_t *properties, size_t properties_size, uint64_t expected_size,
+                                     xx_io_device *destination, xx_pd_struct *pd);
+static void xx_7zip_filter_sink_cleanup(xx_7zip_filter_sink *sink);
+
+/* Converts the buffered bytes (all of them when `final`), writes the
+ * converted prefix and keeps the rest. */
+static bool xx_7zip_filter_sink_run(xx_7zip_filter_sink *sink, bool final)
+{
+    size_t processed;
+    if (sink->error) return false;
+    if (sink->method == XX_7ZIP_METHOD_DELTA) {
+        xx_7zip_delta_decode(sink->data, sink->used, sink->distance);
+        processed = sink->used;
+    } else if (sink->swap != 0U) {
+        processed = xx_7zip_swap_decode(sink->data, sink->used, sink->swap);
+        if (final) processed = sink->used;
+    } else if (sink->method == XX_7ZIP_METHOD_COPY) {
+        processed = sink->used;
+    } else {
+        processed = xx_7zip_branch_process(&sink->branch, sink->data, sink->used, final);
+        if (processed == SIZE_MAX || processed > sink->used) goto failed;
+    }
+    if ((uint64_t)processed > sink->expected_size - sink->emitted || !xx_7zip_stream_write_exact(sink->target, sink->data, processed)) goto failed;
+    sink->emitted += processed;
+    sink->used -= processed;
+    if (sink->used > XX_7ZIP_FILTER_SUFFIX || (processed == 0U && !final)) goto failed;
+    if (sink->method == XX_7ZIP_METHOD_DELTA) {
+        /* The last decoded bytes become the history of the next chunk. */
+        xx_rt_memmove(sink->memory, sink->memory + processed, XX_7ZIP_FILTER_HISTORY);
+    } else if (sink->used) {
+        xx_rt_memmove(sink->data, sink->data + processed, sink->used);
+    }
+    return true;
+failed:
+    sink->error = true;
+    return false;
+}
+
+static ssize_t xx_7zip_filter_sink_write(xx_io_device *device, const void *buffer, size_t size)
+{
+    xx_7zip_filter_sink *sink = (xx_7zip_filter_sink *)device->priv;
+    const uint8_t *input = (const uint8_t *)buffer;
+    size_t left = size;
+    if (!sink || sink->error || sink->finished || (!buffer && size) || size > (size_t)PTRDIFF_MAX || (uint64_t)size > sink->expected_size - sink->accepted ||
+        xx_pd_is_stopped(sink->pd))
+        return -1;
+    while (left != 0U) {
+        size_t take = XX_7ZIP_FILTER_CHUNK - sink->used;
+        if (take > left) take = left;
+        xx_mem_copy(sink->data + sink->used, input, take);
+        sink->used += take;
+        sink->accepted += take;
+        input += take;
+        left -= take;
+        if (sink->used == XX_7ZIP_FILTER_CHUNK && !xx_7zip_filter_sink_run(sink, false)) return -1;
+    }
+    return (ssize_t)size;
+}
+
+static int64_t xx_7zip_filter_sink_size(xx_io_device *device)
+{
+    xx_7zip_filter_sink *sink = (xx_7zip_filter_sink *)device->priv;
+    return sink ? (int64_t)sink->accepted : -1;
+}
+
+static bool xx_7zip_filter_sink_init(xx_7zip_filter_sink *sink, uint64_t method, const uint8_t *properties, size_t properties_size, uint64_t expected_size,
+                                     xx_io_device *destination, xx_pd_struct *pd)
+{
+    xx_mem_zero(sink, sizeof(*sink));
+    if (!destination || (!properties && properties_size) || expected_size > INT64_MAX) return false;
+    if (method == XX_7ZIP_METHOD_DELTA) {
+        if (properties_size != 1U) return false;
+        sink->distance = (unsigned)properties[0] + 1U;
+    } else if (method == XX_7ZIP_METHOD_COPY || method == XX_7ZIP_METHOD_SWAP2 || method == XX_7ZIP_METHOD_SWAP4) {
+        if (properties_size != 0U) return false;
+        if (method == XX_7ZIP_METHOD_SWAP2) sink->swap = 2U;
+        else if (method == XX_7ZIP_METHOD_SWAP4) sink->swap = 4U;
+    } else if (!xx_7zip_branch_state_init(&sink->branch, method, properties, properties_size)) {
+        return false;
+    }
+    sink->memory = (uint8_t *)xx_mem_alloc(XX_7ZIP_FILTER_HISTORY + XX_7ZIP_FILTER_CHUNK + XX_7ZIP_FILTER_SUFFIX);
+    if (!sink->memory) return false;
+    xx_mem_zero(sink->memory, XX_7ZIP_FILTER_HISTORY);
+    sink->data = sink->memory + XX_7ZIP_FILTER_HISTORY;
+    sink->method = method;
+    sink->expected_size = expected_size;
+    sink->target = destination;
+    sink->pd = pd;
+    sink->device.priv = sink;
+    sink->device.write = xx_7zip_filter_sink_write;
+    sink->device.total_size = xx_7zip_filter_sink_size;
+    return true;
+}
+
+/* After the producer succeeded: converts the rest and checks every byte
+ * went through. */
+static bool xx_7zip_filter_sink_finish(xx_7zip_filter_sink *sink)
+{
+    if (sink->error || sink->accepted != sink->expected_size) return false;
+    if (!sink->finished) {
+        if (!xx_7zip_filter_sink_run(sink, true)) return false;
+        sink->finished = true;
+    }
+    return sink->used == 0U && sink->emitted == sink->expected_size && !xx_pd_is_stopped(sink->pd);
+}
+
+static void xx_7zip_filter_sink_cleanup(xx_7zip_filter_sink *sink)
+{
+    if (sink->memory) {
+        xx_mem_zero(sink->memory, XX_7ZIP_FILTER_HISTORY + XX_7ZIP_FILTER_CHUNK + XX_7ZIP_FILTER_SUFFIX);
+        xx_mem_free(sink->memory);
+    }
+    xx_mem_zero(sink, sizeof(*sink));
+}
+
 static bool xx_7zip_stream_filter(uint64_t method, const uint8_t *properties, size_t properties_size, xx_7zip_stream_window *source, xx_io_device *destination,
                                   uint64_t expected_size)
 {
-    xx_7zip_branch_state branch;
-    uint8_t delta[256];
-    uint8_t *buffer;
-    size_t used = 0U;
-    unsigned delta_at = 0U, distance = 0U, swap = 0U;
-    bool simple = method == XX_7ZIP_METHOD_COPY || method == XX_7ZIP_METHOD_DELTA || method == XX_7ZIP_METHOD_SWAP2 || method == XX_7ZIP_METHOD_SWAP4;
+    xx_7zip_filter_sink sink;
     bool success = false;
-    if (source->size != expected_size) return false;
-    if (method == XX_7ZIP_METHOD_DELTA) {
-        if (properties_size != 1U || !properties) return false;
-        distance = (unsigned)properties[0] + 1U;
-        xx_mem_zero(delta, sizeof(delta));
-    } else if (simple) {
-        if (properties_size != 0U) return false;
-        if (method == XX_7ZIP_METHOD_SWAP2) swap = 2U;
-        else if (method == XX_7ZIP_METHOD_SWAP4) swap = 4U;
-    } else if (!xx_7zip_branch_state_init(&branch, method, properties, properties_size)) {
-        return false;
-    }
-    buffer = (uint8_t *)xx_mem_alloc(XX_7ZIP_STREAM_BUFFER + 16U);
-    if (!buffer) return false;
-    do {
-        size_t added = XX_7ZIP_STREAM_BUFFER;
-        size_t processed, i;
-        bool final;
+    if (source->size != expected_size || !xx_7zip_filter_sink_init(&sink, method, properties, properties_size, expected_size, destination, source->pd)) return false;
+    for (;;) {
+        size_t added = XX_7ZIP_FILTER_CHUNK - sink.used;
         uint64_t remaining = source->size - source->position;
+        bool final;
+        if (xx_pd_is_stopped(source->pd)) goto done;
         if ((uint64_t)added > remaining) added = (size_t)remaining;
-        if (!xx_7zip_stream_read_exact(&source->device, buffer + used, added)) goto done;
-        used += added;
+        if (!xx_7zip_stream_read_exact(&source->device, sink.data + sink.used, added)) goto done;
+        sink.used += added;
+        sink.accepted += added;
         final = source->position == source->size;
-        if (method == XX_7ZIP_METHOD_DELTA) {
-            for (i = 0U; i < used; ++i) {
-                buffer[i] = (uint8_t)(buffer[i] + delta[delta_at]);
-                delta[delta_at] = buffer[i];
-                if (++delta_at == distance) delta_at = 0U;
-            }
-            processed = used;
-        } else if (swap != 0U) {
-            processed = used & ~(size_t)(swap - 1U);
-            for (i = 0U; i < processed; i += swap) {
-                unsigned j;
-                for (j = 0U; j < swap / 2U; ++j) {
-                    uint8_t byte = buffer[i + j];
-                    buffer[i + j] = buffer[i + swap - 1U - j];
-                    buffer[i + swap - 1U - j] = byte;
-                }
-            }
-            if (final) processed = used;
-        } else if (method == XX_7ZIP_METHOD_COPY) {
-            processed = used;
-        } else {
-            processed = xx_7zip_branch_process(&branch, buffer, used, final);
-            if (processed == SIZE_MAX || processed > used) goto done;
-        }
-        if (!xx_7zip_stream_write_exact(destination, buffer, processed)) goto done;
-        used -= processed;
-        if (used > 16U || (processed == 0U && !final)) goto done;
-        if (used) xx_rt_memmove(buffer, buffer + processed, used);
         if (final) break;
-    } while (!xx_pd_is_stopped(source->pd));
-    success = source->position == source->size && used == 0U && !xx_pd_is_stopped(source->pd);
+        if (!xx_7zip_filter_sink_run(&sink, false)) goto done;
+    }
+    success = xx_7zip_filter_sink_finish(&sink);
 done:
-    xx_mem_zero(buffer, XX_7ZIP_STREAM_BUFFER + 16U);
-    xx_mem_zero(delta, sizeof(delta));
-    xx_mem_free(buffer);
+    xx_7zip_filter_sink_cleanup(&sink);
     return success;
 }
 
@@ -851,4 +1036,456 @@ bool xx_7zip_stream_bcj2_streaming(xx_io_device *const secondary_sources[3], con
     }
     xx_bcj2_filter_cleanup(&filter);
     return ok;
+}
+
+bool xx_7zip_stream_filter_streaming(uint64_t method, const uint8_t *properties, size_t properties_size, uint64_t expected_size, xx_io_device *u_source,
+                                     int64_t u_source_offset, uint64_t u_compressed_size, uint64_t u_method, const uint8_t *u_properties, size_t u_properties_size,
+                                     xx_io_device *destination, const uint8_t *password_utf16le, size_t password_size, xx_pd_struct *pd)
+{
+    xx_7zip_filter_sink sink;
+    bool ok;
+    if (!xx_7zip_filter_sink_init(&sink, method, properties, properties_size, expected_size, destination, pd)) return false;
+    ok = xx_7zip_stream_decode(u_method, u_properties, u_properties_size, u_source, u_source_offset, u_compressed_size, expected_size, &sink.device, password_utf16le,
+                               password_size, pd);
+    if (ok) ok = xx_7zip_filter_sink_finish(&sink);
+    xx_7zip_filter_sink_cleanup(&sink);
+    return ok;
+}
+
+bool xx_7zip_stream_filter_method(uint64_t method)
+{
+    return method == XX_7ZIP_METHOD_COPY || method == XX_7ZIP_METHOD_DELTA || method == XX_7ZIP_METHOD_SWAP2 || method == XX_7ZIP_METHOD_SWAP4 ||
+           xx_7zip_branch_method_supported(method, 0U);
+}
+
+/* BCJ2's main stream decoded on a worker thread. The worker's decoder writes
+ * into a ring of chunks; the calling thread runs BCJ2, the CRC and the
+ * destination writes on them, so both run at once, and the calling thread
+ * may decode the call/jump/range streams while the worker starts. The worker
+ * has its own xx_pd_struct (the caller's progress and observer stay on the
+ * calling thread): a stop or a failure there stops it and the ring. The
+ * worker reads only `source`; the caller must not touch that device or its
+ * parent until xx_7zip_pipe_bcj2_finish or xx_7zip_pipe_abort returns. */
+#include "xxfclib/threads/xx_threads.h"
+
+#define XX_7ZIP_PIPE_CHUNK ((size_t)1U << 20)
+#define XX_7ZIP_PIPE_SLOTS 64U
+#define XX_7ZIP_PIPE_POLL_MS 50U
+
+struct xx_7zip_pipe_s {
+    xx_io_device device; /**< The worker's decoder writes here. */
+    xx_mutex_t *mutex;
+    xx_cond_t *data_ready, *space_ready;
+    xx_thread_t *thread;
+    uint8_t *slots[XX_7ZIP_PIPE_SLOTS];
+    size_t sizes[XX_7ZIP_PIPE_SLOTS];
+    unsigned head, filled; /**< Guarded by mutex. */
+    unsigned tail;         /**< Worker only: the slot being filled. */
+    size_t tail_used;      /**< Worker only. */
+    uint64_t written;      /**< Worker only. */
+    bool done, ok, abort;  /**< Guarded by mutex. */
+    xx_pd_struct worker_pd; /**< The worker's own: stopped on abort. */
+    /* The worker's decode. */
+    uint64_t method;
+    const uint8_t *properties;
+    size_t properties_size;
+    xx_io_device *source;
+    uint64_t compressed_size, expected_size;
+    const uint8_t *password;
+    size_t password_size;
+};
+
+/* Publishes the worker's current slot; false when aborted. Mutex held. */
+static bool xx_7zip_pipe_publish_locked(xx_7zip_pipe *pipe)
+{
+    if (pipe->abort) return false;
+    pipe->sizes[pipe->tail] = pipe->tail_used;
+    pipe->tail = (pipe->tail + 1U) % XX_7ZIP_PIPE_SLOTS;
+    pipe->tail_used = 0U;
+    ++pipe->filled;
+    xx_cond_signal(pipe->data_ready);
+    return true;
+}
+
+static ssize_t xx_7zip_pipe_write(xx_io_device *device, const void *buffer, size_t size)
+{
+    xx_7zip_pipe *pipe = (xx_7zip_pipe *)device->priv;
+    const uint8_t *input = (const uint8_t *)buffer;
+    size_t left = size;
+    if (!pipe || (!buffer && size) || size > (size_t)PTRDIFF_MAX || (uint64_t)size > pipe->expected_size - pipe->written) return -1;
+    while (left != 0U) {
+        size_t take;
+        if (pipe->tail_used == 0U) {
+            /* A free slot: one the consumer has not got. */
+            bool aborted;
+            xx_mutex_lock(pipe->mutex);
+            while (pipe->filled == XX_7ZIP_PIPE_SLOTS && !pipe->abort) (void)xx_cond_wait(pipe->space_ready, pipe->mutex, XX_7ZIP_PIPE_POLL_MS);
+            aborted = pipe->abort;
+            xx_mutex_unlock(pipe->mutex);
+            if (aborted) return -1;
+            if (!pipe->slots[pipe->tail] && !(pipe->slots[pipe->tail] = (uint8_t *)xx_mem_alloc(XX_7ZIP_PIPE_CHUNK))) return -1;
+        }
+        take = XX_7ZIP_PIPE_CHUNK - pipe->tail_used;
+        if (take > left) take = left;
+        xx_mem_copy(pipe->slots[pipe->tail] + pipe->tail_used, input, take);
+        pipe->tail_used += take;
+        input += take;
+        left -= take;
+        if (pipe->tail_used == XX_7ZIP_PIPE_CHUNK) {
+            bool published;
+            xx_mutex_lock(pipe->mutex);
+            published = xx_7zip_pipe_publish_locked(pipe);
+            xx_mutex_unlock(pipe->mutex);
+            if (!published) return -1;
+        }
+    }
+    pipe->written += size;
+    return (ssize_t)size;
+}
+
+static int64_t xx_7zip_pipe_size(xx_io_device *device)
+{
+    xx_7zip_pipe *pipe = (xx_7zip_pipe *)device->priv;
+    return pipe ? (int64_t)pipe->written : -1;
+}
+
+static int xx_7zip_pipe_worker(void *arg)
+{
+    xx_7zip_pipe *pipe = (xx_7zip_pipe *)arg;
+    bool ok = xx_7zip_stream_decode(pipe->method, pipe->properties, pipe->properties_size, pipe->source, 0, pipe->compressed_size, pipe->expected_size,
+                                    &pipe->device, pipe->password, pipe->password_size, &pipe->worker_pd);
+    xx_mutex_lock(pipe->mutex);
+    if (ok && pipe->tail_used != 0U) ok = xx_7zip_pipe_publish_locked(pipe);
+    pipe->ok = ok && pipe->written == pipe->expected_size;
+    pipe->done = true;
+    xx_cond_broadcast(pipe->data_ready);
+    xx_mutex_unlock(pipe->mutex);
+    return 0;
+}
+
+static void xx_7zip_pipe_free(xx_7zip_pipe *pipe)
+{
+    unsigned i;
+    for (i = 0U; i < XX_7ZIP_PIPE_SLOTS; ++i) {
+        if (pipe->slots[i]) {
+            xx_mem_zero(pipe->slots[i], XX_7ZIP_PIPE_CHUNK);
+            xx_mem_free(pipe->slots[i]);
+        }
+    }
+    if (pipe->data_ready) xx_cond_destroy(pipe->data_ready);
+    if (pipe->space_ready) xx_cond_destroy(pipe->space_ready);
+    if (pipe->mutex) xx_mutex_destroy(pipe->mutex);
+    xx_mem_zero(pipe, sizeof(*pipe));
+    xx_mem_free(pipe);
+}
+
+xx_7zip_pipe *xx_7zip_pipe_start(uint64_t method, const uint8_t *properties, size_t properties_size, xx_io_device *source, uint64_t compressed_size,
+                                 uint64_t expected_size, const uint8_t *password_utf16le, size_t password_size)
+{
+    xx_7zip_pipe *pipe;
+    if (!source || (!properties && properties_size) || expected_size > INT64_MAX) return NULL;
+    pipe = (xx_7zip_pipe *)xx_mem_calloc(1U, sizeof(*pipe));
+    if (!pipe) return NULL;
+    pipe->mutex = xx_mutex_create();
+    pipe->data_ready = xx_cond_create();
+    pipe->space_ready = xx_cond_create();
+    if (!pipe->mutex || !pipe->data_ready || !pipe->space_ready) {
+        xx_7zip_pipe_free(pipe);
+        return NULL;
+    }
+    pipe->worker_pd = xx_pd_init();
+    pipe->method = method;
+    pipe->properties = properties;
+    pipe->properties_size = properties_size;
+    pipe->source = source;
+    pipe->compressed_size = compressed_size;
+    pipe->expected_size = expected_size;
+    pipe->password = password_utf16le;
+    pipe->password_size = password_size;
+    pipe->device.priv = pipe;
+    pipe->device.write = xx_7zip_pipe_write;
+    pipe->device.total_size = xx_7zip_pipe_size;
+    pipe->thread = xx_thread_create(xx_7zip_pipe_worker, pipe);
+    if (!pipe->thread) {
+        xx_7zip_pipe_free(pipe);
+        return NULL;
+    }
+    return pipe;
+}
+
+/* Stops the worker, waits for it and frees the pipe. */
+static void xx_7zip_pipe_stop(xx_7zip_pipe *pipe)
+{
+    xx_mutex_lock(pipe->mutex);
+    pipe->abort = true;
+    xx_cond_broadcast(pipe->space_ready);
+    xx_mutex_unlock(pipe->mutex);
+    xx_pd_stop(&pipe->worker_pd);
+    (void)xx_thread_join(pipe->thread, NULL);
+    xx_7zip_pipe_free(pipe);
+}
+
+void xx_7zip_pipe_abort(xx_7zip_pipe *pipe)
+{
+    if (pipe) xx_7zip_pipe_stop(pipe);
+}
+
+bool xx_7zip_pipe_bcj2_finish(xx_7zip_pipe *pipe, xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3], const uint8_t *properties,
+                              size_t properties_size, uint64_t expected_size, xx_io_device *destination, xx_pd_struct *pd)
+{
+    xx_bcj2_filter_device filter;
+    bool ok = false, worker_ok = false;
+    if (!pipe) return false;
+    if (!xx_bcj2_filter_init(&filter, secondary_sources, secondary_sizes, properties, properties_size, expected_size, destination, pd)) {
+        xx_7zip_pipe_stop(pipe);
+        return false;
+    }
+    for (;;) {
+        uint8_t *chunk = NULL;
+        size_t size = 0;
+        bool have = false, ended = false;
+        if (xx_pd_is_stopped(pd)) goto done;
+        xx_mutex_lock(pipe->mutex);
+        if (pipe->filled == 0U && !pipe->done) (void)xx_cond_wait(pipe->data_ready, pipe->mutex, XX_7ZIP_PIPE_POLL_MS);
+        if (pipe->filled != 0U) {
+            /* Only a published slot is read: the producer may still be
+             * allocating the slot at head while the ring is empty. */
+            have = true;
+            chunk = pipe->slots[pipe->head];
+            size = pipe->sizes[pipe->head];
+        } else if (pipe->done) {
+            ended = true;
+            worker_ok = pipe->ok;
+        }
+        xx_mutex_unlock(pipe->mutex);
+        if (!have) {
+            if (!ended) continue;
+            if (worker_ok) break;
+            goto done;
+        }
+        if (xx_io_write(&filter.device, chunk, size) != (ssize_t)size) goto done;
+        xx_mutex_lock(pipe->mutex);
+        pipe->head = (pipe->head + 1U) % XX_7ZIP_PIPE_SLOTS;
+        --pipe->filled;
+        xx_cond_signal(pipe->space_ready);
+        xx_mutex_unlock(pipe->mutex);
+    }
+    ok = xx_bcj2_filter_finish(&filter);
+done:
+    xx_7zip_pipe_stop(pipe);
+    xx_bcj2_filter_cleanup(&filter);
+    return ok;
+}
+
+/* A coder's whole output decoded into memory on a worker thread, readable
+ * (and seekable) while it is being written: a read waits until the bytes it
+ * asks for are there. Used for 7zAES ahead of LZMA2, so that decryption and
+ * decompression run at once. The worker reads only `source`, has its own
+ * xx_pd_struct, and is stopped when the device is closed. */
+#define XX_7ZIP_ASYNC_POLL_MS 50U
+
+typedef struct xx_7zip_async_s {
+    xx_io_device device; /**< The reader's view. */
+    xx_io_device writer; /**< The worker's decoder writes here. */
+    xx_mutex_t *mutex;
+    xx_cond_t *grown;
+    xx_thread_t *thread;
+    uint8_t *buffer;
+    uint64_t size;      /**< Expected output size: the buffer's. */
+    uint64_t available; /**< Guarded by mutex: bytes written so far. */
+    uint64_t produced;  /**< Worker only. */
+    uint64_t position;  /**< Reader only. */
+    bool done, ok, abort, joined;
+    xx_pd_struct *pd; /**< The reader's (calling thread's). */
+    xx_pd_struct worker_pd; /**< The worker's own: stopped on abort. */
+    uint64_t method;
+    const uint8_t *properties;
+    size_t properties_size;
+    xx_io_device *source;
+    uint64_t compressed_size;
+    const uint8_t *password;
+    size_t password_size;
+} xx_7zip_async;
+
+static ssize_t xx_7zip_async_write(xx_io_device *device, const void *buffer, size_t size)
+{
+    xx_7zip_async *async = (xx_7zip_async *)device->priv;
+    bool aborted;
+    if (!async || (!buffer && size) || size > (size_t)PTRDIFF_MAX || (uint64_t)size > async->size - async->produced) return -1;
+    xx_mutex_lock(async->mutex);
+    aborted = async->abort;
+    xx_mutex_unlock(async->mutex);
+    if (aborted) return -1;
+    /* Bytes past `available` are the worker's alone. */
+    if (size) xx_mem_copy(async->buffer + async->produced, buffer, size);
+    async->produced += size;
+    xx_mutex_lock(async->mutex);
+    async->available = async->produced;
+    xx_cond_broadcast(async->grown);
+    xx_mutex_unlock(async->mutex);
+    return (ssize_t)size;
+}
+
+static int64_t xx_7zip_async_written(xx_io_device *device)
+{
+    xx_7zip_async *async = (xx_7zip_async *)device->priv;
+    return async ? (int64_t)async->produced : -1;
+}
+
+static int xx_7zip_async_worker(void *arg)
+{
+    xx_7zip_async *async = (xx_7zip_async *)arg;
+    bool ok = xx_7zip_stream_decode(async->method, async->properties, async->properties_size, async->source, 0, async->compressed_size, async->size,
+                                    &async->writer, async->password, async->password_size, &async->worker_pd);
+    xx_mutex_lock(async->mutex);
+    async->ok = ok && async->produced == async->size;
+    async->done = true;
+    xx_cond_broadcast(async->grown);
+    xx_mutex_unlock(async->mutex);
+    return 0;
+}
+
+static ssize_t xx_7zip_async_read(xx_io_device *device, void *buffer, size_t size)
+{
+    xx_7zip_async *async = (xx_7zip_async *)device->priv;
+    uint64_t want, have;
+    if (!async || (!buffer && size) || size > (size_t)PTRDIFF_MAX) return -1;
+    if (async->position >= async->size || size == 0U) return 0;
+    want = async->size - async->position;
+    if ((uint64_t)size < want) want = (uint64_t)size;
+    xx_mutex_lock(async->mutex);
+    while (async->available < async->position + want && !async->done && !async->abort) {
+        if (xx_pd_is_stopped(async->pd)) break;
+        (void)xx_cond_wait(async->grown, async->mutex, XX_7ZIP_ASYNC_POLL_MS);
+    }
+    have = async->available;
+    xx_mutex_unlock(async->mutex);
+    /* A failed or stopped worker leaves the rest unreadable. */
+    if (have < async->position + want) return -1;
+    xx_mem_copy(buffer, async->buffer + async->position, (size_t)want);
+    async->position += want;
+    return (ssize_t)want;
+}
+
+static int xx_7zip_async_seek64(xx_io_device *device, int64_t offset, int origin)
+{
+    xx_7zip_async *async = (xx_7zip_async *)device->priv;
+    int64_t base;
+    if (!async) return -1;
+    if (origin == SEEK_SET) base = 0;
+    else if (origin == SEEK_CUR) base = (int64_t)async->position;
+    else if (origin == SEEK_END) base = (int64_t)async->size;
+    else return -1;
+    if ((offset < 0 && -(offset + 1) >= base) || (offset > 0 && offset > (int64_t)async->size - base)) return -1;
+    async->position = (uint64_t)(base + offset);
+    return 0;
+}
+
+static int xx_7zip_async_seek(xx_io_device *device, long offset, int origin)
+{
+    return xx_7zip_async_seek64(device, (int64_t)offset, origin);
+}
+
+static int64_t xx_7zip_async_tell(xx_io_device *device)
+{
+    xx_7zip_async *async = (xx_7zip_async *)device->priv;
+    return async ? (int64_t)async->position : -1;
+}
+
+static int64_t xx_7zip_async_size(xx_io_device *device)
+{
+    xx_7zip_async *async = (xx_7zip_async *)device->priv;
+    return async ? (int64_t)async->size : -1;
+}
+
+/* Waits for the worker (stopping it first when `stop`); its verdict. */
+static bool xx_7zip_async_join(xx_7zip_async *async, bool stop)
+{
+    if (!async->joined) {
+        if (stop) {
+            xx_mutex_lock(async->mutex);
+            async->abort = true;
+            xx_mutex_unlock(async->mutex);
+            xx_pd_stop(&async->worker_pd);
+        }
+        (void)xx_thread_join(async->thread, NULL);
+        async->joined = true;
+    }
+    return async->ok && !async->abort;
+}
+
+static void xx_7zip_async_free(xx_7zip_async *async)
+{
+    /* Not wiped, as the memory intermediates of xx_7zip.c are not: that
+     * would touch every page of up to 512 MiB once more. */
+    if (async->buffer) xx_mem_free(async->buffer);
+    if (async->grown) xx_cond_destroy(async->grown);
+    if (async->mutex) xx_mutex_destroy(async->mutex);
+    xx_mem_zero(async, sizeof(*async));
+    xx_mem_free(async);
+}
+
+static int xx_7zip_async_close(xx_io_device *device)
+{
+    xx_7zip_async *async = device ? (xx_7zip_async *)device->priv : NULL;
+    if (!async) return -1;
+    (void)xx_7zip_async_join(async, true);
+    xx_7zip_async_free(async);
+    return 0;
+}
+
+xx_io_device *xx_7zip_async_open(uint64_t method, const uint8_t *properties, size_t properties_size, xx_io_device *source, uint64_t compressed_size,
+                                 uint64_t expected_size, const uint8_t *password_utf16le, size_t password_size, xx_pd_struct *pd)
+{
+    xx_7zip_async *async;
+    if (!source || (!properties && properties_size) || expected_size > (uint64_t)INT64_MAX || expected_size > (uint64_t)SIZE_MAX) return NULL;
+    async = (xx_7zip_async *)xx_mem_calloc(1U, sizeof(*async));
+    if (!async) return NULL;
+    async->size = expected_size;
+    async->buffer = (uint8_t *)xx_mem_alloc(expected_size ? (size_t)expected_size : 1U);
+    async->mutex = xx_mutex_create();
+    async->grown = xx_cond_create();
+    if (!async->buffer || !async->mutex || !async->grown) {
+        xx_7zip_async_free(async);
+        return NULL;
+    }
+    async->pd = pd;
+    async->worker_pd = xx_pd_init();
+    async->method = method;
+    async->properties = properties;
+    async->properties_size = properties_size;
+    async->source = source;
+    async->compressed_size = compressed_size;
+    async->password = password_utf16le;
+    async->password_size = password_size;
+    async->writer.priv = async;
+    async->writer.write = xx_7zip_async_write;
+    async->writer.total_size = xx_7zip_async_written;
+    async->device.priv = async;
+    async->device.read = xx_7zip_async_read;
+    async->device.seek = xx_7zip_async_seek;
+    async->device.seek64 = xx_7zip_async_seek64;
+    async->device.tell = xx_7zip_async_tell;
+    async->device.total_size = xx_7zip_async_size;
+    async->device.get_total_size = xx_7zip_async_size;
+    async->device.size = xx_7zip_async_size;
+    async->device.close = xx_7zip_async_close;
+    async->thread = xx_thread_create(xx_7zip_async_worker, async);
+    if (!async->thread) {
+        xx_7zip_async_free(async);
+        return NULL;
+    }
+    return &async->device;
+}
+
+bool xx_7zip_async_is(const xx_io_device *device)
+{
+    return device && device->close == xx_7zip_async_close;
+}
+
+bool xx_7zip_async_finish(xx_io_device *device, bool stop)
+{
+    xx_7zip_async *async;
+    if (!xx_7zip_async_is(device) || !(async = (xx_7zip_async *)device->priv)) return false;
+    return xx_7zip_async_join(async, stop);
 }

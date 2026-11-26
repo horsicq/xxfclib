@@ -119,6 +119,7 @@ void js_free_node(JSNode *pNode)
         }
 
         if (pNode->pRegExpLiteral) xx_regex_free(pNode->pRegExpLiteral);
+        if (pNode->type == N_FUNCTION) xx_js_free(pNode->pLayout);
         xx_js_free(pNode->pHoistPlan);
         xx_js_free(pNode->ppVarNames);
         xx_js_free(pNode->ppList);
@@ -271,6 +272,144 @@ static JSHoistPlan *prepare_hoist_plan(JSNode *pBody)
     return pPlan;
 }
 
+/* ---------------------------------------------------------- scope layout  */
+
+/* Functions with more bindings keep the incremental call sequence. */
+#define JS_LAYOUT_MAX_BINDINGS 4096u
+
+static int32_t layout_find(const JSScopeLayout *pLayout, const char *pKey, size_t nKeySize, uint32_t nHash)
+{
+    size_t nSlot;
+    if (!pLayout->nIndexSize) return -1;
+    nSlot = nHash & (pLayout->nIndexSize - 1);
+    for (;;) {
+        int32_t nIndex = pLayout->pIndex[nSlot];
+        const JSProp *pProp;
+        if (nIndex < 0) return -1;
+        pProp = &pLayout->pEntries[nIndex];
+        if (pProp->nHash == nHash && pProp->nKeySize == nKeySize && jskey_equal(pProp->pKey, pKey, nKeySize)) return nIndex;
+        nSlot = (nSlot + 1) & (pLayout->nIndexSize - 1);
+    }
+}
+
+/* What jsobj_put does to a scope record: an existing name keeps its entry, a
+ * new one is appended. The index always has free slots (see nIndexSize). */
+static int32_t layout_add(JSScopeLayout *pLayout, const char *pKey, size_t nKeySize, uint32_t nHash)
+{
+    int32_t nIndex = layout_find(pLayout, pKey, nKeySize, nHash);
+    JSProp *pProp;
+    size_t nSlot;
+    if (nIndex >= 0) return nIndex;
+    nIndex = (int32_t)pLayout->nCount++;
+    pProp = &pLayout->pEntries[nIndex];
+    pProp->pKey = (char *)pKey;
+    pProp->nKeySize = nKeySize;
+    pProp->nHash = nHash;
+    pProp->value = js_undefined();
+    pProp->bBorrowedKey = 1;
+    nSlot = nHash & (pLayout->nIndexSize - 1);
+    while (pLayout->pIndex[nSlot] != -1) nSlot = (nSlot + 1) & (pLayout->nIndexSize - 1);
+    pLayout->pIndex[nSlot] = nIndex;
+    return nIndex;
+}
+
+/* Mirrors the binding order of js_call_function followed by hoist_prepared
+ * with every step accepted. NULL keeps the incremental sequence. */
+static JSScopeLayout *prepare_scope_layout(JSNode *pFn)
+{
+    static const char sArguments[] = "arguments";
+    JSNode *pParams = pFn->a;
+    JSHoistPlan *pPlan = pFn->bNeedsHoist ? pFn->pHoistPlan : NULL;
+    JSScopeLayout *pLayout;
+    size_t nParams, nSteps, nMax, nIndexSize = 16, nBytes, i;
+    char *pBlock;
+    if (!pParams || (pFn->bNeedsHoist && !pPlan)) return NULL;
+    nParams = pParams->nList;
+    nSteps = pPlan ? pPlan->nSteps : 0;
+    if (nParams > JS_LAYOUT_MAX_BINDINGS || nSteps > JS_LAYOUT_MAX_BINDINGS) return NULL;
+    for (i = 0; i < nParams; i++) {
+        JSNode *pParam = pParams->ppList[i];
+        if (!pParam || !pParam->pStr || !pParam->bStrKey) return NULL;
+    }
+    for (i = 0; i < nSteps; i++) {
+        JSNode *pNode = pPlan->steps[i].pNode;
+        if (pNode && (!pNode->pStr || !pNode->bStrKey || (pNode->type != N_FUNCTION && pNode->type != N_VARDECL))) return NULL;
+    }
+    nMax = 2 + nParams + nSteps;
+    while (nIndexSize < (nMax + 1) * 2) nIndexSize *= 2;
+    nBytes = sizeof(JSScopeLayout) + nMax * sizeof(JSProp) + (nIndexSize + nParams + nSteps) * sizeof(int32_t);
+    pBlock = (char *)xx_js_calloc(1, nBytes);
+    pLayout = (JSScopeLayout *)pBlock;
+    pLayout->nBytes = nBytes;
+    pLayout->pEntries = (JSProp *)(pBlock + sizeof(JSScopeLayout));
+    pLayout->pIndex = (int32_t *)(pBlock + sizeof(JSScopeLayout) + nMax * sizeof(JSProp));
+    pLayout->pParamSlots = pLayout->pIndex + nIndexSize;
+    pLayout->pStepSlots = pLayout->pParamSlots + nParams;
+    pLayout->nIndexSize = (uint32_t)nIndexSize;
+    for (i = 0; i < nIndexSize; i++) pLayout->pIndex[i] = -1;
+    pLayout->nArgumentsSlot = pLayout->nSelfSlot = -1;
+    if (pFn->bNeedsArguments) pLayout->nArgumentsSlot = layout_add(pLayout, sArguments, sizeof(sArguments) - 1, xx_js_hash_str(sArguments, sizeof(sArguments) - 1));
+    if (pFn->pStr && pFn->pStr[0] && pFn->nNum != 0 && pFn->bStrKey) pLayout->nSelfSlot = layout_add(pLayout, pFn->pStr, pFn->nStrSize, pFn->nStrHash);
+    for (i = 0; i < nParams; i++) {
+        JSNode *pParam = pParams->ppList[i];
+        pLayout->pParamSlots[i] = layout_add(pLayout, pParam->pStr, pParam->nStrSize, pParam->nStrHash);
+    }
+    for (i = 0; i < nSteps; i++) {
+        JSHoistStep *pStep = &pPlan->steps[i];
+        JSNode *pNode = pStep->pNode;
+        int32_t nSlot = -1;
+        if (pStep->nCheckDepth > pLayout->nMaxDepth) pLayout->nMaxDepth = pStep->nCheckDepth;
+        if (pNode) {
+            if (pStep->nDepth > pLayout->nMaxDepth) pLayout->nMaxDepth = pStep->nDepth;
+            nSlot = layout_add(pLayout, pNode->pStr, pNode->nStrSize, pNode->nStrHash);
+            if (pNode->type != N_FUNCTION) nSlot = -1;
+        }
+        pLayout->pStepSlots[i] = nSlot;
+    }
+    /* A fresh record gets the sizes that inserting the bindings one by one
+     * would at least have reached; none at all for an empty record. */
+    if (pLayout->nCount) {
+        uint32_t nCapacity = JS_PROPS_INITIAL, nIndex = JS_PROPS_INITIAL_INDEX;
+        while (nCapacity < pLayout->nCount) nCapacity *= 2;
+        while (nIndex < (pLayout->nCount + 1) * 2) nIndex *= 2;
+        pLayout->nCapacity = nCapacity;
+        if (nIndex != pLayout->nIndexSize) {
+            /* Rebuild the (oversized) working index at its final size. */
+            pLayout->nIndexSize = nIndex;
+            for (i = 0; i < nIndex; i++) pLayout->pIndex[i] = -1;
+            for (i = 0; i < pLayout->nCount; i++) {
+                size_t nSlot = pLayout->pEntries[i].nHash & (nIndex - 1);
+                while (pLayout->pIndex[nSlot] != -1) nSlot = (nSlot + 1) & (nIndex - 1);
+                pLayout->pIndex[nSlot] = (int32_t)i;
+            }
+        }
+    } else {
+        pLayout->nCapacity = 0;
+        pLayout->nIndexSize = 0;
+    }
+    return pLayout;
+}
+
+/* Tells every identifier evaluated in the function's own activation (nested
+ * functions have their own layout) where the layout binds its name. The ->a
+ * spine is walked iteratively, as everywhere else. */
+static void layout_assign_slots(JSNode *pNode, JSScopeLayout *pLayout)
+{
+    while (pNode) {
+        size_t i;
+        if (pNode->type == N_FUNCTION) return;
+        if ((pNode->type == N_IDENT || pNode->type == N_VARDECL) && pNode->pStr && pNode->bStrKey) {
+            pNode->nSlot = layout_find(pLayout, pNode->pStr, pNode->nStrSize, pNode->nStrHash);
+            pNode->pLayout = pLayout;
+        }
+        layout_assign_slots(pNode->b, pLayout);
+        layout_assign_slots(pNode->c, pLayout);
+        layout_assign_slots(pNode->d, pLayout);
+        for (i = 0; i < pNode->nList; i++) layout_assign_slots(pNode->ppList[i], pLayout);
+        pNode = pNode->a;
+    }
+}
+
 static unsigned prepare_program_node(JSNode *pNode, unsigned nDepth)
 {
     unsigned nInfo = 0;
@@ -283,12 +422,35 @@ static unsigned prepare_program_node(JSNode *pNode, unsigned nDepth)
         size_t i;
         unsigned nChildren = 0;
         JSNode *pLeft = pNode->a;
-        /* Only identifier/declaration nodes are passed to node_key(). Literal
-         * strings and property/member names need no cached identifier hash. */
-        if (pNode->pStr && (pNode->type == N_IDENT || pNode->type == N_VARDECL || pNode->type == N_FUNCTION)) {
+        /* Identifier, declaration and member-name nodes are passed to
+         * node_key(). Literal strings and object-literal keys (which may hold
+         * NUL bytes and carry their size in nNum) need no cached hash. */
+        if (pNode->pStr && (pNode->type == N_IDENT || pNode->type == N_VARDECL || pNode->type == N_FUNCTION || pNode->type == N_MEMBER)) {
             pNode->nStrSize = xx_rt_strlen(pNode->pStr);
             pNode->nStrHash = xx_js_hash_str(pNode->pStr, pNode->nStrSize);
             pNode->bStrKey = 1;
+        }
+        /* An object-literal key carries its byte count in nNum (it may hold
+         * NUL bytes); the literal's entries borrow the spelling. */
+        if (pNode->type == N_PROP && pNode->pStr && pNode->nNum >= 0 && pNode->nNum <= 2147483647.0) {
+            pNode->nStrSize = (size_t)pNode->nNum;
+            pNode->nStrHash = xx_js_hash_str(pNode->pStr, pNode->nStrSize);
+            pNode->bStrKey = 1;
+        }
+        /* The two self-append forms eval_assign looks for; see there. */
+        if (pNode->type == N_ASSIGN && pNode->op == OP_ASSIGN && pNode->a && pNode->b) {
+            JSNode *pTarget = pNode->a, *pValue = pNode->b;
+            uint8_t nKind = JS_ASSIGN_PLAIN;
+            if (pTarget->type == N_IDENT && pValue->type == N_BINARY && pValue->op == OP_ADD) {
+                if (!pValue->a || (pValue->a->type == N_IDENT && (!pTarget->pStr || !pValue->a->pStr))) nKind = 0;
+                else if (pValue->a->type == N_IDENT && !xx_rt_strcmp(pTarget->pStr, pValue->a->pStr)) nKind = JS_ASSIGN_ADD;
+            } else if (pTarget->type == N_IDENT && pValue->type == N_CALL && pValue->nList == 1) {
+                JSNode *pCallee = pValue->a;
+                if (!pCallee || (pCallee->type == N_MEMBER && (!pCallee->pStr || !pCallee->a || !pTarget->pStr || (pCallee->a->type == N_IDENT && !pCallee->a->pStr)))) nKind = 0;
+                else if (pCallee->type == N_MEMBER && !xx_rt_strcmp(pCallee->pStr, "concat") && pCallee->a->type == N_IDENT && !xx_rt_strcmp(pTarget->pStr, pCallee->a->pStr))
+                    nKind = JS_ASSIGN_CONCAT;
+            }
+            pNode->nAssignKind = nKind;
         }
         if (pNode->type == N_REGEXP && !pNode->pRegExpLiteral) {
             char *pError = NULL;
@@ -307,6 +469,10 @@ static unsigned prepare_program_node(JSNode *pNode, unsigned nDepth)
             pNode->bNeedsArguments = (nChildren & PREPARE_ARGUMENTS) != 0;
             pNode->bNeedsHoist = (nChildren & PREPARE_HOIST) != 0;
             if (pNode->bNeedsHoist && !pNode->pHoistPlan) pNode->pHoistPlan = prepare_hoist_plan(pNode->b);
+            if (!pNode->pLayout) {
+                pNode->pLayout = prepare_scope_layout(pNode);
+                if (pNode->pLayout) layout_assign_slots(pNode->b, pNode->pLayout);
+            }
             pLeft = NULL; /* parameter list was prepared above */
         }
         nInfo |= nChildren;

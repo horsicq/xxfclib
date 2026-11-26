@@ -25,6 +25,16 @@
 
 #include <limits.h>
 
+/* Inline equivalents of the public value helpers (xx_js_internal.h). */
+#define js_undefined jsv_undefined
+#define js_null jsv_null
+#define js_bool jsv_bool
+#define js_num jsv_num
+#define js_dup jsv_dup
+#define js_release jsv_release
+#define js_is_callable jsv_is_callable
+#define js_to_bool(pCtx, value) jsv_to_bool(value)
+
 typedef enum {
     CT_NORMAL = 0,
     CT_BREAK,
@@ -229,8 +239,47 @@ static void debug_push(JSCtx *pCtx, JSDebugFrameState *pDebug, JSScope *pScope, 
     pCtx->pDebugFrame = pDebug;
 }
 
-static JSVal eval_expr(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame);
+static JSVal eval_expr_slow(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame);
 static JSCompletion exec_stmt(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame);
+
+/* Number literals and identifiers are most of what an expression is made of.
+ * Under the conditions the evaluator would evaluate them at all - nesting
+ * budget left, a node, no pending exception - the common ones are answered at
+ * the call site, without a call or the shared type dispatch; the nesting
+ * counter would only go up and down. An identifier qualifies while the
+ * current record is the untouched layout of its function (see
+ * scope_find_node): either the layout binds it, or it does not and the
+ * function is not nested, which leaves the global object, read through the
+ * per-spelling cache. Everything else, including every miss, is
+ * eval_expr_slow. */
+JS_FORCEINLINE JSVal eval_expr(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
+{
+    if (pNode && (pCtx->nEvalDepth < pCtx->nMaxEvalDepth) && !pCtx->bException) {
+        if (pNode->type == N_NUM) {
+            return js_num(pNode->nNum);
+        }
+
+        if (pNode->type == N_IDENT) {
+            JSScope *pScope = pFrame->pScope;
+
+            if (pScope && pNode->pLayout && (pScope->pVars->pLayout == pNode->pLayout)) {
+                if (pNode->nSlot >= 0) {
+                    return js_dup(pScope->pVars->props.pEntries[pNode->nSlot].value);
+                }
+
+                if (!pScope->pParent) {
+                    JSGlobalCacheEntry *pCache = &pCtx->globalCache[JS_GLOBAL_CACHE_SLOT(pNode->pStr)];
+
+                    if (pCache->pName == pNode->pStr && pCache->nEpoch == pCtx->nGlobalEpoch) {
+                        return js_dup(pCtx->pGlobal->props.pEntries[pCache->nIndex].value);
+                    }
+                }
+            }
+        }
+    }
+
+    return eval_expr_slow(pCtx, pNode, pFrame);
+}
 static void hoist_declarations(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, int bTopLevel);
 static void hoist_prepared(JSCtx *pCtx, JSHoistPlan *pPlan, JSNode *pBody, JSFrame *pFrame);
 
@@ -339,31 +388,141 @@ static void scope_set(JSCtx *pCtx, JSScope *pScope, const char *pName, size_t nN
     jsobj_put(pCtx, pHolder, pName, nNameSize, value);
 }
 
-static JSVal scope_get_node(JSCtx *pCtx, JSScope *pScope, JSNode *pNode, int *pbFound)
+/* The binding an N_IDENT / N_VARDECL node names, as scope_find_prop finds it.
+ * While the innermost record is still the untouched layout of the function
+ * the node belongs to, the layout answers for that record: either the entry
+ * at the node's slot or, for a name the function does not bind, nothing, and
+ * the walk continues with the parent. A catch scope, a record built by the
+ * incremental call sequence or one that was declared into has no layout tag
+ * and takes the ordinary hashed walk. */
+static JSProp *scope_find_node(JSCtx *pCtx, JSScope *pScope, JSNode *pNode, JSObj **ppHolder)
 {
     size_t nNameSize = 0;
     uint32_t nHash = 0;
 
+    if (pScope && pNode->pLayout && (pScope->pVars->pLayout == pNode->pLayout)) {
+        if (pNode->nSlot >= 0) {
+            *ppHolder = pScope->pVars;
+
+            return &pScope->pVars->props.pEntries[pNode->nSlot];
+        }
+
+        pScope = pScope->pParent;
+    }
+
     node_key(pNode, &nNameSize, &nHash);
 
-    return scope_get(pCtx, pScope, pNode->pStr, nNameSize, nHash, pbFound);
+    /* scope_find_prop, with the global object's entry remembered per spelling. */
+    while (pScope) {
+        JSProp *pProp = jsprops_find_hashed(&pScope->pVars->props, pNode->pStr, nNameSize, nHash);
+
+        if (pProp) {
+            *ppHolder = pScope->pVars;
+
+            return pProp;
+        }
+
+        pScope = pScope->pParent;
+    }
+
+    {
+        const char *pName = pNode->pStr;
+        JSPropMap *pMap = &pCtx->pGlobal->props;
+        JSGlobalCacheEntry *pCache = &pCtx->globalCache[JS_GLOBAL_CACHE_SLOT(pName)];
+        JSProp *pProp;
+
+        if (pCache->pName == pName && pCache->nEpoch == pCtx->nGlobalEpoch) {
+            *ppHolder = pCtx->pGlobal;
+
+            return &pMap->pEntries[pCache->nIndex];
+        }
+
+        pProp = jsprops_find_hashed(pMap, pName, nNameSize, nHash);
+
+        if (pProp) {
+            pCache->pName = pName;
+            pCache->nEpoch = pCtx->nGlobalEpoch;
+            pCache->nIndex = (uint32_t)(pProp - pMap->pEntries);
+            *ppHolder = pCtx->pGlobal;
+
+            return pProp;
+        }
+    }
+
+    *ppHolder = NULL;
+
+    return NULL;
+}
+
+static JSVal scope_get_node(JSCtx *pCtx, JSScope *pScope, JSNode *pNode, int *pbFound)
+{
+    JSObj *pHolder = NULL;
+    JSProp *pProp = scope_find_node(pCtx, pScope, pNode, &pHolder);
+
+    if (pProp == NULL) {
+        *pbFound = 0;
+
+        return js_undefined();
+    }
+
+    *pbFound = 1;
+
+    /* See scope_get. */
+    if ((pHolder->cls == JCLASS_ARRAY) || (pHolder->cls == JCLASS_STRING)) {
+        return jsobj_get_own(pCtx, pHolder, pNode->pStr, pNode->nStrSize, NULL);
+    }
+
+    return js_dup(pProp->value);
 }
 
 static void scope_set_node(JSCtx *pCtx, JSScope *pScope, JSNode *pNode, JSVal value)
 {
-    size_t nNameSize = 0;
-    uint32_t nHash = 0;
+    JSObj *pHolder = NULL;
+    JSProp *pProp = scope_find_node(pCtx, pScope, pNode, &pHolder);
 
-    node_key(pNode, &nNameSize, &nHash);
+    /* See scope_set. */
+    if (pHolder == NULL) {
+        pHolder = pCtx->pGlobal;
+    } else if (pHolder->cls != JCLASS_ARRAY) {
+        jsprop_store(pCtx, pProp, value);
 
-    scope_set(pCtx, pScope, pNode->pStr, nNameSize, nHash, value);
+        return;
+    }
+
+    jsobj_put(pCtx, pHolder, pNode->pStr, pNode->nStrSize, value);
 }
 
 static void scope_declare(JSCtx *pCtx, JSScope *pScope, const char *pName, JSVal value)
 {
     JSObj *pVars = pScope ? pScope->pVars : pCtx->pGlobal;
 
+    /* A record that is declared into is no longer known to be its layout. */
+    pVars->pLayout = NULL;
     jsobj_put(pCtx, pVars, pName, xx_rt_strlen(pName), value);
+}
+
+/* scope_declare for a name spelled by an AST node (N_IDENT parameter,
+ * N_VARDECL, N_FUNCTION). A scope record is a plain property map, so the
+ * binding is the map entry itself; it borrows the node's spelling and hash
+ * instead of copying and rehashing them on every call. Programs are pinned
+ * for the lifetime of the context, so the spelling outlives the record. */
+static void scope_declare_key(JSCtx *pCtx, JSScope *pScope, const char *pName, size_t nNameSize, uint32_t nHash, JSVal value)
+{
+    if (pScope && pScope->pVars->cls == JCLASS_SCOPE) {
+        pScope->pVars->pLayout = NULL;
+        jsprop_store(pCtx, jsprops_put_borrowed_hashed(pCtx, &pScope->pVars->props, pName, nNameSize, nHash), value);
+    } else {
+        jsobj_put_hashed(pCtx, pScope ? pScope->pVars : pCtx->pGlobal, pName, nNameSize, nHash, value);
+    }
+}
+
+static void scope_declare_node(JSCtx *pCtx, JSScope *pScope, JSNode *pNode, JSVal value)
+{
+    size_t nNameSize = 0;
+    uint32_t nHash = 0;
+
+    node_key(pNode, &nNameSize, &nHash);
+    scope_declare_key(pCtx, pScope, pNode->pStr, nNameSize, nHash, value);
 }
 
 /* ----------------------------------------------------- property helpers  */
@@ -378,7 +537,29 @@ static JSObj *proto_for_primitive(JSCtx *pCtx, JSVal value)
     }
 }
 
+static JSVal get_property_slow(JSCtx *pCtx, JSVal base, const char *pKey, size_t nKeySize, const uint32_t *pnHash);
+
 static JSVal get_property(JSCtx *pCtx, JSVal base, const char *pKey, size_t nKeySize)
+{
+    return get_property_slow(pCtx, base, pKey, nKeySize, NULL);
+}
+
+/* obj.name with the name's size and hash cached on the N_MEMBER node. */
+static JSVal get_member(JSCtx *pCtx, JSVal base, JSNode *pNode)
+{
+    size_t nKeySize = 0;
+    uint32_t nHash = 0;
+
+    node_key(pNode, &nKeySize, &nHash);
+
+    if (base.tag == JT_OBJ) {
+        return jsobj_get_hashed(pCtx, base.u.o, pNode->pStr, nKeySize, nHash);
+    }
+
+    return get_property_slow(pCtx, base, pNode->pStr, nKeySize, &nHash);
+}
+
+static JSVal get_property_slow(JSCtx *pCtx, JSVal base, const char *pKey, size_t nKeySize, const uint32_t *pnHash)
 {
     if ((base.tag == JT_UNDEF) || (base.tag == JT_NULL)) {
         char sKey[128];
@@ -390,7 +571,7 @@ static JSVal get_property(JSCtx *pCtx, JSVal base, const char *pKey, size_t nKey
     }
 
     if (base.tag == JT_STR) {
-        if ((nKeySize == 6) && (xx_rt_memcmp(pKey, "length", 6) == 0)) {
+        if ((nKeySize == 6) && jskey_equal(pKey, "length", 6)) {
             return js_num((double)base.u.s->nSize);
         }
 
@@ -405,6 +586,10 @@ static JSVal get_property(JSCtx *pCtx, JSVal base, const char *pKey, size_t nKey
                 return js_undefined();
             }
         }
+    }
+
+    if (pnHash) {
+        return jsobj_get_hashed(pCtx, (base.tag == JT_OBJ) ? base.u.o : proto_for_primitive(pCtx, base), pKey, nKeySize, *pnHash);
     }
 
     if (base.tag == JT_OBJ) {
@@ -422,6 +607,20 @@ static void set_property(JSCtx *pCtx, JSVal base, const char *pKey, size_t nKeyS
     }
 
     jsobj_put(pCtx, base.u.o, pKey, nKeySize, value);
+}
+
+static void set_member(JSCtx *pCtx, JSVal base, JSNode *pNode, JSVal value)
+{
+    size_t nKeySize = 0;
+    uint32_t nHash = 0;
+
+    if (base.tag != JT_OBJ) {
+        js_release(pCtx, value);
+        return;
+    }
+
+    node_key(pNode, &nKeySize, &nHash);
+    jsobj_put_borrowed_hashed(pCtx, base.u.o, pNode->pStr, nKeySize, nHash, value);
 }
 
 /* Converts an arbitrary value into a property key string. Numeric keys -
@@ -475,7 +674,7 @@ static void key_release(char *pKey, const char *pScratch, JSVal value)
 /* js_get_index includes prototype fallback and ordinary object properties.
  * Stay inside the exact-integer decimal range, where ToString(number) and
  * the integer-key spelling are identical (including negative zero). */
-static JSVal get_indexed_property(JSCtx *pCtx, JSVal base, JSVal key)
+static JS_NOINLINE JSVal get_indexed_property(JSCtx *pCtx, JSVal base, JSVal key)
 {
     char sScratch[KEY_SCRATCH_SIZE];
     size_t nKeySize = 0;
@@ -489,6 +688,27 @@ static JSVal get_indexed_property(JSCtx *pCtx, JSVal base, JSVal key)
     return result;
 }
 
+/* base[key] = value. An integer key in the array-index range spells the same
+ * decimal key either way, and js_set_index stores under that key exactly as
+ * jsobj_put does (dense slot, uint32 element or named entry); it only skips
+ * rendering the key when a dense slot or an element takes the value. */
+static JS_NOINLINE void set_indexed_property(JSCtx *pCtx, JSVal base, JSVal key, JSVal value)
+{
+    char sScratch[KEY_SCRATCH_SIZE];
+    size_t nKeySize = 0;
+    char *pKey;
+
+    if (base.tag == JT_OBJ && key.tag == JT_NUM && key.u.n >= 0 && key.u.n <= 2147483647.0 && (double)(int64_t)key.u.n == key.u.n) {
+        js_set_index(pCtx, base, (int64_t)key.u.n, value);
+
+        return;
+    }
+
+    pKey = key_from_value(pCtx, key, &nKeySize, sScratch);
+    set_property(pCtx, base, pKey, nKeySize, value);
+    key_release(pKey, sScratch, key);
+}
+
 /* Most calls in signature scripts have only a few arguments. Keep their
  * temporary argument vectors on the stack; values still have their usual
  * references and the heap path remains available for larger calls. */
@@ -496,7 +716,7 @@ static JSVal get_indexed_property(JSCtx *pCtx, JSVal base, JSVal key)
 
 /* --------------------------------------------------------------- calling  */
 
-static JSVal make_function(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
+static JS_NOINLINE JSVal make_function(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
 {
     JSObj *pFn = jsobj_new(pCtx, JCLASS_FUNCTION, pCtx->pFunctionProto);
     JSVal prototype = js_new_object(pCtx);
@@ -593,13 +813,32 @@ JSVal js_call_function(JSCtx *pCtx, JSObj *pFn, JSVal thisVal, int nArgc, JSVal 
     }
 
     {
-        JSScope *pScope = jsscope_new(pCtx, pFn->pScope);
+        JSNode *pFnNode = pFn->pFnNode;
+        const JSScopeLayout *pLayout = pFnNode->pLayout;
+        int bSelfName = pFn->pFnName && pFn->pFnName[0] && (pFnNode->nNum != 0);
+        JSScope *pScope;
         JSFrame frame;
         JSDebugFrameState debug;
         JSNode *pParams = pFn->pFnNode->a;
         size_t i = 0;
         JSVal globalThis = js_undefined();
         JSCompletion completion;
+
+        /* The layout stands for the whole sequence below only when that
+         * sequence would bind exactly its names: the function object still
+         * carries the node's own name, and the nesting budget accepts every
+         * hoist step (hoist_prepared skips or rejects steps otherwise). */
+        if (pLayout) {
+            if (bSelfName != (pLayout->nSelfSlot >= 0) || (bSelfName && pFn->pFnName != pFnNode->pStr)) {
+                pLayout = NULL;
+            } else if (pFnNode->bNeedsHoist) {
+                unsigned nBudget = pCtx->nEvalDepth < pCtx->nMaxEvalDepth ? (unsigned)(pCtx->nMaxEvalDepth - pCtx->nEvalDepth) : 0;
+
+                if (pLayout->nMaxDepth >= nBudget) pLayout = NULL;
+            }
+        }
+
+        pScope = pLayout ? jsscope_new_layout(pCtx, pFn->pScope, pLayout) : jsscope_new(pCtx, pFn->pScope);
 
         frame.pScope = pScope;
         frame.thisVal = thisVal;
@@ -615,32 +854,70 @@ JSVal js_call_function(JSCtx *pCtx, JSObj *pFn, JSVal thisVal, int nArgc, JSVal 
         frame.pDebug = &debug;
         debug_push(pCtx, &debug, pScope, pFn, frame.thisVal, pFn->pFnNode);
 
-        /* Identifier references to arguments/eval, including nested
-         * closures, conservatively keep this activation's arguments. */
-        if (pFn->pFnNode->bNeedsArguments) {
-            JSVal arguments = js_new_array(pCtx);
+        if (pLayout) {
+            /* Same values in the same order as the sequence below; every
+             * binding already has its entry. */
+            JSProp *pEntries = pScope->pVars->props.pEntries;
 
-            for (i = 0; i < (size_t)nArgc; i++) {
-                js_set_index(pCtx, arguments, (int64_t)i, js_dup(pArgv[i]));
+            if (pLayout->nArgumentsSlot >= 0) {
+                JSVal arguments = js_new_array(pCtx);
+
+                for (i = 0; i < (size_t)nArgc; i++) {
+                    js_set_index(pCtx, arguments, (int64_t)i, js_dup(pArgv[i]));
+                }
+
+                jsprop_store(pCtx, &pEntries[pLayout->nArgumentsSlot], arguments);
             }
 
-            scope_declare(pCtx, pScope, "arguments", arguments);
-        }
+            if (pLayout->nSelfSlot >= 0) {
+                jsprop_store(pCtx, &pEntries[pLayout->nSelfSlot], jsval_obj(jsobj_ref(pFn)));
+            }
 
-        /* Named function expressions can refer to themselves; a parameter
-         * of the same name shadows that binding, so it is declared first. */
-        if (pFn->pFnName && pFn->pFnName[0] && (pFn->pFnNode->nNum != 0)) {
-            scope_declare(pCtx, pScope, pFn->pFnName, jsval_obj(jsobj_ref(pFn)));
-        }
+            for (i = 0; i < pParams->nList; i++) {
+                jsprop_store(pCtx, &pEntries[pLayout->pParamSlots[i]], ((int)i < nArgc) ? js_dup(pArgv[i]) : js_undefined());
+            }
 
-        for (i = 0; i < pParams->nList; i++) {
-            JSVal value = ((int)i < nArgc) ? js_dup(pArgv[i]) : js_undefined();
+            if (pFnNode->bNeedsHoist) {
+                JSHoistPlan *pPlan = pFnNode->pHoistPlan;
 
-            scope_declare(pCtx, pScope, pParams->ppList[i]->pStr, value);
-        }
+                for (i = 0; i < pPlan->nSteps; i++) {
+                    if (pLayout->pStepSlots[i] >= 0) {
+                        jsprop_store(pCtx, &pEntries[pLayout->pStepSlots[i]], make_function(pCtx, pPlan->steps[i].pNode, &frame));
+                    }
+                }
+            }
+        } else {
+            /* Identifier references to arguments/eval, including nested
+             * closures, conservatively keep this activation's arguments. */
+            if (pFn->pFnNode->bNeedsArguments) {
+                JSVal arguments = js_new_array(pCtx);
 
-        if (pFn->pFnNode->bNeedsHoist) {
-            hoist_prepared(pCtx, pFn->pFnNode->pHoistPlan, pFn->pFnNode->b, &frame);
+                for (i = 0; i < (size_t)nArgc; i++) {
+                    js_set_index(pCtx, arguments, (int64_t)i, js_dup(pArgv[i]));
+                }
+
+                scope_declare(pCtx, pScope, "arguments", arguments);
+            }
+
+            /* Named function expressions can refer to themselves; a parameter
+             * of the same name shadows that binding, so it is declared first. */
+            if (pFn->pFnName && pFn->pFnName[0] && (pFn->pFnNode->nNum != 0)) {
+                if (pFn->bBorrowedFnName && pFn->pFnName == pFn->pFnNode->pStr) {
+                    scope_declare_node(pCtx, pScope, pFn->pFnNode, jsval_obj(jsobj_ref(pFn)));
+                } else {
+                    scope_declare(pCtx, pScope, pFn->pFnName, jsval_obj(jsobj_ref(pFn)));
+                }
+            }
+
+            for (i = 0; i < pParams->nList; i++) {
+                JSVal value = ((int)i < nArgc) ? js_dup(pArgv[i]) : js_undefined();
+
+                scope_declare_node(pCtx, pScope, pParams->ppList[i], value);
+            }
+
+            if (pFn->pFnNode->bNeedsHoist) {
+                hoist_prepared(pCtx, pFn->pFnNode->pHoistPlan, pFn->pFnNode->b, &frame);
+            }
         }
 
         completion = exec_stmt(pCtx, pFn->pFnNode->b, &frame);
@@ -736,11 +1013,11 @@ static void hoist_prepared(JSCtx *pCtx, JSHoistPlan *pPlan, JSNode *pBody, JSFra
          * depth error, but omits bindings inside the rejected subtree. */
         if (!pNode || pStep->nDepth >= nBudget) continue;
         if (pNode->type == N_FUNCTION) {
-            scope_declare(pCtx, pFrame->pScope, pNode->pStr, make_function(pCtx, pNode, pFrame));
+            scope_declare_node(pCtx, pFrame->pScope, pNode, make_function(pCtx, pNode, pFrame));
         } else {
             JSObj *pVars = pFrame->pScope ? pFrame->pScope->pVars : pCtx->pGlobal;
             if (!jsprops_find_hashed(&pVars->props, pNode->pStr, pNode->nStrSize, pNode->nStrHash)) {
-                scope_declare(pCtx, pFrame->pScope, pNode->pStr, js_undefined());
+                scope_declare_node(pCtx, pFrame->pScope, pNode, js_undefined());
             }
         }
     }
@@ -843,6 +1120,17 @@ static double js_mod(double a, double b)
         return xx_rt_nan();
     }
 
+    /* Two positive exact integers: the integer remainder is the (exact)
+     * value xx_rt_fmod subtracts its way down to. */
+    if ((a > 0) && (b > 0) && (a <= 9007199254740992.0) && (b <= 9007199254740992.0)) {
+        int64_t ia = (int64_t)a;
+        int64_t ib = (int64_t)b;
+
+        if (((double)ia == a) && ((double)ib == b)) {
+            return (double)(ia % ib);
+        }
+    }
+
     return xx_rt_fmod(a, b);
 }
 
@@ -901,7 +1189,7 @@ static int compare_values(JSCtx *pCtx, JSVal left, JSVal right, JSOp op, int *pb
     return bResult;
 }
 
-static JSVal apply_binary(JSCtx *pCtx, JSOp op, JSVal left, JSVal right)
+static JS_NOINLINE JSVal apply_binary(JSCtx *pCtx, JSOp op, JSVal left, JSVal right)
 {
     switch (op) {
         case OP_ADD: {
@@ -1010,6 +1298,71 @@ static JSVal apply_binary(JSCtx *pCtx, JSOp op, JSVal left, JSVal right)
     return js_undefined();
 }
 
+/* The results apply_binary computes for operand pairs that need no
+ * conversion call: two numbers, strict (in)equality of any pair, loose
+ * (in)equality of same-typed operands, and + on strings / exact integers.
+ * Returns 0 when apply_binary has to do it. Never throws. */
+JS_FORCEINLINE int binary_fast(JSCtx *pCtx, JSOp op, JSVal left, JSVal right, JSVal *pResult)
+{
+    if ((left.tag == JT_NUM) && (right.tag == JT_NUM)) {
+        double a = left.u.n;
+        double b = right.u.n;
+        int32_t ia = 0;
+        int32_t ib = 0;
+
+        switch (op) {
+            case OP_ADD: *pResult = js_num(a + b); return 1;
+            case OP_SUB: *pResult = js_num(a - b); return 1;
+            case OP_MUL: *pResult = js_num(a * b); return 1;
+            case OP_DIV: *pResult = js_num(a / b); return 1;
+            case OP_LT: *pResult = js_bool(a < b); return 1;
+            case OP_GT: *pResult = js_bool(a > b); return 1;
+            case OP_LE: *pResult = js_bool(a <= b); return 1;
+            case OP_GE: *pResult = js_bool(a >= b); return 1;
+            case OP_EQ:
+            case OP_SEQ: *pResult = js_bool(a == b); return 1;
+            case OP_NE:
+            case OP_SNE: *pResult = js_bool(!(a == b)); return 1;
+            case OP_AND:
+            case OP_OR:
+            case OP_XOR:
+            case OP_SHL:
+            case OP_SHR:
+            case OP_USHR:
+                if (!jsv_int32_fast(a, &ia) || !jsv_int32_fast(b, &ib)) return 0;
+
+                switch (op) {
+                    case OP_AND: *pResult = js_num((double)(ia & ib)); break;
+                    case OP_OR: *pResult = js_num((double)(ia | ib)); break;
+                    case OP_XOR: *pResult = js_num((double)(ia ^ ib)); break;
+                    case OP_SHL: *pResult = js_num((double)(int32_t)(((uint32_t)ia) << (ib & 31))); break;
+                    case OP_SHR: *pResult = js_num((double)(ia >> (ib & 31))); break;
+                    default: *pResult = js_num((double)(((uint32_t)ia) >> (ib & 31))); break;
+                }
+
+                return 1;
+            default: return 0;
+        }
+    }
+
+    switch (op) {
+        case OP_SEQ: *pResult = js_bool(jsv_strict_equals(left, right)); return 1;
+        case OP_SNE: *pResult = js_bool(!jsv_strict_equals(left, right)); return 1;
+        case OP_EQ:
+            if (left.tag != right.tag) return 0;
+            *pResult = js_bool(jsv_strict_equals(left, right));
+            return 1;
+        case OP_NE:
+            if (left.tag != right.tag) return 0;
+            *pResult = js_bool(!jsv_strict_equals(left, right));
+            return 1;
+        case OP_ADD:
+            if ((left.tag == JT_STR) || (right.tag == JT_STR)) return js_concat_primitive(pCtx, left, right, pResult);
+            return 0;
+        default: return 0;
+    }
+}
+
 static const char *typeof_string(JSVal value)
 {
     switch (value.tag) {
@@ -1038,7 +1391,7 @@ typedef struct {
 
 static int ref_owns_string(JSCtx *pCtx, JSRef *pRef, JSFrame *pFrame, JSVal current);
 
-static JSVal eval_call(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, JSRef *pAppendRef)
+static JS_NOINLINE JSVal eval_call(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, JSRef *pAppendRef)
 {
     JSVal thisVal = js_undefined();
     JSVal fn = js_undefined();
@@ -1055,7 +1408,7 @@ static JSVal eval_call(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, JSRef *pAppe
             return js_undefined();
         }
 
-        fn = get_property(pCtx, thisVal, pCallee->pStr, xx_rt_strlen(pCallee->pStr));
+        fn = get_member(pCtx, thisVal, pCallee);
     } else if (pCallee->type == N_INDEX) {
         JSVal key;
 
@@ -1145,7 +1498,7 @@ static JSVal eval_call(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, JSRef *pAppe
     return result;
 }
 
-static JSVal eval_new(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
+static JS_NOINLINE JSVal eval_new(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
 {
     JSVal fn = eval_expr(pCtx, pNode->a, pFrame);
     JSVal localArgs[JS_LOCAL_ARGS];
@@ -1240,7 +1593,7 @@ static JSVal ref_get(JSCtx *pCtx, JSRef *pRef, JSFrame *pFrame)
     }
 
     if (pTarget->type == N_MEMBER) {
-        return get_property(pCtx, pRef->base, pTarget->pStr, xx_rt_strlen(pTarget->pStr));
+        return get_member(pCtx, pRef->base, pTarget);
     }
 
     if (pTarget->type == N_INDEX) {
@@ -1257,14 +1610,9 @@ static void ref_put(JSCtx *pCtx, JSRef *pRef, JSFrame *pFrame, JSVal value)
     if (pTarget->type == N_IDENT) {
         scope_set_node(pCtx, pFrame->pScope, pTarget, value);
     } else if (pTarget->type == N_MEMBER) {
-        set_property(pCtx, pRef->base, pTarget->pStr, xx_rt_strlen(pTarget->pStr), value);
+        set_member(pCtx, pRef->base, pTarget, value);
     } else if (pTarget->type == N_INDEX) {
-        char sScratch[KEY_SCRATCH_SIZE];
-        size_t nKeySize = 0;
-        char *pKey = key_from_value(pCtx, pRef->key, &nKeySize, sScratch);
-
-        set_property(pCtx, pRef->base, pKey, nKeySize, value);
-        key_release(pKey, sScratch, pRef->key);
+        set_indexed_property(pCtx, pRef->base, pRef->key, value);
     } else {
         js_release(pCtx, value);
     }
@@ -1280,7 +1628,7 @@ static int ref_owns_string(JSCtx *pCtx, JSRef *pRef, JSFrame *pFrame, JSVal curr
     if (current.tag != JT_STR || current.u.s->nRef != 2) return 0;
     if (pTarget->type == N_IDENT) {
         JSObj *pHolder = NULL;
-        pProp = scope_find_prop(pCtx, pFrame->pScope, pTarget->pStr, pTarget->nStrSize, pTarget->nStrHash, &pHolder);
+        pProp = scope_find_node(pCtx, pFrame->pScope, pTarget, &pHolder);
     } else if (pRef->base.tag == JT_OBJ && pTarget->type == N_MEMBER) {
         pProp = jsprops_find(&pRef->base.u.o->props, pTarget->pStr, xx_rt_strlen(pTarget->pStr));
     } else if (pRef->base.tag == JT_OBJ && pTarget->type == N_INDEX && (pRef->key.tag == JT_STR || pRef->key.tag == JT_NUM)) {
@@ -1303,7 +1651,7 @@ static JSVal eval_add_assignment(JSCtx *pCtx, JSNode *pBinary, JSFrame *pFrame, 
     if (!pCtx->bException) right = eval_expr(pCtx, pBinary->b, pFrame);
     if (!pCtx->bException) {
         if (right.tag == JT_STR && ref_owns_string(pCtx, pRef, pFrame, left)) result = js_concat_str_assign(pCtx, left, right);
-        if (result.tag == JT_UNDEF) result = apply_binary(pCtx, OP_ADD, left, right);
+        if (result.tag == JT_UNDEF && !binary_fast(pCtx, OP_ADD, left, right, &result)) result = apply_binary(pCtx, OP_ADD, left, right);
     }
     js_release(pCtx, left);
     js_release(pCtx, right);
@@ -1326,6 +1674,22 @@ static JSVal eval_assign(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
     JSVal value = js_undefined();
     JSRef ref;
 
+    /* x = value: resolving an identifier target evaluates nothing, so this
+     * is the sequence below with the empty reference left out. */
+    if ((pNode->nAssignKind == JS_ASSIGN_PLAIN) && (pNode->op == OP_ASSIGN) && (pNode->a->type == N_IDENT)) {
+        value = eval_expr(pCtx, pNode->b, pFrame);
+
+        if (pCtx->bException) {
+            js_release(pCtx, value);
+
+            return js_undefined();
+        }
+
+        scope_set_node(pCtx, pFrame->pScope, pNode->a, js_dup(value));
+
+        return value;
+    }
+
     if (!ref_resolve(pCtx, pNode->a, pFrame, &ref)) {
         ref_free(pCtx, &ref);
 
@@ -1334,7 +1698,14 @@ static JSVal eval_assign(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
 
     if (pNode->op == OP_ASSIGN) {
         JSNode *pBinary = pNode->b;
-        if (pNode->a->type == N_IDENT && pBinary->type == N_BINARY && pBinary->op == OP_ADD && pBinary->a->type == N_IDENT &&
+        /* The prepared AST already knows which of the three forms this is. */
+        if (pNode->nAssignKind == JS_ASSIGN_PLAIN) {
+            value = eval_expr(pCtx, pBinary, pFrame);
+        } else if (pNode->nAssignKind == JS_ASSIGN_ADD) {
+            value = eval_add_assignment(pCtx, pBinary, pFrame, &ref);
+        } else if (pNode->nAssignKind == JS_ASSIGN_CONCAT) {
+            value = eval_concat_assignment(pCtx, pBinary, pFrame, &ref);
+        } else if (pNode->a->type == N_IDENT && pBinary->type == N_BINARY && pBinary->op == OP_ADD && pBinary->a->type == N_IDENT &&
             !xx_rt_strcmp(pNode->a->pStr, pBinary->a->pStr)) {
             value = eval_add_assignment(pCtx, pBinary, pFrame, &ref);
         } else if (pNode->a->type == N_IDENT && pBinary->type == N_CALL && pBinary->nList == 1 && pBinary->a->type == N_MEMBER &&
@@ -1370,7 +1741,7 @@ static JSVal eval_assign(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
             value = js_concat_str_assign(pCtx, current, operand);
         }
 
-        if (value.tag == JT_UNDEF) {
+        if (value.tag == JT_UNDEF && !binary_fast(pCtx, pNode->op, current, operand, &value)) {
             value = apply_binary(pCtx, pNode->op, current, operand);
         }
         js_release(pCtx, current);
@@ -1398,6 +1769,21 @@ static JSVal eval_update(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
     double nNew = 0;
     JSVal newValue;
 
+    /* A binding that holds a number: reading it converts nothing and owns
+     * nothing, and the store below would find this same entry again. */
+    if (pNode->a->type == N_IDENT) {
+        JSObj *pHolder = NULL;
+        JSProp *pProp = scope_find_node(pCtx, pFrame->pScope, pNode->a, &pHolder);
+
+        if (pProp && (pProp->value.tag == JT_NUM) && (pHolder->cls != JCLASS_ARRAY) && (pHolder->cls != JCLASS_STRING)) {
+            nOld = pProp->value.u.n;
+            nNew = (pNode->op == OP_INC) ? (nOld + 1) : (nOld - 1);
+            pProp->value = js_num(nNew);
+
+            return js_num((pNode->nNum != 0) ? nNew : nOld);
+        }
+    }
+
     if (!ref_resolve(pCtx, pNode->a, pFrame, &ref)) {
         ref_free(pCtx, &ref);
 
@@ -1413,7 +1799,7 @@ static JSVal eval_update(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
         return js_undefined();
     }
 
-    nOld = js_to_number(pCtx, current);
+    nOld = (current.tag == JT_NUM) ? current.u.n : js_to_number(pCtx, current);
     js_release(pCtx, current);
     nNew = (pNode->op == OP_INC) ? (nOld + 1) : (nOld - 1);
     newValue = js_num(nNew);
@@ -1430,7 +1816,7 @@ static JSVal eval_update(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
     return js_num(nOld);
 }
 
-static JSVal eval_unary(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
+static JS_NOINLINE JSVal eval_unary(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
 {
     if (pNode->op == OP_TYPEOF) {
         JSVal value;
@@ -1529,9 +1915,9 @@ static JSVal eval_unary(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
     }
 }
 
-static JSVal eval_expr_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame);
+JS_FORCEINLINE JSVal eval_expr_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame);
 
-static JSVal eval_expr(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
+static JSVal eval_expr_slow(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
 {
     JSVal result;
 
@@ -1546,7 +1932,7 @@ static JSVal eval_expr(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
     return result;
 }
 
-static JSVal eval_expr_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
+JS_FORCEINLINE JSVal eval_expr_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
 {
     if ((pNode == NULL) || pCtx->bException) {
         return js_undefined();
@@ -1616,7 +2002,11 @@ static JSVal eval_expr_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
                 }
 
                 /* The parser stores the key's byte count in nNum, as N_STR does. */
-                jsobj_put(pCtx, object.u.o, pProp->pStr, (size_t)pProp->nNum, value);
+                if (pProp->bStrKey) {
+                    jsobj_put_borrowed_hashed(pCtx, object.u.o, pProp->pStr, pProp->nStrSize, pProp->nStrHash, value);
+                } else {
+                    jsobj_put(pCtx, object.u.o, pProp->pStr, (size_t)pProp->nNum, value);
+                }
             }
 
             return object;
@@ -1634,7 +2024,7 @@ static JSVal eval_expr_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
                 return js_undefined();
             }
 
-            result = get_property(pCtx, base, pNode->pStr, xx_rt_strlen(pNode->pStr));
+            result = get_member(pCtx, base, pNode);
             js_release(pCtx, base);
 
             return result;
@@ -1693,7 +2083,9 @@ static JSVal eval_expr_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
                 return js_undefined();
             }
 
-            result = apply_binary(pCtx, pNode->op, left, right);
+            if (!binary_fast(pCtx, pNode->op, left, right, &result)) {
+                result = apply_binary(pCtx, pNode->op, left, right);
+            }
             js_release(pCtx, left);
             js_release(pCtx, right);
 
@@ -1814,7 +2206,7 @@ static JSCompletion exec_stmt(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame)
     return exec_stmt_labeled(pCtx, pNode, pFrame, NULL);
 }
 
-static JSCompletion exec_stmt_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, const char *pLabel);
+JS_FORCEINLINE JSCompletion exec_stmt_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, const char *pLabel);
 
 static JSCompletion exec_stmt_labeled(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, const char *pLabel)
 {
@@ -1837,7 +2229,244 @@ static JSCompletion exec_stmt_labeled(JSCtx *pCtx, JSNode *pNode, JSFrame *pFram
     return completion;
 }
 
-static JSCompletion exec_stmt_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, const char *pLabel)
+static JS_NOINLINE JSCompletion exec_forin(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, const char *pLabel)
+{
+    JSVal object = eval_expr(pCtx, pNode->b, pFrame);
+    JSVal keys;
+    JSNode *pVarDecl = NULL;
+    JSNode *pTarget = NULL;
+    int64_t i, nKeys;
+
+    if (pCtx->bException) {
+        js_release(pCtx, object);
+        return completion_normal();
+    }
+    if (pNode->a->type == N_VAR) {
+        pVarDecl = pNode->a->ppList[0];
+    } else if (pNode->a->type == N_EXPRSTMT) {
+        pTarget = pNode->a->a;
+    }
+
+    /* An owned snapshot preserves enumeration order while the body
+     * inserts/deletes properties or promotes a dense array to a map. */
+    keys = object.tag == JT_OBJ ? jsobj_keys(pCtx, object.u.o) : js_new_array(pCtx);
+    if (object.tag == JT_STR) {
+        size_t j;
+        for (j = 0; j < object.u.s->nSize; j++) {
+            char sBuf[32];
+            xx_rt_snprintf(sBuf, sizeof(sBuf), "%llu", (unsigned long long)j);
+            js_set_index(pCtx, keys, (int64_t)j, js_str(pCtx, sBuf));
+        }
+    }
+    nKeys = js_array_length(pCtx, keys);
+    for (i = 0; i < nKeys; i++) {
+        JSVal key = js_get_index(pCtx, keys, i);
+        JSCompletion body;
+        JSCompletion out;
+
+        if (i && !debug_checkpoint(pCtx, pNode, pFrame)) {
+            js_release(pCtx, key);
+            break;
+        }
+        if (pVarDecl) {
+            scope_set_node(pCtx, pFrame->pScope, pVarDecl, js_dup(key));
+        } else if (pTarget && pTarget->type == N_IDENT) {
+            scope_set_node(pCtx, pFrame->pScope, pTarget, js_dup(key));
+        } else if (pTarget && pTarget->type == N_MEMBER) {
+            JSVal base = eval_expr(pCtx, pTarget->a, pFrame);
+            set_property(pCtx, base, pTarget->pStr, xx_rt_strlen(pTarget->pStr), js_dup(key));
+            js_release(pCtx, base);
+        } else if (pTarget && pTarget->type == N_INDEX) {
+            /* for (a[i] in o): the computed target is re-evaluated per key. */
+            JSVal base = eval_expr(pCtx, pTarget->a, pFrame);
+            JSVal index = eval_expr(pCtx, pTarget->b, pFrame);
+            if (!pCtx->bException) {
+                char sScratch[KEY_SCRATCH_SIZE];
+                size_t nKeySize = 0;
+                char *pKey = key_from_value(pCtx, index, &nKeySize, sScratch);
+                set_property(pCtx, base, pKey, nKeySize, js_dup(key));
+                key_release(pKey, sScratch, index);
+            }
+            js_release(pCtx, index);
+            js_release(pCtx, base);
+        }
+        js_release(pCtx, key);
+        body = exec_stmt(pCtx, pNode->d, pFrame);
+        if (pCtx->bException) {
+            js_release(pCtx, body.value);
+            break;
+        }
+        if (loop_break(&body, pLabel, &out)) {
+            js_release(pCtx, keys);
+            js_release(pCtx, object);
+            return out;
+        }
+        js_release(pCtx, body.value);
+    }
+    js_release(pCtx, keys);
+    js_release(pCtx, object);
+    return completion_normal();
+}
+
+static JS_NOINLINE JSCompletion exec_try(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, const char *pLabel)
+{
+    (void)pLabel;
+    JSCompletion result = exec_stmt(pCtx, pNode->a, pFrame);
+
+    if (pCtx->bException && !pCtx->bDebugAborted && pNode->b) {
+        JSVal exception = pCtx->exception;
+        JSScope *pCatchScope = jsscope_new(pCtx, pFrame->pScope);
+        JSFrame catchFrame = *pFrame;
+
+        pCtx->bException = 0;
+        pCtx->exception = js_undefined();
+        xx_js_free(pCtx->pErrorText);
+        pCtx->pErrorText = NULL;
+
+        catchFrame.pScope = pCatchScope;
+
+        if (pNode->pStr) {
+            scope_declare(pCtx, pCatchScope, pNode->pStr, exception);
+        } else {
+            js_release(pCtx, exception);
+        }
+
+        js_release(pCtx, result.value);
+        result = exec_stmt(pCtx, pNode->b, &catchFrame);
+        jsscope_unref(pCtx, pCatchScope);
+    }
+
+    if (pNode->c && !pCtx->bDebugAborted) {
+        int bSavedException = pCtx->bException;
+        JSVal savedValue = pCtx->exception;
+        char *pSavedText = pCtx->pErrorText;
+        JSCompletion finallyResult;
+
+        pCtx->bException = 0;
+        pCtx->exception = js_undefined();
+        pCtx->pErrorText = NULL;
+
+        finallyResult = exec_stmt(pCtx, pNode->c, pFrame);
+
+        if (pCtx->bException) {
+            /* An exception in `finally` replaces the pending one. */
+            if (bSavedException) {
+                js_release(pCtx, savedValue);
+                xx_js_free(pSavedText);
+            }
+
+            js_release(pCtx, result.value);
+            js_release(pCtx, finallyResult.value);
+
+            return completion_normal();
+        }
+
+        if (finallyResult.type != CT_NORMAL) {
+            /* An abrupt completion in `finally` replaces the try
+               completion, discarding the pending exception. */
+            if (bSavedException) {
+                js_release(pCtx, savedValue);
+                xx_js_free(pSavedText);
+            }
+
+            js_release(pCtx, result.value);
+
+            return finallyResult;
+        }
+
+        pCtx->bException = bSavedException;
+        pCtx->exception = savedValue;
+        pCtx->pErrorText = pSavedText;
+
+        js_release(pCtx, finallyResult.value);
+    }
+
+    return result;
+}
+
+static JS_NOINLINE JSCompletion exec_switch(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, const char *pLabel)
+{
+    (void)pLabel;
+    JSVal discriminant = eval_expr(pCtx, pNode->a, pFrame);
+    size_t i = 0;
+    size_t nStart = (size_t)-1;
+    size_t nDefault = (size_t)-1;
+
+    if (pCtx->bException) {
+        js_release(pCtx, discriminant);
+
+        return completion_normal();
+    }
+
+    for (i = 0; i < pNode->nList; i++) {
+        JSNode *pCase = pNode->ppList[i];
+
+        if (pCase->a == NULL) {
+            nDefault = i;
+            continue;
+        }
+
+        {
+            JSVal test = eval_expr(pCtx, pCase->a, pFrame);
+            int bMatch = 0;
+
+            if (pCtx->bException) {
+                js_release(pCtx, test);
+                js_release(pCtx, discriminant);
+
+                return completion_normal();
+            }
+
+            bMatch = jsv_strict_equals(discriminant, test);
+            js_release(pCtx, test);
+
+            if (bMatch) {
+                nStart = i;
+                break;
+            }
+        }
+    }
+
+    js_release(pCtx, discriminant);
+
+    if (nStart == (size_t)-1) {
+        nStart = nDefault;
+    }
+
+    if (nStart == (size_t)-1) {
+        return completion_normal();
+    }
+
+    for (i = nStart; i < pNode->nList; i++) {
+        JSCompletion body = exec_block_list(pCtx, pNode->ppList[i], pFrame);
+
+        if (pCtx->bException) {
+            js_release(pCtx, body.value);
+
+            return completion_normal();
+        }
+
+        if (body.type == CT_BREAK) {
+            if (body.pLabel == NULL) {
+                js_release(pCtx, body.value);
+
+                return completion_normal();
+            }
+
+            return body;
+        }
+
+        if (body.type != CT_NORMAL) {
+            return body;
+        }
+
+        js_release(pCtx, body.value);
+    }
+
+    return completion_normal();
+}
+
+JS_FORCEINLINE JSCompletion exec_stmt_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, const char *pLabel)
 {
     JSCompletion completion = completion_normal();
 
@@ -1882,9 +2511,13 @@ static JSCompletion exec_stmt_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, 
                     scope_set_node(pCtx, pFrame->pScope, pDecl, value);
                 } else {
                     JSObj *pVars = pFrame->pScope ? pFrame->pScope->pVars : pCtx->pGlobal;
+                    size_t nNameSize = 0;
+                    uint32_t nHash = 0;
 
-                    if (jsprops_find(&pVars->props, pDecl->pStr, xx_rt_strlen(pDecl->pStr)) == NULL) {
-                        scope_declare(pCtx, pFrame->pScope, pDecl->pStr, js_undefined());
+                    node_key(pDecl, &nNameSize, &nHash);
+
+                    if (jsprops_find_hashed(&pVars->props, pDecl->pStr, nNameSize, nHash) == NULL) {
+                        scope_declare_key(pCtx, pFrame->pScope, pDecl->pStr, nNameSize, nHash, js_undefined());
                     }
                 }
             }
@@ -2068,83 +2701,7 @@ static JSCompletion exec_stmt_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, 
             return completion_normal();
         }
 
-        case N_FORIN: {
-            JSVal object = eval_expr(pCtx, pNode->b, pFrame);
-            JSVal keys;
-            JSNode *pVarDecl = NULL;
-            JSNode *pTarget = NULL;
-            int64_t i, nKeys;
-
-            if (pCtx->bException) {
-                js_release(pCtx, object);
-                return completion_normal();
-            }
-            if (pNode->a->type == N_VAR) {
-                pVarDecl = pNode->a->ppList[0];
-            } else if (pNode->a->type == N_EXPRSTMT) {
-                pTarget = pNode->a->a;
-            }
-
-            /* An owned snapshot preserves enumeration order while the body
-             * inserts/deletes properties or promotes a dense array to a map. */
-            keys = object.tag == JT_OBJ ? jsobj_keys(pCtx, object.u.o) : js_new_array(pCtx);
-            if (object.tag == JT_STR) {
-                size_t j;
-                for (j = 0; j < object.u.s->nSize; j++) {
-                    char sBuf[32];
-                    xx_rt_snprintf(sBuf, sizeof(sBuf), "%llu", (unsigned long long)j);
-                    js_set_index(pCtx, keys, (int64_t)j, js_str(pCtx, sBuf));
-                }
-            }
-            nKeys = js_array_length(pCtx, keys);
-            for (i = 0; i < nKeys; i++) {
-                JSVal key = js_get_index(pCtx, keys, i);
-                JSCompletion body;
-                JSCompletion out;
-
-                if (i && !debug_checkpoint(pCtx, pNode, pFrame)) {
-                    js_release(pCtx, key);
-                    break;
-                }
-                if (pVarDecl) {
-                    scope_set_node(pCtx, pFrame->pScope, pVarDecl, js_dup(key));
-                } else if (pTarget && pTarget->type == N_IDENT) {
-                    scope_set_node(pCtx, pFrame->pScope, pTarget, js_dup(key));
-                } else if (pTarget && pTarget->type == N_MEMBER) {
-                    JSVal base = eval_expr(pCtx, pTarget->a, pFrame);
-                    set_property(pCtx, base, pTarget->pStr, xx_rt_strlen(pTarget->pStr), js_dup(key));
-                    js_release(pCtx, base);
-                } else if (pTarget && pTarget->type == N_INDEX) {
-                    /* for (a[i] in o): the computed target is re-evaluated per key. */
-                    JSVal base = eval_expr(pCtx, pTarget->a, pFrame);
-                    JSVal index = eval_expr(pCtx, pTarget->b, pFrame);
-                    if (!pCtx->bException) {
-                        char sScratch[KEY_SCRATCH_SIZE];
-                        size_t nKeySize = 0;
-                        char *pKey = key_from_value(pCtx, index, &nKeySize, sScratch);
-                        set_property(pCtx, base, pKey, nKeySize, js_dup(key));
-                        key_release(pKey, sScratch, index);
-                    }
-                    js_release(pCtx, index);
-                    js_release(pCtx, base);
-                }
-                js_release(pCtx, key);
-                body = exec_stmt(pCtx, pNode->d, pFrame);
-                if (pCtx->bException) {
-                    js_release(pCtx, body.value);
-                    break;
-                }
-                if (loop_break(&body, pLabel, &out)) {
-                    js_release(pCtx, keys);
-                    js_release(pCtx, object);
-                    return out;
-                }
-                js_release(pCtx, body.value);
-            }
-            js_release(pCtx, keys);
-            js_release(pCtx, object);
-            return completion_normal();
-        }
+        case N_FORIN: return exec_forin(pCtx, pNode, pFrame, pLabel);
 
         case N_RETURN: {
             JSCompletion result;
@@ -2188,159 +2745,9 @@ static JSCompletion exec_stmt_node(JSCtx *pCtx, JSNode *pNode, JSFrame *pFrame, 
             return completion_normal();
         }
 
-        case N_TRY: {
-            JSCompletion result = exec_stmt(pCtx, pNode->a, pFrame);
+        case N_TRY: return exec_try(pCtx, pNode, pFrame, pLabel);
 
-            if (pCtx->bException && !pCtx->bDebugAborted && pNode->b) {
-                JSVal exception = pCtx->exception;
-                JSScope *pCatchScope = jsscope_new(pCtx, pFrame->pScope);
-                JSFrame catchFrame = *pFrame;
-
-                pCtx->bException = 0;
-                pCtx->exception = js_undefined();
-                xx_js_free(pCtx->pErrorText);
-                pCtx->pErrorText = NULL;
-
-                catchFrame.pScope = pCatchScope;
-
-                if (pNode->pStr) {
-                    scope_declare(pCtx, pCatchScope, pNode->pStr, exception);
-                } else {
-                    js_release(pCtx, exception);
-                }
-
-                js_release(pCtx, result.value);
-                result = exec_stmt(pCtx, pNode->b, &catchFrame);
-                jsscope_unref(pCtx, pCatchScope);
-            }
-
-            if (pNode->c && !pCtx->bDebugAborted) {
-                int bSavedException = pCtx->bException;
-                JSVal savedValue = pCtx->exception;
-                char *pSavedText = pCtx->pErrorText;
-                JSCompletion finallyResult;
-
-                pCtx->bException = 0;
-                pCtx->exception = js_undefined();
-                pCtx->pErrorText = NULL;
-
-                finallyResult = exec_stmt(pCtx, pNode->c, pFrame);
-
-                if (pCtx->bException) {
-                    /* An exception in `finally` replaces the pending one. */
-                    if (bSavedException) {
-                        js_release(pCtx, savedValue);
-                        xx_js_free(pSavedText);
-                    }
-
-                    js_release(pCtx, result.value);
-                    js_release(pCtx, finallyResult.value);
-
-                    return completion_normal();
-                }
-
-                if (finallyResult.type != CT_NORMAL) {
-                    /* An abrupt completion in `finally` replaces the try
-                       completion, discarding the pending exception. */
-                    if (bSavedException) {
-                        js_release(pCtx, savedValue);
-                        xx_js_free(pSavedText);
-                    }
-
-                    js_release(pCtx, result.value);
-
-                    return finallyResult;
-                }
-
-                pCtx->bException = bSavedException;
-                pCtx->exception = savedValue;
-                pCtx->pErrorText = pSavedText;
-
-                js_release(pCtx, finallyResult.value);
-            }
-
-            return result;
-        }
-
-        case N_SWITCH: {
-            JSVal discriminant = eval_expr(pCtx, pNode->a, pFrame);
-            size_t i = 0;
-            size_t nStart = (size_t)-1;
-            size_t nDefault = (size_t)-1;
-
-            if (pCtx->bException) {
-                js_release(pCtx, discriminant);
-
-                return completion_normal();
-            }
-
-            for (i = 0; i < pNode->nList; i++) {
-                JSNode *pCase = pNode->ppList[i];
-
-                if (pCase->a == NULL) {
-                    nDefault = i;
-                    continue;
-                }
-
-                {
-                    JSVal test = eval_expr(pCtx, pCase->a, pFrame);
-                    int bMatch = 0;
-
-                    if (pCtx->bException) {
-                        js_release(pCtx, test);
-                        js_release(pCtx, discriminant);
-
-                        return completion_normal();
-                    }
-
-                    bMatch = js_strict_equals(pCtx, discriminant, test);
-                    js_release(pCtx, test);
-
-                    if (bMatch) {
-                        nStart = i;
-                        break;
-                    }
-                }
-            }
-
-            js_release(pCtx, discriminant);
-
-            if (nStart == (size_t)-1) {
-                nStart = nDefault;
-            }
-
-            if (nStart == (size_t)-1) {
-                return completion_normal();
-            }
-
-            for (i = nStart; i < pNode->nList; i++) {
-                JSCompletion body = exec_block_list(pCtx, pNode->ppList[i], pFrame);
-
-                if (pCtx->bException) {
-                    js_release(pCtx, body.value);
-
-                    return completion_normal();
-                }
-
-                if (body.type == CT_BREAK) {
-                    if (body.pLabel == NULL) {
-                        js_release(pCtx, body.value);
-
-                        return completion_normal();
-                    }
-
-                    return body;
-                }
-
-                if (body.type != CT_NORMAL) {
-                    return body;
-                }
-
-                js_release(pCtx, body.value);
-            }
-
-            return completion_normal();
-        }
+        case N_SWITCH: return exec_switch(pCtx, pNode, pFrame, pLabel);
 
         case N_LABELED: {
             JSCompletion body = exec_stmt_labeled(pCtx, pNode->a, pFrame, pNode->pStr);

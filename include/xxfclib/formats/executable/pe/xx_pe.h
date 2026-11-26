@@ -326,6 +326,9 @@ XXFC_API bool xx_pe_metadata_move_to_next(Abstractformat *self, xx_metadata_stat
 XXFC_API void xx_pe_free_metadata_reading(Abstractformat *self, xx_metadata_state *state);
 XXFC_API bool xx_pe_get_memory_map(Abstractformat *self, xx_memory_map_mode_t mode, xx_memory_map *output, xx_pd_struct *pd);
 
+/* XPE::getMode: the COFF machine (not the optional-header magic) selects the
+ * 32- or 64-bit optional-header layout. */
+XXFC_API bool xx_pe_machine_is_64(uint16_t machine);
 XXFC_API bool xx_pe_is_64(const xx_pe *pe);
 XXFC_API uint16_t xx_pe_get_machine(const xx_pe *pe);
 XXFC_API uint32_t xx_pe_get_entry_point_rva(const xx_pe *pe);

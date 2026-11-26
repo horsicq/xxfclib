@@ -38,6 +38,8 @@ typedef struct JSDebugFrameState JSDebugFrameState;
  * whose count drops to zero can unlink itself in constant time.           */
 struct JSStr {
     int32_t nRef;
+    uint8_t bInline;    /* pData points into this block (see jsstr_new) */
+    uint8_t nPoolClass; /* free list this header returns to */
     size_t nSize;
     size_t nCapacity;
     JSStr *pNextAll;
@@ -78,6 +80,9 @@ JSProp *jsprops_find(JSPropMap *pMap, const char *pKey, size_t nKeySize);
 /* Same lookup with a hash the caller already computed (prototype walks). */
 JSProp *jsprops_find_hashed(JSPropMap *pMap, const char *pKey, size_t nKeySize, uint32_t nHash);
 JSProp *jsprops_put(JSCtx *pCtx, JSPropMap *pMap, const char *pKey, size_t nKeySize);
+/* The key must outlive the map (an AST spelling: programs stay pinned for the
+ * lifetime of the context) and nHash must be xx_js_hash_str(pKey, nKeySize). */
+JSProp *jsprops_put_borrowed_hashed(JSCtx *pCtx, JSPropMap *pMap, const char *pKey, size_t nKeySize, uint32_t nHash);
 /* Stores value in an entry, taking its reference and releasing the old one. */
 void jsprop_store(JSCtx *pCtx, JSProp *pProp, JSVal value);
 int jsprops_del(JSCtx *pCtx, JSPropMap *pMap, const char *pKey);
@@ -101,6 +106,7 @@ typedef enum {
 
 typedef struct JSScope JSScope;
 typedef xx_regex JSRegExp;
+struct JSScopeLayout;
 
 struct JSObj {
     int32_t nRef;
@@ -132,6 +138,10 @@ struct JSObj {
     JSScope *pScope;
     char *pFnName;
 
+    /* scope record: the layout its entries were copied from, while they are
+     * still exactly that layout's bindings in order (see JSScopeLayout) */
+    const struct JSScopeLayout *pLayout;
+
     /* function (native) */
     JSNativeFn nativeFn;
     void *pUser;
@@ -162,6 +172,37 @@ struct JSScope {
 };
 
 /* ------------------------------------------------------------- context  */
+
+/* A hit needs the same spelling pointer and the current epoch. A spelling is
+ * the pStr of a node of a program pinned by the context, so the pointer
+ * identifies its bytes for the lifetime of the context. The epoch advances
+ * whenever an entry of the global object is deleted or entries move (map
+ * compaction); appending and overwriting keep every index valid. Misses are
+ * never recorded. */
+typedef struct {
+    const char *pName;
+    uint32_t nEpoch;
+    uint32_t nIndex;
+} JSGlobalCacheEntry;
+#define JS_GLOBAL_CACHE_SIZE 512u
+
+enum {
+    JS_POOL_OBJ = 0,
+    JS_POOL_SCOPE,
+    JS_POOL_STR0, /* header + JS_STR_INLINE0 + 1 bytes */
+    JS_POOL_STR1,
+    JS_POOL_STR2,
+    JS_POOL_STRHDR, /* header of a string with a separate buffer */
+    JS_POOL_ENTRIES, /* JS_PROPS_INITIAL JSProp */
+    JS_POOL_INDEX,   /* JS_PROPS_INITIAL_INDEX int32_t */
+    JS_POOL_COUNT
+};
+#define JS_POOL_LIMIT 256u
+#define JS_STR_INLINE0 15u
+#define JS_STR_INLINE1 47u
+#define JS_STR_INLINE2 111u
+#define JS_PROPS_INITIAL 8u
+#define JS_PROPS_INITIAL_INDEX 16u
 
 typedef struct {
     JSNode **ppNodes;
@@ -218,7 +259,22 @@ struct JSCtx {
 
     /* Cached empty string. */
     JSStr *pEmptyStr;
+
+    /* Recycled blocks of the hottest fixed sizes (activation records, small
+     * strings, initial property tables). Every block is an ordinary heap
+     * block: a free list only postpones its release, at most JS_POOL_LIMIT
+     * blocks per class, until the next allocation of that class or js_free. */
+    void *pPool[JS_POOL_COUNT];
+    uint32_t nPool[JS_POOL_COUNT];
+
+    /* Global bindings by AST spelling: the entry index a spelling resolved to
+     * on the global object, valid while nGlobalEpoch is unchanged (see
+     * JSGlobalCacheEntry). */
+    uint32_t nGlobalEpoch;
+    JSGlobalCacheEntry globalCache[JS_GLOBAL_CACHE_SIZE];
 };
+
+void jspool_release(JSCtx *pCtx);
 
 /* --------------------------------------------------------------- helpers  */
 
@@ -227,6 +283,8 @@ JSObj *jsobj_ref(JSObj *pObj);
 void jsobj_unref(JSCtx *pCtx, JSObj *pObj);
 
 JSScope *jsscope_new(JSCtx *pCtx, JSScope *pParent);
+/* A scope whose record starts as a copy of the layout's bindings. */
+JSScope *jsscope_new_layout(JSCtx *pCtx, JSScope *pParent, const struct JSScopeLayout *pLayout);
 JSScope *jsscope_ref(JSScope *pScope);
 void jsscope_unref(JSCtx *pCtx, JSScope *pScope);
 /* Completed interpreted frame release; may collect unreachable local cycles. */
@@ -240,6 +298,12 @@ JSVal jsobj_get_own(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize,
 /* Full lookup with prototype chain and special cases (length, indices...). */
 JSVal jsobj_get(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize);
 void jsobj_put(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, JSVal value);
+/* jsobj_get / jsobj_put with nHash == xx_js_hash_str(pKey, nKeySize) already known. */
+JSVal jsobj_get_hashed(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, uint32_t nHash);
+void jsobj_put_hashed(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, uint32_t nHash, JSVal value);
+/* Same, and a new entry borrows pKey, which must outlive the context's
+ * objects (an AST spelling; see jsprops_put_borrowed_hashed). */
+void jsobj_put_borrowed_hashed(JSCtx *pCtx, JSObj *pObj, const char *pKey, size_t nKeySize, uint32_t nHash, JSVal value);
 void jsobj_put_hidden(JSCtx *pCtx, JSObj *pObj, const char *pKey, JSVal value);
 /* The key must remain valid for the lifetime of the context. */
 void jsobj_put_hidden_static(JSCtx *pCtx, JSObj *pObj, const char *pKey, JSVal value);
@@ -260,6 +324,9 @@ int js_array_unshift_dense(JSCtx *pCtx, JSObj *pObj, int nArgc, JSVal *pArgv);
 double js_string_to_number(const char *pData, size_t nSize);
 int js_is_array_index(const char *pKey, size_t nKeySize, int64_t *pnIndex);
 JSVal js_concat_str(JSCtx *pCtx, JSVal left, JSVal right);
+/* js_concat_str for operands that need no conversion call: strings and
+ * exact safe integers. Returns 0 (and does nothing) for anything else. */
+int js_concat_primitive(JSCtx *pCtx, JSVal left, JSVal right, JSVal *pResult);
 JSVal js_concat_str_assign(JSCtx *pCtx, JSVal left, JSVal right);
 
 /* Equality / comparison used by the interpreter and by Array.sort. */
@@ -296,6 +363,150 @@ void js_debug_exception(JSCtx *pCtx);
 JSVal js_throw_value(JSCtx *pCtx, JSVal value);
 
 void js_prepare_program(JSNode *pProgram);
+
+/* ------------------------------------------------------- inline helpers  */
+
+#if defined(_MSC_VER)
+#define JS_NOINLINE __declspec(noinline)
+#define JS_FORCEINLINE static __forceinline
+#elif defined(__GNUC__) || defined(__clang__)
+#define JS_NOINLINE __attribute__((noinline))
+#define JS_FORCEINLINE static inline __attribute__((always_inline))
+#else
+#define JS_NOINLINE
+#define JS_FORCEINLINE static inline
+#endif
+
+#define JS_GLOBAL_CACHE_SLOT(pName) ((((uintptr_t)(pName) >> 4) ^ ((uintptr_t)(pName) >> 13)) & (JS_GLOBAL_CACHE_SIZE - 1))
+
+/* The value constructors and reference helpers of the public API, for the
+ * engine's own translation units: same results, no call. */
+static inline JSVal jsv_undefined(void)
+{
+    JSVal value;
+    value.tag = JT_UNDEF;
+    value.u.n = 0;
+    return value;
+}
+
+static inline JSVal jsv_null(void)
+{
+    JSVal value;
+    value.tag = JT_NULL;
+    value.u.n = 0;
+    return value;
+}
+
+static inline JSVal jsv_bool(int bValue)
+{
+    JSVal value;
+    value.tag = JT_BOOL;
+    value.u.n = 0;
+    value.u.b = bValue ? 1 : 0;
+    return value;
+}
+
+static inline JSVal jsv_num(double nValue)
+{
+    JSVal value;
+    value.tag = JT_NUM;
+    value.u.n = nValue;
+    return value;
+}
+
+static inline JSVal jsv_dup(JSVal value)
+{
+    if (value.tag == JT_STR) {
+        if (value.u.s) value.u.s->nRef++;
+    } else if (value.tag == JT_OBJ) {
+        if (value.u.o) value.u.o->nRef++;
+    }
+    return value;
+}
+
+/* Only the decrements that cannot free anything or reach jsobj_unref's
+ * constructor/prototype check (a function left with one reference) stay
+ * inline. */
+static inline void jsv_release(JSCtx *pCtx, JSVal value)
+{
+    if (value.tag == JT_STR) {
+        JSStr *pStr = value.u.s;
+        if (pStr && pStr->nRef > 1) pStr->nRef--;
+        else jsstr_unref(pCtx, pStr);
+    } else if (value.tag == JT_OBJ) {
+        JSObj *pObj = value.u.o;
+        if (pObj && (pObj->nRef > 2 || (pObj->nRef == 2 && pObj->cls != JCLASS_FUNCTION))) pObj->nRef--;
+        else jsobj_unref(pCtx, pObj);
+    }
+}
+
+static inline int jsv_to_bool(JSVal value)
+{
+    switch (value.tag) {
+        case JT_BOOL: return value.u.b;
+        case JT_NUM: return ((value.u.n != 0) && (!(value.u.n != value.u.n))) ? 1 : 0;
+        case JT_STR: return (value.u.s->nSize > 0) ? 1 : 0;
+        case JT_OBJ: return 1;
+        default: break;
+    }
+    return 0;
+}
+
+/* js_strict_equals. */
+static inline int jsv_strict_equals(JSVal left, JSVal right)
+{
+    if (left.tag != right.tag) return 0;
+    switch (left.tag) {
+        case JT_UNDEF:
+        case JT_NULL: return 1;
+        case JT_BOOL: return left.u.b == right.u.b;
+        case JT_NUM: return left.u.n == right.u.n;
+        case JT_STR: {
+            size_t nSize = left.u.s->nSize, i;
+            const char *pLeft = left.u.s->pData, *pRight = right.u.s->pData;
+            if (left.u.s == right.u.s) return 1;
+            if (nSize != right.u.s->nSize) return 0;
+            if (nSize >= 32) return xx_rt_memcmp(pLeft, pRight, nSize) == 0;
+            for (i = 0; i < nSize; i++) {
+                if (pLeft[i] != pRight[i]) return 0;
+            }
+            return 1;
+        }
+        case JT_OBJ: return left.u.o == right.u.o;
+        default: break;
+    }
+    return 0;
+}
+
+static inline int jsv_is_callable(JSVal value)
+{
+    return value.tag == JT_OBJ && ((value.u.o->cls == JCLASS_FUNCTION) || (value.u.o->cls == JCLASS_NATIVE));
+}
+
+/* ToInt32 of a number that is already an integer in [-2^31, 2^32): the
+ * value js_to_int32 computes for it (truncate, modulo 2^32, reinterpret).
+ * Returns 0 for every other number, which takes js_to_int32. */
+static inline int jsv_int32_fast(double nValue, int32_t *pnResult)
+{
+    if (nValue >= -2147483648.0 && nValue <= 4294967295.0) {
+        int64_t nInt = (int64_t)nValue;
+        if ((double)nInt == nValue) {
+            *pnResult = (int32_t)(uint32_t)nInt;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* Property keys are short: a byte loop beats the dispatching xx_rt_memcmp. */
+static inline int jskey_equal(const char *pLeft, const char *pRight, size_t nSize)
+{
+    size_t i;
+    for (i = 0; i < nSize; i++) {
+        if (pLeft[i] != pRight[i]) return 0;
+    }
+    return 1;
+}
 JSNode *js_parse_bytecode(const void *pData, size_t nSize);
 JSVal js_new_regexp_shared_val(JSCtx *pCtx, JSRegExp *pRegExp);
 

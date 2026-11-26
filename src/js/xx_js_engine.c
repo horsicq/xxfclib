@@ -76,6 +76,7 @@ static size_t program_node_size(const JSNode *pNode)
             if (pNode->pHoistPlan->nSteps > (SIZE_MAX - sizeof(JSHoistPlan)) / sizeof(JSHoistStep)) return SIZE_MAX;
             nSize = program_add_size(nSize, sizeof(JSHoistPlan) + pNode->pHoistPlan->nSteps * sizeof(JSHoistStep));
         }
+        if (pNode->type == N_FUNCTION && pNode->pLayout) nSize = program_add_size(nSize, pNode->pLayout->nBytes);
         nSize = program_add_size(nSize, xx_regex_memory_size(pNode->pRegExpLiteral));
         nSize = program_add_size(nSize, program_node_size(pNode->b));
         nSize = program_add_size(nSize, program_node_size(pNode->c));
@@ -249,6 +250,7 @@ JSCtx *js_new(void)
      * 8 MB stack sits above 18000 levels; this leaves better than a factor
      * of two in hand.                                                      */
     pCtx->nMaxEvalDepth = 8000;
+    pCtx->nGlobalEpoch = 1;
     pCtx->exception = js_undefined();
     xx_list_init(&pCtx->vecPrograms, sizeof(void *), NULL);
 
@@ -335,12 +337,13 @@ void js_free(JSCtx *pCtx)
         while (pStr) {
             JSStr *pNext = pStr->pNextAll;
 
-            xx_js_free(pStr->pData);
+            if (!pStr->bInline) xx_js_free(pStr->pData);
             xx_js_free(pStr);
             pStr = pNext;
         }
     }
 
+    jspool_release(pCtx);
     xx_js_free(pCtx->pErrorText);
     xx_js_free(pCtx);
 }

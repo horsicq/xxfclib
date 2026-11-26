@@ -35,6 +35,9 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+#include <intrin.h> /* _mm_prefetch */
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -82,6 +85,11 @@ typedef struct {
     uint16_t SuccessorHigh;
 } CPpmd_State;
 
+/* Unaligned 32-bit access (used for the successor field of a state). */
+typedef struct {
+    uint32_t v;
+} CPpmd_U32;
+
 #pragma pack(pop)
 
 typedef uint32_t CPpmd_State_Ref;
@@ -128,6 +136,7 @@ typedef struct {
     CPpmd_See DummySee;
     CPpmd_See See[25][16];
     uint16_t BinSumm[128][64];
+    unsigned EscSimd; /* decoder only: 1 = the SSSE3 escape-sum kernel may be used */
 } CPpmd7;
 
 extern const uint8_t PPMD7_kExpEscape[16];
@@ -143,7 +152,45 @@ extern const uint8_t PPMD7_kExpEscape[16];
 #define Ppmd7_GetPtr(p, offs) ((void *)((p)->Base + (offs)))
 #define Ppmd7_GetContext(p, offs) ((CPpmd7_Context *)Ppmd7_GetPtr((p), (offs)))
 #define Ppmd7_GetStats(p, ctx) ((CPpmd_State *)Ppmd7_GetPtr((p), ((ctx)->Stats)))
-#define Ppmd7_GetSuccessor(p) ((CPpmd_Void_Ref)((p)->SuccessorLow | ((uint32_t)(p)->SuccessorHigh << 16)))
+#define Ppmd7_GetSuccessor(p) ppmd7_get_successor(p)
+
+/* Software prefetch (a hint only: it never faults and never changes results). */
+#if defined(PPMD7_NO_PREFETCH)
+#define PPMD7_PREFETCH(a) ((void)(a))
+#elif defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+#define PPMD7_PREFETCH(a) _mm_prefetch((const char *)(a), _MM_HINT_T0)
+#elif defined(__GNUC__) || defined(__clang__)
+#define PPMD7_PREFETCH(a) __builtin_prefetch((const void *)(a))
+#else
+#define PPMD7_PREFETCH(a) ((void)(a))
+#endif
+
+/* The successor reference is the little-endian 32-bit value at byte offset 2
+ * of the packed 6-byte state; MSVC on little-endian x86 reads/writes it in one
+ * unaligned access (other compilers keep the two 16-bit halves, which they
+ * merge themselves where that is legal). */
+#if defined(_MSC_VER) && !defined(__clang__) && (defined(_M_X64) || defined(_M_IX86))
+#define PPMD7_LE_UNALIGNED 1
+#endif
+
+static inline CPpmd_Void_Ref ppmd7_get_successor(const CPpmd_State *s)
+{
+#ifdef PPMD7_LE_UNALIGNED
+    return ((const CPpmd_U32 *)(const void *)&s->SuccessorLow)->v;
+#else
+    return (CPpmd_Void_Ref)(s->SuccessorLow | ((uint32_t)s->SuccessorHigh << 16));
+#endif
+}
+
+static inline void ppmd7_set_successor(CPpmd_State *s, CPpmd_Void_Ref v)
+{
+#ifdef PPMD7_LE_UNALIGNED
+    ((CPpmd_U32 *)(void *)&s->SuccessorLow)->v = v;
+#else
+    s->SuccessorLow = (uint16_t)(v & 0xFFFF);
+    s->SuccessorHigh = (uint16_t)((v >> 16) & 0xFFFF);
+#endif
+}
 
 #define Ppmd7_GetBinSumm(p)                                                                                                                                             \
     &p->BinSumm[(size_t)(unsigned)Ppmd7Context_OneState(p->MinContext)->Freq - 1]                                                                                       \

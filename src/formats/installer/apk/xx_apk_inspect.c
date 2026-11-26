@@ -586,12 +586,13 @@ static char *axml_decode(const unsigned char *pData, size_t nSize, AxmlMetadata 
             xx_buf_append_char(&out, '\n');
             xx_mem_free(element);
         } else if (nType == AXML_RES_XML_END_ELEMENT) {
-            uint32_t nName, nNamespace;
+            uint32_t nName;
             if (!bHavePool || nHeaderSize != 16 || nChunkSize < 24 || !depth) goto invalid;
-            nName = xx_data_get_u32(pData, nSize, nOffset + 20, false);
-            nNamespace = xx_data_get_u32(pData, nSize, nOffset + 16, false);
-            if (!axml_pool_strings_equal(&pool, nName, element_names[depth - 1]) || !axml_pool_strings_equal(&pool, nNamespace, element_namespaces[depth - 1]))
-                goto invalid;
+            /* XAndroidBinary::recordToString ignores the END chunk's name and
+             * namespace (QXmlStreamWriter::writeEndElement closes the open
+             * element), so an obfuscated manifest whose END names do not match
+             * still decodes; close the element that was opened. */
+            nName = element_names[depth - 1];
             if (root_is_manifest && !axml_metadata_end(metadata, depth)) goto invalid;
             --depth;
             xx_buf_append_str(&out, "</");

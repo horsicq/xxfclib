@@ -251,11 +251,7 @@ static void *ShrinkUnits(CPpmd7 *p, void *oldPtr, unsigned oldNU, unsigned newNU
 
 #define SUCCESSOR(p) Ppmd7_GetSuccessor(p)
 
-static void SetSuccessor(CPpmd_State *p, CPpmd_Void_Ref v)
-{
-    p->SuccessorLow = (uint16_t)((uint32_t)(v) & 0xFFFF);
-    p->SuccessorHigh = (uint16_t)(((uint32_t)(v) >> 16) & 0xFFFF);
-}
+#define SetSuccessor(s, v) ppmd7_set_successor((s), (v))
 
 static void RestartModel(CPpmd7 *p)
 {
@@ -312,7 +308,18 @@ void Ppmd7_Init(CPpmd7 *p, unsigned maxOrder)
     p->DummySee.Count = 64;
 }
 
-static CTX_PTR CreateSuccessors(CPpmd7 *p, bool skip)
+/* Finds the state of `sym` in a multi-symbol context. The model guarantees
+ * that every symbol of a context is present in its suffix context, so the
+ * scan always ends inside the array. */
+static inline CPpmd_State *FindSymbol(CPpmd_State *s, uint8_t sym)
+{
+    while (s->Symbol != sym) s++;
+    return s;
+}
+
+/* `s1` (optional) is the state of FoundState->Symbol in SUFFIX(MinContext),
+ * already located by the caller; it saves the first search. */
+static CTX_PTR CreateSuccessors(CPpmd7 *p, bool skip, CPpmd_State *s1)
 {
     CPpmd_State upState;
     CTX_PTR c = p->MinContext;
@@ -322,6 +329,7 @@ static CTX_PTR CreateSuccessors(CPpmd7 *p, bool skip)
      * RAR 3.x supplies model orders through 64 to this shared core. */
     CPpmd_State *ps[64];
     unsigned numPs = 0;
+    const uint8_t sym = p->FoundState->Symbol;
 
     if (!skip) ps[numPs++] = p->FoundState;
 
@@ -329,8 +337,11 @@ static CTX_PTR CreateSuccessors(CPpmd7 *p, bool skip)
         CPpmd_Void_Ref successor;
         CPpmd_State *s;
         c = SUFFIX(c);
-        if (c->NumStats != 1) {
-            for (s = STATS(c); s->Symbol != p->FoundState->Symbol; s++);
+        if (s1) {
+            s = s1;
+            s1 = NULL;
+        } else if (c->NumStats != 1) {
+            s = FindSymbol(STATS(c), sym);
         } else {
             s = ONE_STATE(c);
         }
@@ -350,8 +361,7 @@ static CTX_PTR CreateSuccessors(CPpmd7 *p, bool skip)
         upState.Freq = ONE_STATE(c)->Freq;
     } else {
         uint32_t cf, s0;
-        CPpmd_State *s;
-        for (s = STATS(c); s->Symbol != upState.Symbol; s++);
+        CPpmd_State *s = FindSymbol(STATS(c), upState.Symbol);
         cf = s->Freq - 1;
         s0 = c->SummFreq - c->NumStats - cf;
         upState.Freq = (uint8_t)(1 + ((2 * cf <= s0) ? (5 * cf > s0) : ((2 * cf + 3 * s0 - 1) / (2 * s0))));
@@ -380,18 +390,23 @@ void xx_ppmd7_update_model(CPpmd7 *p)
     CPpmd_Void_Ref successor, fSuccessor = SUCCESSOR(p->FoundState);
     CTX_PTR c;
     unsigned s0, ns;
+    CPpmd_State *sfxState = NULL; /* state of the symbol in SUFFIX(MinContext), when known */
+
+    /* The successor of the found state is, in most cases, the next
+     * MinContext: start loading it while the model is being updated. */
+    PPMD7_PREFETCH(p->Base + fSuccessor);
 
     if (p->FoundState->Freq < MAX_FREQ / 4 && p->MinContext->Suffix != 0) {
         c = SUFFIX(p->MinContext);
         if (c->NumStats == 1) {
             CPpmd_State *s = ONE_STATE(c);
             if (s->Freq < 32) s->Freq++;
+            sfxState = s;
         } else {
             CPpmd_State *s = STATS(c);
-            if (s->Symbol != p->FoundState->Symbol) {
-                do {
-                    s++;
-                } while (s->Symbol != p->FoundState->Symbol);
+            const uint8_t sym = p->FoundState->Symbol;
+            if (s->Symbol != sym) {
+                s = FindSymbol(s + 1, sym);
                 if (s[0].Freq >= s[-1].Freq) {
                     ppmd7_swap_states(&s[0], &s[-1]);
                     s--;
@@ -401,11 +416,22 @@ void xx_ppmd7_update_model(CPpmd7 *p)
                 s->Freq += 2;
                 c->SummFreq += 2;
             }
+            sfxState = s;
         }
     }
 
+#ifndef PPMD7_NO_PREFETCH
+    if (fSuccessor > REF(p->Text)) {
+        /* A real context (not a raw text position): it is the next
+         * MinContext. The next symbol needs its states, or, for a binary
+         * context, its suffix context. Hint only; nothing is modified. */
+        const CPpmd7_Context *nc = CTX(fSuccessor);
+        PPMD7_PREFETCH(p->Base + (nc->NumStats != 1 ? nc->Stats : nc->Suffix));
+    }
+#endif
+
     if (p->OrderFall == 0) {
-        p->MinContext = p->MaxContext = CreateSuccessors(p, true);
+        p->MinContext = p->MaxContext = CreateSuccessors(p, true, sfxState);
         if (p->MinContext == 0) {
             RestartModel(p);
             return;
@@ -423,7 +449,7 @@ void xx_ppmd7_update_model(CPpmd7 *p)
 
     if (fSuccessor) {
         if (fSuccessor <= successor) {
-            CTX_PTR cs = CreateSuccessors(p, false);
+            CTX_PTR cs = CreateSuccessors(p, false, sfxState);
             if (cs == NULL) {
                 RestartModel(p);
                 return;

@@ -127,6 +127,7 @@ static bool build_memory_map(xx_pe_inspection *pPE, const xx_pe *reader)
     size_t i;
     int section;
     int64_t base;
+    uint64_t module_address;
     if (!reader || pPE->pInput->failed) return false;
     base = reader->format.base_address;
     source = xx_format_get_memory_map((Abstractformat *)&reader->format, XX_MEMORY_MAP_MODE_UNKNOWN, pPE->pInput->pd);
@@ -158,7 +159,15 @@ static bool build_memory_map(xx_pe_inspection *pPE, const xx_pe *reader)
     }
     pPE->nOverlayOffset = reader->format.overlay_offset >= base ? reader->format.overlay_offset - base : -1;
     pPE->nOverlaySize = reader->format.overlay_size;
-    return xx_memory_map_finalize(&pPE->map);
+    if (!xx_memory_map_finalize(&pPE->map)) return false;
+    /* XPE: the module address is ImageBase also when the header maps nothing
+     * (SizeOfHeaders 0); the generic finalize takes the lowest mapped address. */
+    module_address = reader->format.module_address != XX_INVALID_ADDRESS ? reader->format.module_address : reader->image_base;
+    if (pPE->map.module_address != XX_INVALID_ADDRESS && pPE->map.module_address > module_address) {
+        pPE->map.image_size += (int64_t)(pPE->map.module_address - module_address);
+        pPE->map.module_address = module_address;
+    }
+    return true;
 }
 
 /* -------------------------------------------------------------- imports  */
@@ -172,6 +181,10 @@ static void parse_imports(xx_pe_inspection *pPE)
     int i = 0;
     int nTotalPositions = 0;
     xx_buf_t hashBuf;
+
+    /* XPE::getImportHash32 of an empty import list is getStringCustomCRC32(""),
+     * 0xFFFFFFFF, not 0. */
+    pPE->nImportHash32 = xx_crc32c_string("");
 
     if (nOffset == -1) {
         return;
@@ -896,21 +909,16 @@ static int inspect_parse_input(xx_pe_inspection *pPE, xx_executable_input *pFile
     pPE->pInput = pFile;
     pPE->nOverlayOffset = -1;
 
-    if (pFile->size < 0x40) {
-        return 0;
-    }
-
-    if ((xx_exec_u8(pFile, 0) != 'M') || (xx_exec_u8(pFile, 1) != 'Z')) {
+    /* XPE::isValid accepts "MZ" and "ZM". */
+    if (!((xx_exec_u8(pFile, 0) == 'M' && xx_exec_u8(pFile, 1) == 'Z') || (xx_exec_u8(pFile, 0) == 'Z' && xx_exec_u8(pFile, 1) == 'M'))) {
         return 0;
     }
 
     pPE->nLfanew = (int64_t)xx_exec_u32(pFile, 0x3C, false);
 
-    if ((pPE->nLfanew <= 0) || (pPE->nLfanew + 24 > pFile->size)) {
-        return 0;
-    }
-
-    if (xx_exec_u32(pFile, pPE->nLfanew, false) != 0x00004550) { /* "PE\0\0" */
+    /* XPE::isValid; the reader (xx_pe_parse) has already checked the
+     * signature, including one cut short by the end of the file. */
+    if ((pPE->nLfanew <= 0) || (pPE->nLfanew >= pFile->size) || (!reader && xx_exec_u32(pFile, pPE->nLfanew, false) != 0x00004550)) {
         return 0;
     }
 
@@ -922,20 +930,15 @@ static int inspect_parse_input(xx_pe_inspection *pPE, xx_executable_input *pFile
     pPE->nSizeOfOptionalHeader = xx_exec_u16(pFile, pPE->nLfanew + 20, false);
     pPE->nCharacteristics = xx_exec_u16(pFile, pPE->nLfanew + 22, false);
 
-    nOptional = pPE->nLfanew + 24;
+    /* XPE::getOptionalHeaderOffset: -1 when the file ends at or before it. */
+    nOptional = pPE->nLfanew + 24 < pFile->size ? pPE->nLfanew + 24 : -1;
     pPE->nMagic = xx_exec_u16(pFile, nOptional, false);
 
-    if (pPE->nMagic == 0x20B) {
-        pPE->bIs64 = 1;
-    } else if (pPE->nMagic == 0x10B) {
-        pPE->bIs64 = 0;
-    } else {
-        return 0;
-    }
+    /* XPE::getMode: the machine selects the layout; the magic is not checked. */
+    pPE->bIs64 = xx_pe_machine_is_64(pPE->nMachine) ? 1 : 0;
 
-    if (pPE->nSizeOfOptionalHeader < (pPE->bIs64 ? 112 : 96) || nOptional > pFile->size - pPE->nSizeOfOptionalHeader ||
-        (int64_t)pPE->nNumberOfSections * 40 > pFile->size - nOptional - pPE->nSizeOfOptionalHeader)
-        return 0;
+    /* No size checks: XPE reads every header field at its fixed offset, and
+     * bytes past the end of the file read as zero. */
 
     pPE->nMajorLinkerVersion = xx_exec_u8(pFile, nOptional + 2);
     pPE->nMinorLinkerVersion = xx_exec_u8(pFile, nOptional + 3);

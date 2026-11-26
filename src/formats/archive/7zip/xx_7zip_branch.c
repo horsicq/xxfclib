@@ -157,85 +157,166 @@ static size_t xx_7zip_filter_bcj(uint8_t *data, size_t size, uint32_t ip, uint32
     return pos;
 }
 
+#if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
+#define XX_7ZIP_BRANCH_SSE2 1
+static inline unsigned xx_7zip_ctz(unsigned value)
+{
+#if defined(_MSC_VER)
+    unsigned long index;
+    _BitScanForward(&index, (unsigned long)value);
+    return (unsigned)index;
+#else
+    return (unsigned)__builtin_ctz(value);
+#endif
+}
+
+/* One bit per 32-bit lane of the two 16-byte blocks at `data` whose dword,
+ * masked with `and_mask`, equals `match`. */
+static inline unsigned xx_7zip_dword_hits(const uint8_t *data, __m128i and_mask, __m128i match)
+{
+    __m128i a = _mm_loadu_si128((const __m128i *)(const void *)data);
+    __m128i b = _mm_loadu_si128((const __m128i *)(const void *)(data + 16));
+    a = _mm_cmpeq_epi32(_mm_and_si128(a, and_mask), match);
+    b = _mm_cmpeq_epi32(_mm_and_si128(b, and_mask), match);
+    return (unsigned)_mm_movemask_ps(_mm_castsi128_ps(a)) | ((unsigned)_mm_movemask_ps(_mm_castsi128_ps(b)) << 4U);
+}
+#endif
+
+static inline void xx_7zip_arm_one(uint8_t *data, size_t pos, uint32_t ip)
+{
+    uint32_t value = xx_data_get_le32(data + pos);
+    value = (value << 2U) - (ip + (uint32_t)pos + 8U);
+    value = (value >> 2U) & UINT32_C(0x00FFFFFF);
+    xx_data_set_le32(data + pos, value | UINT32_C(0xEB000000));
+}
+
 static void xx_7zip_filter_arm(uint8_t *data, size_t size, uint32_t ip)
 {
     size_t pos = 0U;
     if (!data) return;
-#if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
-    const __m128i v_eb = _mm_set1_epi8((char)-21); /* 0xEB */
-    while (pos + 16U <= size) {
-        __m128i chunk = _mm_loadu_si128((const __m128i *)(const void *)(data + pos));
-        int mask = _mm_movemask_epi8(_mm_cmpeq_epi8(chunk, v_eb));
-        if ((mask & 0x8888) == 0) {
-            pos += 16U;
-            continue;
-        }
-        for (size_t step = 0; step < 16U; step += 4U) {
-            if (data[pos + step + 3U] == 0xEBU) {
-                uint32_t value = xx_data_get_le32(data + pos + step);
-                value = (value << 2U) - (ip + (uint32_t)(pos + step) + 8U);
-                value = (value >> 2U) & UINT32_C(0x00FFFFFF);
-                xx_data_set_le32(data + pos + step, value | UINT32_C(0xEB000000));
+#if defined(XX_7ZIP_BRANCH_SSE2)
+    {
+        const __m128i v_mask = _mm_set1_epi32((int)0xFF000000U);
+        const __m128i v_eb = _mm_set1_epi32((int)0xEB000000U);
+        for (; pos + 32U <= size; pos += 32U) {
+            unsigned hits = xx_7zip_dword_hits(data + pos, v_mask, v_eb);
+            while (hits) {
+                xx_7zip_arm_one(data, pos + 4U * xx_7zip_ctz(hits), ip);
+                hits &= hits - 1U;
             }
         }
-        pos += 16U;
     }
 #endif
     for (; pos + 4U <= size; pos += 4U) {
-        uint32_t value;
-        if (data[pos + 3U] != 0xEBU) continue;
-        value = xx_data_get_le32(data + pos);
-        value = (value << 2U) - (ip + (uint32_t)pos + 8U);
-        value = (value >> 2U) & UINT32_C(0x00FFFFFF);
-        xx_data_set_le32(data + pos, value | UINT32_C(0xEB000000));
+        if (data[pos + 3U] == 0xEBU) xx_7zip_arm_one(data, pos, ip);
     }
 }
 
 static size_t xx_7zip_filter_armt(uint8_t *data, size_t size, uint32_t ip)
 {
-    size_t pos;
+    size_t pos = 0U;
     if (!data) return 0U;
-    for (pos = 0U; pos + 4U <= size; pos += 2U) {
-        uint32_t high = (uint32_t)(data[pos + 1U] ^ 8U);
-        uint32_t low = data[pos + 3U];
-        uint32_t value;
-        if ((high & low) < UINT32_C(0xF8)) continue;
+    for (;;) {
+        uint32_t high, low, value;
+#if defined(XX_7ZIP_BRANCH_SSE2)
+        /* Positions pos, pos + 2, ..., pos + 14 test bytes pos + 1 and
+         * pos + 3: the odd lanes of (block ^ 8) & (block at pos + 2). */
+        {
+            const __m128i v_08 = _mm_set1_epi8(8);
+            const __m128i v_f8 = _mm_set1_epi8((char)-8);
+            unsigned hits = 0U;
+            while (pos + 18U <= size) {
+                __m128i a = _mm_loadu_si128((const __m128i *)(const void *)(data + pos));
+                __m128i b = _mm_loadu_si128((const __m128i *)(const void *)(data + pos + 2U));
+                __m128i x = _mm_and_si128(_mm_and_si128(_mm_xor_si128(a, v_08), b), v_f8);
+                hits = (unsigned)_mm_movemask_epi8(_mm_cmpeq_epi8(x, v_f8)) & 0xAAAAU;
+                if (hits) break;
+                pos += 16U;
+            }
+            if (hits) pos += xx_7zip_ctz(hits) - 1U;
+        }
+#endif
+        if (pos + 4U > size) break;
+        high = (uint32_t)(data[pos + 1U] ^ 8U);
+        low = data[pos + 3U];
+        if ((high & low) < UINT32_C(0xF8)) {
+            pos += 2U;
+            continue;
+        }
         value = (high << 19U) | ((uint32_t)(low & 7U) << 8U) | ((uint32_t)data[pos] << 11U) | data[pos + 2U];
         value -= (ip + (uint32_t)pos + 4U) >> 1U;
         data[pos] = (uint8_t)(value >> 11U);
         data[pos + 1U] = (uint8_t)(0xF0U | ((value >> 19U) & 7U));
         data[pos + 2U] = (uint8_t)value;
         data[pos + 3U] = (uint8_t)(0xF8U | (value >> 8U));
-        pos += 2U;
+        pos += 4U;
     }
     return pos;
 }
 
+static inline void xx_7zip_ppc_one(uint8_t *data, size_t pos, uint32_t ip)
+{
+    uint32_t value = xx_data_get_be32(data + pos);
+    value = (value - (ip + (uint32_t)pos)) & UINT32_C(0x03FFFFFF);
+    xx_data_set_be32(data + pos, value | UINT32_C(0x48000000));
+}
+
 static void xx_7zip_filter_ppc(uint8_t *data, size_t size, uint32_t ip)
 {
-    size_t pos;
+    size_t pos = 0U;
     if (!data) return;
-    for (pos = 0U; pos + 4U <= size; pos += 4U) {
-        uint32_t value;
-        if ((data[pos] & 0xFCU) != 0x48U || (data[pos + 3U] & 3U) != 1U) continue;
-        value = xx_data_get_be32(data + pos);
-        value = (value - (ip + (uint32_t)pos)) & UINT32_C(0x03FFFFFF);
-        xx_data_set_be32(data + pos, value | UINT32_C(0x48000000));
+#if defined(XX_7ZIP_BRANCH_SSE2)
+    {
+        /* (byte 0 & 0xFC) == 0x48 and (byte 3 & 3) == 1. */
+        const __m128i v_mask = _mm_set1_epi32(0x030000FC);
+        const __m128i v_match = _mm_set1_epi32(0x01000048);
+        for (; pos + 32U <= size; pos += 32U) {
+            unsigned hits = xx_7zip_dword_hits(data + pos, v_mask, v_match);
+            while (hits) {
+                xx_7zip_ppc_one(data, pos + 4U * xx_7zip_ctz(hits), ip);
+                hits &= hits - 1U;
+            }
+        }
     }
+#endif
+    for (; pos + 4U <= size; pos += 4U) {
+        if ((data[pos] & 0xFCU) != 0x48U || (data[pos + 3U] & 3U) != 1U) continue;
+        xx_7zip_ppc_one(data, pos, ip);
+    }
+}
+
+static inline void xx_7zip_sparc_one(uint8_t *data, size_t pos, uint32_t ip)
+{
+    uint32_t value = xx_data_get_be32(data + pos);
+    value = (value << 2U) - (ip + (uint32_t)pos);
+    value = ((value & UINT32_C(0x01FFFFFF)) - UINT32_C(0x01000000)) ^ UINT32_C(0xFF000000);
+    value = (value >> 2U) | UINT32_C(0x40000000);
+    xx_data_set_be32(data + pos, value);
 }
 
 static void xx_7zip_filter_sparc(uint8_t *data, size_t size, uint32_t ip)
 {
-    size_t pos;
+    size_t pos = 0U;
     if (!data) return;
-    for (pos = 0U; pos + 4U <= size; pos += 4U) {
-        uint32_t value;
+#if defined(XX_7ZIP_BRANCH_SSE2)
+    {
+        /* byte 0 == 0x40 with (byte 1 & 0xC0) == 0, or byte 0 == 0x7F with
+         * (byte 1 & 0xC0) == 0xC0. */
+        const __m128i v_mask = _mm_set1_epi32(0x0000C0FF);
+        const __m128i v_a = _mm_set1_epi32(0x00000040);
+        const __m128i v_b = _mm_set1_epi32(0x0000C07F);
+        for (; pos + 32U <= size; pos += 32U) {
+            unsigned hits = xx_7zip_dword_hits(data + pos, v_mask, v_a) | xx_7zip_dword_hits(data + pos, v_mask, v_b);
+            while (hits) {
+                xx_7zip_sparc_one(data, pos + 4U * xx_7zip_ctz(hits), ip);
+                hits &= hits - 1U;
+            }
+        }
+    }
+#endif
+    for (; pos + 4U <= size; pos += 4U) {
         if (!((data[pos] == 0x40U && (data[pos + 1U] & 0xC0U) == 0U) || (data[pos] == 0x7FU && data[pos + 1U] >= 0xC0U))) continue;
-        value = xx_data_get_be32(data + pos);
-        value = (value << 2U) - (ip + (uint32_t)pos);
-        value = ((value & UINT32_C(0x01FFFFFF)) - UINT32_C(0x01000000)) ^ UINT32_C(0xFF000000);
-        value = (value >> 2U) | UINT32_C(0x40000000);
-        xx_data_set_be32(data + pos, value);
+        xx_7zip_sparc_one(data, pos, ip);
     }
 }
 
@@ -266,33 +347,54 @@ static void xx_7zip_filter_ia64(uint8_t *data, size_t size, uint32_t ip)
     }
 }
 
-static void xx_7zip_filter_arm64(uint8_t *data, size_t size, uint32_t ip)
+static inline void xx_7zip_arm64_one(uint8_t *data, size_t pos, uint32_t ip)
 {
-    size_t pos;
     const uint32_t flag = UINT32_C(1) << 20U;
     const uint32_t adrp_mask = (UINT32_C(1) << 24U) - (flag << 1U);
+    uint32_t value = xx_data_get_le32(data + pos);
+    uint32_t pc = ip + (uint32_t)pos;
+    if (((value - UINT32_C(0x94000000)) & UINT32_C(0xFC000000)) == 0U) {
+        value = (value - (pc >> 2U)) & UINT32_C(0x03FFFFFF);
+        xx_data_set_le32(data + pos, UINT32_C(0x94000000) | value);
+    } else {
+        uint32_t page_value = value - UINT32_C(0x90000000);
+        uint32_t target;
+        if ((page_value & UINT32_C(0x9F000000)) != 0U) return;
+        page_value += flag;
+        if ((page_value & adrp_mask) != 0U) return;
+        target = (page_value & UINT32_C(0xFFFFFFE0)) | (page_value >> 26U);
+        target -= (pc >> 9U) & ~UINT32_C(7);
+        value &= UINT32_C(0x1F);
+        value |= UINT32_C(0x90000000);
+        value |= target << 26U;
+        value |= UINT32_C(0x00FFFFE0) & ((target & ((flag << 1U) - 1U)) - flag);
+        xx_data_set_le32(data + pos, value);
+    }
+}
+
+static void xx_7zip_filter_arm64(uint8_t *data, size_t size, uint32_t ip)
+{
+    size_t pos = 0U;
     if (!data) return;
-    for (pos = 0U; pos + 4U <= size; pos += 4U) {
-        uint32_t value = xx_data_get_le32(data + pos);
-        uint32_t pc = ip + (uint32_t)pos;
-        if (((value - UINT32_C(0x94000000)) & UINT32_C(0xFC000000)) == 0U) {
-            value = (value - (pc >> 2U)) & UINT32_C(0x03FFFFFF);
-            xx_data_set_le32(data + pos, UINT32_C(0x94000000) | value);
-        } else {
-            uint32_t page_value = value - UINT32_C(0x90000000);
-            uint32_t target;
-            if ((page_value & UINT32_C(0x9F000000)) != 0U) continue;
-            page_value += flag;
-            if ((page_value & adrp_mask) != 0U) continue;
-            target = (page_value & UINT32_C(0xFFFFFFE0)) | (page_value >> 26U);
-            target -= (pc >> 9U) & ~UINT32_C(7);
-            value &= UINT32_C(0x1F);
-            value |= UINT32_C(0x90000000);
-            value |= target << 26U;
-            value |= UINT32_C(0x00FFFFE0) & ((target & ((flag << 1U) - 1U)) - flag);
-            xx_data_set_le32(data + pos, value);
+#if defined(XX_7ZIP_BRANCH_SSE2)
+    {
+        /* Candidates: BL ((value & 0xFC000000) == 0x94000000) or ADRP's
+         * opcode bits ((value & 0x9F000000) == 0x90000000); the per-word
+         * converter makes the exact test. */
+        const __m128i v_bl_mask = _mm_set1_epi32((int)0xFC000000U);
+        const __m128i v_bl = _mm_set1_epi32((int)0x94000000U);
+        const __m128i v_adrp_mask = _mm_set1_epi32((int)0x9F000000U);
+        const __m128i v_adrp = _mm_set1_epi32((int)0x90000000U);
+        for (; pos + 32U <= size; pos += 32U) {
+            unsigned hits = xx_7zip_dword_hits(data + pos, v_bl_mask, v_bl) | xx_7zip_dword_hits(data + pos, v_adrp_mask, v_adrp);
+            while (hits) {
+                xx_7zip_arm64_one(data, pos + 4U * xx_7zip_ctz(hits), ip);
+                hits &= hits - 1U;
+            }
         }
     }
+#endif
+    for (; pos + 4U <= size; pos += 4U) xx_7zip_arm64_one(data, pos, ip);
 }
 
 /* RISC-V's converter has three call forms: JAL and two AUIPC-based pairs.
@@ -324,9 +426,32 @@ static size_t xx_7zip_filter_riscv(uint8_t *data, size_t size, uint32_t ip)
     if (!data || size <= 6U) return 0U;
     limit = size - 6U;
     while (pos < limit) {
-        uint32_t first = ((uint32_t)xx_data_get_u16(data + pos, 2, 0, false) ^ 0x10U) + 1U;
+        uint32_t first;
         uint32_t instruction;
         uint32_t pc;
+#if defined(XX_7ZIP_BRANCH_SSE2)
+        {
+            /* The first test depends on the low byte alone (the carry of +1
+             * does not reach bits 0x77): skip even positions failing it. */
+            const __m128i v_10 = _mm_set1_epi8(0x10);
+            const __m128i v_01 = _mm_set1_epi8(1);
+            const __m128i v_77 = _mm_set1_epi8(0x77);
+            const __m128i zero = _mm_setzero_si128();
+            while (pos + 16U <= limit) {
+                __m128i v = _mm_loadu_si128((const __m128i *)(const void *)(data + pos));
+                unsigned hits;
+                v = _mm_and_si128(_mm_add_epi8(_mm_xor_si128(v, v_10), v_01), v_77);
+                hits = (unsigned)_mm_movemask_epi8(_mm_cmpeq_epi8(v, zero)) & 0x5555U;
+                if (hits) {
+                    pos += xx_7zip_ctz(hits);
+                    break;
+                }
+                pos += 16U;
+            }
+            if (pos >= limit) break;
+        }
+#endif
+        first = ((uint32_t)xx_data_get_le16(data + pos) ^ 0x10U) + 1U;
         if ((first & 0x77U) != 0U) {
             pos += 2U;
             continue;
@@ -342,32 +467,32 @@ static size_t xx_7zip_filter_riscv(uint8_t *data, size_t size, uint32_t ip)
             saved = (first + UINT32_C(0x70)) & UINT32_C(0xFFF);
             absolute = ((uint32_t)data[pos + 3U] << 1U) | ((uint32_t)data[pos + 2U] << 9U) | ((first & UINT32_C(0xF000)) << 5U);
             relative = absolute - pc;
-            xx_data_set_u32(data + pos, 4, 0, xx_7zip_riscv_jal_with_immediate(saved, relative), false);
+            xx_data_set_le32(data + pos, xx_7zip_riscv_jal_with_immediate(saved, relative));
             pos += 4U;
             continue;
         }
-        instruction = xx_data_get_u32(data + pos, 4, 0, false);
+        instruction = xx_data_get_le32(data + pos);
         if ((first & UINT32_C(0xE80)) == 0U) {
             uint32_t register_bits = instruction >> 27U;
             if (xx_7zip_riscv_pair_b(first, register_bits)) {
-                uint32_t absolute = xx_data_get_u32(data + pos + 4U, 4, 0, true);
+                uint32_t absolute = xx_data_get_be32(data + pos + 4U);
                 uint32_t second = instruction >> 12U;
                 uint32_t first_out;
                 absolute -= pc;
                 first_out = (register_bits << 7U) | UINT32_C(0x17);
                 first_out += (absolute + UINT32_C(0x800)) & UINT32_C(0xFFFFF000);
                 second |= absolute << 20U;
-                xx_data_set_u32(data + pos, 4, 0, first_out, false);
-                xx_data_set_u32(data + pos + 4U, 4, 0, second, false);
+                xx_data_set_le32(data + pos, first_out);
+                xx_data_set_le32(data + pos + 4U, second);
                 pos += 8U;
             } else pos += 4U;
         } else {
-            uint32_t second = xx_data_get_u32(data + pos + 4U, 4, 0, false);
+            uint32_t second = xx_data_get_le32(data + pos + 4U);
             if (xx_7zip_riscv_pair_a(first, second)) {
                 uint32_t first_out = (instruction & UINT32_C(0xFFFFF000)) | (second >> 20U);
                 uint32_t second_out = (second << 12U) | UINT32_C(0x117);
-                xx_data_set_u32(data + pos, 4, 0, second_out, false);
-                xx_data_set_u32(data + pos + 4U, 4, 0, first_out, false);
+                xx_data_set_le32(data + pos, second_out);
+                xx_data_set_le32(data + pos + 4U, first_out);
                 pos += 8U;
             } else pos += 6U;
         }

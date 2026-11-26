@@ -112,6 +112,10 @@ typedef enum {
 /* The ordered binding operations for one program/function. Nodes are borrowed
  * from its immutable AST. Depth checkpoints retain the evaluator's existing
  * nesting-limit behavior without walking unrelated statements on each call. */
+#define JS_ASSIGN_PLAIN 1  /* neither of the forms below */
+#define JS_ASSIGN_ADD 2    /* x = x + ... */
+#define JS_ASSIGN_CONCAT 3 /* x = x.concat(one argument) */
+
 typedef struct {
     JSNode *pNode; /* N_VARDECL / declaration N_FUNCTION; NULL = final guard */
     unsigned nDepth;
@@ -123,33 +127,66 @@ typedef struct {
     JSHoistStep steps[];
 } JSHoistPlan;
 
+/* The bindings of one function activation in the order the call sequence
+ * creates them: arguments (when referenced), the name of a named function
+ * expression, the parameters, then the hoisted declarations; a repeated name
+ * keeps its first position. A fresh scope record is this template copied: its
+ * entries borrow the AST spellings, and an identifier inside the function
+ * body knows its entry index (JSNode.nSlot). Built once with the AST and
+ * immutable afterwards, like the hoist plan. */
+typedef struct JSScopeLayout {
+    uint32_t nCount;     /* bindings */
+    uint32_t nCapacity;  /* entry capacity of a fresh record (0 with no bindings) */
+    uint32_t nIndexSize; /* hash index size of a fresh record */
+    uint32_t nMaxDepth;  /* deepest nesting check of the hoist plan */
+    size_t nBytes;       /* size of this block, tables included */
+    int32_t nArgumentsSlot;
+    int32_t nSelfSlot;
+    int32_t *pParamSlots; /* one per parameter */
+    int32_t *pStepSlots;  /* one per hoist step: the slot of a function declaration, else -1 */
+    JSProp *pEntries;     /* nCount entries: borrowed keys, undefined values */
+    int32_t *pIndex;      /* nIndexSize slots, as inserting the keys in order builds it */
+} JSScopeLayout;
+
+/* The members the evaluator reads on every visit come first so that they
+ * share a cache line. */
 struct JSNode {
     JSNodeType type;
     JSOp op;
-    int nLine;
-    int nColumn;
-    /* All nodes borrow the source root, whose name is owned by N_PROGRAM. */
-    JSNode *pSourceRoot;
-    char *pSourceName;
-    /* Length and hash of pStr, filled before a program is published:
-     * variable access would otherwise rehash the same name endlessly.     */
-    uint8_t bStrKey;
-    size_t nStrSize;
-    uint32_t nStrHash;
-    double nNum;
-    char *pStr;
-    char *pStr2;
     JSNode *a;
     JSNode *b;
+    char *pStr;
+    double nNum;
+    /* Length and hash of pStr, filled before a program is published:
+     * variable access would otherwise rehash the same name endlessly.     */
+    size_t nStrSize;
+    uint32_t nStrHash;
+    /* N_IDENT / N_VARDECL inside a function with a scope layout: the entry
+     * index of the name in that function's fresh scope record, or -1 when
+     * the function does not bind the name. Meaningless while pLayout is NULL. */
+    int32_t nSlot;
+    /* N_FUNCTION: the layout it owns. N_IDENT / N_VARDECL: the layout of the
+     * enclosing function (borrowed). */
+    JSScopeLayout *pLayout;
     JSNode *c;
     JSNode *d;
     JSNode **ppList;
     size_t nList;
-    size_t nListCapacity;
+    uint8_t bStrKey;
     /* Immutable function-call metadata, prepared with the AST. */
     uint8_t bNeedsArguments;
     uint8_t bNeedsHoist;
+    /* N_ASSIGN with OP_ASSIGN: which form eval_assign found by comparing
+     * spellings on every evaluation. 0 = not analysed (compare at run time). */
+    uint8_t nAssignKind;
+    int nLine;
+    int nColumn;
     JSHoistPlan *pHoistPlan;
+    size_t nListCapacity;
+    char *pStr2;
+    /* All nodes borrow the source root, whose name is owned by N_PROGRAM. */
+    JSNode *pSourceRoot;
+    char *pSourceName;
     /* Compiled literals are immutable; evaluation makes a fresh wrapper. */
     JSRegExp *pRegExpLiteral;
     /* Function bodies cache their declared variable names for hoisting. */

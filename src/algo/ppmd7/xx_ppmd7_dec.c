@@ -159,40 +159,141 @@ static inline bool ppmd7_norm_local(ppmd7_range_dec *rd, uint32_t *range_p, uint
     return true;
 }
 
-#define MASK(sym) ((int8_t *)charMask)[sym]
+/* charMask[sym] is 0xFF while the symbol is still a candidate and 0 once a
+ * higher-order context has escaped past it. */
+static inline void ppmd7_mask_states(uint8_t *charMask, const CPpmd_State *s, unsigned count)
+{
+    if (count & 1) {
+        charMask[s->Symbol] = 0;
+        s++;
+    }
+    for (count >>= 1; count != 0; count--) {
+        const unsigned a = s[0].Symbol, b = s[1].Symbol;
+        s += 2;
+        charMask[a] = 0;
+        charMask[b] = 0;
+    }
+}
 
-PPMD7_NOINLINE static int ppmd7_decode_escape_loop(CPpmd7 *p, ppmd7_range_dec *rd, size_t *charMask)
+/* Sum of the frequencies of the states whose symbol is not masked. */
+static inline uint32_t ppmd7_esc_sum(const CPpmd_State *q, unsigned n, const uint8_t *charMask)
+{
+    uint32_t h0 = 0, h1 = 0;
+    if (n & 1) {
+        h0 = (uint32_t)(q->Freq & charMask[q->Symbol]);
+        q++;
+    }
+    for (n >>= 1; n != 0; n--) {
+        const unsigned a = q[0].Symbol, b = q[1].Symbol;
+        h0 += (uint32_t)(q[0].Freq & charMask[a]);
+        h1 += (uint32_t)(q[1].Freq & charMask[b]);
+        q += 2;
+    }
+    return h0 + h1;
+}
+
+#if !defined(PPMD7_NO_ESC_SSSE3) && (defined(_M_X64) || defined(__x86_64__))
+#include <tmmintrin.h>
+#define PPMD7_ESC_SSSE3 1
+#define PPMD7_ESC_SIMD_MIN 64 /* below this the table set-up costs more than it saves */
+#if defined(__GNUC__) || defined(__clang__)
+#define PPMD7_TARGET_SSSE3 __attribute__((target("ssse3")))
+#else
+#define PPMD7_TARGET_SSSE3
+#endif
+
+/* Same result as ppmd7_esc_sum(), eight states (48 bytes) per step; used only
+ * when the CPU has SSSE3 (run-time flag CPpmd7.EscSimd). It reads nothing
+ * outside the `n` states. charMask holds only 0x00 / 0xFF bytes.
+ * blockSums[j] receives the sum over the first 8 * (j + 1) states, for
+ * j < n / 8 (at most 32 entries): the caller uses it to locate the decoded
+ * symbol without walking all the states again.
+ *
+ * The 256 mask bytes are first packed into a 16x16 bit matrix (row = high
+ * nibble of the symbol, column = low nibble): rowLo/rowHi give, per row, the
+ * bits of columns 0-7 / 8-15. A symbol is unmasked when its row byte has the
+ * bit of its column set, which two pairs of PSHUFB look-ups test for 16 bytes
+ * at once. */
+PPMD7_TARGET_SSSE3 PPMD7_NOINLINE static uint32_t ppmd7_esc_sum_ssse3(const CPpmd_State *q, unsigned n, const uint8_t *charMask, uint32_t *blockSums)
+{
+    /* Gather Symbol (-> bytes 0..7) and Freq (-> bytes 8..15) of 8 states from three 16-byte loads. */
+    const __m128i pick0 = _mm_setr_epi8(0, 6, 12, -1, -1, -1, -1, -1, 1, 7, 13, -1, -1, -1, -1, -1);
+    const __m128i pick1 = _mm_setr_epi8(-1, -1, -1, 2, 8, 14, -1, -1, -1, -1, -1, 3, 9, 15, -1, -1);
+    const __m128i pick2 = _mm_setr_epi8(-1, -1, -1, -1, -1, -1, 4, 10, -1, -1, -1, -1, -1, -1, 5, 11);
+    const __m128i colLo = _mm_setr_epi8(1, 2, 4, 8, 16, 32, 64, (char)-128, 0, 0, 0, 0, 0, 0, 0, 0);
+    const __m128i colHi = _mm_setr_epi8(0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 4, 8, 16, 32, 64, (char)-128);
+    const __m128i nib = _mm_set1_epi8(0x0F);
+    const __m128i zero = _mm_setzero_si128();
+    __m128i rowLo, rowHi, acc = zero;
+    uint32_t sum;
+    {
+        uint16_t rows[16];
+        unsigned r;
+        __m128i a, b;
+        const __m128i lowByte = _mm_set1_epi16(0x00FF);
+        for (r = 0; r < 16; r++) rows[r] = (uint16_t)_mm_movemask_epi8(_mm_loadu_si128((const __m128i *)(const void *)(charMask + 16 * r)));
+        a = _mm_loadu_si128((const __m128i *)(const void *)rows);
+        b = _mm_loadu_si128((const __m128i *)(const void *)(rows + 8));
+        rowLo = _mm_packus_epi16(_mm_and_si128(a, lowByte), _mm_and_si128(b, lowByte));
+        rowHi = _mm_packus_epi16(_mm_srli_epi16(a, 8), _mm_srli_epi16(b, 8));
+    }
+    for (; n >= 8; n -= 8, q += 8) {
+        const uint8_t *bp = (const uint8_t *)q;
+        const __m128i x = _mm_or_si128(_mm_or_si128(_mm_shuffle_epi8(_mm_loadu_si128((const __m128i *)(const void *)bp), pick0),
+                                                    _mm_shuffle_epi8(_mm_loadu_si128((const __m128i *)(const void *)(bp + 16)), pick1)),
+                                       _mm_shuffle_epi8(_mm_loadu_si128((const __m128i *)(const void *)(bp + 32)), pick2));
+        const __m128i hi = _mm_and_si128(_mm_srli_epi16(x, 4), nib);
+        const __m128i lo = _mm_and_si128(x, nib);
+        const __m128i t = _mm_or_si128(_mm_and_si128(_mm_shuffle_epi8(rowLo, hi), _mm_shuffle_epi8(colLo, lo)),
+                                       _mm_and_si128(_mm_shuffle_epi8(rowHi, hi), _mm_shuffle_epi8(colHi, lo)));
+        /* bytes 0..7 of `masked`: 0xFF where the symbol is masked; the Freq bytes move down to 0..7 */
+        const __m128i masked = _mm_cmpeq_epi8(t, zero);
+        acc = _mm_add_epi64(acc, _mm_sad_epu8(_mm_andnot_si128(masked, _mm_srli_si128(x, 8)), zero));
+        *blockSums++ = (uint32_t)_mm_cvtsi128_si32(acc);
+    }
+    sum = (uint32_t)_mm_cvtsi128_si32(acc);
+    for (; n != 0; n--, q++) sum += (uint32_t)(q->Freq & charMask[q->Symbol]);
+    return sum;
+}
+#endif
+
+PPMD7_NOINLINE static int ppmd7_decode_escape_loop(CPpmd7 *p, ppmd7_range_dec *rd, uint8_t *charMask)
 {
     uint32_t range = rd->range;
     uint32_t code = rd->code;
     const uint8_t *cur = rd->ibuf + rd->ibuf_pos;
     const uint8_t *end = rd->ibuf + rd->ibuf_len;
+    CPpmd7_Context *mc = p->MinContext;
     int ret;
+#ifdef PPMD7_ESC_SSSE3
+    uint32_t blockSums[256 / 8];
+#endif
 
     for (;;) {
-        CPpmd_State *ps[256], *s;
+        CPpmd_State *s, *stats;
         uint32_t freqSum, escFreq, hiCnt;
         CPpmd_See *see;
-        unsigned i, num, numMasked = p->MinContext->NumStats;
+        unsigned ns, numMasked = mc->NumStats;
         do {
             p->OrderFall++;
-            if (!p->MinContext->Suffix) {
+            if (!mc->Suffix) {
+                p->MinContext = mc;
                 ret = -1;
                 goto done;
             }
-            p->MinContext = Ppmd7_GetContext(p, p->MinContext->Suffix);
-        } while (p->MinContext->NumStats == numMasked);
+            mc = Ppmd7_GetContext(p, mc->Suffix);
+        } while (mc->NumStats == numMasked);
+        p->MinContext = mc;
+        ns = mc->NumStats;
+        stats = Ppmd7_GetStats(p, mc);
 
-        hiCnt = 0;
-        s = Ppmd7_GetStats(p, p->MinContext);
-        i = 0;
-        num = p->MinContext->NumStats - numMasked;
-        do {
-            int k = (int)(MASK(s->Symbol));
-            hiCnt += (uint32_t)(s->Freq & k);
-            ps[i] = s++;
-            i -= (unsigned)k;
-        } while (i != num);
+        /* Sum of the frequencies of the symbols that are not masked yet. */
+#ifdef PPMD7_ESC_SSSE3
+        const bool simd = (ns >= PPMD7_ESC_SIMD_MIN && p->EscSimd);
+        if (simd) hiCnt = ppmd7_esc_sum_ssse3(stats, ns, charMask, blockSums);
+        else
+#endif
+            hiCnt = ppmd7_esc_sum(stats, ns, charMask);
 
         see = Ppmd7_MakeEscFreq(p, numMasked, &escFreq);
         freqSum = escFreq + hiCnt;
@@ -201,14 +302,31 @@ PPMD7_NOINLINE static int ppmd7_decode_escape_loop(CPpmd7 *p, ppmd7_range_dec *r
 
         if ((uint64_t)code < hi_bound) {
             uint8_t symbol;
-            if (num == 1) {
-                s = ps[0];
+            s = stats;
+            if (ns - numMasked == 1) {
+                /* A single candidate: it owns the whole [0, hiCnt) interval. */
+                while (charMask[s->Symbol] == 0) s++;
             } else {
-                uint32_t count = code / range;
-                CPpmd_State **pps = ps;
-                for (hiCnt = 0; (hiCnt += (*pps)->Freq) <= count; pps++);
-                s = *pps;
-                code -= (hiCnt - s->Freq) * range;
+                const uint32_t count = code / range;
+                uint32_t acc = 0;
+#ifdef PPMD7_ESC_SSSE3
+                if (simd) {
+                    /* Skip the leading 8-state blocks that end at or below
+                     * `count`; the walk below then starts exactly where the
+                     * full walk would be at that point. */
+                    const unsigned numBlocks = ns >> 3;
+                    unsigned j = 0;
+                    while (j < numBlocks && blockSums[j] <= count) j++;
+                    if (j != 0) acc = blockSums[j - 1];
+                    s += (size_t)j * 8;
+                }
+#endif
+                for (;;) {
+                    acc += (uint32_t)(s->Freq & charMask[s->Symbol]);
+                    if (acc > count) break;
+                    s++;
+                }
+                code -= (acc - s->Freq) * range;
             }
             range *= s->Freq;
             if (!ppmd7_norm_local(rd, &range, &code, &cur, &end)) {
@@ -235,9 +353,7 @@ PPMD7_NOINLINE static int ppmd7_decode_escape_loop(CPpmd7 *p, ppmd7_range_dec *r
             goto done;
         }
         see->Summ = (uint16_t)(see->Summ + freqSum);
-        do {
-            MASK(ps[--i]->Symbol) = 0;
-        } while (i != 0);
+        ppmd7_mask_states(charMask, stats, ns);
     }
 
 done:
@@ -247,28 +363,26 @@ done:
     return ret;
 }
 
-PPMD7_NOINLINE static int ppmd7_decode_escape_multi(CPpmd7 *p, ppmd7_range_dec *rd, uint32_t hiCnt, CPpmd_State *s)
+PPMD7_NOINLINE static int ppmd7_decode_escape_multi(CPpmd7 *p, ppmd7_range_dec *rd, uint32_t hiCnt)
 {
-    size_t charMask[256 / sizeof(size_t)];
+    size_t maskWords[256 / sizeof(size_t)];
+    uint8_t *charMask = (uint8_t *)maskWords;
     p->HiBitsFlag = p->HB2Flag[p->FoundState->Symbol];
     Range_Decode(rd, hiCnt, p->MinContext->SummFreq - hiCnt);
     if (rd->error) return -2;
-    PPMD_SetAllBitsIn256Bytes(charMask);
-    MASK(s->Symbol) = 0;
-    unsigned i = p->MinContext->NumStats - 1;
-    do {
-        MASK((--s)->Symbol) = 0;
-    } while (--i);
+    PPMD_SetAllBitsIn256Bytes(maskWords);
+    ppmd7_mask_states(charMask, Ppmd7_GetStats(p, p->MinContext), p->MinContext->NumStats);
     return ppmd7_decode_escape_loop(p, rd, charMask);
 }
 
 PPMD7_NOINLINE static int ppmd7_decode_escape_bin(CPpmd7 *p, ppmd7_range_dec *rd, uint16_t *prob)
 {
-    size_t charMask[256 / sizeof(size_t)];
+    size_t maskWords[256 / sizeof(size_t)];
+    uint8_t *charMask = (uint8_t *)maskWords;
     *prob = (uint16_t)PPMD_UPDATE_PROB_1(*prob);
     p->InitEsc = PPMD7_kExpEscape[*prob >> 10];
-    PPMD_SetAllBitsIn256Bytes(charMask);
-    MASK(Ppmd7Context_OneState(p->MinContext)->Symbol) = 0;
+    PPMD_SetAllBitsIn256Bytes(maskWords);
+    charMask[Ppmd7Context_OneState(p->MinContext)->Symbol] = 0;
     p->PrevSuccess = 0;
     return ppmd7_decode_escape_loop(p, rd, charMask);
 }
@@ -328,7 +442,7 @@ static size_t ppmd7_decode_chunk(CPpmd7 *p, ppmd7_range_dec *rd, uint8_t *outbuf
             rd->range = range;
             rd->code = code;
             rd->ibuf_pos = (size_t)(cur - rd->ibuf);
-            sym = ppmd7_decode_escape_multi(p, rd, hiCnt, s);
+            sym = ppmd7_decode_escape_multi(p, rd, hiCnt);
             goto on_escape;
         } else {
             uint16_t *prob = Ppmd7_GetBinSumm(p);
@@ -409,6 +523,9 @@ static bool xx_ppmd7_decompress_stream_impl(ppmd7_range_dec *rd, int order, uint
         return false;
     }
     Ppmd7_Init(&ppmd, (unsigned)order);
+#ifdef PPMD7_ESC_SSSE3
+    ppmd.EscSimd = xx_is_sse42_enabled() ? 1U : 0U; /* SSE4.2 implies SSSE3 */
+#endif
 
     size_t opos = 0;
     uint64_t tot = 0U;

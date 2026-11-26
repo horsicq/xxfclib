@@ -201,6 +201,11 @@ const char *xx_zip_get_jvm_version(const xx_zip *zip)
 {
     return zip && zip->analysis ? ((zip_analysis *)zip->analysis)->jvm : "";
 }
+const char *xx_zip_get_manifest(const xx_zip *zip)
+{
+    const zip_analysis *a = zip ? (const zip_analysis *)zip->analysis : NULL;
+    return a && a->manifest ? a->manifest : "";
+}
 char *xx_zip_manifest_record(const xx_zip *zip, const char *key)
 {
     const zip_analysis *a = zip ? (const zip_analysis *)zip->analysis : NULL;

@@ -152,6 +152,16 @@ static uint64_t xx_pe_count_resources(const xx_pe *pe, const xx_memory_map *memo
     return xx_pe_count_resource_dir(memory_map, device, total, rva, size, 0U, 0U, &budget, pd);
 }
 
+/* XBinary::read_uint32 at the end of a file: the bytes that exist, the rest
+ * zero (a file ending in "PE" or "PE\0" still carries the signature). */
+static uint32_t xx_pe_read_partial_u32(xx_io_device *device, int64_t offset, int64_t total)
+{
+    uint32_t value = 0U;
+    int i;
+    for (i = 0; i < 4 && offset + i < total; ++i) value |= (uint32_t)xx_io_get_u8(device, offset + i) << (8 * i);
+    return value;
+}
+
 static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_struct *pd)
 {
     int64_t total;
@@ -161,41 +171,46 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_stru
     int64_t section_offset;
     int64_t image_end;
     uint32_t directory_offset;
-    uint32_t available_directories;
     uint16_t i;
+    uint16_t dos_magic;
     bool ok = false;
     if (!format || !format->device || !parsed || format->base_address < 0 || (pd && xx_pd_is_stopped(pd))) return false;
     xx_mem_zero(parsed, sizeof(*parsed));
     total = xx_io_total_size(format->device);
     if (total < format->base_address) return false;
     relative_size = total - format->base_address;
-    if (relative_size < XX_PE_DOS_HEADER_SIZE || xx_io_get_u16(format->device, format->base_address, false) != UINT16_C(0x5a4d)) return false;
+    /* XPE::isValid: "MZ" or "ZM", 0 < e_lfanew (signed 32-bit) < file size and
+     * the PE signature there. Nothing else makes a PE invalid for the
+     * reference: every later header field is read as it is, and bytes past the
+     * end of the file read as zero. */
+    dos_magic = xx_io_get_u16(format->device, format->base_address, false);
+    if (dos_magic != UINT16_C(0x5a4d) && dos_magic != UINT16_C(0x4d5a)) return false;
     parsed->pe_offset = xx_io_get_u32(format->device, format->base_address + 0x3c, false);
-    /* Tiny packed PEs can overlap their DOS and NT headers. */
-    if (format->base_address > INT64_MAX - (int64_t)parsed->pe_offset || (nt_offset = format->base_address + (int64_t)parsed->pe_offset) < 0 || nt_offset > total ||
-        total - nt_offset < 24 || xx_io_get_u32(format->device, nt_offset, false) != XX_PE_SIGNATURE)
+    if (parsed->pe_offset == 0U || parsed->pe_offset > (uint32_t)INT32_MAX || (int64_t)parsed->pe_offset >= (relative_size & INT64_C(0xffffffff)) ||
+        format->base_address > INT64_MAX - (int64_t)parsed->pe_offset - 24 - 0xffff - 0x200)
         return false;
+    nt_offset = format->base_address + (int64_t)parsed->pe_offset;
+    if (xx_pe_read_partial_u32(format->device, nt_offset, total) != XX_PE_SIGNATURE) return false;
     parsed->machine = xx_io_get_u16(format->device, nt_offset + 4, false);
     parsed->section_count = xx_io_get_u16(format->device, nt_offset + 6, false);
     parsed->timestamp = xx_io_get_u32(format->device, nt_offset + 8, false);
     parsed->optional_size = xx_io_get_u16(format->device, nt_offset + 20, false);
     parsed->characteristics = xx_io_get_u16(format->device, nt_offset + 22, false);
-    if (!parsed->section_count || parsed->section_count > XX_PE_MAX_SECTIONS || parsed->optional_size < 2U) return false;
-    optional_offset = nt_offset + 24;
-    if (optional_offset > total || parsed->optional_size > total - optional_offset) return false;
+    /* XPE::getSectionHeaders lists at most S_MAX_SECTIONCOUNT sections. */
+    if (parsed->section_count > XX_PE_QT_MAX_SECTIONS) parsed->section_count = XX_PE_QT_MAX_SECTIONS;
+    /* XPE::getOptionalHeaderOffset: -1 when the file ends at or before the
+     * optional header; the fields are then read relative to -1 (those at a
+     * negative offset read as zero, the others read DOS-header bytes). */
+    optional_offset = (int64_t)parsed->pe_offset + 24 < relative_size ? nt_offset + 24 : format->base_address - 1;
     parsed->magic = xx_io_get_u16(format->device, optional_offset, false);
-    if (parsed->magic == XX_PE_MAGIC_32) {
-        if (parsed->optional_size < 96U) goto done;
+    /* XPE reads the optional header by XPE::getMode (the machine); the magic
+     * is not validated (packers and old linkers leave it zero or wrong). */
+    if (!xx_pe_machine_is_64(parsed->machine)) {
         parsed->image_base = xx_io_get_u32(format->device, optional_offset + 28, false);
         directory_offset = 96U;
-        parsed->directory_count = xx_io_get_u32(format->device, optional_offset + 92, false);
-    } else if (parsed->magic == XX_PE_MAGIC_64) {
-        if (parsed->optional_size < 112U) goto done;
+    } else {
         parsed->image_base = xx_io_get_u64(format->device, optional_offset + 24, false);
         directory_offset = 112U;
-        parsed->directory_count = xx_io_get_u32(format->device, optional_offset + 108, false);
-    } else {
-        goto done;
     }
     parsed->entry_rva = xx_io_get_u32(format->device, optional_offset + 16, false);
     parsed->section_alignment = xx_io_get_u32(format->device, optional_offset + 32, false);
@@ -204,22 +219,18 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_stru
     parsed->headers_size = xx_io_get_u32(format->device, optional_offset + 60, false);
     parsed->subsystem = xx_io_get_u16(format->device, optional_offset + 68, false);
     parsed->dll_characteristics = xx_io_get_u16(format->device, optional_offset + 70, false);
-    if (!parsed->headers_size) goto done;
-    available_directories = (parsed->optional_size - directory_offset) / 8U;
-    if (parsed->directory_count > available_directories) parsed->directory_count = available_directories;
-    if (parsed->directory_count > 16U) parsed->directory_count = 16U;
-    /* XPE::getOptionalHeader_DataDirectory reads all 16 entries whatever
-     * NumberOfRvaAndSizes and SizeOfOptionalHeader say ("there are some
-     * protectors with false NumberOfRvaAndSizes"); directory_count keeps the
-     * declared count for the structure views. */
-    for (i = 0U; i < 16U; ++i) {
+    /* XPE::getOptionalHeader_DataDirectory reads all 16 entries at their fixed
+     * offsets whatever NumberOfRvaAndSizes and SizeOfOptionalHeader say
+     * ("there are some protectors with false NumberOfRvaAndSizes"). */
+    parsed->directory_count = 16U;
+    for (i = 0U; i < parsed->directory_count; ++i) {
         int64_t entry_offset = optional_offset + directory_offset + i * 8U;
         parsed->directory_rva[i] = xx_io_get_u32(format->device, entry_offset, false);
         parsed->directory_size[i] = xx_io_get_u32(format->device, entry_offset + 4, false);
     }
-    section_offset = optional_offset + parsed->optional_size;
-    if (section_offset > total || (uint64_t)parsed->section_count * XX_PE_SECTION_HEADER_SIZE > (uint64_t)(total - section_offset)) goto done;
-    parsed->sections = (xx_pe_section *)xx_mem_calloc(parsed->section_count, sizeof(*parsed->sections));
+    /* XPE::getSectionsTableOffset: -1 without an optional header. */
+    section_offset = optional_offset >= format->base_address ? optional_offset + parsed->optional_size : format->base_address - 1;
+    parsed->sections = (xx_pe_section *)xx_mem_calloc(parsed->section_count ? parsed->section_count : 1U, sizeof(*parsed->sections));
     if (!parsed->sections) goto done;
     /* XPE::getFileParts: the overlay starts after the header (SizeOfHeaders,
      * clamped to the file) and the raw data of the first 0x60 sections, each
@@ -231,6 +242,9 @@ static bool xx_pe_parse(Abstractformat *format, xx_pe_parsed *parsed, xx_pd_stru
         int64_t raw_end;
         size_t name_index;
         if (xx_pd_is_stopped(pd)) goto done;
+        /* A header at a negative offset (no optional header, table offset -1)
+         * cannot be read at all and stays zero. */
+        if (entry_offset < format->base_address) continue;
         for (name_index = 0U; name_index < 8U; ++name_index) section->name[name_index] = (char)xx_io_get_u8(format->device, entry_offset + (int64_t)name_index);
         section->name[8] = '\0';
         section->virtual_size = xx_io_get_u32(format->device, entry_offset + 8, false);
@@ -566,8 +580,9 @@ bool xx_pe_get_memory_map(Abstractformat *format, xx_memory_map_mode_t mode, xx_
     if (!xx_memory_map_add_part(output, format->base_address, (int64_t)header_physical, module_address, (int64_t)header_virtual, XX_FILE_PART_HEADER, 0, "Header", false))
         return false;
     maximum_physical_end = format->is_mapped ? mapped_extent : header_physical;
-    section_indices = xx_pe_get_sorted_section_indices(pe);
-    if (!section_indices) return false;
+    /* A PE without sections is valid for the reference: header (and overlay) only. */
+    section_indices = pe->number_of_sections ? xx_pe_get_sorted_section_indices(pe) : NULL;
+    if (!section_indices && pe->number_of_sections) return false;
 
     for (i = 0U; i < pe->number_of_sections; ++i) {
         uint16_t section_index = section_indices[i];
@@ -866,7 +881,7 @@ bool xx_pe_handle_base_info(Abstractformat *format, xx_pd_struct *pd)
     xx_mem_copy(pe->data_directory_size, parsed.directory_size, sizeof(pe->data_directory_size));
     pe->sections = parsed.sections;
     parsed.sections = NULL;
-    format->file_type = parsed.magic == XX_PE_MAGIC_64 ? XX_FILE_TYPE_PE64 : XX_FILE_TYPE_PE32;
+    format->file_type = xx_pe_machine_is_64(parsed.machine) ? XX_FILE_TYPE_PE64 : XX_FILE_TYPE_PE32;
     format->arch = xx_pe_machine_to_arch(parsed.machine);
     format->format_type = xx_pe_classify(&parsed);
     if (format->format_type == XX_TYPE_LIBRARY) xx_format_set_extension(format, "dll");
@@ -908,9 +923,24 @@ int64_t xx_pe_get_format_size(Abstractformat *format, xx_pd_struct *pd)
     return format && (format->base_info_handled || xx_pe_handle_base_info(format, pd)) ? format->format_size : -1;
 }
 
+bool xx_pe_machine_is_64(uint16_t machine)
+{
+    /* XPE::_getMachine: a Linux-override AMD64 machine is AMD64. */
+    if (machine == (UINT16_C(0x7b79) ^ UINT16_C(0x8664))) machine = UINT16_C(0x8664);
+    switch (machine) {
+        case 0x8664: /* AMD64 */
+        case 0x0200: /* IA64 */
+        case 0xaa64: /* ARM64 */
+        case 0x0284: /* ALPHA64 */
+        case 0x5064: /* RISCV64 */
+        case 0x6264: /* LOONGARCH64 */ return true;
+        default: return false;
+    }
+}
+
 bool xx_pe_is_64(const xx_pe *pe)
 {
-    return pe && pe->optional_magic == XX_PE_MAGIC_64;
+    return pe && xx_pe_machine_is_64(pe->machine);
 }
 
 uint16_t xx_pe_get_machine(const xx_pe *pe)

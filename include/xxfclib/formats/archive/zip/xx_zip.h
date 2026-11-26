@@ -186,6 +186,8 @@ XXFC_API bool xx_zip_analyze(xx_zip *zip, xx_pd_struct *pd);
 XXFC_API void xx_zip_cleanup_analysis(xx_zip *zip);
 XXFC_API const xx_list_s *xx_zip_get_record_names(const xx_zip *zip);
 XXFC_API bool xx_zip_record_present(const xx_zip *zip, const char *name);
+/** META-INF/MANIFEST.MF text read by xx_zip_analyze ("" when absent). */
+XXFC_API const char *xx_zip_get_manifest(const xx_zip *zip);
 XXFC_API char *xx_zip_manifest_record(const xx_zip *zip, const char *key);
 XXFC_API char *xx_zip_packagejson_record(const xx_zip *zip, const char *key);
 XXFC_API const char *xx_zip_get_jvm_version(const xx_zip *zip);

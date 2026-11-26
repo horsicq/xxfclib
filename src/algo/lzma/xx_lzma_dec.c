@@ -54,7 +54,7 @@ static bool rd_refill(lzma_range_dec *rd)
 
     if (!rd->ibuf) {
         if (!rd->ibuf_capacity) rd->ibuf_capacity = xx_get_file_buffer_size();
-        if (rd->ibuf_capacity < (256 * 1024)) rd->ibuf_capacity = (256 * 1024);
+        if (rd->ibuf_capacity < (2u * 1024u * 1024u)) rd->ibuf_capacity = (2u * 1024u * 1024u);
         /* No more than a sized stream, or the memory input, still holds. */
         if (rd->remaining >= 0) rd->ibuf_capacity = xx_io_buffer_size_for(rd->ibuf_capacity, (uint64_t)rd->remaining);
         if (!rd->dev && rd->mem && rd->mem_pos <= rd->mem_size) rd->ibuf_capacity = xx_io_buffer_size_for(rd->ibuf_capacity, (uint64_t)(rd->mem_size - rd->mem_pos));
@@ -305,6 +305,10 @@ static bool lzma_decode_block(lzma_range_dec *rd, lzma_decoder *dec, int64_t unc
         }
 
         size_t dic_limit = p->dicBufSize;
+        {
+            const size_t max_span = 8u * 1024u * 1024u;
+            if (dic_limit - p->dicPos > max_span) dic_limit = p->dicPos + max_span;
+        }
         if (uncomp_size >= 0) {
             int64_t rem = uncomp_size - total_out;
             if ((size_t)rem < dic_limit - p->dicPos) {
@@ -332,8 +336,8 @@ static bool lzma_decode_block(lzma_range_dec *rd, lzma_decoder *dec, int64_t unc
         dec->dict_filled += (uint32_t)produced;
         if (dec->dict_filled > dec->dict_limit) dec->dict_filled = dec->dict_limit;
 
-        /* Direct Dictionary flush: threshold 1MB */
-        if (p->dicPos - dec->dict_flush_pos >= 1048576) {
+        /* Direct Dictionary flush: threshold 4MB */
+        if (p->dicPos - dec->dict_flush_pos >= (4u * 1024u * 1024u)) {
             if (!lzma_dict_flush(dec, out)) return false;
         }
 

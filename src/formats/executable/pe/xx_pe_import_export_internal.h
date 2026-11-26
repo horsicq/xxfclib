@@ -77,7 +77,7 @@ static inline bool pe_symbol_input_init(pe_symbol_input *input, Abstractformat *
     }
     pe = (const xx_pe *)format;
     input->image_base = pe->image_base;
-    input->thunk_size = pe->optional_magic == XX_PE_MAGIC_64 ? 8U : 4U;
+    input->thunk_size = xx_pe_is_64(pe) ? 8U : 4U;
     xx_mem_copy(input->directory_rva, pe->data_directory_rva, sizeof(input->directory_rva));
     xx_mem_copy(input->directory_size, pe->data_directory_size, sizeof(input->directory_size));
     success = true;

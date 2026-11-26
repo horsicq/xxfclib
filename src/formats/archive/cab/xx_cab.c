@@ -60,6 +60,39 @@ static bool cab_read(xx_io_device *d, int64_t o, void *p, size_t n)
     }
     return true;
 }
+/* Buffered reads for cab_parse's CFDATA header walk: one seek and one large
+ * read per window instead of a seek and an 8-byte read per block (a large
+ * folder has tens of thousands of blocks, and the walk runs on every open). */
+#define CAB_WALK_WINDOW (1U << 20)
+typedef struct cab_walk_s {
+    xx_io_device *device;
+    uint8_t *buffer;
+    int64_t base;
+    size_t length;
+} cab_walk;
+
+/* Reads n bytes at o; the caller has checked that n <= end - o. */
+static bool cab_walk_read(cab_walk *w, int64_t o, int64_t end, uint8_t *dst, size_t n)
+{
+    if (o < 0 || o > LONG_MAX) return false; /* as cab_read */
+    if (o > end || (uint64_t)(end - o) < n) return false;
+    if (!w->buffer || n == 0 || n > CAB_WALK_WINDOW) return cab_read(w->device, o, dst, n);
+    if (o < w->base || o - w->base > (int64_t)w->length || n > w->length - (size_t)(o - w->base)) {
+        /* n <= end - o and n <= the window, so n <= want <= the window. */
+        int64_t avail = end - o;
+        size_t want = avail > (int64_t)CAB_WALK_WINDOW ? CAB_WALK_WINDOW : (size_t)avail;
+        if (!cab_read(w->device, o, w->buffer, want)) {
+            /* A device shorter than the window: read exactly as before. */
+            w->length = 0;
+            return cab_read(w->device, o, dst, n);
+        }
+        w->base = o;
+        w->length = want;
+    }
+    xx_mem_copy(dst, w->buffer + (size_t)(o - w->base), n);
+    return true;
+}
+
 static void cab_free(void *p)
 {
     cab_context *c = (cab_context *)p;
@@ -110,6 +143,7 @@ static bool cab_parse(Abstractformat *f, cab_context **out)
     int64_t at, end, total;
     cab_context *c;
     size_t i;
+    cab_walk walk = {NULL, NULL, 0, 0};
     unsigned codepage;
     if (!f || !f->device || !out || f->base_address < 0) {
         return false;
@@ -176,6 +210,8 @@ static bool cab_parse(Abstractformat *f, cab_context **out)
         xx_str_free(name);
         if (!c->files[i].name) goto fail;
     }
+    walk.device = f->device;
+    walk.buffer = (uint8_t *)xx_mem_alloc(CAB_WALK_WINDOW); /* NULL: unbuffered reads */
     for (i = 0; i < nfolders; i++) {
         const int64_t start = f->base_address + c->folders[i].data_offset;
         int64_t p = start;
@@ -184,7 +220,7 @@ static bool cab_parse(Abstractformat *f, cab_context **out)
         for (j = 0; j < c->folders[i].blocks; j++) {
             uint8_t b[8];
             uint16_t packed, plain;
-            if (p > end || 8U + c->data_reserve > (uint64_t)(end - p) || !cab_read(f->device, p, b, 8)) goto fail;
+            if (p > end || 8U + c->data_reserve > (uint64_t)(end - p) || !cab_walk_read(&walk, p, end, b, 8)) goto fail;
             packed = xx_data_get_u16(b + 4, 2, 0, false);
             plain = xx_data_get_u16(b + 6, 2, 0, false);
             p += 8 + c->data_reserve;
@@ -198,9 +234,11 @@ static bool cab_parse(Abstractformat *f, cab_context **out)
         c->folders[i].raw_size = (uint32_t)(p - start);
         c->folders[i].plain_total = (uint32_t)unpacked;
     }
+    if (walk.buffer) xx_mem_free(walk.buffer);
     *out = c;
     return true;
 fail:
+    if (walk.buffer) xx_mem_free(walk.buffer);
     cab_free(c);
     return false;
 }

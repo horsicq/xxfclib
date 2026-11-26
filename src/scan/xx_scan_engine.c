@@ -633,7 +633,8 @@ static xx_scan_result *xx_scan_run_overlay(xx_scan_engine *engine, xx_io_device 
     total_size = xx_io_total_size(device);
     range_size = options->size;
     if (range_size < 0 && total_size >= 0) range_size = total_size - options->offset;
-    /* XLE and XAtariST give the whole input as overlay (offset zero). */
+    /* XLE, XAtariST, and an XPE whose header and sections cover nothing,
+     * give the whole input as overlay (offset zero). */
     if (size < 0 || offset < options->offset || offset > INT64_MAX - size || (total_size >= 0 && (offset > total_size || size > total_size - offset)) ||
         (range_size >= 0 && (offset - options->offset > range_size || size > range_size - (offset - options->offset)))) {
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "Invalid scan overlay range");

@@ -9,32 +9,27 @@
 xx_file_type_t xx_scan_type_detect_pe(xx_io_device *device, const uint8_t head[64], size_t head_size, int64_t size, bool *managed, xx_pd_struct *pd)
 {
     uint32_t offset;
-    uint8_t signature[26];
-    uint16_t magic;
+    uint8_t header[6] = {0};
+    size_t index;
     xx_dotnet dotnet;
     bool valid_managed;
     if (managed) *managed = false;
-    if (head_size < 64U) return XX_FILE_TYPE_UNKNOWN;
+    /* XFormats::_getFileTypes: an MZ/ZM file is a PE when XPE::isValid says so:
+     * 0 < e_lfanew (signed 32-bit) < file size and the PE signature there
+     * (bytes past the end of the file read as zero). Nothing else is checked:
+     * not the optional-header magic, the section table, the size of the
+     * headers or an NT header overlapping the DOS header. XPE::getFileType
+     * then takes PE32 or PE64 from the machine alone. */
+    if (head_size < 0x40U || size <= 0) return XX_FILE_TYPE_UNKNOWN;
     offset = xx_scan_type_u32le(head + 0x3c);
-    if (offset > 1024U * 1024U || (size >= 0 && (uint64_t)offset + sizeof(signature) > (uint64_t)size) ||
-        !xx_scan_type_read_at(device, offset, signature, sizeof(signature)) || memcmp(signature, "PE\0\0", 4))
-        return XX_FILE_TYPE_UNKNOWN;
-    magic = xx_scan_type_u16le(signature + 24);
-    if (magic != 0x10bU && magic != 0x20bU) return XX_FILE_TYPE_UNKNOWN;
-    /* Tiny executable packers overlap their DOS/NT headers. Require complete
-     * bounded PE validation in that case; a short MZ containing only a PE
-     * marker is insufficient. */
-    if (offset < head_size) {
-        xx_pe compact;
-        bool valid;
-        xx_pe_init(&compact, device, 0);
-        valid = xx_pe_check_is_valid(&compact.format, pd);
-        xx_pe_destroy(&compact);
-        if (!valid) return XX_FILE_TYPE_MSDOS;
+    if (offset == 0U || offset > (uint32_t)INT32_MAX || (int64_t)offset >= (size & INT64_C(0xffffffff))) return XX_FILE_TYPE_UNKNOWN;
+    for (index = 0U; index < sizeof(header) && (int64_t)offset + (int64_t)index < size; ++index) {
+        if (!xx_scan_type_read_at(device, (int64_t)offset + (int64_t)index, &header[index], 1U)) return XX_FILE_TYPE_UNKNOWN;
     }
+    if (header[0] != 'P' || header[1] != 'E' || header[2] || header[3]) return XX_FILE_TYPE_UNKNOWN;
     xx_dotnet_init(&dotnet, device, 0);
     valid_managed = xx_dotnet_check_is_valid(&dotnet.pe.format, pd);
     xx_dotnet_destroy(&dotnet);
     if (managed) *managed = valid_managed;
-    return magic == 0x10bU ? XX_FILE_TYPE_PE32 : XX_FILE_TYPE_PE64;
+    return xx_pe_machine_is_64(xx_scan_type_u16le(header + 4)) ? XX_FILE_TYPE_PE64 : XX_FILE_TYPE_PE32;
 }

@@ -16,6 +16,7 @@
 #include "xxfclib/formats/executable/msdos/xx_msdos.h"
 #include "xxfclib/formats/executable/ne/xx_ne.h"
 #include "xxfclib/formats/installer/npm/xx_npm.h"
+#include "xxfclib/formats/document/pdf/xxpdf.h"
 #include "xxfclib/formats/executable/pe/xx_pe.h"
 #include "xxfclib/formats/image/png/xx_png.h"
 #include "xxfclib/formats/archive/rar/xx_rar.h"
@@ -257,6 +258,14 @@ static bool xx_scan_read_overlay(xx_io_device *device, xx_file_type_t type, int6
         case XX_FILE_TYPE_APK:
         case XX_FILE_TYPE_IPA: XX_SCAN_READ_OVERLAY(zip, format); break;
         case XX_FILE_TYPE_NPM: XX_SCAN_READ_OVERLAY(npm, tar_gz.format); break;
+        case XX_FILE_TYPE_PDF: {
+            /* The reference reports a PDF overlay from its own structure
+             * scan, also for documents the archive reader rejects. */
+            xx_pdf reader;
+            xx_pdf_init(&reader, device, 0);
+            valid = xx_pdf_get_overlay(&reader, offset, size, pd);
+            xx_pdf_destroy(&reader);
+        } break;
         default: break;
     }
     return valid;
@@ -290,7 +299,8 @@ static bool xx_scan_has_overlay_reader(xx_file_type_t type)
         case XX_FILE_TYPE_JAR:
         case XX_FILE_TYPE_APK:
         case XX_FILE_TYPE_IPA:
-        case XX_FILE_TYPE_NPM: return true;
+        case XX_FILE_TYPE_NPM:
+        case XX_FILE_TYPE_PDF: return true;
         default: return false;
     }
 }
