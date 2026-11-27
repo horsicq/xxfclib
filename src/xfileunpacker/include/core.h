@@ -98,6 +98,7 @@ typedef struct xfu_callbacks {
      * Notifications are bounded per archive layer; member flags remain on
      * every entry. Arguments are borrowed, and callbacks run on the worker. */
     void (*encryption)(void *user, xfu_encryption_status status, const char *member_name);
+    void (*extract_result)(void *user, const xfu_entry *entry, bool success, bool partial);
 } xfu_callbacks;
 
 typedef struct xfu_request {

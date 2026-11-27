@@ -2564,14 +2564,18 @@ reader_opened:
                  * neither reported nor counted as failed. */
                 emit(request, true, "  %s -- cancelled", entry.name);
                 ++interrupted;
-            } else if (testing && request->callbacks.test_result) request->callbacks.test_result(request->callbacks.user, &entry, success);
-            else if (success && before.present) emit(request, false, "  %s -- replaced an existing file", entry.name);
-            else if (success) emit(request, false, testing ? "  %s -- OK" : "  %s", entry.name);
-            else if (salvaged && salvage_declared >= 0 && salvage_written < (uint64_t)salvage_declared)
-                emit(request, true, "  %s -- PARTIAL (%llu of %lld bytes; stream damaged)", entry.name, (unsigned long long)salvage_written, (long long)salvage_declared);
-            else if (salvaged) emit(request, true, "  %s -- PARTIAL (%llu bytes kept; stream damaged)", entry.name, (unsigned long long)salvage_written);
-            else if (entry.failure) emit(request, true, "  %s -- FAILED (%s)", entry.name, entry.failure);
-            else emit(request, true, "  %s -- FAILED", entry.name);
+            } else {
+                if (!testing && request->callbacks.extract_result)
+                    request->callbacks.extract_result(request->callbacks.user, &entry, success, salvaged);
+                if (testing && request->callbacks.test_result) request->callbacks.test_result(request->callbacks.user, &entry, success);
+                else if (success && before.present) emit(request, false, "  %s -- replaced an existing file", entry.name);
+                else if (success) emit(request, false, testing ? "  %s -- OK" : "  %s", entry.name);
+                else if (salvaged && salvage_declared >= 0 && salvage_written < (uint64_t)salvage_declared)
+                    emit(request, true, "  %s -- PARTIAL (%llu of %lld bytes; stream damaged)", entry.name, (unsigned long long)salvage_written, (long long)salvage_declared);
+                else if (salvaged) emit(request, true, "  %s -- PARTIAL (%llu bytes kept; stream damaged)", entry.name, (unsigned long long)salvage_written);
+                else if (entry.failure) emit(request, true, "  %s -- FAILED (%s)", entry.name, entry.failure);
+                else emit(request, true, "  %s -- FAILED", entry.name);
+            }
             if (!success && !cut) {
                 if (salvaged) ++salvaged_members;
                 else ++failed;
