@@ -16,12 +16,11 @@
 #define MD(t) XX_DOTNET_MDT_##t
 
 /* The standard heaps use only a handful of streams. Bound the directory so
- * duplicate-name and overlap checks cannot turn a crafted header into an
+ * overlap checks cannot turn a crafted header into an
  * unbounded quadratic walk. Custom stream names remain supported. */
 #define DOTNET_MAX_STREAMS 128
 typedef struct {
     uint32_t offset, size;
-    char name[33];
 } dotnet_stream_extent;
 
 static int coded_width(const xx_dotnet_inspect_cli *cli, unsigned bits, const unsigned *tables, size_t count)
@@ -797,7 +796,7 @@ static int parse_net(xx_dotnet_inspection *state)
     uint16_t streams, i;
     dotnet_stream_extent stream_extents[DOTNET_MAX_STREAMS];
     int64_t cor, meta, end, pos, first_stream;
-    int tables = 0, strings = 0, us = 0, blob = 0, guid = 0;
+    int tables = 0, strings = 0, us = 0;
     cor = dotnet_rva_range(state, state->pe.pDirRVA[XX_DOTNET_INSPECT_DIR_COMHEADER], 72);
     if (cor < 0 || state->pe.pDirSize[XX_DOTNET_INSPECT_DIR_COMHEADER] < 72) return 0;
     cor_size = xx_exec_u32(input, cor, false);
@@ -842,31 +841,29 @@ static int parse_net(xx_dotnet_inspection *state)
         start = meta + off;
         for (previous = 0; previous < i; ++previous) {
             const dotnet_stream_extent *extent = &stream_extents[previous];
-            if (!xx_rt_strcmp(name, extent->name)) return 0;
             if (size && extent->size && (uint64_t)off < (uint64_t)extent->offset + extent->size && (uint64_t)extent->offset < (uint64_t)off + size) return 0;
         }
         stream_extents[i].offset = off;
         stream_extents[i].size = size;
-        xx_rt_memcpy(stream_extents[i].name, name, j + 1);
         if (size && start < first_stream) first_stream = start;
+        /* XCLIAssembly::getCliInfo accepts repeated stream names. It keeps
+         * the first #Strings/#US heaps and the last tables/#Blob/#GUID heaps. */
         if (!xx_rt_strcmp(name, "#~") || !xx_rt_strcmp(name, "#-")) {
-            if (tables++) return 0;
+            tables = 1;
             cli->nTablesOffset = start;
             cli->nTablesSize = size;
-        } else if (!xx_rt_strcmp(name, "#Strings")) {
-            if (strings++) return 0;
+        } else if (!xx_rt_strcmp(name, "#Strings") && !strings) {
+            strings = 1;
             cli->nStringsOffset = start;
             cli->nStringsSize = size;
-        } else if (!xx_rt_strcmp(name, "#US")) {
-            if (us++) return 0;
+        } else if (!xx_rt_strcmp(name, "#US") && !us) {
+            us = 1;
             cli->nUSOffset = start;
             cli->nUSSize = size;
         } else if (!xx_rt_strcmp(name, "#Blob")) {
-            if (blob++) return 0;
             cli->nBlobOffset = start;
             cli->nBlobSize = size;
         } else if (!xx_rt_strcmp(name, "#GUID")) {
-            if (guid++) return 0;
             cli->nGuidOffset = start;
             cli->nGuidSize = size;
         }

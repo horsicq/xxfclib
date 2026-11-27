@@ -192,7 +192,7 @@ static inline uint32_t ppmd7_esc_sum(const CPpmd_State *q, unsigned n, const uin
     return h0 + h1;
 }
 
-#if !defined(PPMD7_NO_ESC_SSSE3) && (defined(_M_X64) || defined(__x86_64__))
+#if !defined(PPMD7_NO_ESC_SSSE3) && (defined(_M_X64) || defined(_M_IX86) || defined(__x86_64__) || defined(__i386__))
 #include <tmmintrin.h>
 #define PPMD7_ESC_SSSE3 1
 #define PPMD7_ESC_SIMD_MIN 64 /* below this the table set-up costs more than it saves */
