@@ -558,149 +558,25 @@ static inline bool xx_7zip_bcj2_stream_bit(xx_7zip_bcj2_stream_input *input, uin
 }
 
 #if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
+#define XX_7ZIP_BCJ2_SSE2 1
 #include <emmintrin.h>
 #if defined(_MSC_VER)
 #include <intrin.h>
 #endif
 
-static inline size_t xx_7zip_bcj2_scan_and_copy(uint8_t *dst, const uint8_t *src, size_t len)
+static inline unsigned xx_7zip_bcj2_ctz(unsigned value)
 {
-    size_t i = 0;
-    const __m128i v_e8 = _mm_set1_epi8((char)-24); /* 0xE8 */
-    const __m128i v_fe = _mm_set1_epi8((char)-2);  /* 0xFE */
-    const __m128i v_0f = _mm_set1_epi8((char)0x0F);
-
-    while (i + 64 <= len) {
-        __m128i d0 = _mm_loadu_si128((const __m128i *)(const void *)(src + i));
-        __m128i m0 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d0, v_fe), v_e8), _mm_cmpeq_epi8(d0, v_0f));
-        int mask0 = _mm_movemask_epi8(m0);
-        if (mask0 != 0) {
-            _mm_storeu_si128((__m128i *)(void *)(dst + i), d0);
-            unsigned long bit_idx;
 #if defined(_MSC_VER)
-            _BitScanForward(&bit_idx, (unsigned long)mask0);
+    unsigned long bit_idx;
+    _BitScanForward(&bit_idx, (unsigned long)value);
+    return (unsigned)bit_idx;
 #else
-            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask0);
+    return (unsigned)__builtin_ctz(value);
 #endif
-            return i + (size_t)bit_idx;
-        }
-
-        __m128i d1 = _mm_loadu_si128((const __m128i *)(const void *)(src + i + 16));
-        __m128i m1 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d1, v_fe), v_e8), _mm_cmpeq_epi8(d1, v_0f));
-        int mask1 = _mm_movemask_epi8(m1);
-        _mm_storeu_si128((__m128i *)(void *)(dst + i), d0);
-        if (mask1 != 0) {
-            _mm_storeu_si128((__m128i *)(void *)(dst + i + 16), d1);
-            unsigned long bit_idx;
-#if defined(_MSC_VER)
-            _BitScanForward(&bit_idx, (unsigned long)mask1);
-#else
-            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask1);
-#endif
-            return i + 16 + (size_t)bit_idx;
-        }
-
-        __m128i d2 = _mm_loadu_si128((const __m128i *)(const void *)(src + i + 32));
-        __m128i m2 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d2, v_fe), v_e8), _mm_cmpeq_epi8(d2, v_0f));
-        int mask2 = _mm_movemask_epi8(m2);
-        _mm_storeu_si128((__m128i *)(void *)(dst + i + 16), d1);
-        if (mask2 != 0) {
-            _mm_storeu_si128((__m128i *)(void *)(dst + i + 32), d2);
-            unsigned long bit_idx;
-#if defined(_MSC_VER)
-            _BitScanForward(&bit_idx, (unsigned long)mask2);
-#else
-            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask2);
-#endif
-            return i + 32 + (size_t)bit_idx;
-        }
-
-        __m128i d3 = _mm_loadu_si128((const __m128i *)(const void *)(src + i + 48));
-        __m128i m3 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d3, v_fe), v_e8), _mm_cmpeq_epi8(d3, v_0f));
-        int mask3 = _mm_movemask_epi8(m3);
-        _mm_storeu_si128((__m128i *)(void *)(dst + i + 32), d2);
-        _mm_storeu_si128((__m128i *)(void *)(dst + i + 48), d3);
-        if (mask3 != 0) {
-            unsigned long bit_idx;
-#if defined(_MSC_VER)
-            _BitScanForward(&bit_idx, (unsigned long)mask3);
-#else
-            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask3);
-#endif
-            return i + 48 + (size_t)bit_idx;
-        }
-        i += 64;
-    }
-    while (i + 32 <= len) {
-        __m128i d0 = _mm_loadu_si128((const __m128i *)(const void *)(src + i));
-        __m128i m0 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d0, v_fe), v_e8), _mm_cmpeq_epi8(d0, v_0f));
-        int mask0 = _mm_movemask_epi8(m0);
-        if (mask0 != 0) {
-            _mm_storeu_si128((__m128i *)(void *)(dst + i), d0);
-            unsigned long bit_idx;
-#if defined(_MSC_VER)
-            _BitScanForward(&bit_idx, (unsigned long)mask0);
-#else
-            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask0);
-#endif
-            return i + (size_t)bit_idx;
-        }
-
-        __m128i d1 = _mm_loadu_si128((const __m128i *)(const void *)(src + i + 16));
-        __m128i m1 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d1, v_fe), v_e8), _mm_cmpeq_epi8(d1, v_0f));
-        int mask1 = _mm_movemask_epi8(m1);
-        _mm_storeu_si128((__m128i *)(void *)(dst + i), d0);
-        _mm_storeu_si128((__m128i *)(void *)(dst + i + 16), d1);
-        if (mask1 != 0) {
-            unsigned long bit_idx;
-#if defined(_MSC_VER)
-            _BitScanForward(&bit_idx, (unsigned long)mask1);
-#else
-            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask1);
-#endif
-            return i + 16 + (size_t)bit_idx;
-        }
-        i += 32;
-    }
-    while (i + 16 <= len) {
-        __m128i d0 = _mm_loadu_si128((const __m128i *)(const void *)(src + i));
-        __m128i m0 = _mm_or_si128(_mm_cmpeq_epi8(_mm_and_si128(d0, v_fe), v_e8), _mm_cmpeq_epi8(d0, v_0f));
-        int mask = _mm_movemask_epi8(m0);
-        _mm_storeu_si128((__m128i *)(void *)(dst + i), d0);
-        if (mask != 0) {
-            unsigned long bit_idx;
-#if defined(_MSC_VER)
-            _BitScanForward(&bit_idx, (unsigned long)mask);
-#else
-            bit_idx = (unsigned long)__builtin_ctz((unsigned int)mask);
-#endif
-            return i + (size_t)bit_idx;
-        }
-        i += 16;
-    }
-    while (i < len) {
-        uint8_t b = src[i];
-        if (b == 0xE8U || b == 0xE9U || b == 0x0FU) return i;
-        dst[i] = b;
-        i++;
-    }
-    return len;
-}
-#else
-static inline size_t xx_7zip_bcj2_scan_and_copy(uint8_t *dst, const uint8_t *src, size_t len)
-{
-    size_t i = 0;
-    while (i < len) {
-        uint8_t b = src[i];
-        if (b == 0xE8U || b == 0xE9U || b == 0x0FU) return i;
-        dst[i] = b;
-        i++;
-    }
-    return len;
 }
 #endif
 
-#define XX_7ZIP_BCJ2_CHUNK (8192U * 1024U)
+#define XX_7ZIP_BCJ2_CHUNK (2048U * 1024U)
 
 typedef struct xx_bcj2_filter_device_s {
     xx_io_device device;
@@ -735,6 +611,8 @@ typedef struct xx_bcj2_filter_device_s {
 static void xx_bcj2_filter_cleanup(xx_bcj2_filter_device *f)
 {
     if (!f) return;
+    /* Owned buffers hold decoded data (decrypted, for passworded archives): wipe
+     * them before freeing.  Borrowed secondary streams leave mem1..3 NULL. */
     if (f->mem1) {
         xx_mem_zero(f->mem1, f->size1 ? f->size1 : 1U);
         xx_mem_free(f->mem1);
@@ -789,8 +667,16 @@ static ssize_t xx_bcj2_filter_write_cb(xx_io_device *device, const void *buffer,
     uint8_t *out_buf = f->out_buf;
     size_t out_used = f->out_used;
 
+#if defined(XX_7ZIP_BCJ2_SSE2)
+    const __m128i v_e8 = _mm_set1_epi8((char)-24); /* 0xE8 */
+    const __m128i v_fe = _mm_set1_epi8((char)-2);  /* 0xFE */
+    const __m128i v_0f = _mm_set1_epi8((char)0x0F);
+    const __m128i v_f0 = _mm_set1_epi8((char)-16);  /* 0xF0 */
+    const __m128i v_80 = _mm_set1_epi8((char)-128); /* 0x80 */
+#endif
+
     while (in0_ptr < in0_limit) {
-        if (XX_7ZIP_BCJ2_CHUNK - out_used < 64U) {
+        if (XX_7ZIP_BCJ2_CHUNK - out_used <= 64U) {
             f->out_used = out_used;
             if (!xx_bcj2_filter_flush(f)) return -1;
             out_used = 0U;
@@ -798,17 +684,49 @@ static ssize_t xx_bcj2_filter_write_cb(xx_io_device *device, const void *buffer,
 
         if (previous != 0x0FU) {
             size_t avail_in = (size_t)(in0_limit - in0_ptr);
-            size_t avail_out = (XX_7ZIP_BCJ2_CHUNK - 64U) > out_used ? ((XX_7ZIP_BCJ2_CHUNK - 64U) - out_used) : 0U;
+            size_t avail_out = (XX_7ZIP_BCJ2_CHUNK - 64U) - out_used;
             size_t max_run = avail_in < avail_out ? avail_in : avail_out;
-            if (max_run > 0U) {
-                size_t copied = xx_7zip_bcj2_scan_and_copy(out_buf + out_used, in0_ptr, max_run);
-                if (copied) {
-                    out_used += copied;
-                    in0_ptr += copied;
-                    ip += (uint32_t)copied;
-                    previous = in0_ptr[-1];
-                    if (in0_ptr >= in0_limit || (XX_7ZIP_BCJ2_CHUNK - out_used < 64U)) continue;
+            uint8_t *dst = out_buf + out_used;
+            const uint8_t *src = in0_ptr;
+            size_t i = 0U;
+#if defined(XX_7ZIP_BCJ2_SSE2)
+            /* Ignore 0x0F unless followed by 0x80..0x8F; a match on 0x0F 0x8x
+             * advances past 0x0F so the next byte triggers the branch directly. */
+            while (i + 17U <= max_run) {
+                __m128i d0 = _mm_loadu_si128((const __m128i *)(const void *)(src + i));
+                __m128i d1 = _mm_loadu_si128((const __m128i *)(const void *)(src + i + 1U));
+                __m128i m_e = _mm_cmpeq_epi8(_mm_and_si128(d0, v_fe), v_e8);
+                __m128i m_0f = _mm_and_si128(_mm_cmpeq_epi8(d0, v_0f), _mm_cmpeq_epi8(_mm_and_si128(d1, v_f0), v_80));
+                unsigned hits = (unsigned)_mm_movemask_epi8(m_e) | ((unsigned)_mm_movemask_epi8(m_0f) << 1U);
+                _mm_storeu_si128((__m128i *)(void *)(dst + i), d0);
+                if (hits != 0U) {
+                    i += (size_t)xx_7zip_bcj2_ctz(hits);
+                    goto hit;
                 }
+                i += 16U;
+            }
+#endif
+            while (i < max_run) {
+                uint8_t b = src[i];
+                if (b == 0xE8U || b == 0xE9U || b == 0x0FU) goto hit;
+                dst[i] = b;
+                ++i;
+            }
+            out_used += max_run;
+            in0_ptr += max_run;
+            ip += (uint32_t)max_run;
+            previous = in0_ptr[-1];
+            if (in0_ptr >= in0_limit) break;
+            f->out_used = out_used;
+            if (!xx_bcj2_filter_flush(f)) return -1;
+            out_used = 0U;
+            continue;
+        hit:
+            if (i > 0U) {
+                out_used += i;
+                in0_ptr += i;
+                ip += (uint32_t)i;
+                previous = in0_ptr[-1];
             }
         }
 
@@ -839,7 +757,7 @@ static ssize_t xx_bcj2_filter_write_cb(xx_io_device *device, const void *buffer,
 
                 const uint8_t *sel_ptr = (opcode == 0xE8U) ? p1 : p2;
                 const uint8_t *sel_end = (opcode == 0xE8U) ? p1_end : p2_end;
-                if (sel_ptr + 4U > sel_end) {
+                if ((size_t)(sel_end - sel_ptr) < 4U) {
                     f->error = true;
                     return -1;
                 }
@@ -880,6 +798,7 @@ static ssize_t xx_bcj2_filter_write_cb(xx_io_device *device, const void *buffer,
     f->ip = ip;
     f->previous = previous;
     f->p1 = p1;
+    f->p1_end = p1_end;
     f->p2 = p2;
     f->p3 = p3;
     f->out_used = out_used;
@@ -892,8 +811,32 @@ static int64_t xx_bcj2_filter_size_cb(xx_io_device *device)
     return f ? (int64_t)(f->total_written + f->out_used) : -1;
 }
 
-static bool xx_bcj2_filter_init(xx_bcj2_filter_device *f, xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3], const uint8_t *properties,
-                                size_t properties_size, uint64_t expected_size, xx_io_device *destination, xx_pd_struct *pd)
+static bool xx_bcj2_filter_load_stream(xx_io_device *source, size_t size, const uint8_t *borrowed, uint8_t **owned, const uint8_t **begin,
+                                       const uint8_t **end)
+{
+    static const uint8_t k_empty = 0U;
+    if (size == 0U) {
+        *owned = NULL;
+        *begin = &k_empty;
+        *end = &k_empty;
+        return true;
+    }
+    if (borrowed) {
+        *owned = NULL;
+        *begin = borrowed;
+        *end = borrowed + size;
+        return true;
+    }
+    *owned = (uint8_t *)xx_mem_alloc(size);
+    if (!*owned || xx_io_seek64(source, 0, SEEK_SET) != 0 || !xx_7zip_stream_read_exact(source, *owned, size)) return false;
+    *begin = *owned;
+    *end = *owned + size;
+    return true;
+}
+
+static bool xx_bcj2_filter_init(xx_bcj2_filter_device *f, xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3],
+                                const uint8_t *const secondary_ptrs[3], const uint8_t *properties, size_t properties_size, uint64_t expected_size,
+                                xx_io_device *destination, xx_pd_struct *pd)
 {
     uint8_t first;
     size_t i;
@@ -908,41 +851,14 @@ static bool xx_bcj2_filter_init(xx_bcj2_filter_device *f, xx_io_device *const se
     f->size2 = (size_t)secondary_sizes[1];
     f->size3 = (size_t)secondary_sizes[2];
 
-    f->mem1 = (uint8_t *)xx_mem_alloc(f->size1 ? f->size1 : 1U);
-    f->mem2 = (uint8_t *)xx_mem_alloc(f->size2 ? f->size2 : 1U);
-    f->mem3 = (uint8_t *)xx_mem_alloc(f->size3 ? f->size3 : 1U);
     f->out_buf = (uint8_t *)xx_mem_alloc(XX_7ZIP_BCJ2_CHUNK);
-
-    if (!f->mem1 || !f->mem2 || !f->mem3 || !f->out_buf) {
+    if (!f->out_buf ||
+        !xx_bcj2_filter_load_stream(secondary_sources[0], f->size1, secondary_ptrs ? secondary_ptrs[0] : NULL, &f->mem1, &f->p1, &f->p1_end) ||
+        !xx_bcj2_filter_load_stream(secondary_sources[1], f->size2, secondary_ptrs ? secondary_ptrs[1] : NULL, &f->mem2, &f->p2, &f->p2_end) ||
+        !xx_bcj2_filter_load_stream(secondary_sources[2], f->size3, secondary_ptrs ? secondary_ptrs[2] : NULL, &f->mem3, &f->p3, &f->p3_end)) {
         xx_bcj2_filter_cleanup(f);
         return false;
     }
-
-    if (f->size1) {
-        if (xx_io_seek64(secondary_sources[0], 0, SEEK_SET) != 0 || !xx_7zip_stream_read_exact(secondary_sources[0], f->mem1, f->size1)) {
-            xx_bcj2_filter_cleanup(f);
-            return false;
-        }
-    }
-    if (f->size2) {
-        if (xx_io_seek64(secondary_sources[1], 0, SEEK_SET) != 0 || !xx_7zip_stream_read_exact(secondary_sources[1], f->mem2, f->size2)) {
-            xx_bcj2_filter_cleanup(f);
-            return false;
-        }
-    }
-    if (f->size3) {
-        if (xx_io_seek64(secondary_sources[2], 0, SEEK_SET) != 0 || !xx_7zip_stream_read_exact(secondary_sources[2], f->mem3, f->size3)) {
-            xx_bcj2_filter_cleanup(f);
-            return false;
-        }
-    }
-
-    f->p1 = f->mem1;
-    f->p1_end = f->mem1 + f->size1;
-    f->p2 = f->mem2;
-    f->p2_end = f->mem2 + f->size2;
-    f->p3 = f->mem3;
-    f->p3_end = f->mem3 + f->size3;
 
     f->ip = properties_size == 4U ? xx_data_get_u32(properties, 4, 0, false) : 0U;
     for (i = 0U; i < 258U; ++i) f->probabilities[i] = 1024U;
@@ -992,7 +908,8 @@ bool xx_7zip_stream_bcj2(xx_io_device *const sources[4], const uint64_t sizes[4]
     uint64_t in0_consumed = 0U;
     bool success = false;
 
-    if (!sources || !sizes || !xx_bcj2_filter_init(&filter, &sources[1], &sizes[1], properties, properties_size, expected_size, destination, pd)) return false;
+    if (!sources || !sizes || !xx_bcj2_filter_init(&filter, &sources[1], &sizes[1], NULL, properties, properties_size, expected_size, destination, pd))
+        return false;
 
     in0_buffer = (uint8_t *)xx_mem_alloc(XX_7ZIP_BCJ2_CHUNK);
     if (!in0_buffer || !xx_7zip_stream_window_init(&in0_window, sources[0], 0, sizes[0], pd)) goto done;
@@ -1019,15 +936,16 @@ done:
     return success;
 }
 
-bool xx_7zip_stream_bcj2_streaming(xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3], const uint8_t *properties, size_t properties_size,
-                                   uint64_t in0_size, uint64_t expected_size, xx_io_device *u_source, int64_t u_source_offset, uint64_t u_compressed_size,
-                                   uint64_t u_method, const uint8_t *u_properties, size_t u_properties_size, xx_io_device *destination, const uint8_t *password_utf16le,
-                                   size_t password_size, xx_pd_struct *pd)
+bool xx_7zip_stream_bcj2_streaming_spans(xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3], const uint8_t *const secondary_ptrs[3],
+                                         const uint8_t *properties, size_t properties_size, uint64_t in0_size, uint64_t expected_size, xx_io_device *u_source,
+                                         int64_t u_source_offset, uint64_t u_compressed_size, uint64_t u_method, const uint8_t *u_properties, size_t u_properties_size,
+                                         xx_io_device *destination, const uint8_t *password_utf16le, size_t password_size, xx_pd_struct *pd)
 {
     xx_bcj2_filter_device filter;
     bool ok;
 
-    if (!xx_bcj2_filter_init(&filter, secondary_sources, secondary_sizes, properties, properties_size, expected_size, destination, pd)) return false;
+    if (!xx_bcj2_filter_init(&filter, secondary_sources, secondary_sizes, secondary_ptrs, properties, properties_size, expected_size, destination, pd))
+        return false;
 
     ok = xx_7zip_stream_decode(u_method, u_properties, u_properties_size, u_source, u_source_offset, u_compressed_size, in0_size, &filter.device, password_utf16le,
                                password_size, pd);
@@ -1036,6 +954,16 @@ bool xx_7zip_stream_bcj2_streaming(xx_io_device *const secondary_sources[3], con
     }
     xx_bcj2_filter_cleanup(&filter);
     return ok;
+}
+
+bool xx_7zip_stream_bcj2_streaming(xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3], const uint8_t *properties, size_t properties_size,
+                                   uint64_t in0_size, uint64_t expected_size, xx_io_device *u_source, int64_t u_source_offset, uint64_t u_compressed_size,
+                                   uint64_t u_method, const uint8_t *u_properties, size_t u_properties_size, xx_io_device *destination, const uint8_t *password_utf16le,
+                                   size_t password_size, xx_pd_struct *pd)
+{
+    return xx_7zip_stream_bcj2_streaming_spans(secondary_sources, secondary_sizes, NULL, properties, properties_size, in0_size, expected_size, u_source,
+                                               u_source_offset, u_compressed_size, u_method, u_properties, u_properties_size, destination, password_utf16le,
+                                               password_size, pd);
 }
 
 bool xx_7zip_stream_filter_streaming(uint64_t method, const uint8_t *properties, size_t properties_size, uint64_t expected_size, xx_io_device *u_source,
@@ -1068,8 +996,9 @@ bool xx_7zip_stream_filter_method(uint64_t method)
  * parent until xx_7zip_pipe_bcj2_finish or xx_7zip_pipe_abort returns. */
 #include "xxfclib/threads/xx_threads.h"
 
-#define XX_7ZIP_PIPE_CHUNK ((size_t)1U << 20)
-#define XX_7ZIP_PIPE_SLOTS 64U
+#define XX_7ZIP_PIPE_CHUNK (512U * 1024U)
+/* 128 x 512 KiB: the same 64 MiB ring budget as before the smaller chunks. */
+#define XX_7ZIP_PIPE_SLOTS 128U
 #define XX_7ZIP_PIPE_POLL_MS 50U
 
 struct xx_7zip_pipe_s {
@@ -1127,7 +1056,7 @@ static ssize_t xx_7zip_pipe_write(xx_io_device *device, const void *buffer, size
         }
         take = XX_7ZIP_PIPE_CHUNK - pipe->tail_used;
         if (take > left) take = left;
-        xx_mem_copy(pipe->slots[pipe->tail] + pipe->tail_used, input, take);
+        xx_rt_memcpy(pipe->slots[pipe->tail] + pipe->tail_used, input, take);
         pipe->tail_used += take;
         input += take;
         left -= take;
@@ -1230,13 +1159,14 @@ void xx_7zip_pipe_abort(xx_7zip_pipe *pipe)
     if (pipe) xx_7zip_pipe_stop(pipe);
 }
 
-bool xx_7zip_pipe_bcj2_finish(xx_7zip_pipe *pipe, xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3], const uint8_t *properties,
-                              size_t properties_size, uint64_t expected_size, xx_io_device *destination, xx_pd_struct *pd)
+bool xx_7zip_pipe_bcj2_finish_spans(xx_7zip_pipe *pipe, xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3],
+                                    const uint8_t *const secondary_ptrs[3], const uint8_t *properties, size_t properties_size, uint64_t expected_size,
+                                    xx_io_device *destination, xx_pd_struct *pd)
 {
     xx_bcj2_filter_device filter;
     bool ok = false, worker_ok = false;
     if (!pipe) return false;
-    if (!xx_bcj2_filter_init(&filter, secondary_sources, secondary_sizes, properties, properties_size, expected_size, destination, pd)) {
+    if (!xx_bcj2_filter_init(&filter, secondary_sources, secondary_sizes, secondary_ptrs, properties, properties_size, expected_size, destination, pd)) {
         xx_7zip_pipe_stop(pipe);
         return false;
     }
@@ -1275,6 +1205,12 @@ done:
     xx_7zip_pipe_stop(pipe);
     xx_bcj2_filter_cleanup(&filter);
     return ok;
+}
+
+bool xx_7zip_pipe_bcj2_finish(xx_7zip_pipe *pipe, xx_io_device *const secondary_sources[3], const uint64_t secondary_sizes[3], const uint8_t *properties,
+                              size_t properties_size, uint64_t expected_size, xx_io_device *destination, xx_pd_struct *pd)
+{
+    return xx_7zip_pipe_bcj2_finish_spans(pipe, secondary_sources, secondary_sizes, NULL, properties, properties_size, expected_size, destination, pd);
 }
 
 /* A coder's whole output decoded into memory on a worker thread, readable

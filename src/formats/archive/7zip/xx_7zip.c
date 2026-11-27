@@ -135,7 +135,7 @@ static ssize_t xx_7zip_buffer_read(xx_io_device *device, void *buffer, size_t si
     if (!sink || (!buffer && size)) return -1;
     available = sink->length - sink->position;
     if (size > available) size = available;
-    if (size) xx_mem_copy(buffer, sink->buffer + sink->position, size);
+    if (size) xx_rt_memcpy(buffer, sink->buffer + sink->position, size);
     sink->position += size;
     return (ssize_t)size;
 }
@@ -144,7 +144,7 @@ static ssize_t xx_7zip_buffer_write(xx_io_device *device, const void *buffer, si
 {
     xx_7zip_buffer_device *sink = device ? (xx_7zip_buffer_device *)device->priv : NULL;
     if (!sink || (!buffer && size) || size > sink->capacity - sink->position) return -1;
-    if (size) xx_mem_copy(sink->buffer + sink->position, buffer, size);
+    if (size) xx_rt_memcpy(sink->buffer + sink->position, buffer, size);
     sink->position += size;
     if (sink->position > sink->length) sink->length = sink->position;
     return (ssize_t)size;
@@ -224,6 +224,16 @@ static xx_io_device *xx_7zip_mem_temp_open(size_t capacity)
     sink->device.seek64 = xx_7zip_buffer_seek64;
     sink->device.close = xx_7zip_buffer_close;
     return &sink->device;
+}
+
+static const uint8_t *xx_7zip_buffer_span(const xx_io_device *device, size_t *size)
+{
+    const xx_7zip_buffer_device *sink;
+    if (!device || device->read != xx_7zip_buffer_read || device->buffer_state) return NULL;
+    sink = (const xx_7zip_buffer_device *)device->priv;
+    if (!sink || !sink->buffer) return NULL;
+    if (size) *size = sink->length;
+    return sink->buffer;
 }
 
 static bool xx_7zip_u64_add(uint64_t a, uint64_t b, uint64_t *out)
@@ -1396,10 +1406,31 @@ static bool xx_7zip_folder_preload_packed(xx_7zip_folder_decode *context)
             return false;
         memory = xx_7zip_mem_temp_open((size_t)packed_size);
         if (!memory) return false;
-        if (!xx_7zip_copy_range(context->format->device, (uint64_t)offset, packed_size, memory, context->pd) || xx_io_seek64(memory, 0, SEEK_SET) != 0 ||
-            xx_io_total_size(memory) != (int64_t)packed_size) {
-            xx_io_close(memory);
-            return false;
+        {
+            xx_7zip_buffer_device *buf_dev = (xx_7zip_buffer_device *)memory->priv;
+            size_t done = 0U;
+            if (offset < 0 || packed_size > INT64_MAX || (uint64_t)offset > (uint64_t)INT64_MAX - packed_size ||
+                xx_io_seek64(context->format->device, offset, SEEK_SET) != 0) {
+                xx_io_close(memory);
+                return false;
+            }
+            while (done < (size_t)packed_size) {
+                size_t want = (size_t)packed_size - done;
+                ssize_t got;
+                if (want > (2U << 20)) want = 2U << 20;
+                if (context->pd && xx_pd_is_stopped(context->pd)) {
+                    xx_io_close(memory);
+                    return false;
+                }
+                got = xx_io_read(context->format->device, buf_dev->buffer + done, want);
+                if (got <= 0 || (size_t)got > want) {
+                    xx_io_close(memory);
+                    return false;
+                }
+                done += (size_t)got;
+            }
+            buf_dev->length = (size_t)packed_size;
+            buf_dev->position = 0U;
         }
         context->input_data[input_index] = memory;
         context->input_sizes[input_index] = packed_size;
@@ -1471,7 +1502,10 @@ static bool xx_7zip_folder_decode_output(xx_7zip_folder_decode *context, uint64_
          * decodes the other three and then runs BCJ2 on its output. The
          * worker reads its input alone: the other packed streams are read
          * into memory first. */
-        if (u_coder && context->folder->unpack_sizes[u_out_idx] >= XX_7ZIP_PIPE_MIN_SIZE) {
+        /* BCJ2 output = main stream + call/jump target bytes, so a main stream
+         * declared larger than the output is corrupt: do not start a worker
+         * (and its ring) for it; the sequential path below rejects it. */
+        if (u_coder && context->folder->unpack_sizes[u_out_idx] >= XX_7ZIP_PIPE_MIN_SIZE && context->folder->unpack_sizes[u_out_idx] <= expected) {
             bool have_input;
             context->output_busy[u_out_idx] = 1U;
             have_input = xx_7zip_folder_decode_input(context, u_in_base, &u_input, &u_input_size);
@@ -1562,24 +1596,33 @@ static bool xx_7zip_folder_decode_output(xx_7zip_folder_decode *context, uint64_
     /* The decoders only write their output. */
     xx_7zip_progress_sink_init(&counted, output, context);
 
-    if (pipe) {
-        result = xx_7zip_pipe_bcj2_finish(pipe, &inputs[1], &input_sizes[1], coder->properties, coder->properties_size, expected, &counted.device, context->pd);
-        pipe = NULL;
-        context->output_busy[u_out_idx] = 0U;
-        if (result) {
-            context->output_data[u_out_idx] = xx_io_mem_open(NULL, 0);
-            context->output_sizes[u_out_idx] = u_expected;
-            if (context->level >= 0) context->written += u_expected;
+    if (pipe || bcj2_streamed) {
+        const uint8_t *sec_ptrs[3] = {NULL, NULL, NULL};
+        for (i = 0U; i < 3U; ++i) {
+            size_t span_len = 0U;
+            const uint8_t *span = xx_7zip_buffer_span(inputs[i + 1U], &span_len);
+            if (span && (uint64_t)span_len == input_sizes[i + 1U]) sec_ptrs[i] = span;
         }
-    } else if (bcj2_streamed) {
-        result = xx_7zip_stream_bcj2_streaming(&inputs[1], &input_sizes[1], coder->properties, coder->properties_size, u_expected, expected, u_input, 0, u_input_size,
-                                               u_coder->method, u_coder->properties, u_coder->properties_size, &counted.device, context->password, context->password_size,
-                                               context->pd);
-        if (result) {
-            context->output_data[u_out_idx] = xx_io_mem_open(NULL, 0);
-            context->output_sizes[u_out_idx] = u_expected;
+        if (pipe) {
+            result = xx_7zip_pipe_bcj2_finish_spans(pipe, &inputs[1], &input_sizes[1], sec_ptrs, coder->properties, coder->properties_size, expected, &counted.device,
+                                                    context->pd);
+            pipe = NULL;
             context->output_busy[u_out_idx] = 0U;
-            if (context->level >= 0) context->written += u_expected;
+            if (result) {
+                context->output_data[u_out_idx] = xx_io_mem_open(NULL, 0);
+                context->output_sizes[u_out_idx] = u_expected;
+                if (context->level >= 0) context->written += u_expected;
+            }
+        } else {
+            result = xx_7zip_stream_bcj2_streaming_spans(&inputs[1], &input_sizes[1], sec_ptrs, coder->properties, coder->properties_size, u_expected, expected,
+                                                         u_input, 0, u_input_size, u_coder->method, u_coder->properties, u_coder->properties_size,
+                                                         &counted.device, context->password, context->password_size, context->pd);
+            if (result) {
+                context->output_data[u_out_idx] = xx_io_mem_open(NULL, 0);
+                context->output_sizes[u_out_idx] = u_expected;
+                context->output_busy[u_out_idx] = 0U;
+                if (context->level >= 0) context->written += u_expected;
+            }
         }
     } else if (filter_streamed) {
         result = xx_7zip_stream_filter_streaming(coder->method, coder->properties, coder->properties_size, expected, u_input, 0, u_input_size, u_coder->method,

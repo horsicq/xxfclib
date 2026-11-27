@@ -308,7 +308,7 @@ static void jsprops_rehash(JSCtx *pCtx, JSPropMap *pMap)
 static void jsprops_compact(JSCtx *pCtx, JSPropMap *pMap)
 {
     size_t i, nOut = 0, nNew = 8;
-    if (pCtx->pGlobal && pMap == &pCtx->pGlobal->props) pCtx->nGlobalEpoch++;
+    if (pCtx->pGlobal && pMap == &pCtx->pGlobal->props) js_global_epoch_advance(pCtx);
     for (i = 0; i < pMap->nSize; i++) {
         if (!pMap->pEntries[i].bDeleted) pMap->pEntries[nOut++] = pMap->pEntries[i];
     }
@@ -394,7 +394,7 @@ int jsprops_del(JSCtx *pCtx, JSPropMap *pMap, const char *pKey)
     size_t nKeySize = xx_rt_strlen(pKey), nSlot, nProbe;
     uint32_t nHash = xx_js_hash_str(pKey, nKeySize);
     if (!pMap->nIndexSize) return 0;
-    if (pCtx->pGlobal && pMap == &pCtx->pGlobal->props) pCtx->nGlobalEpoch++;
+    if (pCtx->pGlobal && pMap == &pCtx->pGlobal->props) js_global_epoch_advance(pCtx);
     nSlot = nHash & (pMap->nIndexSize - 1);
     for (nProbe = 0; nProbe < pMap->nIndexSize; nProbe++) {
         int32_t nIndex = pMap->pIndex[nSlot];

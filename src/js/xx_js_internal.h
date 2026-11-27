@@ -379,6 +379,22 @@ void js_prepare_program(JSNode *pProgram);
 
 #define JS_GLOBAL_CACHE_SLOT(pName) ((((uintptr_t)(pName) >> 4) ^ ((uintptr_t)(pName) >> 13)) & (JS_GLOBAL_CACHE_SIZE - 1))
 
+/* Invalidates every global-cache entry. When the 32-bit epoch wraps, entries recorded 2^32 advances ago
+ * would match again and read a deleted (or, after compaction, out-of-range) slot: the cache is cleared and
+ * the epoch restarts at 1 (entries never carry 0 once cleared, since pName is reset). */
+static inline void js_global_epoch_advance(JSCtx *pCtx)
+{
+    if (++pCtx->nGlobalEpoch == 0u) {
+        uint32_t i;
+        for (i = 0; i < JS_GLOBAL_CACHE_SIZE; i++) {
+            pCtx->globalCache[i].pName = NULL;
+            pCtx->globalCache[i].nEpoch = 0u;
+            pCtx->globalCache[i].nIndex = 0u;
+        }
+        pCtx->nGlobalEpoch = 1u;
+    }
+}
+
 /* The value constructors and reference helpers of the public API, for the
  * engine's own translation units: same results, no call. */
 static inline JSVal jsv_undefined(void)

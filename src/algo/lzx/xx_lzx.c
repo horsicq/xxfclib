@@ -3,6 +3,7 @@
  */
 #include "xxfclib/rt/xx_rt.h"
 #include "xxfclib/algo/lzx/xx_lzx.h"
+#include "xx_lzx_gated.h"
 #include "xxfclib/memory/xx_memory.h"
 #include <string.h>
 #include <stdint.h>
@@ -36,7 +37,9 @@
 /* Decode tables: a direct table indexed by the next TB bits of the stream. An entry is (symbol << 5) | code length.
    When a code is longer than TB bits, the direct entry is 0x8000 | start of a second-level table, which is indexed
    by the following (longest code - TB) bits. All codes of one prefix share one second-level table, and a prefix that
-   has long codes has at least two of them, so a tree of n symbols needs at most n / 2 second-level tables. */
+   has long codes has at least two of them, so a tree of n symbols needs at most n / 2 second-level tables.
+   The main tree's entries are 32 bits wide: the upper half of a match symbol's entry says how the offset is read
+   (LZX_HIGH_*), so that the decoder knows it as soon as it has the entry, without a second lookup by position slot. */
 #define LZX_MAIN_TB 11U
 #define LZX_LENGTH_TB 10U
 #define LZX_ALIGNED_TB 7U
@@ -50,13 +53,11 @@
 /* Wide match copies may write up to this many bytes past the end of the match. */
 #define LZX_COPY_SLACK 32U
 
-/* How the offset of a match is read for one position slot and block type: `bits` verbatim bits, shifted left by
-   `shift`, plus an aligned-tree symbol when `aligned_mask` is all ones, plus `base` (already minus 2). */
-typedef struct lzx_slot_s {
-    uint32_t base;
-    uint8_t bits, shift;
-    uint16_t aligned_mask;
-} lzx_slot;
+/* Upper half of a main-tree entry of a match symbol: the offset is `LZX_HIGH_BITS` verbatim bits, which are
+   followed by an aligned-tree symbol for their three low bits when LZX_HIGH_ALIGNED is set, plus the position slot's
+   base. Zero for literals. */
+#define LZX_HIGH_BITS 31U
+#define LZX_HIGH_ALIGNED 32U
 
 typedef struct lzx_state_s {
     /* Bit reader. `bits` holds `bit_count` valid bits at its top; `in` is the next unread 16-bit word. Bits below
@@ -70,13 +71,14 @@ typedef struct lzx_state_s {
     uint32_t r0, r1, r2;
     unsigned main_symbols, position_slots;
     unsigned main_sub, length_sub, pre_sub;
-    lzx_slot slots[2][51]; /* [0] verbatim blocks, [1] aligned-offset blocks */
+    uint32_t slot_base[51];                         /* first offset of a position slot, minus 2 */
+    uint16_t main_high[2][LZX_MAX_MAIN_SYMBOLS];    /* [0] verbatim blocks, [1] aligned-offset blocks */
     uint8_t main_lengths[LZX_MAX_MAIN_SYMBOLS];
     uint8_t length_lengths[LZX_LENGTH_SYMBOLS];
     uint16_t aligned_table[LZX_ALIGNED_TABLE_SIZE];
     uint16_t pre_table[LZX_PRE_TABLE_SIZE];
     uint16_t length_table[LZX_LENGTH_TABLE_SIZE];
-    uint16_t main_table[LZX_MAIN_TABLE_SIZE];
+    uint32_t main_table[LZX_MAIN_TABLE_SIZE];
 } lzx_state;
 
 /* Four 16-bit little-endian words, the first one in the top 16 bits. p must have 8 readable bytes. */
@@ -134,6 +136,25 @@ static inline void lzx_fill_entries(uint16_t *p, uint16_t entry, unsigned span)
     }
 }
 
+/* The same for the 32-bit entries of the main table. */
+static inline void lzx_fill_entries32(uint32_t *p, uint32_t entry, unsigned span)
+{
+    if (span == 1U) p[0] = entry;
+    else {
+        const uint64_t pattern = (uint64_t)entry * 0x0000000100000001ULL;
+        unsigned j;
+        for (j = 0; j < span; j += 2U) memcpy(p + j, &pattern, sizeof(pattern));
+    }
+}
+
+/* Stores a table entry `span` times at `index`. A wide table (the main one) also gets the symbol's upper half. */
+#define LZX_STORE(index, symbol, length, span)                                                                \
+    do {                                                                                                      \
+        const unsigned store_entry = ((unsigned)(symbol) << 5U) | (length);                                   \
+        if (high) lzx_fill_entries32((uint32_t *)table + (index), ((uint32_t)high[symbol] << 16U) | store_entry, (span)); \
+        else lzx_fill_entries((uint16_t *)table + (index), (uint16_t)store_entry, (span));                    \
+    } while (0)
+
 static void lzx_bits_init(lzx_state *s, const uint8_t *input, size_t input_size)
 {
     s->in = input;
@@ -162,8 +183,9 @@ static uint32_t lzx_read(lzx_state *s, unsigned count)
 
 /* Builds the decode table of a complete prefix code (canonical: shorter codes first, then by symbol number).
    Returns false when the lengths do not form a complete code; an all-zero set is reported through *empty and
-   accepted only when empty is not NULL. */
-static bool lzx_build_table(uint16_t *table, unsigned tb, unsigned *sub_bits, const uint8_t *lengths, unsigned symbol_count, bool *empty)
+   accepted only when empty is not NULL. `table` has uint16_t entries when `high` is NULL; otherwise it has uint32_t
+   entries and high[symbol] becomes the upper half of the symbol's entries. */
+static bool lzx_build_table(void *table, const uint16_t *high, unsigned tb, unsigned *sub_bits, const uint8_t *lengths, unsigned symbol_count, bool *empty)
 {
     uint16_t count[LZX_MAX_CODE_LENGTH + 1U], offsets[LZX_MAX_CODE_LENGTH + 2U], sorted[LZX_MAX_MAIN_SYMBOLS];
     uint32_t total = 0, code = 0; /* codes in units of 2^-16 */
@@ -175,9 +197,9 @@ static bool lzx_build_table(uint16_t *table, unsigned tb, unsigned *sub_bits, co
     }
     if (count[0] == symbol_count) {
         /* no code at all: every direct entry sends the decoder to its slow path, which reports the error */
-        if (!empty) return false;
+        if (!empty || high) return false;
         *empty = true;
-        for (i = 0; i < (1U << tb); ++i) table[i] = LZX_SUB_FLAG;
+        for (i = 0; i < (1U << tb); ++i) ((uint16_t *)table)[i] = LZX_SUB_FLAG;
         return true;
     }
     if (empty) *empty = false;
@@ -195,8 +217,8 @@ static bool lzx_build_table(uint16_t *table, unsigned tb, unsigned *sub_bits, co
     for (len = 1; len <= direct_len; ++len) {
         unsigned n = count[len], span = 1U << (tb - len);
         while (n--) {
-            uint16_t entry = (uint16_t)(((unsigned)sorted[index++] << 5U) | len);
-            lzx_fill_entries(table + (code >> (LZX_MAX_CODE_LENGTH - tb)), entry, span);
+            const unsigned symbol = sorted[index++];
+            LZX_STORE(code >> (LZX_MAX_CODE_LENGTH - tb), symbol, len, span);
             code += (uint32_t)1U << (LZX_MAX_CODE_LENGTH - len);
         }
     }
@@ -208,15 +230,16 @@ static bool lzx_build_table(uint16_t *table, unsigned tb, unsigned *sub_bits, co
         for (len = tb + 1U; len <= max_len; ++len) {
             unsigned n = count[len], span = 1U << (max_len - len);
             while (n--) {
-                uint16_t entry = (uint16_t)(((unsigned)sorted[index++] << 5U) | len);
+                const unsigned symbol = sorted[index++];
                 uint32_t prefix = code >> (LZX_MAX_CODE_LENGTH - tb);
                 if (prefix != last_prefix) {
                     last_prefix = prefix;
                     base = next;
                     next += 1U << sb;
-                    table[prefix] = (uint16_t)(LZX_SUB_FLAG | base);
+                    if (high) ((uint32_t *)table)[prefix] = LZX_SUB_FLAG | base;
+                    else ((uint16_t *)table)[prefix] = (uint16_t)(LZX_SUB_FLAG | base);
                 }
-                lzx_fill_entries(table + base + ((code >> (LZX_MAX_CODE_LENGTH - max_len)) & ((1U << sb) - 1U)), entry, span);
+                LZX_STORE(base + ((code >> (LZX_MAX_CODE_LENGTH - max_len)) & ((1U << sb) - 1U)), symbol, len, span);
                 code += (uint32_t)1U << (LZX_MAX_CODE_LENGTH - len);
             }
         }
@@ -233,7 +256,7 @@ static bool lzx_read_lengths(lzx_state *s, uint8_t *lengths, unsigned first, uns
     int cnt;
     unsigned i, sub;
     for (i = 0; i < LZX_PRETREE_SYMBOLS; ++i) pre_lengths[i] = (uint8_t)lzx_read(s, 4);
-    if (s->error || !lzx_build_table(s->pre_table, LZX_PRE_TB, &s->pre_sub, pre_lengths, LZX_PRETREE_SYMBOLS, NULL)) return false;
+    if (s->error || !lzx_build_table(s->pre_table, NULL, LZX_PRE_TB, &s->pre_sub, pre_lengths, LZX_PRETREE_SYMBOLS, NULL)) return false;
     sub = s->pre_sub;
     in = s->in;
     buf = s->bits;
@@ -291,12 +314,14 @@ static void lzx_init_positions(lzx_state *s, unsigned window_bits)
     for (i = 0; i < s->position_slots; ++i) {
         unsigned extra = i < 4U ? 0U : (i / 2U) - 1U;
         if (extra > 17U) extra = 17U;
+        unsigned j;
         /* slots 0..2 are the repeated offsets; their entries read no bits and their base is never used */
-        s->slots[0][i].base = s->slots[1][i].base = base - 2U;
-        s->slots[0][i].bits = (uint8_t)extra;
-        s->slots[1][i].bits = (uint8_t)(extra >= 3U ? extra - 3U : extra);
-        s->slots[1][i].shift = (uint8_t)(extra >= 3U ? 3U : 0U);
-        s->slots[1][i].aligned_mask = (uint16_t)(extra >= 3U ? 0xffffU : 0U);
+        s->slot_base[i] = base - 2U;
+        for (j = 0; j < 8U; ++j) {
+            s->main_high[0][256U + i * 8U + j] = (uint16_t)extra;
+            /* in an aligned-offset block the three low bits of an offset with at least three are an aligned symbol */
+            s->main_high[1][256U + i * 8U + j] = (uint16_t)(extra >= 3U ? (extra - 3U) | LZX_HIGH_ALIGNED : extra);
+        }
         base += (uint32_t)1U << extra;
     }
 }
@@ -340,13 +365,24 @@ static inline void lzx_copy8(uint8_t *dst, const uint8_t *src)
     memcpy(dst, &a, 8);
 }
 
-/* Decodes main-tree symbols of a verbatim or aligned-offset block until `out` reaches `run_end`, which is neither
-   past the end of the block nor past the end of the CFDATA frame; a match that would cross it is an error. A match
-   that starts before `wide_end` may be copied with up to LZX_COPY_SLACK bytes of overrun. Returns false on any error.
+#if defined(_MSC_VER) && !defined(__clang__)
+#define LZX_INLINE static __forceinline
+#elif defined(__GNUC__)
+#define LZX_INLINE static inline __attribute__((always_inline))
+#else
+#define LZX_INLINE static inline
+#endif
+
+/* Decodes main-tree symbols of a verbatim (`aligned` false) or aligned-offset block until `out` reaches `run_end`,
+   which is neither past the end of the block nor past the end of the CFDATA frame; a match that would cross it is an
+   error. A match that starts before `wide_end` may be copied with up to LZX_COPY_SLACK bytes of overrun. Returns
+   false on any error. `aligned` is a constant in each of the two callers, which gives two copies of the loop; the
+   verbatim one has no aligned-tree lookup on its bit reader's dependency chain.
    The match path avoids data-dependent branches: which of its fields a match has is close to random. */
-static bool lzx_decode_run(lzx_state *s, uint8_t *output, uint8_t *out, uint8_t *const run_end, const uint8_t *const wide_end, const lzx_slot *const slots)
+LZX_INLINE bool lzx_decode_run_any(lzx_state *s, uint8_t *output, uint8_t *out, uint8_t *const run_end, const uint8_t *const wide_end, const bool aligned)
 {
-    const uint16_t *const main_table = s->main_table, *const length_table = s->length_table, *const aligned_table = s->aligned_table;
+    const uint32_t *const main_table = s->main_table, *const slot_base = s->slot_base;
+    const uint16_t *const length_table = s->length_table, *const aligned_table = s->aligned_table;
     const unsigned main_sub = s->main_sub, length_sub = s->length_sub;
     const size_t window_size = s->window_size;
     const uint8_t *in = s->in, *const in_end = s->in_end;
@@ -355,9 +391,8 @@ static bool lzx_decode_run(lzx_state *s, uint8_t *output, uint8_t *out, uint8_t 
     uint32_t r0 = s->r0, r1 = s->r1, r2 = s->r2;
 
     while (out < run_end) {
-        unsigned e, sym, match_length, slot, length_header, bits;
+        unsigned e, sym, match_length, slot, length_header, bits, high;
         uint32_t offset, verbatim, previous;
-        lzx_slot info;
         size_t history;
         const uint8_t *src;
         /* >= 48 bits unless the input is exhausted: two main symbols and a length symbol, 16 bits each at most */
@@ -374,7 +409,8 @@ static bool lzx_decode_run(lzx_state *s, uint8_t *output, uint8_t *out, uint8_t 
                 continue;
             }
         }
-        sym = (e >> 5U) - 256U;
+        high = e >> 16U;
+        sym = ((e & 0xffffU) >> 5U) - 256U;
         slot = sym >> 3U;
         length_header = sym & 7U;
         match_length = length_header + 2U;
@@ -391,17 +427,21 @@ static bool lzx_decode_run(lzx_state *s, uint8_t *output, uint8_t *out, uint8_t 
         if (cnt < 0) return false;
         /* >= 48 bits again unless exhausted: at most 17 verbatim bits, or 14 and an aligned symbol of 7 */
         LZX_REFILL(in, in_end, buf, cnt);
-        info = slots[slot];
-        bits = info.bits;
+        bits = high & LZX_HIGH_BITS;
         verbatim = (uint32_t)((buf >> 1U) >> (63U - bits));
         buf <<= bits;
         cnt -= (int)bits;
-        e = (unsigned)aligned_table[(size_t)(buf >> (64U - LZX_ALIGNED_TB))] & info.aligned_mask;
-        buf <<= (e & 31U);
-        cnt -= (int)(e & 31U);
+        offset = slot_base[slot] + verbatim;
+        if (aligned) {
+            /* with LZX_HIGH_ALIGNED: the verbatim bits are the offset's high part and an aligned symbol follows */
+            const unsigned has_aligned = (high / LZX_HIGH_ALIGNED) & 1U;
+            e = (unsigned)aligned_table[(size_t)(buf >> (64U - LZX_ALIGNED_TB))] & (0U - has_aligned);
+            buf <<= (e & 31U);
+            cnt -= (int)(e & 31U);
+            offset = slot_base[slot] + (verbatim << (has_aligned * 3U)) + (e >> 5U);
+        }
         if (cnt < 0) return false;
         /* slot 0: R0. slot 1: R1, swapped with R0. slot 2: R2, swapped with R0. Others: the new offset goes in front */
-        offset = info.base + (verbatim << info.shift) + (e >> 5U);
         previous = r0;
         offset = slot == 0U ? r0 : offset;
         offset = slot == 1U ? r1 : offset;
@@ -464,6 +504,16 @@ static bool lzx_decode_run(lzx_state *s, uint8_t *output, uint8_t *out, uint8_t 
     return true;
 }
 
+static bool lzx_decode_run_verbatim(lzx_state *s, uint8_t *output, uint8_t *out, uint8_t *const run_end, const uint8_t *const wide_end)
+{
+    return lzx_decode_run_any(s, output, out, run_end, wide_end, false);
+}
+
+static bool lzx_decode_run_aligned(lzx_state *s, uint8_t *output, uint8_t *out, uint8_t *const run_end, const uint8_t *const wide_end)
+{
+    return lzx_decode_run_any(s, output, out, run_end, wide_end, true);
+}
+
 /* p points at a 0xe8 byte at output position `position`; translates its four operand bytes when they are in range.
    Always stores, so that the unpredictable outcome is not a branch. */
 static inline void lzx_e8_fix(uint8_t *p, size_t position, int32_t file_size)
@@ -524,8 +574,32 @@ static void lzx_undo_e8(uint8_t *data, size_t frame_offset, size_t frame_size, i
     }
 }
 
+/* True when CFDATA block `entry` can be decoded into the `room` output bytes that are left for it and the blocks
+   after it. */
+static bool lzx_entry_valid(const uint8_t *const *blocks, const size_t *block_sizes, const size_t *plain_sizes, size_t block_count, size_t entry, size_t room)
+{
+    return blocks[entry] && block_sizes[entry] && plain_sizes[entry] && plain_sizes[entry] <= LZX_FRAME_SIZE &&
+           (entry + 1U >= block_count || plain_sizes[entry] == LZX_FRAME_SIZE) && plain_sizes[entry] <= room;
+}
+
 bool xx_lzx_cab_decode(const uint8_t *const *blocks, const size_t *block_sizes, const size_t *plain_sizes, size_t block_count, unsigned window_bits, uint8_t *output,
                        size_t output_size, size_t *written)
+{
+    return xx_lzx_cab_decode_gated(blocks, block_sizes, plain_sizes, block_count, window_bits, output, output_size, written, NULL, NULL, NULL);
+}
+
+void xx_lzx_cab_translate(uint8_t *output, size_t from, size_t to, int32_t translation_size)
+{
+    while (from < to) {
+        size_t n = to - from;
+        if (n > LZX_FRAME_SIZE) n = LZX_FRAME_SIZE;
+        lzx_undo_e8(output, from, n, translation_size);
+        from += n;
+    }
+}
+
+bool xx_lzx_cab_decode_gated(const uint8_t *const *blocks, const size_t *block_sizes, const size_t *plain_sizes, size_t block_count, unsigned window_bits,
+                             uint8_t *output, size_t output_size, size_t *written, xx_lzx_cab_gate_fn gate, void *context, int32_t *translation_size)
 {
     lzx_state *s;
     size_t entry, out_pos = 0, block_remaining = 0, e8_done = 0;
@@ -535,10 +609,9 @@ bool xx_lzx_cab_decode(const uint8_t *const *blocks, const size_t *block_sizes, 
     bool raw_odd = false, raw_pad_pending = false, ok = false;
     if (written) *written = 0;
     if (!blocks || !block_sizes || !plain_sizes || !block_count || !output || window_bits < 15U || window_bits > 21U) return false;
-    for (entry = 0; entry < block_count; ++entry) {
-        if (!blocks[entry] || !block_sizes[entry] || !plain_sizes[entry] || plain_sizes[entry] > LZX_FRAME_SIZE ||
-            (entry + 1U < block_count && plain_sizes[entry] != LZX_FRAME_SIZE) || plain_sizes[entry] > output_size)
-            return false;
+    if (!gate) {
+        for (entry = 0; entry < block_count; ++entry)
+            if (!lzx_entry_valid(blocks, block_sizes, plain_sizes, block_count, entry, output_size)) return false;
     }
     s = (lzx_state *)xx_mem_calloc(1U, sizeof(*s));
     if (!s) return false;
@@ -552,7 +625,16 @@ bool xx_lzx_cab_decode(const uint8_t *const *blocks, const size_t *block_sizes, 
     wide_end = output + (output_size >= LZX_MAX_MATCH + LZX_COPY_SLACK ? output_size - (LZX_MAX_MATCH + LZX_COPY_SLACK) : 0U);
 
     for (entry = 0; entry < block_count; ++entry) {
-        const size_t entry_start = out_pos, entry_target = plain_sizes[entry];
+        const size_t entry_start = out_pos;
+        size_t entry_target;
+        /* With a gate the block's arguments only become valid here. Matches reach at most one window back, so the
+           decoder is done with the bytes more than a window behind it, or with those it has translated. */
+        if (gate) {
+            size_t settled = out_pos > s->window_size ? out_pos - s->window_size : 0U;
+            if (intel_size && !translation_size) settled = e8_done;
+            if (!gate(context, entry, settled) || !lzx_entry_valid(blocks, block_sizes, plain_sizes, block_count, entry, output_size - out_pos)) goto done;
+        }
+        entry_target = plain_sizes[entry];
         lzx_bits_init(s, blocks[entry], block_sizes[entry]);
         if (!entry) {
             if (lzx_read(s, 1)) {
@@ -560,6 +642,11 @@ bool xx_lzx_cab_decode(const uint8_t *const *blocks, const size_t *block_sizes, 
                 intel_size = (int32_t)((high << 16U) | low);
             }
             if (s->error) goto done;
+            if (translation_size) {
+                /* the caller translates, behind the decoder */
+                *translation_size = intel_size;
+                intel_size = 0;
+            }
         }
         if (raw_pad_pending) {
             if (s->in[0] != 0) goto done;
@@ -580,13 +667,13 @@ bool xx_lzx_cab_decode(const uint8_t *const *blocks, const size_t *block_sizes, 
                     uint8_t aligned_lengths[LZX_ALIGNED_SYMBOLS];
                     unsigned unused_sub;
                     for (i = 0; i < LZX_ALIGNED_SYMBOLS; ++i) aligned_lengths[i] = (uint8_t)lzx_read(s, 3);
-                    if (s->error || !lzx_build_table(s->aligned_table, LZX_ALIGNED_TB, &unused_sub, aligned_lengths, LZX_ALIGNED_SYMBOLS, NULL)) goto done;
+                    if (s->error || !lzx_build_table(s->aligned_table, NULL, LZX_ALIGNED_TB, &unused_sub, aligned_lengths, LZX_ALIGNED_SYMBOLS, NULL)) goto done;
                 }
                 if (block_type == LZX_BLOCK_VERBATIM || block_type == LZX_BLOCK_ALIGNED) {
                     if (!lzx_read_lengths(s, s->main_lengths, 0, 256) || !lzx_read_lengths(s, s->main_lengths, 256, s->main_symbols) ||
-                        !lzx_build_table(s->main_table, LZX_MAIN_TB, &s->main_sub, s->main_lengths, s->main_symbols, NULL) ||
+                        !lzx_build_table(s->main_table, s->main_high[block_type == LZX_BLOCK_ALIGNED], LZX_MAIN_TB, &s->main_sub, s->main_lengths, s->main_symbols, NULL) ||
                         !lzx_read_lengths(s, s->length_lengths, 0, LZX_LENGTH_SYMBOLS) ||
-                        !lzx_build_table(s->length_table, LZX_LENGTH_TB, &s->length_sub, s->length_lengths, LZX_LENGTH_SYMBOLS, &s->length_empty))
+                        !lzx_build_table(s->length_table, NULL, LZX_LENGTH_TB, &s->length_sub, s->length_lengths, LZX_LENGTH_SYMBOLS, &s->length_empty))
                         goto done;
                 } else if (block_type == LZX_BLOCK_UNCOMPRESSED) {
                     const uint8_t *p;
@@ -625,7 +712,9 @@ bool xx_lzx_cab_decode(const uint8_t *const *blocks, const size_t *block_sizes, 
                 }
                 continue;
             }
-            if (!lzx_decode_run(s, output, output + out_pos, output + out_pos + run, wide_end, s->slots[block_type == LZX_BLOCK_ALIGNED])) goto done;
+            if (block_type == LZX_BLOCK_ALIGNED ? !lzx_decode_run_aligned(s, output, output + out_pos, output + out_pos + run, wide_end)
+                                                : !lzx_decode_run_verbatim(s, output, output + out_pos, output + out_pos + run, wide_end))
+                goto done;
             out_pos += run;
             block_remaining -= run;
         }
