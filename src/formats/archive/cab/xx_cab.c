@@ -325,6 +325,73 @@ static bool cab_cstring(Abstractformat *f, int64_t end, int64_t *at, char **valu
 }
 #include "xx_cab_names.h"
 
+#define CAB_WALK_LZX_OK 0x10000U
+#define CAB_WALK_LEADER_MASK 0xFFFFU
+
+static bool cab_lzx_type_ok(uint16_t type)
+{
+    unsigned window_bits;
+    if ((type & 15U) != CAB_METHOD_LZX) return false;
+    window_bits = (type >> 8U) & 31U;
+    return window_bits >= 15U && window_bits <= 21U;
+}
+
+static bool cab_folder_key_less(const cab_folder *folders, uint16_t a, uint16_t b)
+{
+    if (folders[a].data_offset != folders[b].data_offset) return folders[a].data_offset < folders[b].data_offset;
+    if (folders[a].blocks != folders[b].blocks) return folders[a].blocks < folders[b].blocks;
+    return a < b;
+}
+
+static void cab_folder_sift_down(const cab_folder *folders, uint16_t *order, size_t root, size_t count)
+{
+    uint16_t val = order[root];
+    while (root < count / 2U) {
+        size_t child = root * 2U + 1U;
+        if (child + 1U < count && cab_folder_key_less(folders, order[child], order[child + 1U])) child++;
+        if (!cab_folder_key_less(folders, val, order[child])) break;
+        order[root] = order[child];
+        root = child;
+    }
+    order[root] = val;
+}
+
+/* Maps each folder index i to the earliest folder index <= i with the same
+ * (data_offset, blocks) in O(n log n) worst-case time.  Returns NULL when
+ * nfolders < 2 or on allocation failure (the caller walks every folder). */
+static uint32_t *cab_build_folder_leaders(const cab_folder *folders, uint16_t nfolders)
+{
+    uint16_t *order;
+    uint32_t *leader;
+    uint16_t canon;
+    size_t i;
+    if (nfolders < 2U) return NULL;
+    order = (uint16_t *)xx_mem_alloc((size_t)nfolders * sizeof(*order));
+    leader = (uint32_t *)xx_mem_alloc((size_t)nfolders * sizeof(*leader));
+    if (!order || !leader) {
+        if (order) xx_mem_free(order);
+        if (leader) xx_mem_free(leader);
+        return NULL;
+    }
+    for (i = 0; i < nfolders; i++) order[i] = (uint16_t)i;
+    for (i = nfolders / 2U; i > 0U; i--) cab_folder_sift_down(folders, order, i - 1U, nfolders);
+    for (i = nfolders; i > 1U; i--) {
+        uint16_t tmp = order[0];
+        order[0] = order[i - 1U];
+        order[i - 1U] = tmp;
+        cab_folder_sift_down(folders, order, 0, i - 1U);
+    }
+    canon = order[0];
+    leader[canon] = canon;
+    for (i = 1U; i < nfolders; i++) {
+        uint16_t idx = order[i];
+        if (folders[idx].data_offset != folders[canon].data_offset || folders[idx].blocks != folders[canon].blocks) canon = idx;
+        leader[idx] = canon;
+    }
+    xx_mem_free(order);
+    return leader;
+}
+
 static bool cab_parse(Abstractformat *f, cab_context **out)
 {
     uint8_t h[36];
@@ -334,6 +401,7 @@ static bool cab_parse(Abstractformat *f, cab_context **out)
     cab_context *c;
     size_t i;
     cab_walk walk = {NULL, NULL, 0, 0};
+    uint32_t *leader = NULL;
     unsigned codepage;
     if (!f || !f->device || !out || f->base_address < 0) {
         return false;
@@ -400,6 +468,11 @@ static bool cab_parse(Abstractformat *f, cab_context **out)
         xx_str_free(name);
         if (!c->files[i].name) goto fail;
     }
+    /* Assuming f->device returns the same bytes for the same offsets during
+     * one cab_parse call (as cab_walk already assumes), folders with an
+     * identical (data_offset, blocks) reuse the first matching folder's
+     * walk results; only lzx_valid still depends on the folder's own type. */
+    leader = cab_build_folder_leaders(c->folders, nfolders);
     walk.device = f->device;
     walk.buffer = (uint8_t *)xx_mem_alloc(CAB_WALK_WINDOW); /* NULL: unbuffered reads */
     for (i = 0; i < nfolders; i++) {
@@ -407,10 +480,16 @@ static bool cab_parse(Abstractformat *f, cab_context **out)
         int64_t p = start;
         uint16_t j;
         uint64_t unpacked = 0;
-        bool lzx_ok = (c->folders[i].type & 15U) == CAB_METHOD_LZX;
-        if (lzx_ok) {
-            unsigned window_bits = (c->folders[i].type >> 8U) & 31U;
-            if (window_bits < 15U || window_bits > 21U) lzx_ok = false;
+        bool lzx_blocks_ok = true;
+        if (leader && (leader[i] & CAB_WALK_LEADER_MASK) < i) {
+            uint32_t canon = leader[i] & CAB_WALK_LEADER_MASK;
+            uint32_t entry = leader[canon];
+            const cab_folder *src = &c->folders[canon];
+            c->folders[i].raw_size = src->raw_size;
+            c->folders[i].last_payload = src->last_payload;
+            c->folders[i].plain_total = src->plain_total;
+            c->folders[i].lzx_valid = cab_lzx_type_ok(c->folders[i].type) && (entry & CAB_WALK_LZX_OK) != 0U;
+            continue;
         }
         for (j = 0; j < c->folders[i].blocks; j++) {
             uint8_t b[8];
@@ -420,7 +499,7 @@ static bool cab_parse(Abstractformat *f, cab_context **out)
             plain = xx_data_get_u16(b + 6, 2, 0, false);
             p += 8 + c->data_reserve;
             if (p > end || packed > (uint64_t)(end - p) || !plain) goto fail;
-            if (lzx_ok && (!packed || plain > CAB_FRAME || ((uint32_t)j + 1U < c->folders[i].blocks && plain != CAB_FRAME))) lzx_ok = false;
+            if (lzx_blocks_ok && (!packed || plain > CAB_FRAME || ((uint32_t)j + 1U < c->folders[i].blocks && plain != CAB_FRAME))) lzx_blocks_ok = false;
             c->folders[i].last_payload = (uint32_t)(p - start);
             p += packed;
             unpacked += plain;
@@ -429,12 +508,15 @@ static bool cab_parse(Abstractformat *f, cab_context **out)
         /* p - start <= cabinet size (a uint32_t), unpacked <= UINT32_MAX. */
         c->folders[i].raw_size = (uint32_t)(p - start);
         c->folders[i].plain_total = (uint32_t)unpacked;
-        c->folders[i].lzx_valid = lzx_ok;
+        c->folders[i].lzx_valid = cab_lzx_type_ok(c->folders[i].type) && lzx_blocks_ok;
+        if (leader && lzx_blocks_ok) leader[i] |= CAB_WALK_LZX_OK;
     }
+    if (leader) xx_mem_free(leader);
     if (walk.buffer) xx_mem_free(walk.buffer);
     *out = c;
     return true;
 fail:
+    if (leader) xx_mem_free(leader);
     if (walk.buffer) xx_mem_free(walk.buffer);
     cab_free(c);
     return false;

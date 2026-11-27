@@ -89,7 +89,11 @@ MY_PROC macro name:req, numParams:req
   else
     proc_name equ @CatStr(@,name,@, %numParams * 4)
   endif
-  proc_name PROC
+  if (IS_X64 gt 0) and (IS_LINUX eq 0)
+    proc_name PROC FRAME
+  else
+    proc_name PROC
+  endif
 endm
 
 MY_ENDP macro
@@ -229,9 +233,21 @@ endif
 
 MY_PUSH_4_REGS macro
     push    r3
+    if (IS_X64 gt 0) and (IS_LINUX eq 0)
+    .pushreg r3
+    endif
     push    r5
+    if (IS_X64 gt 0) and (IS_LINUX eq 0)
+    .pushreg r5
+    endif
     push    r6
+    if (IS_X64 gt 0) and (IS_LINUX eq 0)
+    .pushreg r6
+    endif
     push    r7
+    if (IS_X64 gt 0) and (IS_LINUX eq 0)
+    .pushreg r7
+    endif
 endm
 
 MY_POP_4_REGS macro
@@ -345,9 +361,21 @@ endm
 MY_PUSH_PRESERVED_ABI_REGS macro
     MY_PUSH_PRESERVED_ABI_REGS_UP_TO_INCLUDING_R11
         push    r12
+        if (IS_LINUX eq 0)
+        .pushreg r12
+        endif
         push    r13
+        if (IS_LINUX eq 0)
+        .pushreg r13
+        endif
         push    r14
+        if (IS_LINUX eq 0)
+        .pushreg r14
+        endif
         push    r15
+        if (IS_LINUX eq 0)
+        .pushreg r15
+        endif
 endm
 
 
@@ -980,8 +1008,13 @@ endm
 
 
 
-; RSP is (16x + 8) bytes aligned in WIN64-x64
-; LocalSize equ ((((SIZEOF CLzmaDec_Asm_Loc) + 7) / 16 * 16) + 8)
+; RSP is (16x + 8) bytes aligned in WIN64-x64.
+; All 15 non-RSP GPRs (including RBP = cod) are live in the decoder body,
+; so no register can hold a pre-alignment frame pointer for .SETFRAME
+; without changing decoder register usage. Using a fixed 16-byte-aligned
+; LocalSize with .ALLOCSTACK keeps every decoder instruction and register
+; identical while letting RtlVirtualUnwind recover the caller everywhere.
+LocalSize equ ((((SIZEOF CLzmaDec_Asm_Loc) + 7) / 16 * 16) + 8)
 
 PARAM_lzma      equ REG_ABI_PARAM_0
 PARAM_limit     equ REG_ABI_PARAM_1
@@ -995,11 +1028,18 @@ endif
 MY_PROC xx_lzma_decode_real_x64, 3
 MY_PUSH_PRESERVED_ABI_REGS
 
+if (IS_X64 gt 0) and (IS_LINUX eq 0)
+        sub     RSP, LocalSize
+        .allocstack LocalSize
+        .endprolog
+        mov     r0, RSP
+else
         lea     r0, [RSP - (SIZEOF CLzmaDec_Asm_Loc)]
         and     r0, -128
         mov     r5, RSP
         mov     RSP, r0
         mov     LOC_0 Old_RSP, r5
+endif
         mov     LOC_0 lzmaPtr, PARAM_lzma
         
         mov     LOC_0 remainLen, 0  ; remainLen must be ZERO
@@ -1776,8 +1816,12 @@ fin:
         RESTORE_VAR(rep3)
 
         mov     x0, sym
-        
+
+if (IS_X64 gt 0) and (IS_LINUX eq 0)
+        add     RSP, LocalSize
+else
         mov     RSP, LOC Old_RSP
+endif
 
 MY_POP_PRESERVED_ABI_REGS
 MY_ENDP

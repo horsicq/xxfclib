@@ -260,6 +260,11 @@ int die_engine_api_has_map_overlay(const xx_memory_map *map)
 
 cd_i64 die_engine_api_script_entry_point_offset(DieEngine *pEngine)
 {
+    if (pEngine->pMap->file_type == XX_FILE_TYPE_COM) {
+        /* XCOM loads file offset zero at its entry address (0x100). */
+        return 0;
+    }
+
     if (has_legacy_script_map(pEngine->pMap)) {
         /* XBinary::getEntryPointOffset: the map's entry address through the
          * map. The DOS script map already holds 0x10000000 + CS:IP, the

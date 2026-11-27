@@ -99,7 +99,11 @@ bool die_engine_api_dispatch_msdos(DieEngine *pEngine, JSCtx *pCtx, ApiId id, in
         case A_getDosStubOffset:
         case A_getDosStubSize:
         case A_isDosStubPresent: {
-            cd_i64 nStubSize = pEngine->bHasPE ? (pPE->nLfanew - 64) : 0;
+            /* MSDOS_Script caches the MZ stub for every extended DOS format,
+             * including when the current script object is MSDOS itself. */
+            int bExtended = msdos_new_header_is(pFile, 0x4550) || msdos_new_header_is(pFile, 0x454E) ||
+                            msdos_new_header_is(pFile, 0x454C) || msdos_new_header_is(pFile, 0x584C);
+            cd_i64 nStubSize = bExtended ? (cd_i64)xx_io_get_u32(pFile, 0x3C, false) - 64 : 0;
 
             if (nStubSize < 0) {
                 nStubSize = 0;

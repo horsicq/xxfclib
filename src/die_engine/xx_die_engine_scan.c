@@ -919,7 +919,10 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
             binaryMap.endian = XX_ENDIAN_LITTLE;
             binaryMap.mode = XX_MEMORY_MAP_MODE_DATA;
             binaryMap.file_type = (pEngine->fileType == XFT_COM) ? XX_FILE_TYPE_COM : (pEngine->fileType == XFT_MSDOS) ? XX_FILE_TYPE_MSDOS : XX_FILE_TYPE_BINARY;
-            xx_memory_map_add_part(&binaryMap, 0, binaryMap.binary_size, 0, binaryMap.binary_size, XX_FILE_PART_DATA, 0, "Data", false);
+            /* XCOM maps its code at 0x100, after the virtual PSP. Absolute
+             * jump fields (####) contain that address, not a file offset. */
+            cd_u64 nBase = pEngine->fileType == XFT_COM ? 0x100 : 0;
+            xx_memory_map_add_part(&binaryMap, 0, binaryMap.binary_size, nBase, binaryMap.binary_size, XX_FILE_PART_DATA, 0, "Data", false);
         }
         pEngine->pMap = &binaryMap;
     }
