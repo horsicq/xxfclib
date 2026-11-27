@@ -65,13 +65,13 @@ bool xx_reverse_bits_peek_padded(const xx_reverse_bits *bits, unsigned count, ui
 {
     size_t available;
     uint32_t result = 0;
-    if (!bits || !bits->data || !value || count > 24U) return false;
+    if (!bits || !bits->data || !value || count > 32U) return false;
     available = bits->bit_position < (size_t)count ? bits->bit_position : (size_t)count;
     for (size_t index = 0; index < available; ++index) {
         size_t position = bits->bit_position - index - 1U;
         result = (result << 1) | ((uint32_t)(bits->data[position >> 3] >> (position & 7U)) & 1U);
     }
-    result <<= (unsigned)((size_t)count - available);
+    if (available) result <<= (unsigned)((size_t)count - available);
     *value = result;
     return true;
 }

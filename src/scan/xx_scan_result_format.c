@@ -545,7 +545,8 @@ char *xx_scan_format_json(xx_scan_result *pResult, xx_scan_options *pOptions)
         xx_buf_append_str(&buf, ",\n            \"info\": \"\",\n");
         xx_buf_appendf(&buf, "            \"offset\": \"%lld\",\n            \"parentfilepart\": \"%s\",\n",
                        (long long)(header->file_type == XX_FILE_TYPE_UNKNOWN ? 0 : header->offset),
-                       header->scan_part == XX_SCAN_PART_ARCHIVE    ? "Archive"
+                       /* XScanEngine labels archive members FILEPART_STREAM ("Stream"), in 4.0.0 too. */
+                       header->scan_part == XX_SCAN_PART_ARCHIVE    ? "Stream"
                        : header->scan_part == XX_SCAN_PART_RESOURCE ? "Resource"
                        : header->scan_part == XX_SCAN_PART_OVERLAY  ? "Overlay"
                                                                     : "Header");

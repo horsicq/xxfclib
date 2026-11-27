@@ -866,7 +866,7 @@ static uint64_t xx_zstd_stream_read_le(const uint8_t *bytes, unsigned count)
     return value;
 }
 
-bool xx_zstd_decode_stream(const xx_zstd_stream_io *io, uint64_t window_limit, uint64_t expected_size, uint64_t *out_written)
+bool xx_zstd_decode_stream(const xx_zstd_stream_io *io, uint64_t window_limit, uint64_t size_limit, bool first_frame, uint64_t *out_written)
 {
     xx_zstd_stream_input input;
     xx_zstd_context context;
@@ -947,7 +947,7 @@ bool xx_zstd_decode_stream(const xx_zstd_stream_io *io, uint64_t window_limit, u
         if (single_segment) window_size64 = frame_content_size;
         input.position += header_size;
         if ((window_size64 > window_limit && !(content_size_bytes != 0U && frame_content_size <= XX_ZSTD_STREAM_SMALL_FRAME)) || window_size64 > SIZE_MAX ||
-            (content_size_bytes != 0U && expected_size != UINT64_MAX && frame_content_size > expected_size - total))
+            (content_size_bytes != 0U && frame_content_size > size_limit - total))
             goto done;
         window_size = (size_t)window_size64;
 
@@ -956,10 +956,10 @@ bool xx_zstd_decode_stream(const xx_zstd_stream_io *io, uint64_t window_limit, u
          * allocated whole, as libzstd allocates its window: growing it would
          * hold the old and the new buffer at once. */
         keep64 = content_size_bytes != 0U && frame_content_size < window_size64 ? frame_content_size : window_size64;
-        /* Nor more than the caller's exact size still allows: a frame that
+        /* Nor more than the caller's output limit still allows: a frame that
          * produces more fails anyway, so a small member with a large window
          * never allocates that window, and no slide is ever needed. */
-        if (expected_size != UINT64_MAX && expected_size - total < keep64) keep64 = expected_size - total;
+        if (size_limit - total < keep64) keep64 = size_limit - total;
         capacity64 = keep64 + (keep64 < XX_ZSTD_STREAM_SLACK_MIN ? XX_ZSTD_STREAM_SLACK_MIN : keep64 > XX_ZSTD_STREAM_SLACK_MAX ? XX_ZSTD_STREAM_SLACK_MAX : keep64);
         if (content_size_bytes != 0U && frame_content_size < capacity64) capacity64 = frame_content_size;
         if (capacity64 > SIZE_MAX) goto done;
@@ -1024,7 +1024,7 @@ bool xx_zstd_decode_stream(const xx_zstd_stream_io *io, uint64_t window_limit, u
             }
             produced = position - block_start;
             if (produced > block_limit || (content_size_bytes != 0U && produced > frame_content_size - frame_output) ||
-                (expected_size != UINT64_MAX && produced > expected_size - total))
+                produced > size_limit - total)
                 goto done;
             frame_output += produced;
             total += produced;
@@ -1037,8 +1037,9 @@ bool xx_zstd_decode_stream(const xx_zstd_stream_io *io, uint64_t window_limit, u
             input.position += 4U;
         }
         saw_frame = true;
+        if (first_frame) break;
     }
-    success = saw_frame && (expected_size == UINT64_MAX || total == expected_size);
+    success = saw_frame && (first_frame || size_limit == UINT64_MAX || total == size_limit);
 
 done:
     if (out_written) *out_written = total;

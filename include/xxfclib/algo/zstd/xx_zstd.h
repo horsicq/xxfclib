@@ -102,6 +102,12 @@ XXFC_API bool xx_zstd_unpack_device_to_device(xx_io_device *source, int64_t sour
 XXFC_API bool xx_zstd_unpack_device_streaming(xx_io_device *source, int64_t source_offset, int64_t compressed_size, xx_io_device *destination, uint64_t expected_size,
                                               uint64_t window_limit, xx_pd_struct *progress);
 
+/** Decodes the first complete Zstandard frame inside a device range.
+ * Uses the default streaming window limit and stops if output would exceed
+ * output_limit. Bytes after the frame are ignored. The source position is restored. */
+XXFC_API bool xx_zstd_unpack_first_frame(xx_io_device *source, int64_t source_offset, int64_t available_size, xx_io_device *destination, uint64_t output_limit,
+                                         uint64_t *out_written, xx_pd_struct *progress);
+
 /** Decompresses one standard Zstandard frame into a file. */
 XXFC_API bool xx_zstd_unpack_device_to_file(xx_io_device *source, int64_t source_offset, int64_t compressed_size, const char *destination_path,
                                             uint64_t uncompressed_size, xx_pd_struct *progress);

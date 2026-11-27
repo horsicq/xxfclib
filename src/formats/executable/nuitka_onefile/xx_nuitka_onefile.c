@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 hors<horsicq@gmail.com>
  * SPDX-License-Identifier: MIT
- * Wire layout: Nuitka 4.4 OnefileCompressor.py and OnefileBootstrap.c.
+ * Wire layouts: Nuitka OnefileCompressor.py and OnefileBootstrap.c.
  */
 #include "xxfclib/formats/executable/nuitka_onefile/xx_nuitka_onefile.h"
 #include "xxfclib/algo/zstd/xx_zstd.h"
@@ -20,8 +20,10 @@ typedef struct nuitka_payload {
 typedef struct nuitka_body {
     nuitka_payload payload;
     uint8_t *bytes;
+    xx_io_device *decoded;
     uint64_t size;
     size_t references;
+    bool decode_failed;
 } nuitka_body;
 
 typedef struct nuitka_member {
@@ -37,6 +39,10 @@ static bool nuitka_reserved(const wchar_t *name, size_t size)
     size_t n = 0;
     while (n < size && n < sizeof(prefix) - 1 && name[n] != L'.') {
         wchar_t c = name[n];
+        if (n == 3 && (c == 0xb9 || c == 0xb2 || c == 0xb3)) {
+            prefix[n++] = c == 0xb9 ? '1' : c == 0xb2 ? '2' : '3';
+            continue;
+        }
         if (c > 127) return false;
         prefix[n++] = (char)(c >= L'A' && c <= L'Z' ? c - L'A' + L'a' : c);
     }
@@ -64,7 +70,7 @@ static bool nuitka_name(const uint8_t *toc, size_t end, size_t *position, wchar_
             segment = n;
             continue;
         }
-        if (c < 32 || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') return false;
+        if ((n == segment && c == ' ') || c < 32 || c == ':' || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') return false;
         if (c >= 0xd800 && c <= 0xdbff) {
             if (*position + 2 > end || n >= 4095) return false;
             uint32_t low = xx_data_get_u16(toc + *position, 2, 0, false);
@@ -86,7 +92,9 @@ static bool nuitka_read_body(nuitka_body *body, Abstractformat *format, xx_pd_st
 {
     xx_io_device *memory;
     bool ok;
-    if (!body->payload.compressed || body->bytes) return true;
+    if (!body->payload.compressed || body->bytes || body->decoded) return true;
+    if (body->decode_failed) return false;
+    body->decode_failed = true;
     if (body->size > NUITKA_DECODE_LIMIT) {
         xx_pd_set_error(pd, XXFC_ERR_IO, "Nuitka compressed payload exceeds 256 MiB");
         return false;
@@ -96,10 +104,12 @@ static bool nuitka_read_body(nuitka_body *body, Abstractformat *format, xx_pd_st
     memory = xx_io_mem_open(body->bytes, (size_t)body->size);
     ok = memory && xx_zstd_unpack_device_streaming(format->device, format->base_address + body->payload.body, (int64_t)body->payload.body_size, memory, body->size, 0, pd);
     if (memory) xx_io_close(memory);
+    ok = ok && !xx_rt_memcmp(body->bytes, "MZ", 2);
     if (!ok) {
         xx_mem_free(body->bytes);
         body->bytes = NULL;
     }
+    body->decode_failed = !ok;
     return ok;
 }
 
@@ -107,6 +117,7 @@ static bool nuitka_bytes(Abstractformat *format, nuitka_member *member, uint64_t
 {
     nuitka_body *body = member->body;
     uint64_t at = member->offset + offset;
+    if (body->decoded) return xx_io_read_at(body->decoded, (int64_t)at, output, size);
     if (body->payload.compressed) {
         xx_rt_memcpy(output, body->bytes + (size_t)at, size);
         return true;
@@ -137,6 +148,7 @@ static bool nuitka_range(Abstractformat *format, pm_member *entry, uint64_t offs
 static void nuitka_release_body(nuitka_body *body)
 {
     if (--body->references) return;
+    if (body->decoded) xx_io_close(body->decoded);
     xx_mem_free(body->bytes);
     xx_mem_free(body);
 }
@@ -205,7 +217,7 @@ static bool nuitka_try_payload(Abstractformat *format, int64_t at, int64_t end, 
 {
     nuitka_payload payload;
     uint8_t magic[4], *toc;
-    uint64_t decoded_size;
+    uint64_t decoded_size = 0;
     bool valid, checksums = false;
     payload.table = at + 16;
     payload.table_size = carrier_u64(header);
@@ -239,6 +251,66 @@ static bool nuitka_try_payload(Abstractformat *format, int64_t at, int64_t end, 
     return valid;
 }
 
+/* Older Windows onefile builds interleave each UTF-16 name and size with
+ * the member data inside a single Zstandard frame. Cached builds add a CRC. */
+static bool nuitka_walk_legacy(Abstractformat *format, pm_stream *stream, nuitka_body *body, bool checksums, xx_pd_struct *pd)
+{
+    uint64_t offset = 0;
+    size_t header_size = checksums ? 12 : 8;
+    unsigned count = 0;
+    while (body->size - offset >= 2) {
+        uint8_t record[2 * 4097 + 12];
+        wchar_t name[4097];
+        uint64_t remaining = body->size - offset;
+        size_t amount = remaining < sizeof(record) ? (size_t)remaining : sizeof(record);
+        size_t at = 0, length;
+        uint64_t size;
+        uint32_t crc;
+        if (carrier_stop(pd) || !xx_io_read_at(body->decoded, (int64_t)offset, record, amount)) return false;
+        if (!record[0] && !record[1]) return count != 0 && remaining == 2;
+        if (count == NUITKA_MAX_ENTRIES ||
+            !nuitka_name(record, amount, &at, name, &length) || amount - at < header_size) return false;
+        size = carrier_u64(record + at);
+        crc = checksums ? xx_data_get_u32(record + at + 8, 4, 0, false) : 0;
+        offset += at + header_size;
+        if (size > body->size - offset) return false;
+        if (!count) {
+            uint8_t magic[2];
+            if (size < 64 || length < 5 ||
+                (xx_rt_wcscmp(name + length - 4, L".dll") && xx_rt_wcscmp(name + length - 4, L".exe")) ||
+                !xx_io_read_at(body->decoded, (int64_t)offset, magic, sizeof(magic)) || xx_rt_memcmp(magic, "MZ", 2))
+                return false;
+        }
+        if (stream && !nuitka_add_entry(format, stream, body, name, offset, size, crc)) return false;
+        offset += size;
+        ++count;
+    }
+    return false;
+}
+
+static const uint8_t nuitka_legacy_magic[] = {'K', 'A', 'Y', 0x28, 0xb5, 0x2f, 0xfd};
+
+static bool nuitka_try_legacy(Abstractformat *format, int64_t at, int64_t end, pm_stream *stream, xx_pd_struct *pd)
+{
+    nuitka_body *body = (nuitka_body *)xx_mem_calloc(1, sizeof(*body));
+    bool valid, checksums = false;
+    if (!body) return false;
+    body->references = 1;
+    body->payload.compressed = true;
+    body->payload.body = at + 3;
+    body->decoded = xx_io_temp_open();
+    valid = body->decoded &&
+            xx_zstd_unpack_first_frame(format->device, format->base_address + body->payload.body, end - body->payload.body,
+                                       body->decoded, NUITKA_DECODE_LIMIT, &body->size, pd);
+    if (valid && !nuitka_walk_legacy(format, NULL, body, false, pd)) {
+        checksums = true;
+        valid = nuitka_walk_legacy(format, NULL, body, true, pd);
+    }
+    if (valid && stream) valid = nuitka_walk_legacy(format, stream, body, checksums, pd);
+    nuitka_release_body(body);
+    return valid;
+}
+
 static bool nuitka_locate(Abstractformat *format, pm_stream *stream, xx_pd_struct *pd)
 {
     static const uint8_t marker[] = "NUITKA_ONEFILE_PARENT";
@@ -260,9 +332,16 @@ static bool nuitka_locate(Abstractformat *format, pm_stream *stream, xx_pd_struc
         data_end = data_at + xx_data_get_u32(section + 16, 4, 0, false);
         break;
     }
-    if (data_at < 0 || data_end <= data_at || data_end > available ||
-        xx_io_find_bytes_buffer_optimize_ex(format->device, format->base_address + data_at, data_end - data_at,
-                                            marker, sizeof(marker), NUITKA_SCAN_LIMIT, pd) < 0)
+    if (data_at < 0 || data_end <= data_at || data_end > available) return false;
+    /* The default Windows linker lays out the payload and bootstrap data
+     * near the edges of .rdata. Avoid a whole-section scan of a large blob. */
+    int64_t edge = data_end - data_at;
+    if (edge > (256 << 10)) edge = 256 << 10;
+    if (xx_io_find_bytes_buffer_optimize_ex(format->device, format->base_address + data_at, edge,
+                                            marker, sizeof(marker), NUITKA_SCAN_LIMIT, pd) < 0 &&
+        (edge == data_end - data_at ||
+         xx_io_find_bytes_buffer_optimize_ex(format->device, format->base_address + data_end - edge, edge,
+                                             marker, sizeof(marker), NUITKA_SCAN_LIMIT, pd) < 0))
         return false;
 
     if (available - image_end >= 24 && pm_read(format, available - 8, header, 8)) {
@@ -270,7 +349,9 @@ static bool nuitka_locate(Abstractformat *format, pm_stream *stream, xx_pd_struc
         if (size >= 16 && size <= (uint64_t)(available - image_end - 8)) {
             int64_t offset = available - 8 - (int64_t)size;
             if (pm_read(format, offset, header, sizeof(header)) &&
-                nuitka_try_payload(format, offset, available - 8, header, stream, pd)) return true;
+                (nuitka_try_payload(format, offset, available - 8, header, stream, pd) ||
+                 ((!stream || !stream->count) && !xx_rt_memcmp(header, nuitka_legacy_magic, sizeof(nuitka_legacy_magic)) &&
+                  nuitka_try_legacy(format, offset, available - 8, stream, pd)))) return true;
             if (stream && stream->count) return false;
         }
     }
@@ -285,6 +366,11 @@ static bool nuitka_locate(Abstractformat *format, pm_stream *stream, xx_pd_struc
                 break;
             }
             if (stream && stream->count) break;
+        }
+        for (size_t i = 0; !found && (!stream || !stream->count) && !carrier_stop(pd) &&
+                           i + sizeof(nuitka_legacy_magic) <= prefix_size; ++i) {
+            if (!xx_rt_memcmp(prefix + i, nuitka_legacy_magic, sizeof(nuitka_legacy_magic)))
+                found = nuitka_try_legacy(format, data_at + (int64_t)i, data_end, stream, pd);
         }
     }
     xx_mem_free(prefix);

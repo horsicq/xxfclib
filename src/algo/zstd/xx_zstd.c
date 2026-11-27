@@ -384,8 +384,8 @@ static bool xx_zstd_device_stream_write(void *opaque, const void *data, size_t s
     return xx_zstd_write_exact(stream->destination, data, size, stream->progress, stream->io_capacity);
 }
 
-bool xx_zstd_unpack_device_streaming(xx_io_device *source, int64_t source_offset, int64_t compressed_size, xx_io_device *destination, uint64_t expected_size,
-                                     uint64_t window_limit, xx_pd_struct *progress)
+static bool xx_zstd_unpack_device_stream(xx_io_device *source, int64_t source_offset, int64_t compressed_size, xx_io_device *destination, uint64_t size_limit,
+                                         uint64_t window_limit, bool first_frame, uint64_t *out_written, xx_pd_struct *progress)
 {
     xx_zstd_device_stream stream;
     xx_zstd_stream_io io;
@@ -408,10 +408,23 @@ bool xx_zstd_unpack_device_streaming(xx_io_device *source, int64_t source_offset
     io.skip = xx_zstd_device_stream_skip;
     io.write = xx_zstd_device_stream_write;
     io.opaque = &stream;
-    success = xx_zstd_decode_stream(&io, window_limit ? window_limit : XX_ZSTD_STREAM_WINDOW_LIMIT_DEFAULT, expected_size, NULL);
+    success = xx_zstd_decode_stream(&io, window_limit ? window_limit : XX_ZSTD_STREAM_WINDOW_LIMIT_DEFAULT, size_limit, first_frame, out_written);
     /* Leave the source where the caller had it, as ZIP's XZ range reader does. */
     if (saved >= 0 && xx_io_seek64(source, saved, SEEK_SET) != 0) success = false;
     return success && !(progress && xx_pd_is_stopped(progress));
+}
+
+bool xx_zstd_unpack_device_streaming(xx_io_device *source, int64_t source_offset, int64_t compressed_size, xx_io_device *destination, uint64_t expected_size,
+                                     uint64_t window_limit, xx_pd_struct *progress)
+{
+    return xx_zstd_unpack_device_stream(source, source_offset, compressed_size, destination, expected_size, window_limit, false, NULL, progress);
+}
+
+bool xx_zstd_unpack_first_frame(xx_io_device *source, int64_t source_offset, int64_t available_size, xx_io_device *destination, uint64_t output_limit,
+                                uint64_t *out_written, xx_pd_struct *progress)
+{
+    if (out_written) *out_written = 0;
+    return xx_zstd_unpack_device_stream(source, source_offset, available_size, destination, output_limit, 0, true, out_written, progress);
 }
 
 bool xx_zstd_unpack_device_to_file(xx_io_device *source, int64_t source_offset, int64_t compressed_size, const char *destination_path, uint64_t uncompressed_size,

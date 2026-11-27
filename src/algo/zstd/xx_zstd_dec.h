@@ -42,8 +42,9 @@ typedef struct xx_zstd_stream_io {
  * does, holding one frame's history window in memory (plus up to 16 MiB of
  * room and fixed buffers) instead of the whole input and output. A frame
  * whose window exceeds window_limit fails, unless it declares at most 16 KiB
- * of content. expected_size is the exact total, or UINT64_MAX when unknown.
+ * of content. size_limit is the exact total, or UINT64_MAX when unknown.
+ * In first_frame mode, size_limit caps output and trailing input is ignored.
  * *out_written (optional) gets the bytes written, also on failure. */
-bool xx_zstd_decode_stream(const xx_zstd_stream_io *io, uint64_t window_limit, uint64_t expected_size, uint64_t *out_written);
+bool xx_zstd_decode_stream(const xx_zstd_stream_io *io, uint64_t window_limit, uint64_t size_limit, bool first_frame, uint64_t *out_written);
 
 #endif /* XX_ZSTD_DEC_H */
