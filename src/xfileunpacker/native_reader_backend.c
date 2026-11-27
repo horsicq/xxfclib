@@ -1552,11 +1552,17 @@ static int native_raw_device_read(const xfu_request *request, const char *unpack
     if (selected && (request->command == XFU_COMMAND_EXTRACT || testing)) {
         cut = !success && native_cancelled(request, pd);
         if (cut) native_logf(request, true, "  %s -- cancelled", name);
-        else if (testing && request->callbacks.test_result) request->callbacks.test_result(request->callbacks.user, &entry, success);
-        else if (success && replacing) native_logf(request, false, "  %s -- replaced an existing file", name);
-        else if (success) native_logf(request, false, testing ? "  %s -- OK" : "  %s", name);
-        else if (reason) native_logf(request, true, "  %s -- FAILED (%s)", name, reason);
-        else native_logf(request, true, "  %s -- FAILED", name);
+        else {
+            if (!testing && request->callbacks.extract_result) {
+                entry.failure = reason;
+                request->callbacks.extract_result(request->callbacks.user, &entry, success, false);
+            }
+            if (testing && request->callbacks.test_result) request->callbacks.test_result(request->callbacks.user, &entry, success);
+            else if (success && replacing) native_logf(request, false, "  %s -- replaced an existing file", name);
+            else if (success) native_logf(request, false, testing ? "  %s -- OK" : "  %s", name);
+            else if (reason) native_logf(request, true, "  %s -- FAILED (%s)", name, reason);
+            else native_logf(request, true, "  %s -- FAILED", name);
+        }
     }
     if (selected && request->callbacks.progress) request->callbacks.progress(request->callbacks.user, 1, 1, name);
     /* A member cut short by Cancel is neither failed nor counted. */
