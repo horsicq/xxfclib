@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://gts.sourceforge.net/reference/gts-surfaces.html
  * GNU GTS ASCII base classes: complete declared vertex/edge/triangle tables, finite coordinates and valid distinct local edge/vertex references forming each triangle.

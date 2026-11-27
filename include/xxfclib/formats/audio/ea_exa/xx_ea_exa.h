@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded native ea_exa reader. */
 #ifndef XX_EA_EXA_H
 #define XX_EA_EXA_H

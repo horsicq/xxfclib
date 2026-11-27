@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://doc.mapeditor.org/en/stable/reference/tmx-map-format/
  * Tiled TMX1.x finite orthogonal maps: complete UTF8 XML without DTD or external entities, embedded rectangular image tilesets with declared tilecount/columns, image

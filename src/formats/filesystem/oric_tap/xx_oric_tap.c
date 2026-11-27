@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Independently implemented primary framing.
  * Reference: https://github.com/mamedev/mame/blob/master/src/lib/formats/oric_tap.cpp
  * No payload execution, machine restoration or synthesized audio.

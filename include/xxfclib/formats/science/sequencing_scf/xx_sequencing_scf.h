@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://staden.sourceforge.net/manual/formats_unix_3.html */
 #ifndef XX_SEQUENCING_SCF_H

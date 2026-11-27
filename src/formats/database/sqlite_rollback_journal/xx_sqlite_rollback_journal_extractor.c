@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/sqlite/sqlite/blob/master/src/pager.c */
 #include "../../xx_format_extractor_engine.h"

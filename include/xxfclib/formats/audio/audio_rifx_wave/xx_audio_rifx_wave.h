@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Standard big-endian RIFX/WAVE component reader. */
 #ifndef XX_AUDIO_RIFX_WAVE_H
 #define XX_AUDIO_RIFX_WAVE_H

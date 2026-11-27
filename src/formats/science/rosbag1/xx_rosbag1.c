@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/ros/ros_comm/blob/noetic-devel/tools/rosbag/src/rosbag/bag.py */
 #include "xxfclib/formats/science/rosbag1/xx_rosbag1.h"

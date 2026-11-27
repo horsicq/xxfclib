@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://raw.githubusercontent.com/InsightSoftwareConsortium/ITK/master/Modules/IO/GIPL/src/itkGiplImageIO.cxx */
 #ifndef XX_GIPL_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original bounded Amiga archive carrier facts. */
 #ifndef XX_ARCHIVE_WRAPPERS_H
 #define XX_ARCHIVE_WRAPPERS_H

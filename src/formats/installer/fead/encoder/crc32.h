@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* crc32.h -- tables for rapid CRC calculation
  * Generated automatically by crc32.c
  */

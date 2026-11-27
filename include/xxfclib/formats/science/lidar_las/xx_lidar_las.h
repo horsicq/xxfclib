@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://raw.githubusercontent.com/laspy/laspy/master/laspy/header.py */
 #ifndef XX_LIDAR_LAS_H

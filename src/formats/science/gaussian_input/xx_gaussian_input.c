@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://gaussian.com/input/ */
 #include "xxfclib/formats/science/gaussian_input/xx_gaussian_input.h"

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://raw.githubusercontent.com/dranjan/python-plyfile/master/plyfile.py */
 #ifndef XX_POLYGON_PLY_H

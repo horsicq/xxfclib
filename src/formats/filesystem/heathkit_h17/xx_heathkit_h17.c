@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original parser from primary documented layout facts. */
 #include "xxfclib/formats/filesystem/heathkit_h17/xx_heathkit_h17.h"
 #include "../../disk_additions/xx_disk_additions.h"

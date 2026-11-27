@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Scoped legacy linker .bss layout for CAB SFX. */
 static bool sfx_cab_legacy_bss(Abstractformat *f,int64_t *low,xx_pd_struct *pd)
 {

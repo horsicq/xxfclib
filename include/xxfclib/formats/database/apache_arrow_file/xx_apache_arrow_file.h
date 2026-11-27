@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://arrow.apache.org/docs/format/Columnar.html
  * Bounded encoded-component extraction. */

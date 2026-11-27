@@ -59,11 +59,21 @@
 #define LZX_HIGH_BITS 31U
 #define LZX_HIGH_ALIGNED 32U
 
+/* x86 uses native-width shifts. Other targets retain the original reader. */
+#if defined(_M_IX86) || defined(__i386__)
+#define LZX_BITS 32U
+#define LZX_NATIVE32 1
+typedef uint32_t lzx_bitbuf;
+#else
+#define LZX_BITS 64U
+typedef uint64_t lzx_bitbuf;
+#endif
+
 typedef struct lzx_state_s {
     /* Bit reader. `bits` holds `bit_count` valid bits at its top; `in` is the next unread 16-bit word. Bits below
        the valid ones are either zero or equal to the stream bits that follow, never anything else. */
     const uint8_t *in, *in_end;
-    uint64_t bits;
+    lzx_bitbuf bits;
     int bit_count;
     bool error;
     bool length_empty;
@@ -81,6 +91,31 @@ typedef struct lzx_state_s {
     uint32_t main_table[LZX_MAIN_TABLE_SIZE];
 } lzx_state;
 
+#ifdef LZX_NATIVE32
+/* Two little-endian words, first in the high half. Four readable bytes required. */
+static inline uint32_t lzx_load_words(const uint8_t *p)
+{
+    uint32_t x;
+    memcpy(&x, p, sizeof(x));
+    return (x << 16U) | (x >> 16U);
+}
+
+/* At least 16 valid bits unless the input is exhausted. Speculative bits
+ * below bit_count are the next stream bits, as in the 64-bit reader. */
+#define LZX_REFILL(in, in_end, buf, cnt)                                      \
+    do {                                                                    \
+        if ((cnt) < 16 && LZX_SPAN((in), (in_end)) >= 4U) {                   \
+            (buf) |= lzx_load_words(in) >> (cnt);                            \
+            (in) += 2;                                                      \
+            (cnt) += 16;                                                    \
+        } else if ((cnt) < 16 && LZX_SPAN((in), (in_end)) >= 2U) {            \
+            (buf) |= ((uint32_t)(in)[0] | ((uint32_t)(in)[1] << 8U)) << (16 - (cnt)); \
+            (in) += 2;                                                      \
+            (cnt) += 16;                                                    \
+        }                                                                   \
+    } while (0)
+#define LZX_REFILL_MORE(in, end, buf, cnt) LZX_REFILL(in, end, buf, cnt)
+#else
 /* Four 16-bit little-endian words, the first one in the top 16 bits. p must have 8 readable bytes. */
 static inline uint64_t lzx_load_words(const uint8_t *p)
 {
@@ -113,12 +148,15 @@ static inline uint64_t lzx_load_words(const uint8_t *p)
         }                                                                           \
     } while (0)
 
+#define LZX_REFILL_MORE(in, end, buf, cnt) ((void)0)
+#endif
+
 /* Decodes one symbol into `e` (table entry: symbol << 5 | length) and consumes its bits. The caller checks cnt < 0
    afterwards when the input may be exhausted. */
 #define LZX_DECODE(e, table, tb, sub, buf, cnt)                                     \
     do {                                                                            \
-        (e) = (table)[(size_t)((buf) >> (64U - (tb)))];                             \
-        if ((e) & LZX_SUB_FLAG) (e) = (table)[((e) & 0x7fffU) + (size_t)(((buf) << (tb)) >> (64U - (sub)))]; \
+        (e) = (table)[(size_t)((buf) >> (LZX_BITS - (tb)))];                             \
+        if ((e) & LZX_SUB_FLAG) (e) = (table)[((e) & 0x7fffU) + (size_t)(((buf) << (tb)) >> (LZX_BITS - (sub)))]; \
         (buf) <<= ((e) & 31U);                                                      \
         (cnt) -= (int)((e) & 31U);                                                  \
     } while (0)
@@ -168,6 +206,12 @@ static uint32_t lzx_read(lzx_state *s, unsigned count)
 {
     uint32_t result;
     if (!count || s->error) return 0;
+#ifdef LZX_NATIVE32
+    if (count > 16U) {
+        uint32_t high = lzx_read(s, count - 16U);
+        return (high << 16U) | lzx_read(s, 16U);
+    }
+#endif
     if (s->bit_count < (int)count) {
         LZX_REFILL(s->in, s->in_end, s->bits, s->bit_count);
         if (s->bit_count < (int)count) {
@@ -175,7 +219,7 @@ static uint32_t lzx_read(lzx_state *s, unsigned count)
             return 0;
         }
     }
-    result = (uint32_t)(s->bits >> (64U - count));
+    result = (uint32_t)(s->bits >> (LZX_BITS - count));
     s->bits <<= count;
     s->bit_count -= (int)count;
     return result;
@@ -252,7 +296,7 @@ static bool lzx_read_lengths(lzx_state *s, uint8_t *lengths, unsigned first, uns
     uint8_t pre_lengths[LZX_PRETREE_SYMBOLS];
     const uint16_t *table = s->pre_table;
     const uint8_t *in, *in_end = s->in_end;
-    uint64_t buf;
+    lzx_bitbuf buf;
     int cnt;
     unsigned i, sub;
     for (i = 0; i < LZX_PRETREE_SYMBOLS; ++i) pre_lengths[i] = (uint8_t)lzx_read(s, 4);
@@ -274,23 +318,31 @@ static bool lzx_read_lengths(lzx_state *s, uint8_t *lengths, unsigned first, uns
             lengths[i++] = (uint8_t)(value < 0 ? value + 17 : value);
             continue;
         }
+#ifdef LZX_NATIVE32
+        if (cnt < 0) return false;
+#endif
+        LZX_REFILL_MORE(in, in_end, buf, cnt);
         if (z == 17U) {
-            n = (unsigned)(buf >> 60U) + 4U;
+            n = (unsigned)(buf >> (LZX_BITS - 4U)) + 4U;
             buf <<= 4U;
             cnt -= 4;
             if (cnt < 0 || n > last - i) return false;
             while (n--) lengths[i++] = 0;
         } else if (z == 18U) {
-            n = (unsigned)(buf >> 59U) + 20U;
+            n = (unsigned)(buf >> (LZX_BITS - 5U)) + 20U;
             buf <<= 5U;
             cnt -= 5;
             if (cnt < 0 || n > last - i) return false;
             while (n--) lengths[i++] = 0;
         } else {
             int value;
-            n = (unsigned)(buf >> 63U) + 4U;
+            n = (unsigned)(buf >> (LZX_BITS - 1U)) + 4U;
             buf <<= 1U;
             cnt -= 1;
+#ifdef LZX_NATIVE32
+            if (cnt < 0) return false;
+#endif
+            LZX_REFILL_MORE(in, in_end, buf, cnt);
             LZX_DECODE(e, table, LZX_PRE_TB, sub, buf, cnt);
             z = e >> 5U;
             if (cnt < 0 || z > 16U || n > last - i) return false;
@@ -332,7 +384,7 @@ static bool lzx_align_word(lzx_state *s, bool always)
 {
     unsigned discard = (unsigned)s->bit_count & 15U;
     if (discard) {
-        if ((s->bits >> (64U - discard)) != 0) return false;
+        if ((s->bits >> (LZX_BITS - discard)) != 0) return false;
         s->bits <<= discard;
         s->bit_count -= (int)discard;
     } else if (always && lzx_read(s, 16) != 0) return false;
@@ -386,7 +438,7 @@ LZX_INLINE bool lzx_decode_run_any(lzx_state *s, uint8_t *output, uint8_t *out, 
     const unsigned main_sub = s->main_sub, length_sub = s->length_sub;
     const size_t window_size = s->window_size;
     const uint8_t *in = s->in, *const in_end = s->in_end;
-    uint64_t buf = s->bits;
+    lzx_bitbuf buf = s->bits;
     int cnt = s->bit_count;
     uint32_t r0 = s->r0, r1 = s->r1, r2 = s->r2;
 
@@ -395,13 +447,15 @@ LZX_INLINE bool lzx_decode_run_any(lzx_state *s, uint8_t *output, uint8_t *out, 
         uint32_t offset, verbatim, previous;
         size_t history;
         const uint8_t *src;
-        /* >= 48 bits unless the input is exhausted: two main symbols and a length symbol, 16 bits each at most */
+        /* x64 refills for two main symbols and a length symbol (at most 48
+         * bits). x86 refills again before each following symbol below. */
         LZX_REFILL(in, in_end, buf, cnt);
         LZX_DECODE(e, main_table, LZX_MAIN_TB, main_sub, buf, cnt);
         if (e < (256U << 5U)) {
             if (cnt < 0) return false;
             *out++ = (uint8_t)(e >> 5U);
             if (out == run_end) break;
+            LZX_REFILL_MORE(in, in_end, buf, cnt);
             LZX_DECODE(e, main_table, LZX_MAIN_TB, main_sub, buf, cnt);
             if (e < (256U << 5U)) {
                 if (cnt < 0) return false;
@@ -409,33 +463,56 @@ LZX_INLINE bool lzx_decode_run_any(lzx_state *s, uint8_t *output, uint8_t *out, 
                 continue;
             }
         }
+#ifdef LZX_NATIVE32
+        if (cnt < 0) return false;
+#endif
         high = e >> 16U;
         sym = ((e & 0xffffU) >> 5U) - 256U;
         slot = sym >> 3U;
         length_header = sym & 7U;
         match_length = length_header + 2U;
         if (length_header == 7U) {
-            e = length_table[(size_t)(buf >> (64U - LZX_LENGTH_TB))];
+            LZX_REFILL_MORE(in, in_end, buf, cnt);
+            e = length_table[(size_t)(buf >> (LZX_BITS - LZX_LENGTH_TB))];
             if (e & LZX_SUB_FLAG) {
                 if (s->length_empty) return false;
-                e = length_table[(e & 0x7fffU) + (size_t)((buf << LZX_LENGTH_TB) >> (64U - length_sub))];
+                e = length_table[(e & 0x7fffU) + (size_t)((buf << LZX_LENGTH_TB) >> (LZX_BITS - length_sub))];
             }
             buf <<= (e & 31U);
             cnt -= (int)(e & 31U);
             match_length = (e >> 5U) + 9U;
         }
         if (cnt < 0) return false;
-        /* >= 48 bits again unless exhausted: at most 17 verbatim bits, or 14 and an aligned symbol of 7 */
+        /* At most 17 verbatim bits, or 14 and an aligned symbol of 7.
+         * The x86 path splits the 17-bit field and refills before alignment. */
         LZX_REFILL(in, in_end, buf, cnt);
         bits = high & LZX_HIGH_BITS;
-        verbatim = (uint32_t)((buf >> 1U) >> (63U - bits));
+#ifdef LZX_NATIVE32
+        /* The largest verbatim field is 17 bits. Consume its first bit
+         * separately so every refill still needs only one whole word. */
+        verbatim = 0;
+        if (bits == 17U) {
+            verbatim = (buf >> 31U) << 16U;
+            buf <<= 1U;
+            if (--cnt < 0) return false;
+            LZX_REFILL(in, in_end, buf, cnt);
+            bits = 16U;
+        }
+        verbatim |= (buf >> 1U) >> (31U - bits);
+#else
+        verbatim = (uint32_t)((buf >> 1U) >> (LZX_BITS - 1U - bits));
+#endif
         buf <<= bits;
         cnt -= (int)bits;
         offset = slot_base[slot] + verbatim;
+#ifdef LZX_NATIVE32
+        if (cnt < 0) return false;
+#endif
         if (aligned) {
+            LZX_REFILL_MORE(in, in_end, buf, cnt);
             /* with LZX_HIGH_ALIGNED: the verbatim bits are the offset's high part and an aligned symbol follows */
             const unsigned has_aligned = (high / LZX_HIGH_ALIGNED) & 1U;
-            e = (unsigned)aligned_table[(size_t)(buf >> (64U - LZX_ALIGNED_TB))] & (0U - has_aligned);
+            e = (unsigned)aligned_table[(size_t)(buf >> (LZX_BITS - LZX_ALIGNED_TB))] & (0U - has_aligned);
             buf <<= (e & 31U);
             cnt -= (int)(e & 31U);
             offset = slot_base[slot] + (verbatim << (has_aligned * 3U)) + (e >> 5U);
@@ -601,6 +678,14 @@ void xx_lzx_cab_translate(uint8_t *output, size_t from, size_t to, int32_t trans
 bool xx_lzx_cab_decode_gated(const uint8_t *const *blocks, const size_t *block_sizes, const size_t *plain_sizes, size_t block_count, unsigned window_bits,
                              uint8_t *output, size_t output_size, size_t *written, xx_lzx_cab_gate_fn gate, void *context, int32_t *translation_size)
 {
+    return xx_lzx_cab_decode_gated_status(blocks, block_sizes, plain_sizes, block_count, window_bits, output, output_size, written, gate, context,
+                                          translation_size, NULL);
+}
+
+bool xx_lzx_cab_decode_gated_status(const uint8_t *const *blocks, const size_t *block_sizes, const size_t *plain_sizes, size_t block_count, unsigned window_bits,
+                                    uint8_t *output, size_t output_size, size_t *written, xx_lzx_cab_gate_fn gate, void *context, int32_t *translation_size,
+                                    bool *out_of_memory)
+{
     lzx_state *s;
     size_t entry, out_pos = 0, block_remaining = 0, e8_done = 0;
     const uint8_t *wide_end;
@@ -608,13 +693,17 @@ bool xx_lzx_cab_decode_gated(const uint8_t *const *blocks, const size_t *block_s
     int32_t intel_size = 0;
     bool raw_odd = false, raw_pad_pending = false, ok = false;
     if (written) *written = 0;
+    if (out_of_memory) *out_of_memory = false;
     if (!blocks || !block_sizes || !plain_sizes || !block_count || !output || window_bits < 15U || window_bits > 21U) return false;
     if (!gate) {
         for (entry = 0; entry < block_count; ++entry)
             if (!lzx_entry_valid(blocks, block_sizes, plain_sizes, block_count, entry, output_size)) return false;
     }
     s = (lzx_state *)xx_mem_calloc(1U, sizeof(*s));
-    if (!s) return false;
+    if (!s) {
+        if (out_of_memory) *out_of_memory = true;
+        return false;
+    }
     s->window_size = (uint32_t)1U << window_bits;
     s->r0 = s->r1 = s->r2 = 1;
     lzx_init_positions(s, window_bits);

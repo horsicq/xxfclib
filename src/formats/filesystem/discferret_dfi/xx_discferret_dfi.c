@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original DiscFerret sample-block framing.
  * Facts: official HxC dfi_format.h embedded format-originator description.
  * The raw delta/index encoding is retained, including legal terminal carry.

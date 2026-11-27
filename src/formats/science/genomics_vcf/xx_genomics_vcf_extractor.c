@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://samtools.github.io/hts-specs/VCFv4.3.pdf */
 #include "../../xx_format_extractor_engine.h"

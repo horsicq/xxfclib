@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Native regression: PFX producer framing and incomplete SFX member chains.
  * Fixtures are built in memory; no executable bytes are executed. */

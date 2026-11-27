@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded floppy component reader. */
 #ifndef XX_HXC_QD_H
 #define XX_HXC_QD_H

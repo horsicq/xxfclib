@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://vasp.at/wiki/POSCAR */
 #ifndef XX_VASP_POSCAR_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Independently implemented primary framing.
  * Inert encoded components only: no playback, emulation or filesystem recovery.
  *

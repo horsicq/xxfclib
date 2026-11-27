@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-2.0.html */
 #include "xxfclib/formats/science/inivation_aedat/xx_inivation_aedat.h"

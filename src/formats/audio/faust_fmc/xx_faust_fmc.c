@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Validated original encoded music components; no playback. */
 #include "xxfclib/formats/audio/faust_fmc/xx_faust_fmc.h"
 #include "../../common/xx_music_components.h"

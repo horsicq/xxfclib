@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.faccts.de/docs/orca/6.1/manual/contents/essentialelements/input.html */
 #include "../../xx_format_extractor_engine.h"

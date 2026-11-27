@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/biopython/biopython/blob/master/Bio/Phylo/NewickIO.py */
 #ifndef XX_PHYLO_NEWICK_H

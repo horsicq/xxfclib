@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original, bounded pipe client.
  * The separately built 7-Zip engine is an independent executable, never linked.
  */

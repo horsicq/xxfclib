@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Checked primitives for additional containers. */
 #ifndef XX_NUMERIC_VALUES_H
 #define XX_NUMERIC_VALUES_H

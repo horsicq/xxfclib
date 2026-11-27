@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Internal filesystem policy boundaries. */
 #ifndef XX_IO_POLICY_H
 #define XX_IO_POLICY_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original parser from primary documented layout facts. */
 #include "xxfclib/formats/filesystem/micral_n_raw/xx_micral_n_raw.h"
 #include "../../disk_additions/xx_disk_additions.h"

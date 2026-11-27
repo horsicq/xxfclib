@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. */
 #include "../../xx_format_extractor_engine.h"
 #include "xxfclib/formats/audio/tracker_ams/xx_tracker_ams.h"

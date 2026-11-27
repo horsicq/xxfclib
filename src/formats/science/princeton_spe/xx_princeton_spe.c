@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/imageio/imageio/blob/master/imageio/plugins/spe.py */
 #include "xxfclib/formats/science/princeton_spe/xx_princeton_spe.h"

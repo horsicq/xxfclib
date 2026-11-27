@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://staden.sourceforge.net/manual/formats_unix_3.html */
 #include "xxfclib/formats/science/sequencing_scf/xx_sequencing_scf.h"

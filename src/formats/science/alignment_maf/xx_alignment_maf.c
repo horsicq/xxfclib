@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://genome.ucsc.edu/FAQ/FAQformat.html#format5 */
 #include "xxfclib/formats/science/alignment_maf/xx_alignment_maf.h"

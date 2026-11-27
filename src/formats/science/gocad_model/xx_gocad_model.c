@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/lanl/LaGriT/master/src/read_gocad_tsurf.f
  * GOCAD TSurf1 triangulated surfaces: complete header/property declarations and TFACE records with unique local vertex IDs, finite coordinates/properties, resolved

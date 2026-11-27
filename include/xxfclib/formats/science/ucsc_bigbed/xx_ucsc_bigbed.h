@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/biopython/biopython/blob/master/Bio/Align/bigbed.py */
 #ifndef XX_UCSC_BIGBED_H

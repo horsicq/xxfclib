@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/freesurfer/freesurfer/dev/matlab/load_mgh.m */
 #include "xxfclib/formats/science/freesurfer_mgh/xx_freesurfer_mgh.h"

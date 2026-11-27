@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://sdif.sourceforge.net/standard/sdif-standard.html */
 #include "xxfclib/formats/audio/ircam_sdif/xx_ircam_sdif.h"

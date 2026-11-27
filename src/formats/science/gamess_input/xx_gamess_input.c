@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.msg.chem.iastate.edu/gamess/GAMESS_Manual/input.pdf */
 #include "xxfclib/formats/science/gamess_input/xx_gamess_input.h"

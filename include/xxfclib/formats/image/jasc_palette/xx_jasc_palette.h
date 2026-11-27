@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/1j01/anypalette.js/master/src/formats/PaintShopPro.coffee
  * JASC-PAL0100: exact declared RGB8 color rows and complete text framing. Original descriptor and palette rows exported; no rendering.

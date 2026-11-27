@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://raw.githubusercontent.com/WizardMac/ReadStat/master/src/stata/readstat_dta_read.c */
 #include "xxfclib/formats/science/stata_dta/xx_stata_dta.h"

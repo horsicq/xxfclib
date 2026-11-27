@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private bounded shared format component helpers. */
 #ifndef XX_RETRO_MUSIC_COMPONENTS_H
 #define XX_RETRO_MUSIC_COMPONENTS_H

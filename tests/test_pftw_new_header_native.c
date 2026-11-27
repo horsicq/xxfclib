@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Constructed PE + PFTW + stored CAB fixtures. No executable is run. */
 #include "xxfclib/formats/installer/sfx_packagefortheweb/xx_sfx_packagefortheweb.h"

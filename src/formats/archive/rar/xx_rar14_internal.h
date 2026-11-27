@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Private bounded RAR1.4 header adapter. No header checksum exists here. */
 #ifndef XX_RAR14_INTERNAL_H
 #define XX_RAR14_INTERNAL_H

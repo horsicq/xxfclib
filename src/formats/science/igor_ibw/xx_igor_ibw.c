@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/AFM-analysis/igor2/blob/master/igor2/binarywave.py */
 #include "xxfclib/formats/science/igor_ibw/xx_igor_ibw.h"

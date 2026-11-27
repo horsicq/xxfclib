@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://mcap.dev/spec */
 #include "xxfclib/formats/other/mcap/xx_mcap.h"

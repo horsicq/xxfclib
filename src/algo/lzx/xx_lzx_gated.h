@@ -33,6 +33,12 @@ typedef bool (*xx_lzx_cab_gate_fn)(void *context, size_t entry, size_t settled_b
 bool xx_lzx_cab_decode_gated(const uint8_t *const *blocks, const size_t *block_sizes, const size_t *plain_sizes, size_t block_count, unsigned window_bits,
                              uint8_t *output, size_t output_size, size_t *written, xx_lzx_cab_gate_fn gate, void *context, int32_t *translation_size);
 
+/* Internal status variant. Sets *out_of_memory only for decoder-state allocation
+   failure. It belongs to the decoding thread until that thread is joined. */
+bool xx_lzx_cab_decode_gated_status(const uint8_t *const *blocks, const size_t *block_sizes, const size_t *plain_sizes, size_t block_count, unsigned window_bits,
+                                    uint8_t *output, size_t output_size, size_t *written, xx_lzx_cab_gate_fn gate, void *context, int32_t *translation_size,
+                                    bool *out_of_memory);
+
 /* E8 call translation of output[from .. to) of a stream decoded with translation_size. `from` must be a multiple of
    32768, `to` a multiple of 32768 or the output size; every byte must be translated exactly once, and only when the
    decoder is done with it (settled_bytes, or after the decoder returned). Does nothing when translation_size is 0. */

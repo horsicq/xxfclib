@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.chg.ox.ac.uk/~gav/bgen_format/spec/v1.2.html */
 #include "../../xx_format_extractor_engine.h"

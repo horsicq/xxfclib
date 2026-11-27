@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.faccts.de/docs/orca/6.1/manual/contents/essentialelements/input.html */
 #include "xxfclib/formats/science/orca_input/xx_orca_input.h"

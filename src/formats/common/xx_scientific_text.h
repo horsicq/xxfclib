@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Checked scientific text primitives. */
 #ifndef XX_SCIENTIFIC_TEXT_H
 #define XX_SCIENTIFIC_TEXT_H

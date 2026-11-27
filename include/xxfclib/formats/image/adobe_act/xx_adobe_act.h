@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/1j01/anypalette.js/master/anypalette.js
  * Adobe Color Table: exact768-byte RGB256 table or772-byte counted/transparency variant, bounded active color count and transparent index. Original color triplets and

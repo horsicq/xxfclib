@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://docs.abinit.org/guide/abinit/ */
 #ifndef XX_ABINIT_INPUT_H

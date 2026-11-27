@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.xcrysden.org/doc/XSF.html */
 #ifndef XX_XCRYSDEN_XSF_H

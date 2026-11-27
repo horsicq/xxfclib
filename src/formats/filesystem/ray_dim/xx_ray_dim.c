@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original parser from documented field facts; no upstream implementation copied. */
 #include "xxfclib/formats/filesystem/ray_dim/xx_ray_dim.h"
 #include "../../disk_additions/xx_disk_additions.h"

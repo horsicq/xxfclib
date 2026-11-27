@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.wwpdb.org/documentation/file-format-content/format33/sect9.html */
 #ifndef XX_PROTEIN_PDB_H

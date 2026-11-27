@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://opengex.org/opengex-spec.pdf
  * OpenGEX static geometry subset: typed metrics, object/material/node identifiers and resolved references, finite transforms and vertex arrays, bounded triangle indexes

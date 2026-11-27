@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://docs.software.vt.edu/abaqusv2025/English/SIMACAEMODRefMap/simamod-c-inputsyntax.htm
  * Abaqus mesh input subset: complete typed NODE/ELEMENT/ELSET/NSET/SURFACE blocks, finite coordinates, unique local identifiers and resolved connectivity/set references.

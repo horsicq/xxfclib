@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original LRZIP 0.6 two-stream/RZIP decoder from author format facts.
  * Stored, BZip2, LZO, raw LZMA and zlib blocks are decoded; encrypted and ZPAQ variants fail explicitly. */
 #include "xxfclib/formats/archive/lrzip/xx_lrzip.h"

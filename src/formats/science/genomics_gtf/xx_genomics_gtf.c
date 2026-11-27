@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.ensembl.org/info/website/upload/gff.html */
 #include "xxfclib/formats/science/genomics_gtf/xx_genomics_gtf.h"

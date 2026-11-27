@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Private complete DOS PKLITE ZIP with a stale central-directory disk index. */
 #ifndef XX_DOS_ZIP_DISK_H
 #define XX_DOS_ZIP_DISK_H

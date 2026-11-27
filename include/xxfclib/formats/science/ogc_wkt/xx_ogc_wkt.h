@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://www.ogc.org/standards/sfa/
  * OGC2D WKT POINT/LINESTRING/POLYGON/MULTIPOINT/MULTILINESTRING/MULTIPOLYGON and bounded nested GEOMETRYCOLLECTION: complete finite coordinate grammar, minimum vertex

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/mne-tools/mne-python/blob/main/mne/io/cnt/cnt.py */
 #ifndef XX_NEUROSCAN_CNT_H

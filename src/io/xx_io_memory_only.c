@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Thread-scoped RAM-only temporary streams.
  * There is deliberately no filesystem fallback or virtual path namespace.
  * The thread-scoped extraction policy (xx_io_extract_begin) is kept here too. */

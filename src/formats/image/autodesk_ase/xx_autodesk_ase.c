@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/assimp/assimp/master/code/AssetLib/ASE/ASEParser.cpp
  * Autodesk ASE200 static ASCII triangle meshes: complete typed scene, Standard materials, node transforms, ordered unique vertex/face IDs, finite coordinates and local

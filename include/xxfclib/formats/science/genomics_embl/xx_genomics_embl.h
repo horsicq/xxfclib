@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://biopython.org/docs/latest/api/Bio.SeqIO.InsdcIO.html */
 #ifndef XX_GENOMICS_EMBL_H

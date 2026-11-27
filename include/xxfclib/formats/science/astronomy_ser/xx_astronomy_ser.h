@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://grischa-hahn.hier-im-netz.de/astro/ser/SER%20Doc%20V2.pdf */
 #ifndef XX_ASTRONOMY_SER_H

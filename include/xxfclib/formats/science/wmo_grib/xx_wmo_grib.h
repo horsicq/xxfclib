@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://codes.ecmwf.int/grib/format/grib2/regulations/ */
 #ifndef XX_WMO_GRIB_H

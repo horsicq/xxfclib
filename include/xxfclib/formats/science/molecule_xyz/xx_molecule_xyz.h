@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://ase-lib.org/_modules/ase/io/xyz.html */
 #ifndef XX_MOLECULE_XYZ_H

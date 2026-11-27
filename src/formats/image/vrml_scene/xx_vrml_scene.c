@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://www.web3d.org/documents/specifications/14772/V2.0/part1/nodesRef.html
  * VRML97 bounded complete static node subset: Shape/Appearance/Material/IndexedFaceSet/Coordinate/Group/Transform and basic primitive/view/light metadata, typed fields,

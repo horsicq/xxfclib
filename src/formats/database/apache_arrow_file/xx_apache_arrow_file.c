@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://arrow.apache.org/docs/format/Columnar.html */
 #include "xxfclib/formats/database/apache_arrow_file/xx_apache_arrow_file.h"

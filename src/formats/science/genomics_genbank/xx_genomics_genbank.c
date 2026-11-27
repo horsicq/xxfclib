@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://biopython.org/docs/latest/api/Bio.SeqIO.InsdcIO.html */
 #include "xxfclib/formats/science/genomics_genbank/xx_genomics_genbank.h"

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://docs.safe.com/fme/2016.0/html/FME_Desktop_Documentation/FME_ReadersWriters/mif/mif.htm
  * MapInfo MIF vector geometry subset: complete version/charset/columns descriptor and bounded typed point/line/polyline/region/rectangle/ellipse geometries with finite

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.ccpem.ac.uk/mrc-format/mrc2014/ */
 #include "../../xx_format_extractor_engine.h"

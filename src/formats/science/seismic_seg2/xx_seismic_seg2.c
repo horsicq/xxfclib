@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/obspy/obspy/blob/master/obspy/io/seg2/seg2.py */
 #include "xxfclib/formats/science/seismic_seg2/xx_seismic_seg2.h"

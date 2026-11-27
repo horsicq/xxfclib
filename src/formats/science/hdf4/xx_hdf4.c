@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://docs.hdfgroup.org/archive/support/ftp/HDF/prev-Documentation/HDF4r15_SpecDG.pdf */
 #include "xxfclib/formats/science/hdf4/xx_hdf4.h"

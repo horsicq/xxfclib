@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/coders/ipl.c
  * Scanalytics IPLab100f image stacks: complete endian marker/version/data/fini framing, counted channel/Z/T planes and checked integer/finite floating samples. Original

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/openmm/openmm/master/wrappers/python/openmm/app/dcdfile.py */
 #include "xxfclib/formats/science/charmm_dcd/xx_charmm_dcd.h"

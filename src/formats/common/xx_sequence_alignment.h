@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded sequence and alignment primitives. */
 #ifndef XX_SEQUENCE_ALIGNMENT_H
 #define XX_SEQUENCE_ALIGNMENT_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original parser from primary layout facts. */
 #include "xxfclib/formats/filesystem/pc_86f/xx_pc_86f.h"
 #include "../../disk_additions/xx_disk_additions.h"

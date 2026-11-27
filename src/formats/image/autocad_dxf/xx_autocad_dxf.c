@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://images.autodesk.com/adsk/files/autocad_2014_pdf_dxf_reference_enu.pdf */
 #include "xxfclib/formats/image/autocad_dxf/xx_autocad_dxf.h"

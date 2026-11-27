@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/coders/wpg.c
  * WordPerfect Graphics WPGv1 bitmap subset: complete version/header/counted start/palette/bitmap/end records, palette bounds and complete checked byte/row-copy RLE.

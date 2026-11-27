@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/biopython/biopython/blob/master/Bio/Phylo/NewickIO.py */
 #include "xxfclib/formats/science/phylo_newick/xx_phylo_newick.h"

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Authenticated GRZipII framing and RAM-only LGPL codec helper. */
 /* Request POSIX before any header; a strict -std=c11 hides it otherwise. */
 #if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)

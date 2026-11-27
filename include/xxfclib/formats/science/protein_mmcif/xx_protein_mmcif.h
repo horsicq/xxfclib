@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://mmcif.wwpdb.org/docs/tutorials/mechanics/pdbx-mmcif-syntax.html */
 #ifndef XX_PROTEIN_MMCIF_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 #ifndef XX_PE_RESOURCE_ARCHIVES_PRIVATE_H
 #define XX_PE_RESOURCE_ARCHIVES_PRIVATE_H
 #include "xx_pe_resource_locator.h"

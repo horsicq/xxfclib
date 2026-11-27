@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://raw.githubusercontent.com/Exiv2/exiv2/main/src/rafimage.cpp */
 #ifndef XX_FUJIFILM_RAF_H

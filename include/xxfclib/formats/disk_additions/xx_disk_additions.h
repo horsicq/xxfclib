@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original disk wrapper adapter state. */
 #ifndef XX_DISK_ADDITIONS_H
 #define XX_DISK_ADDITIONS_H

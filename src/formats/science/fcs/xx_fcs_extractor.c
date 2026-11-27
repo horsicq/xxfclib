@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://pmc.ncbi.nlm.nih.gov/articles/PMC2892967/ */
 #include "../../xx_format_extractor_engine.h"

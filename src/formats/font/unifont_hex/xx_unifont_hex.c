@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://unifoundry.com/unifont/index.html
  * GNU Unifont HEX: complete ascending unique Unicode scalar codepoint records with exact8x16 or16x16 monochrome bitmap hex data; original natural256-codepoint-page

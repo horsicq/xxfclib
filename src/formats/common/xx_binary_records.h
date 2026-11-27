@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Checked primitives for the shared format. */
 #ifndef XX_BINARY_RECORDS_H
 #define XX_BINARY_RECORDS_H

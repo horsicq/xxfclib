@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded original-component reader. */
 #ifndef XX_YAMAHA_YM_H
 #define XX_YAMAHA_YM_H

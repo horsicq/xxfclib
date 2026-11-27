@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://adobe-type-tools.github.io/font-tech-notes/pdfs/5004.AFM_Spec.pdf
  * Adobe AFM3/4.1 complete bounded font/global metrics, character metric and optional kerning/track/composite sections. Finite metrics and local glyph references

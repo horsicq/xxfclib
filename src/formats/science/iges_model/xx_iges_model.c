@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://github.com/pyvista/pyiges
  * IGES5.x ASCII CAD subset: complete80-column S/G/D/P/T sequence/count framing, bounded Hollerith/numeric parameter grammar, typed supported entities and resolved local

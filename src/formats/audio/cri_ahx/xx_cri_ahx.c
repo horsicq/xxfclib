@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT.
  * CRI AHX framing: https://github.com/vgmstream/vgmstream/blob/master/src/meta/ahx.c
  * Extracts encoded audio, including encrypted audio as stored.

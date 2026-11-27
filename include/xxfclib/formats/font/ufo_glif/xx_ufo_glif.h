@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://unifiedfontobject.org/versions/ufo3/glyphs/glif/
  * UFO GLIF2 standalone glyphs: complete bounded UTF8 XML and glyph metrics/Unicode/outline contour/point/component/anchor grammar; checked point topology and unique

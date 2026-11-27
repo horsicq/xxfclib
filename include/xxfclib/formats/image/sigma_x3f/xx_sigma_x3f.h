@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://raw.githubusercontent.com/LibRaw/LibRaw/master/internal/x3f_tools.h */
 #ifndef XX_SIGMA_X3F_H

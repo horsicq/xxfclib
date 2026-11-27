@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded decoded multimedia adapter. */
 #ifndef XX_MEDIA_ENGINE_H
 #define XX_MEDIA_ENGINE_H

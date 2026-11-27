@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://vasp.at/wiki/POSCAR */
 #include "xxfclib/formats/science/vasp_poscar/xx_vasp_poscar.h"

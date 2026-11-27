@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Independent archive-byte implementation; SPDX-License-Identifier: MIT. */
 #include "dgca_native.h"
 #include "dgca_codec.h"

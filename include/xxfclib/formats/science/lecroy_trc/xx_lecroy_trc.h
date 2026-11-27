@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.teledynelecroy.com/support/knowledgebase.aspx?docid=556 */
 #ifndef XX_LECROY_TRC_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://manual.cp2k.org/trunk/CP2K_INPUT.html */
 #include "xxfclib/formats/science/cp2k_input/xx_cp2k_input.h"

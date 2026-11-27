@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Generic archive/filesystem 7-Zip adapter. */
 #ifndef XX_SEVENZIP_ENGINE_H
 #define XX_SEVENZIP_ENGINE_H

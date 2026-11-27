@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://manual.q-chem.com/latest/Ch3.S3.html
  * Q-Chem molecule/rem input subset: balanced complete comment/rem/molecule sections, unique recognized settings, checked charge/multiplicity and finite element

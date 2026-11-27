@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/python/cpython/blob/3.13/Python/marshal.c */
 #ifndef XX_PYTHON_MARSHAL_H

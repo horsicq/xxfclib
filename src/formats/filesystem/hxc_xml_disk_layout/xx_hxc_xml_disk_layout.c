@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. HxC XML descriptor entry points.
  * The bounded XML grammar, stored descriptor iterator and mapped-sector
  * unpack callbacks are shared with the explicit raw layout engine. */

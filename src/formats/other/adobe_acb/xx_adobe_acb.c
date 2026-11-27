@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://ates.dev/pages/acb-spec/
  * Adobe Color Book v1: complete UTF16BE descriptor and bounded RGB/CMYK/Lab color records, page parameters and optional typed spot/process trailer. Original encoded

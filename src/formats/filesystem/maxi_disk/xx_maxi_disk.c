@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original parser from documented field facts; no upstream implementation copied. */
 #include "xxfclib/formats/filesystem/maxi_disk/xx_maxi_disk.h"
 #include "../../disk_additions/xx_disk_additions.h"

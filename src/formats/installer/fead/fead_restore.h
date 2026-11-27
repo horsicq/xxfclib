@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Independently authored FEAD preprocessing interface; MIT. RAM only. */
 #ifndef XFU_FEAD_RESTORE_PRIVATE_H
 #define XFU_FEAD_RESTORE_PRIVATE_H

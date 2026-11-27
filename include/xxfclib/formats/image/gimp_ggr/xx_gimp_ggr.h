@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://developer.gimp.org/core/standards/ggr/
  * GIMP GGR complete ordered color segments spanning0..1 with finite RGBA values and typed blend/color/endpoint enums. Original segments exported; interpolation/rendering

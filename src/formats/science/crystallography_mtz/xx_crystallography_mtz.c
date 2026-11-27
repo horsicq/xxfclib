@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/project-gemmi/gemmi/master/include/gemmi/mtz.hpp
  * CCP4 MTZ little-endian reflection tables: complete counted finite/missing-value columns and typed80-byte footer records, local datasets/columns/cell/symmetry metadata

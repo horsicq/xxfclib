@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Validated original encoded music components; no playback. */
 #include "xxfclib/formats/audio/creative_cmf/xx_creative_cmf.h"
 #include "../../common/xx_music_components.h"

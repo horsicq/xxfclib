@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://gdal.org/en/stable/drivers/raster/gxf.html
  * GXF3 uncompressed numeric grids: complete unique counted header fields, bounded POINTS/ROWS, finite georeference/nodata and exactly declared samples; complete metadata

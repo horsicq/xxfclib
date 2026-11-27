@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded inert scientific input grammars. */
 #ifndef XX_QUANTUM_CHEMISTRY_INPUT_H
 #define XX_QUANTUM_CHEMISTRY_INPUT_H

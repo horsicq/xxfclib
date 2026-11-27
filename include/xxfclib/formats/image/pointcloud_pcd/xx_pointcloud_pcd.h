@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://pointclouds.org/documentation/tutorials/pcd_file_format.html */
 #ifndef XX_POINTCLOUD_PCD_H

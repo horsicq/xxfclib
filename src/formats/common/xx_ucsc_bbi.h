@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 #ifndef XX_UCSC_BBI_H
 #define XX_UCSC_BBI_H
 #include "xx_memory_blob.h"

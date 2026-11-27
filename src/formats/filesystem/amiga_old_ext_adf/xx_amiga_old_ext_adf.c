@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original UAE--ADF component framing.
  * Facts: HxC oldextadf_loader; 160 sync/length entries followed by track bytes.
  */

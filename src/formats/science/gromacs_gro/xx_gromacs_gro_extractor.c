@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://manual.gromacs.org/current/reference-manual/file-formats.html#gro */
 #include "../../xx_format_extractor_engine.h"

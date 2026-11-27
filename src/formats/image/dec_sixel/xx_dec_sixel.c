@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://vt100.net/docs/vt3xx-gp/chapter14.html
  * DEC SIXEL RGB subset: complete DCS/ST framing, declared bounded raster, checked RGB color registers/repeats/carriage returns/newlines and pixel extents. Original

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. PAQ8F/JD/L/O grammar with RAM-only GPL codec helper. */
 /* Request POSIX before any header; a strict -std=c11 hides it otherwise. */
 #if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original Atari DIM envelope/geometry reader.
  * Facts: HxC dim_format.h and original DIM header description in dim-format.txt.
  * Sparse used-sector payloads are preserved, not filled with invented sectors.

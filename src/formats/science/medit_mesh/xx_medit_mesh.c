@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/LoicMarechal/libMeshb/master/README.md
  * INRIA MEDIT ASCII mesh v1/v2: complete dimension, finite vertex table, typed edge/triangle/quad/tetra/hex connectivity and reference labels, counted Corners and

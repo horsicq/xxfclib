@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://pointclouds.org/documentation/tutorials/pcd_file_format.html */
 #include "xxfclib/formats/image/pointcloud_pcd/xx_pointcloud_pcd.h"

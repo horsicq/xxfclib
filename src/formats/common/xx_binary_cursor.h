@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private checked binary-input primitives. */
 #ifndef XX_BINARY_CURSOR_H
 #define XX_BINARY_CURSOR_H

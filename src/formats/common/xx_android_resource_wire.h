@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Checked Android resource wire types. */
 #ifndef XX_ANDROID_RESOURCE_WIRE_H
 #define XX_ANDROID_RESOURCE_WIRE_H

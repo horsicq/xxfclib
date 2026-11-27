@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/KiCad/kicad-source-mirror/master/pcbnew/exporters/excellon_writer.cpp
  * Excellon drill subset: complete M48 header, INCH/METRIC zero-suppression and tool diameters, resolved tool selections and six-digit integer drill positions

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.openfoam.com/documentation/user-guide/4-mesh-generation-and-conversion/4.1-mesh-description */
 #include "xxfclib/formats/science/openfoam_points/xx_openfoam_points.h"

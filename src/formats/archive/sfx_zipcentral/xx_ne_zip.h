@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Private NE ZIP central size including the22-byte end-record adapter. */
 #ifndef XX_NE_ZIP_H
 #define XX_NE_ZIP_H

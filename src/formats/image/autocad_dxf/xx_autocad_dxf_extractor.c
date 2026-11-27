@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://images.autodesk.com/adsk/files/autocad_2014_pdf_dxf_reference_enu.pdf */
 #include "../../xx_format_extractor_engine.h"

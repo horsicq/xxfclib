@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/coders/uil.c
  * Motif UIL static icon tables: complete typed color-table/icon definitions, unique identifiers/symbols and resolved color-table references, equal bounded row widths and

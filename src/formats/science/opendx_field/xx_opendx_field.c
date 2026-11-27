@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.ks.uiuc.edu/Research/vmd/plugins/molfile/dxplugin.html */
 #include "xxfclib/formats/science/opendx_field/xx_opendx_field.h"

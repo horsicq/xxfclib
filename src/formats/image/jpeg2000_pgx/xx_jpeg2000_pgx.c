@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/uclouvain/openjpeg/master/src/bin/jp2/convert.c
  * PGX gray planes: exact ML/LM signed or unsigned1..16bit descriptor, bounded dimensions and precision-consistent encoded sample range. Original encoded plane and

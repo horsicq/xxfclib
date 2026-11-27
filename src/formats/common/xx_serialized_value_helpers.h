@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private container primitives. */
 #ifndef XX_SERIALIZED_VALUE_HELPERS_H
 #define XX_SERIALIZED_VALUE_HELPERS_H

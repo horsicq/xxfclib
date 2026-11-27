@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/open-ephys/analysis-tools/blob/master/OpenEphys.py */
 #include "xxfclib/formats/science/openephys_continuous/xx_openephys_continuous.h"

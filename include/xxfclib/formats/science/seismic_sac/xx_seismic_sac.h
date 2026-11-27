@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/obspy/obspy/tree/master/obspy/io/sac */
 #ifndef XX_SEISMIC_SAC_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Independent DGCA range mathematics. SPDX-License-Identifier: MIT. */
 #ifndef DGCA_RANGE_H
 #define DGCA_RANGE_H

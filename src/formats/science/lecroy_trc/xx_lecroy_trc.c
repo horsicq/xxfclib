@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.teledynelecroy.com/support/knowledgebase.aspx?docid=556 */
 #include "xxfclib/formats/science/lecroy_trc/xx_lecroy_trc.h"

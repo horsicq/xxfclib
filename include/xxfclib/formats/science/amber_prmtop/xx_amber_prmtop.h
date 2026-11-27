@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/ParmEd/ParmEd/blob/master/parmed/amber/_amberparm.py */
 #ifndef XX_AMBER_PRMTOP_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/NGSolve/netgen/master/libsrc/meshing/meshclass.cpp
  * Netgen VOL ASCII complete bounded dimension/point/surface/volume/edge mesh sections with finite coordinates and valid local indexes. Original mesh sections exported;

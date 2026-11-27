@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT */
 #ifndef XX_ADLIB_LDS_H
 #define XX_ADLIB_LDS_H

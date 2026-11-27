@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.biosemi.com/faq/file_format.htm */
 #ifndef XX_BIOMEDICAL_BDF_H

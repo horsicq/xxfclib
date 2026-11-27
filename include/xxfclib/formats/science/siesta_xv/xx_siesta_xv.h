@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://docs.ase-lib.org/_modules/ase/io/siesta.html */
 #ifndef XX_SIESTA_XV_H

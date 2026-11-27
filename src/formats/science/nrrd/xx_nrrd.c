@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://teem.sourceforge.net/nrrd/format.html */
 #include "xxfclib/formats/science/nrrd/xx_nrrd.h"

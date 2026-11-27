@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/imageio/imageio/blob/master/imageio/plugins/spe.py */
 #ifndef XX_PRINCETON_SPE_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/SethRobinson/Patchy/main/src/psd/pat_reader.cpp
  * Standalone Photoshop 8BPT PAT1 RGB/grayscale sampled patterns: complete count and UTF16BE names/IDs, VMA3 slots and exact stored/row-PackBits8-bit plane extents.

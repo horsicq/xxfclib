@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://docs.hdfgroup.org/archive/support/ftp/HDF/prev-Documentation/HDF4r15_SpecDG.pdf
  * Bounded encoded-component extraction. */

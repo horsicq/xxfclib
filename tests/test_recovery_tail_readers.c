@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Complete-member recovery and strict failures. */
 #include "xxfclib/formats/archive/bigaf/xx_bigaf.h"
 #include "xxfclib/formats/archive/chz/xx_chz.h"

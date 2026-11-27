@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded primary-format component search. */
 #include "../../xx_format_extractor_engine.h"
 #include "xxfclib/formats/game/nintendo_fds/xx_nintendo_fds.h"

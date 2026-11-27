@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://www.x.org/releases/X11R7.7/doc/libX11/libX11/libX11.html
  * X11 XBM: strict bounded ASCII width/height and optional paired hotspots, one unsigned char/char bitmap initializer with exact hex-byte count. Decoded LSB-first row

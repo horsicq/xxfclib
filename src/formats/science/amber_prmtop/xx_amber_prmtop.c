@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/ParmEd/ParmEd/blob/master/parmed/amber/_amberparm.py */
 #include "xxfclib/formats/science/amber_prmtop/xx_amber_prmtop.h"

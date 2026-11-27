@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT */
 #ifndef XX_DOSBOX_DRO_H
 #define XX_DOSBOX_DRO_H

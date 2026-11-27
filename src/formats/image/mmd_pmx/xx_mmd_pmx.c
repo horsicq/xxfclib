@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/MMD-Blender/blender_mmd_tools/main/mmd_tools/core/pmx/__init__.py
  * PMX2.0 model containers: complete bounded typed vertices/skinning/faces/textures/materials/bones/morphs/display/rigid-body/joint arrays with valid local indexes.

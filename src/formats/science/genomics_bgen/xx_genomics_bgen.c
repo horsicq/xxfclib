@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.chg.ox.ac.uk/~gav/bgen_format/spec/v1.2.html */
 #include "xxfclib/formats/science/genomics_bgen/xx_genomics_bgen.h"

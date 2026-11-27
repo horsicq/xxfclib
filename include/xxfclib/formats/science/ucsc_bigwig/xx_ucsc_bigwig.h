@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/dpryan79/libBigWig */
 #ifndef XX_UCSC_BIGWIG_H

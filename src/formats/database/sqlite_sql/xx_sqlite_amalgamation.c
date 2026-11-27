@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SQLite 3.53.4 is public domain. Canonical source bundled in upstream/.
  * No operating-system VFS, file access, extensions, worker threads or mmap. */
 #ifndef XXFC_SQLITE_HOSTED_DISABLED

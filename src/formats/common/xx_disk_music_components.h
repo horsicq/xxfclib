@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private checked disk/music primitives. */
 #ifndef XX_DISK_MUSIC_COMPONENTS_H
 #define XX_DISK_MUSIC_COMPONENTS_H

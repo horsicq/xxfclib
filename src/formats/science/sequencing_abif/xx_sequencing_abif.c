@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://archive.gfjc.fiu.edu/workshops/resources/literature/ABIF_File_Format.pdf */
 #include "xxfclib/formats/science/sequencing_abif/xx_sequencing_abif.h"

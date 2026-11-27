@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Independent archive-byte implementation; SPDX-License-Identifier: MIT. */
 #ifndef XFU_DGCA_NATIVE_DECODE_H
 #define XFU_DGCA_NATIVE_DECODE_H

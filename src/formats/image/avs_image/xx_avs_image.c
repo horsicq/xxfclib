@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/coders/avs.c
  * AVS X image: positive bounded big-endian dimensions and exact8-bit ARGB raster; descriptor and original ARGB row components exported; image sequences declined.

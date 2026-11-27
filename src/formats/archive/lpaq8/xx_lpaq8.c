@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. RAM-only LPAQ8 adapter; retained GPL codec runs separately. */
 /* Request POSIX before any header; a strict -std=c11 hides it otherwise. */
 #if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)

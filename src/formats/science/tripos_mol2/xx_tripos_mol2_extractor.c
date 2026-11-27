@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/openbabel/openbabel/blob/master/src/formats/mol2format.cpp */
 #include "../../xx_format_extractor_engine.h"

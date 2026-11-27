@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT */
 #ifndef XX_KEN_KSM_H
 #define XX_KEN_KSM_H

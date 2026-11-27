@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.esri.com/library/whitepapers/pdfs/shapefile.pdf */
 #include "../../xx_format_extractor_engine.h"

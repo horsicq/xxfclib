@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://www-mipl.jpl.nasa.gov/external/VICAR_file_fmt.pdf
  * NASA VICAR image subset: complete counted ASCII labels and BSQ/BIL/BIP sample layout with checked dimensions/record padding and original integer/finite floating

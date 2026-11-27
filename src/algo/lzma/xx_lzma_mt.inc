@@ -33,6 +33,17 @@
 #define XX_LZMA2_MT_POLL_MS 50U
 /* Lzma2Dec.c's LZMA2_STATE_CONTROL: the decoder is between two chunks. */
 #define XX_LZMA2_MT_STATE_CONTROL 0U
+/* Includes the LZMA2 probability model (lc + lp <= 4) and queue/allocator
+ * overhead.  Keep this charged until the job is popped;
+ * workers release input asynchronously, so admission never reads it. */
+#define XX_LZMA2_MT_JOB_RESERVE ((uint64_t)2U << 20)
+#if SIZE_MAX <= 0xFFFFFFFFU
+/* Charge each live worker separately, including idle workers after their
+ * jobs have been popped.  Use an explicit 1 MiB stack so that this 2 MiB
+ * reserve also covers thread bookkeeping regardless of the host default. */
+#define XX_LZMA_MT_WORKER_STACK ((size_t)1U << 20)
+#define XX_LZMA_MT_WORKER_RESERVE ((uint64_t)2U << 20)
+#endif
 
 #if XX_LZMA_MT
 static bool xx_lzma_mt_env(const char *name, uint64_t *value)
@@ -119,6 +130,10 @@ struct xx_lzma_mt_pipe_s {
     xx_thread_t **workers;
     unsigned worker_limit;
     unsigned worker_count;
+#if SIZE_MAX <= 0xFFFFFFFFU
+    uint64_t worker_memory;       /* released only after the workers join */
+    uint64_t worker_memory_limit; /* budget left after admitted job costs */
+#endif
     unsigned idle;
     volatile long cancel;
     bool quit;
@@ -168,6 +183,9 @@ xx_lzma_mt_pipe *xx_lzma_mt_pipe_create(unsigned threads)
     if (!pipe) return NULL;
     xx_rt_memset(pipe, 0, sizeof(*pipe));
     pipe->worker_limit = threads;
+#if SIZE_MAX <= 0xFFFFFFFFU
+    pipe->worker_memory_limit = UINT64_MAX;
+#endif
     pipe->workers = (xx_thread_t **)xx_mem_alloc((size_t)threads * sizeof(*pipe->workers));
     pipe->mutex = xx_mutex_create();
     pipe->work_ready = xx_cond_create();
@@ -193,8 +211,19 @@ bool xx_lzma_mt_pipe_push(xx_lzma_mt_pipe *pipe, xx_lzma_mt_work_fn work, void *
     /* A job needs a worker: one more is started while none is idle.  With
      * no worker at all the job cannot be taken. */
     if (pipe->idle == 0U && pipe->worker_count < pipe->worker_limit) {
+#if SIZE_MAX <= 0xFFFFFFFFU
+        if (pipe->worker_memory <= pipe->worker_memory_limit &&
+            XX_LZMA_MT_WORKER_RESERVE <= pipe->worker_memory_limit - pipe->worker_memory) {
+            xx_thread_t *worker = xx_thread_create_ex(xx_lzma_mt_worker, pipe, XX_LZMA_MT_WORKER_STACK);
+            if (worker) {
+                pipe->workers[pipe->worker_count++] = worker;
+                pipe->worker_memory += XX_LZMA_MT_WORKER_RESERVE;
+            }
+        }
+#else
         xx_thread_t *worker = xx_thread_create(xx_lzma_mt_worker, pipe);
         if (worker) pipe->workers[pipe->worker_count++] = worker;
+#endif
     }
     if (pipe->worker_count == 0U) {
         queued = false;
@@ -265,6 +294,9 @@ void xx_lzma_mt_pipe_stop(xx_lzma_mt_pipe *pipe)
     xx_mutex_unlock(pipe->mutex);
     for (index = 0U; index < pipe->worker_count; ++index) (void)xx_thread_join(pipe->workers[index], NULL);
     pipe->worker_count = 0U;
+#if SIZE_MAX <= 0xFFFFFFFFU
+    pipe->worker_memory = 0U;
+#endif
     pipe->stopped = true;
 }
 
@@ -388,7 +420,11 @@ static xx_lzma2_mt_job *xx_lzma2_mt_job_create(const xx_lzma2_mt_source *source,
     job->offset = unit->offset;
     job->in_size = (size_t)unit->pack_size;
     job->out_size = (size_t)unit->unpack_size;
+#if SIZE_MAX <= 0xFFFFFFFFU
+    job->memory = (source->device ? unit->pack_size : 0U) + unit->unpack_size + XX_LZMA2_MT_JOB_RESERVE;
+#else
     job->memory = unit->pack_size + unit->unpack_size;
+#endif
     job->property = property;
     job->output = (uint8_t *)xx_mem_alloc(job->out_size);
     if (!job->output) {
@@ -453,7 +489,11 @@ xx_lzma2_mt_result xx_lzma2_mt_decode(const xx_lzma2_mt_source *source, uint8_t 
     xx_lzma2_mt_result result = XX_LZMA2_MT_RESUME;
     xx_lzma_mt_pipe *pipe;
     xx_lzma2_mt_unit unit;
+#if SIZE_MAX <= 0xFFFFFFFFU
+    uint64_t limit;
+#else
     uint64_t limit = memory / 4U;
+#endif
     uint64_t position = 0U;
     uint64_t written_to = 0U;
     uint64_t used = 0U;
@@ -463,8 +503,18 @@ xx_lzma2_mt_result xx_lzma2_mt_decode(const xx_lzma2_mt_source *source, uint8_t 
 
     if (resume) *resume = 0U;
     if (!source || !write || !resume || threads < 2U || (!source->device && !source->memory)) return XX_LZMA2_MT_RESUME;
-    /* A unit takes at most half the budget, and less than the SDK's 32-bit
-     * position counter and a size_t hold. */
+    /* On 32-bit hosts leave most of even a 2 GiB address space to the
+     * caller, its input/output and the rest of the library.  An environment
+     * override cannot remove this ceiling.  Allocation failure below can
+     * reduce concurrency further when the address space is fragmented. */
+#if SIZE_MAX <= 0xFFFFFFFFU
+    if (memory > (uint64_t)(SIZE_MAX / 4U)) memory = (uint64_t)(SIZE_MAX / 4U);
+    if (memory <= XX_LZMA2_MT_JOB_RESERVE + XX_LZMA_MT_WORKER_RESERVE) return XX_LZMA2_MT_RESUME;
+    limit = memory - XX_LZMA2_MT_JOB_RESERVE - XX_LZMA_MT_WORKER_RESERVE;
+    /* The aggregate job cost, rather than either buffer alone, is checked
+     * at admission.  Do not reject a 128 MiB unit just to reserve four
+     * hypothetical units.  The SDK still needs a bounded position. */
+#endif
     if (limit > (uint64_t)0x7FFFFFFFU) limit = (uint64_t)0x7FFFFFFFU;
     if (limit > (uint64_t)(SIZE_MAX / 2U)) limit = (uint64_t)(SIZE_MAX / 2U);
     /* Threads are worth it from two units on. */
@@ -490,14 +540,37 @@ xx_lzma2_mt_result xx_lzma2_mt_decode(const xx_lzma2_mt_source *source, uint8_t 
                 }
                 have_unit = true;
             }
-            need = unit.pack_size + unit.unpack_size;
+#if SIZE_MAX <= 0xFFFFFFFFU
+            uint64_t workers = pipe->worker_memory;
+            need = (source->device ? unit.pack_size : 0U) + unit.unpack_size + XX_LZMA2_MT_JOB_RESERVE;
+            /* The first job must be able to start a worker.  Later jobs
+             * retain every existing worker's charge, even with an empty
+             * queue; push may add another worker only from the remainder. */
+            if (workers == 0U) workers = XX_LZMA_MT_WORKER_RESERVE;
             /* One job more than there are workers, so that none waits while
              * this thread writes. */
+            if (workers > memory || need > memory - workers) {
+                scanning = false;
+                break;
+            }
+            if (xx_lzma_mt_pipe_count(pipe) > (size_t)threads || need > memory - workers - used) break;
+            pipe->worker_memory_limit = memory - used - need;
+#else
+            need = unit.pack_size + unit.unpack_size;
             if (xx_lzma_mt_pipe_count(pipe) > (size_t)threads || (xx_lzma_mt_pipe_count(pipe) != 0U && need > memory - used)) break;
+#endif
             job = xx_lzma2_mt_job_create(source, &unit, property, pd);
             if (!job || !xx_lzma_mt_pipe_push(pipe, xx_lzma2_mt_work, job)) {
                 xx_lzma2_mt_job_free(job);
+#if SIZE_MAX <= 0xFFFFFFFFU
+                /* Completed and running jobs still occupy buffers.  Drain
+                 * the oldest one and retry this unit before abandoning
+                 * parallel decoding.  With an empty queue, a failure is
+                 * real and the sequential decoder resumes here. */
+                if (xx_lzma_mt_pipe_count(pipe) == 0U) scanning = false;
+#else
                 scanning = false;
+#endif
                 break;
             }
             used += need;

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/WizardMac/ReadStat/master/src/spss/readstat_sav_read.c
  * Bounded encoded-component extraction. */

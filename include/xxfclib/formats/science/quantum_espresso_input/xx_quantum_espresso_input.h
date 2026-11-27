@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.quantum-espresso.org/Doc/INPUT_PW.html */
 #ifndef XX_QUANTUM_ESPRESSO_INPUT_H

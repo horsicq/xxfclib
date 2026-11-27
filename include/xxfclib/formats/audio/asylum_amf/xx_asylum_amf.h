@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT */
 #ifndef XX_ASYLUM_AMF_H
 #define XX_ASYLUM_AMF_H

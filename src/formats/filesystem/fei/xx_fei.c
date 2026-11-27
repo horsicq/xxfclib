@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original headerless FEI track reader.
  * HxC documents side-major 12,500/25,000-byte LSB-first raw MFM tracks.
  * File size alone is ambiguous, so recognition requires matching IBM ID CRCs

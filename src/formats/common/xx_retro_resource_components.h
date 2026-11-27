@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private bounded retro components. */
 #ifndef XX_RETRO_RESOURCE_COMPONENTS_H
 #define XX_RETRO_RESOURCE_COMPONENTS_H

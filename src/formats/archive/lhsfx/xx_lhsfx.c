@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original bounded Amiga archive decoder from documented wire facts. */
 #include "xxfclib/formats/archive/lhsfx/xx_lhsfx.h"
 #include "../../xx_archive_wrappers.h"

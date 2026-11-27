@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Original bounded component primitives for documented floppy containers.
  * Format facts are referenced in the individual parsers; no upstream code.

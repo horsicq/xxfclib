@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/obspy/obspy/blob/master/obspy/io/seg2/seg2.py */
 #include "../../xx_format_extractor_engine.h"

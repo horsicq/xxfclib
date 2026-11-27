@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Independent LZP reconstruction from numeric interoperability facts.
  * SPDX-License-Identifier: MIT. */
 #ifndef XFU_DGCA_LZP_H

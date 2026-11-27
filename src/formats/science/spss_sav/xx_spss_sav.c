@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://raw.githubusercontent.com/WizardMac/ReadStat/master/src/spss/readstat_sav_read.c */
 #include "xxfclib/formats/science/spss_sav/xx_spss_sav.h"

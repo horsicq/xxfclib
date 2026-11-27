@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://docs.itk.org/en/latest/learn/metaio.html */
 #ifndef XX_METAIMAGE_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/coders/pict.c
  * Apple QuickDraw PICTv2 bounded bitmap subset: checked frame/version/extended-header/rectangular clip and DirectBitsRect RGB32 PackBits rows with exact EndPic/EOF.

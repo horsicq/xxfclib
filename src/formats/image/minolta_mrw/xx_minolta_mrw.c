@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/LibRaw/LibRaw/master/src/metadata/minolta.cpp */
 #include "xxfclib/formats/image/minolta_mrw/xx_minolta_mrw.h"

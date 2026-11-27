@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Native message-catalog and MIME extraction. Grammars documented by GNU
  * gettext, Qt's qm.cpp and RFC 2045/2046. No upstream implementation copied.

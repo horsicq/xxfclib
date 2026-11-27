@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://fhi-aims.org/uploads/documents/FHI-aims.250320.pdf */
 #ifndef XX_AIMS_GEOMETRY_H

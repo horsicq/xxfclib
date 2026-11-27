@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Private ZIP! GEMDOS DATA archive adapter; no executable code is run. */
 #ifndef XX_ATARI_ZIP_H
 #define XX_ATARI_ZIP_H

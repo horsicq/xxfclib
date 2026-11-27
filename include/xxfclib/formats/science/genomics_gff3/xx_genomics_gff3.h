@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://raw.githubusercontent.com/The-Sequence-Ontology/Specifications/master/gff3.md */
 #ifndef XX_GENOMICS_GFF3_H

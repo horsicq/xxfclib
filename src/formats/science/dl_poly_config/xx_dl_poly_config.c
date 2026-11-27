@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://ase-lib.org/_modules/ase/io/dlp4.html */
 #include "xxfclib/formats/science/dl_poly_config/xx_dl_poly_config.h"

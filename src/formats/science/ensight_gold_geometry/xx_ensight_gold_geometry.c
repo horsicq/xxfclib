@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://ansyshelp.ansys.com/public/Views/Secured/corp/v261/en/pdf/Ansys_EnSight_User_Manual.pdf
  * EnSight Gold C-binary little-endian unstructured geometry: complete header, explicit part IDs, unique nonnegative signed32-bit given node/element IDs, finite

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.ncbi.nlm.nih.gov/sra/docs/submitformats/ */
 #include "xxfclib/formats/science/genomics_fastq/xx_genomics_fastq.h"

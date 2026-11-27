@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/coders/palm.c
  * PalmOS indexed bitmap v0/v1/v2: checked dimensions/stride/flags, bounded palette and complete uncompressed or byte-RLE raster extents. Original descriptor, palette and

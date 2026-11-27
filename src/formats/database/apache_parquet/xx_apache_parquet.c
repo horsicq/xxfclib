@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independent framing implementation from apache/parquet-format parquet.thrift
  * and apache/thrift doc/specs/thrift-compact-protocol.md.

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://iupac.org/what-we-do/digital-standards/jcamp-dx/ */
 #include "xxfclib/formats/science/jcamp_dx/xx_jcamp_dx.h"

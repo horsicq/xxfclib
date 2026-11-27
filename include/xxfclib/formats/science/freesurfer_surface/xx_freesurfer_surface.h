@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/nipy/nibabel/master/nibabel/freesurfer/io.py
  * FreeSurfer binary triangle surfaces: complete creator lines, finite BE32 vertices, bounded nondegenerate triangle indexes and optional typed volume information.

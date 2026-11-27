@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/mp3butcher/Cal3D/master/cal3d/src/cal3d/loader.cpp
  * Cal3D CSF version700 skeleton: complete counted UTF8 bone names, finite local/inverse-bind transforms, resolved reciprocal parent/child IDs and acyclic hierarchy.

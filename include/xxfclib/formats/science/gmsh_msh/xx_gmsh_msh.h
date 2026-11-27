@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://gmsh.info/doc/texinfo/#MSH-file-format-version-2-_0028Legacy_0029
  * Gmsh MSH2.2 ASCII: exact section/count framing, unique node/element IDs, finite coordinates, complete supported element topology/tags and bounded physical names/data.

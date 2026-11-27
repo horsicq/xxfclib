@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded scientific tables and trace records. */
 #ifndef XX_SCIENTIFIC_TABLES_TRACES_H
 #define XX_SCIENTIFIC_TABLES_TRACES_H

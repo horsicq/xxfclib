@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Independently implemented primary framing.
  * Reference: https://www.zxpress.ru/en/ezines/netus-news/07/hobetta-header-format-for-tr-dos-disks-file-structure-description-first-13-bytes-match-tr-dos
  * No payload execution, machine restoration or synthesized audio.

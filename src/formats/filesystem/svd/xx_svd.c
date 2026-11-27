@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original Semi-Virtual Diskette component parser.
  * Format facts: author's thesvd.com Downloads/app23.tar.gz, svd12/15/20.c.
  * Blocks always store 256 bytes; WD sectors use documented cyclic rotation.

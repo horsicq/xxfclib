@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Private PE resource discovery for native RAR. */
 #ifndef XX_RAR_PE_RESOURCE_INTERNAL_H
 #define XX_RAR_PE_RESOURCE_INTERNAL_H

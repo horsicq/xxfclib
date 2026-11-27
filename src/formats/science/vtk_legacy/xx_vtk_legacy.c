@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://docs.vtk.org/en/latest/vtk_file_formats/vtk_legacy_file_format.html */
 #include "xxfclib/formats/science/vtk_legacy/xx_vtk_legacy.h"

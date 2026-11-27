@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private native ARJ resource collection; each reading cursor owns its children. */
 #include <wchar.h>
 typedef struct arjb_bundle { size_t count; xx_arj *readers[128]; uint64_t total; int64_t extent; } arjb_bundle;

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.tensorflow.org/tutorials/load_data/tfrecord */
 #ifndef XX_TENSORFLOW_TFRECORD_H

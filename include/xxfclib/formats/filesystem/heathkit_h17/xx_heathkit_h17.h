@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Native bounded image reader. */
 #ifndef XX_HEATHKIT_H17_H
 #define XX_HEATHKIT_H17_H

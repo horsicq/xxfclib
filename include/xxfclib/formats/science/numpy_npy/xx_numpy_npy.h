@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html
  * Bounded encoded-component extraction. */

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Independently implemented primary framing.
  * Reference: https://github.com/atari800/atari800/blob/master/src/img_tape.c
  * No payload execution, machine restoration or synthesized audio.

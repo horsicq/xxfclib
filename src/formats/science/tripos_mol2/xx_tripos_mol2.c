@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/openbabel/openbabel/blob/master/src/formats/mol2format.cpp */
 #include "xxfclib/formats/science/tripos_mol2/xx_tripos_mol2.h"

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://tecplot.azureedge.net/products/360/2024r1m1/360-data-format.html */
 #ifndef XX_TECPLOT_PLT_H

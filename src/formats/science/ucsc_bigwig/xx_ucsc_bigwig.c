@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/dpryan79/libBigWig */
 #include "xxfclib/formats/science/ucsc_bigwig/xx_ucsc_bigwig.h"

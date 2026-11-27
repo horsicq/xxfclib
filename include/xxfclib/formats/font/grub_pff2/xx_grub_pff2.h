@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://www.gnu.org/software/grub/manual/grub-dev/html_node/File-Structure.html
  * GNU GRUB PFF2: complete typed sections, sorted unique Unicode index with resolved nonoverlapping offsets and complete uncompressed glyph dimensions/bitmap extents.

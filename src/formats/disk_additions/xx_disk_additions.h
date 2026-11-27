@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original streaming run-map engine.
  * Reuses the project's MIT payload lifecycle/atomic output primitives.
  * Runs describe physical stored slices or explicit repeated fill bytes;

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://docs.lammps.org/dump.html */
 #include "xxfclib/formats/science/lammps_dump/xx_lammps_dump.h"

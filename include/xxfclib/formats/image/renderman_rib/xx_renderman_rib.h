@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/aqsis/aqsis/master/libs/riutil/ribparser.cpp
  * RenderMan ASCII static RIB subset: complete typed camera/display/transform/world/frame/attribute commands and Polygon/PointsPolygons/Sphere geometry, finite arrays,

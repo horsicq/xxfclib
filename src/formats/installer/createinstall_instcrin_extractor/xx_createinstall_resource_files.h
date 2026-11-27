@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private codec streams in registered FILE_RESOURCE leaves. */
 #include "../../executable/pe/xx_pe_resources_internal.h"
 static bool ci_resource_files(Abstractformat *f,ci_codec *codec,ci_walk **out,xx_pd_struct *pd)

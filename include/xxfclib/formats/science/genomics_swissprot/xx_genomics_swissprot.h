@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://web.expasy.org/docs/userman.html */
 #ifndef XX_GENOMICS_SWISSPROT_H

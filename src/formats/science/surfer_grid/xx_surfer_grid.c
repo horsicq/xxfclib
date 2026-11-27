@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://surferhelp.goldensoftware.com/topics/ascii_grid_file_format.htm
  * Golden Software Surfer DSAA ASCII grids: complete dimensions, increasing XY ranges, finite nodata/sample count and verified actual Z minimum/maximum (relative

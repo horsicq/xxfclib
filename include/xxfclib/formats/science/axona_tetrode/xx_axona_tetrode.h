@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/NeuralEnsemble/python-neo/blob/master/neo/rawio/axonarawio.py */
 #ifndef XX_AXONA_TETRODE_H

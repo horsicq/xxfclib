@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://www.csc.kth.se/~weinkauf/notes/amiramesh.html
  * AmiraMesh2.1 BINARY-LITTLE-ENDIAN uniform float lattice: complete dimensions/bounding-box/coordinate-type/field declaration and exact finite interleaved scalar/vector

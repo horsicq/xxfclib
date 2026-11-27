@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Constructed DEXA fixtures; the private serializer is checked in memory so
  * palette colors, delta pixels and row padding are independently asserted. */

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Independent DGCA range mathematics. SPDX-License-Identifier: MIT. */
 #include "dgca_range.h"
 int dg_range_init(dg_range *r, const unsigned char *data, size_t size)

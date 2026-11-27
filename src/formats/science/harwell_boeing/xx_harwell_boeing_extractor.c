@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://docs.scipy.org/doc/scipy/reference/generated/scipy.io.hb_write.html */
 #include "../../xx_format_extractor_engine.h"

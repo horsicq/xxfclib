@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://learn.microsoft.com/en-us/windows/win32/direct3d9/dx9-graphics-reference-x-file-format
  * Microsoft X text0303/32-bit meshes: complete standard typed frames/materials/mesh data with finite values and bounded resolved indexes, including bounded

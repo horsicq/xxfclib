@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private bounded music component helpers.
  * Original component bytes remain encoded; grammars belong to their readers.
  */

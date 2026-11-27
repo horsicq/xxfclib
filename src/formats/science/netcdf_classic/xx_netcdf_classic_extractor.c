@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://docs.unidata.ucar.edu/netcdf-c/4.9.2/file_format_specifications.html
  * Bounded encoded-component extraction. */

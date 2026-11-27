@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://darlinglab.org/mauve/user-guide/files.html */
 #ifndef XX_ALIGNMENT_MAUVE_H

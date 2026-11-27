@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original HxC QuickDisk framing from qd_format.h.
  * LSB-first raw cell bytes and switch positions are retained.
  */

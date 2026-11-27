@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original parser of the author's STT Format.txt.
  * Unknown flag sections retain their complete bounded track container.
  * ID CRC values may intentionally model bad sectors and are preserved as data.

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/erlang/otp/master/lib/stdlib/src/beam_lib.erl */
 #include "xxfclib/formats/executable/erlang_beam/xx_erlang_beam.h"

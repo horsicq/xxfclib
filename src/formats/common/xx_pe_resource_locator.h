@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded PE resource-data locator for SFX readers. */
 #ifndef XX_PE_RESOURCE_LOCATOR_H
 #define XX_PE_RESOURCE_LOCATOR_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Pipe interface to a separately licensed helper.
  * No GRUB definitions or GPL implementation are linked into this library.
  */

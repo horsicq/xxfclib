@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.xcrysden.org/doc/XSF.html */
 #include "xxfclib/formats/science/xcrysden_xsf/xx_xcrysden_xsf.h"

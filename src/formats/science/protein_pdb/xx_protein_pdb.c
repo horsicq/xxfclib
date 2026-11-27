@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.wwpdb.org/documentation/file-format-content/format33/sect9.html */
 #include "xxfclib/formats/science/protein_pdb/xx_protein_pdb.h"

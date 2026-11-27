@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Independent DGCA entropy model. SPDX-License-Identifier: MIT. */
 #include "dgca_entropy.h"
 #include "dgca_range.h"

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://biopython.org/docs/latest/api/Bio.SeqIO.SffIO.html */
 #include "xxfclib/formats/science/genomics_sff/xx_genomics_sff.h"

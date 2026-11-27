@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Nintendo DS STRM encoded-block reader. */
 #ifndef XX_AUDIO_NITRO_STRM_H
 #define XX_AUDIO_NITRO_STRM_H

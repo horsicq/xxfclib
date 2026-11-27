@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Native bounded image reader. */
 #ifndef XX_HXC_LOGIC_ANALYZER_H
 #define XX_HXC_LOGIC_ANALYZER_H

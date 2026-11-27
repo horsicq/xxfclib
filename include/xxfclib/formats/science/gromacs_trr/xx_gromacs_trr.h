@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://raw.githubusercontent.com/gromacs/gromacs/main/src/gromacs/fileio/trrio.cpp */
 #ifndef XX_GROMACS_TRR_H

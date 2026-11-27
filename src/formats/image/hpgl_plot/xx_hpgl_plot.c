@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/gnuplot/gnuplot/master/term/hpgl.trm
  * HPGL initialized uppercase semicolon command subset: complete IN/SP/PA/PR/PU/PD/IP/SC/CI/AA/AR/PW/LT/VS/SI/SR/DI/DR/CS/CA/SS plus DT and terminated UTF8 LB text; exact

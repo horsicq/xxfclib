@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Framed interface to a separately licensed 7-Zip engine. */
 #ifndef XX_SEVENZIP_BACKEND_H
 #define XX_SEVENZIP_BACKEND_H

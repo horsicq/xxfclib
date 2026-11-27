@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.ncbi.nlm.nih.gov/assembly/agp/AGP_Specification/ */
 #include "xxfclib/formats/science/genomics_agp/xx_genomics_agp.h"

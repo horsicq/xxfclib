@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://gdal.org/en/stable/drivers/raster/dted.html
  * DTED levels0/1/2: complete UHL/DSI/ACC framing, exact declared columns/rows, consecutive per-column record identities, signed-magnitude elevation samples and verified

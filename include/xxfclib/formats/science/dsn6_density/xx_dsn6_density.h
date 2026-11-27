@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/project-gemmi/gemmi/master/include/gemmi/dsn6.hpp
  * DSN6/BRIX density-map family: complete typed binary/ASCII descriptor, valid positive grid/cell/scaling parameters and exact8x8x8 brick extents. Binary reserved

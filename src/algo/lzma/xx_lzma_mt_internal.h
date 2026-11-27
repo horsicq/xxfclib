@@ -35,10 +35,11 @@
 #endif
 
 /* Memory the buffers of units in flight may take together (each holds its
- * compressed and its decoded bytes until it is written).  A unit that needs
- * more than half of it is left to the sequential decoder. */
+ * compressed and its decoded bytes until it is written).  On 32-bit hosts,
+ * admission also reserves space for each job's probability model and for
+ * every worker's stack until that worker has joined, including idle workers. */
 #ifndef XX_LZMA_MT_MEMORY
-#define XX_LZMA_MT_MEMORY (sizeof(void *) > 4U ? (uint64_t)1536U * 1024U * 1024U : (uint64_t)256U * 1024U * 1024U)
+#define XX_LZMA_MT_MEMORY (sizeof(void *) > 4U ? (uint64_t)1536U * 1024U * 1024U : (uint64_t)768U * 1024U * 1024U)
 #endif
 
 /* Threads to decode with: the CPU count, at most XX_LZMA_MT_MAX_THREADS.

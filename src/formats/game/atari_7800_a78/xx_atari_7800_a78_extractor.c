@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Validated original-component search. */
 #include "../../xx_format_extractor_engine.h"
 #include "xxfclib/formats/game/atari_7800_a78/xx_atari_7800_a78.h"

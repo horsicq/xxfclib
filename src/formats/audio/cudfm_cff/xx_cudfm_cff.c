@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original music framing derived independently from primary AdPlug loader. */
 #include "xxfclib/formats/audio/cudfm_cff/xx_cudfm_cff.h"
 #include "../../common/xx_music_components.h"

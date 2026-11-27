@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://math.nist.gov/MatrixMarket/formats.html */
 #ifndef XX_MATRIX_MARKET_H

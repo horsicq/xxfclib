@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private authenticated carrier/component helpers. */
 #ifndef XX_EXECUTABLE_CARRIER_H
 #define XX_EXECUTABLE_CARRIER_H

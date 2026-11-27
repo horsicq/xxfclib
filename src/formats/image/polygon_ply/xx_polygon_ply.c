@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/dranjan/python-plyfile/master/plyfile.py */
 #include "xxfclib/formats/image/polygon_ply/xx_polygon_ply.h"

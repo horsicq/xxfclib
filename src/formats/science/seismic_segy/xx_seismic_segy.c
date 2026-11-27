@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://seg.org/wp-content/uploads/2025/11/seg_y_rev1.pdf */
 #include "xxfclib/formats/science/seismic_segy/xx_seismic_segy.h"

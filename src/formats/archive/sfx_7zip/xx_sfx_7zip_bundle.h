@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private native 7z resource collection. */
 #include <wchar.h>
 typedef struct sfx7_bundle { size_t count; xx_7zip *readers[128]; } sfx7_bundle;

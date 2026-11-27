@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Checked DER primitives; structural validation, no signature authentication. */
 #ifndef XX_ASN1_DER_H
 #define XX_ASN1_DER_H

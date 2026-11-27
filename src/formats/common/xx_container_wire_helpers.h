@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private container primitives. */
 #ifndef XX_CONTAINER_WIRE_HELPERS_H
 #define XX_CONTAINER_WIRE_HELPERS_H

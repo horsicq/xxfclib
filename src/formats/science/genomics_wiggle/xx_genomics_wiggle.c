@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://genome.ucsc.edu/goldenPath/help/wiggle.html */
 #include "xxfclib/formats/science/genomics_wiggle/xx_genomics_wiggle.h"

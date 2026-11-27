@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/imageio/imageio/blob/master/imageio/plugins/spe.py */
 #include "../../xx_format_extractor_engine.h"

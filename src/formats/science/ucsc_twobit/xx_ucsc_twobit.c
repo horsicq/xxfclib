@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://genome.ucsc.edu/FAQ/FAQformat.html#format7 */
 #include "xxfclib/formats/science/ucsc_twobit/xx_ucsc_twobit.h"

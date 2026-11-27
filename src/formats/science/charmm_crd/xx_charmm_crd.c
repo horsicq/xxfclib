@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://docs.mdanalysis.org/stable/documentation_pages/coordinates/CRD.html */
 #include "xxfclib/formats/science/charmm_crd/xx_charmm_crd.h"

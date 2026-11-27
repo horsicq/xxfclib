@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/assimp/assimp/master/code/AssetLib/LWS/LWSLoader.cpp
  * LightWave LWSC2 legacy scene subset: complete typed scene/render/view settings, object/light/camera motion channels with counted ordered finite keys and pre/post

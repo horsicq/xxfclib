@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT */
 #ifndef XX_AMOS_MUSIC_BANK_H
 #define XX_AMOS_MUSIC_BANK_H

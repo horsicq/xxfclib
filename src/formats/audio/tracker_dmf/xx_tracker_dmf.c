@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original framed components, no playback or payload execution. */
 #include "xxfclib/formats/audio/tracker_dmf/xx_tracker_dmf.h"
 #include "../../common/xx_audio_components.h"

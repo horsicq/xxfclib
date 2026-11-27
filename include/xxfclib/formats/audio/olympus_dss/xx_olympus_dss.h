@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded native olympus_dss reader. */
 #ifndef XX_OLYMPUS_DSS_H
 #define XX_OLYMPUS_DSS_H

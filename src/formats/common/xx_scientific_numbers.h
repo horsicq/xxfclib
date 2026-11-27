@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private scientific framing helpers. */
 #ifndef XX_SCIENTIFIC_NUMBERS_H
 #define XX_SCIENTIFIC_NUMBERS_H

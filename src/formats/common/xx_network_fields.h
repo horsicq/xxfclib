@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. owned bounded protocol primitives. */
 #ifndef XX_NETWORK_FIELDS_H
 #define XX_NETWORK_FIELDS_H

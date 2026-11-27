@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded primary-format component search. */
 #include "../../xx_format_extractor_engine.h"
 #include "xxfclib/formats/audio/gameboy_gbs/xx_gameboy_gbs.h"

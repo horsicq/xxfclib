@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/assimp/assimp/master/code/AssetLib/BVH/BVHLoader.cpp
  * Biovision BVH: complete single-root hierarchy with bounded joints/end sites, unique channels, finite offsets and exact counted finite motion frames. Original hierarchy

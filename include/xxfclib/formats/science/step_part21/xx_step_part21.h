@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/stepcode/stepcode/develop/src/clstepcore/read_func.cc
  * STEP Part21 cleartext edition1/2 framing: mandatory typed HEADER records, complete DATA entities/recursive parameters, unique positive IDs and resolved local

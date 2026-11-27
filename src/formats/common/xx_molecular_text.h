@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Checked scientific-format primitives. */
 #ifndef XX_MOLECULAR_TEXT_H
 #define XX_MOLECULAR_TEXT_H

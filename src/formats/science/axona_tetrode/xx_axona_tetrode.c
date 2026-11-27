@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/NeuralEnsemble/python-neo/blob/master/neo/rawio/axonarawio.py */
 #include "xxfclib/formats/science/axona_tetrode/xx_axona_tetrode.h"

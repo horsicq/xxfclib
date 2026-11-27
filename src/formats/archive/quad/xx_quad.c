@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. QUAD 1.12 RAM-only retained-codec adapter. */
 /* Request POSIX before any header; a strict -std=c11 hides it otherwise. */
 #if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)

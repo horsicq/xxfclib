@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.ncbi.nlm.nih.gov/genbank/fastaformat/ */
 #ifndef XX_GENOMICS_FASTA_H

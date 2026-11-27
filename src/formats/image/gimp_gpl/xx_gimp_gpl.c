@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/GNOME/gimp/master/app/core/gimppalette-load.c
  * GIMP GPL UTF8 named RGB8 palettes: complete header, optional columns and exact bounded color rows. Original descriptor and color records exported; rendering

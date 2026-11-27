@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/Exiv2/exiv2/main/src/rafimage.cpp */
 #include "xxfclib/formats/image/fujifilm_raf/xx_fujifilm_raf.h"

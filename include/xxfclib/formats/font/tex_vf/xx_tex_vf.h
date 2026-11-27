@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://tug.ctan.org/info/knuth-pdf/etc/vftovp.pdf
  * TeX VF202: complete preamble/font definitions/short and long character packets/postamble, unique font and glyph IDs, finite positive design size, bounded valid DVI

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://ase-lib.org/_modules/ase/io/dlp4.html */
 #ifndef XX_DL_POLY_CONFIG_H

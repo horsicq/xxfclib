@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/python/cpython/blob/3.13/Lib/pickletools.py */
 #ifndef XX_PYTHON_PICKLE_H

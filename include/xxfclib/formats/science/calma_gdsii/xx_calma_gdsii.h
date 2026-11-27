@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/KLayout/klayout/master/src/plugins/streamers/gds2/db_plugin/dbGDS2Reader.cc
  * Calma GDSII Stream: complete typed library/structure/element framing, bounded coordinates and names, finite positive units, geometry and local references. Original

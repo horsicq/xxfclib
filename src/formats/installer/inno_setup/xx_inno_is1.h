@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private plain IS1 Win32 wire reader. */
 static bool inno_parse_is1(Abstractformat *f, inno_ctx *ctx, int64_t size, xx_pd_struct *pd)
 {

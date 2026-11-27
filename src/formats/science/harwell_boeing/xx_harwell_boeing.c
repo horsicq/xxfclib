@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://docs.scipy.org/doc/scipy/reference/generated/scipy.io.hb_write.html */
 #include "xxfclib/formats/science/harwell_boeing/xx_harwell_boeing.h"

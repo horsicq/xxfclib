@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://openusd.org/release/spec_usda.html
  * OpenUSD USDA1.0 static Mesh/Xform subset: complete bounded typed layer/prim/property grammar, unique prim paths/settings, finite point/transform arrays and counted

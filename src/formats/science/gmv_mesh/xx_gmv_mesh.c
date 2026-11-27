@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/lanl/LaGriT/master/src/readgmv_binary.f
  * LANL GMV unstructured mesh subset: ASCII and little-endian IEEE32 binary nodes, fixed-arity cells, counted material/scalar variables and cycle/time records; binary

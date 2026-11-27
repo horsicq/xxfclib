@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.mathworks.com/help/pdf_doc/matlab/matfile_format.pdf
  * Bounded encoded-component extraction. */

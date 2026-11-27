@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://imagemagick.org/miff/
  * MIFF1.0 uncompressed DirectClass RGB/sRGB8/16/32-bit images: complete bounded key/value descriptor, finite color metadata and exact interleaved raster rows;

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Scoped physical layout of UPX-packed PE SFX. */
 static bool sfx7_packed_pe_overlay(Abstractformat *f,int64_t *overlay,xx_pd_struct *pd)
 {

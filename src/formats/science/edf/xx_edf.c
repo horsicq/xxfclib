@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.edfplus.info/specs/edf.html */
 #include "xxfclib/formats/science/edf/xx_edf.h"

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original validated components; no playback/emulation. */
 #include "xxfclib/formats/filesystem/yaze_ydsk/xx_yaze_ydsk.h"
 #include "../../common/xx_disk_music_components.h"

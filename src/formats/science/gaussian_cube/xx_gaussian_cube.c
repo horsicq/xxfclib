@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://pyscf.org/_modules/pyscf/tools/cubegen.html */
 #include "xxfclib/formats/science/gaussian_cube/xx_gaussian_cube.h"

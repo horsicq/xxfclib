@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. RAM-only bounded decoder pipe client. */
 /* Non-Windows includers must define _POSIX_C_SOURCE before their first #include. */
 #ifndef XX_ARCHIVE_CODEC_PIPE_H

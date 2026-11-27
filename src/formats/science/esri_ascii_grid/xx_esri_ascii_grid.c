@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://doc.esri.com/en/arcgis-pro/latest/tool-reference/conversion/raster-to-ascii.html
  * Esri ASCII grid: complete case-insensitive NCOLS/NROWS, paired corner or center georeference, positive cell size, optional finite nodata, exact finite sample count;

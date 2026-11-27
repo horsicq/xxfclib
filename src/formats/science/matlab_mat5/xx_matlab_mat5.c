@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.mathworks.com/help/pdf_doc/matlab/matfile_format.pdf */
 #include "xxfclib/formats/science/matlab_mat5/xx_matlab_mat5.h"

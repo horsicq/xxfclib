@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/biopython/biopython/blob/master/Bio/Phylo/NexusIO.py */
 #ifndef XX_PHYLO_NEXUS_H

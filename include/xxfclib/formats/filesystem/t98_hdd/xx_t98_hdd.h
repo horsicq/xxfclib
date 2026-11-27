@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Native bounded image reader. */
 #ifndef XX_T98_HDD_H
 #define XX_T98_HDD_H

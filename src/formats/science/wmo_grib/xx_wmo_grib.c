@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://codes.ecmwf.int/grib/format/grib2/regulations/ */
 #include "xxfclib/formats/science/wmo_grib/xx_wmo_grib.h"

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://fontforge.org/docs/techref/sfdformat.html
  * FontForge SFD1.0 outline subset: typed font metrics and complete counted glyphs with checked encodings, finite move/line/cubic contours and balanced

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://developer.garmin.com/fit/protocol/ */
 #ifndef XX_GARMIN_FIT_H

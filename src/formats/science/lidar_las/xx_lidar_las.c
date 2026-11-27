@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/laspy/laspy/master/laspy/header.py */
 #include "xxfclib/formats/science/lidar_las/xx_lidar_las.h"

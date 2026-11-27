@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/magland/mountainlab_pytools */
 #ifndef XX_MOUNTAINSORT_MDA_H

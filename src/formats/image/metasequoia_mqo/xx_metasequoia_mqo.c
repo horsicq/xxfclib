@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://www.metaseq.net/en/format.html
  * Metasequoia MQO1.0/1.1 ASCII text meshes: complete text vertices and polygon V/M/UV fields, local indexes/material references, finite typed properties, classic

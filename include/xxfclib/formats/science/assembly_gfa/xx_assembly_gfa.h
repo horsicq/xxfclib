@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://gfa-spec.github.io/GFA-spec/GFA1.html */
 #ifndef XX_ASSEMBLY_GFA_H

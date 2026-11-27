@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://pyscf.org/_modules/pyscf/tools/cubegen.html */
 #ifndef XX_GAUSSIAN_CUBE_H

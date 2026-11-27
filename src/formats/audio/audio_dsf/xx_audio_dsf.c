@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original framed components, no playback or payload execution. */
 #include "xxfclib/formats/audio/audio_dsf/xx_audio_dsf.h"
 #include "../../common/xx_audio_components.h"

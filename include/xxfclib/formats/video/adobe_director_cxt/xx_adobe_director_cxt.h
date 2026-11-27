@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded native adobe_director_cxt reader. */
 #ifndef XX_ADOBE_DIRECTOR_CXT_H
 #define XX_ADOBE_DIRECTOR_CXT_H

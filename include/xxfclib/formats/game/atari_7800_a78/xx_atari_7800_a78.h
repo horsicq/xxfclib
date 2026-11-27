@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded original-component reader. */
 #ifndef XX_ATARI_7800_A78_H
 #define XX_ATARI_7800_A78_H

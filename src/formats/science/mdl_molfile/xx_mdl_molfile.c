@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/openbabel/openbabel/blob/master/src/formats/mdlformat.cpp */
 #include "xxfclib/formats/science/mdl_molfile/xx_mdl_molfile.h"

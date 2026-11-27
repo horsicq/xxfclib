@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original bounded BALZ 1.20 decoder from public-domain format facts. */
 #include "xxfclib/formats/archive/balz/xx_balz.h"
 #include "../../xx_legacy_archive.h"

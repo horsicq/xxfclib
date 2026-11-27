@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://biopython.org/docs/latest/api/Bio.AlignIO.StockholmIO.html */
 #ifndef XX_ALIGNMENT_STOCKHOLM_H

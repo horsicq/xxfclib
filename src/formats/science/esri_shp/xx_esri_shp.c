@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.esri.com/library/whitepapers/pdfs/shapefile.pdf */
 #include "xxfclib/formats/science/esri_shp/xx_esri_shp.h"

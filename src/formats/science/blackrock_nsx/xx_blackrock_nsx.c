@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/BlackrockNeurotech/NPMK/blob/master/NPMK/openNSx.m */
 #include "xxfclib/formats/science/blackrock_nsx/xx_blackrock_nsx.h"

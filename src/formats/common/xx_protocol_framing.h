@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Checked container primitives. */
 #ifndef XX_PROTOCOL_FRAMING_H
 #define XX_PROTOCOL_FRAMING_H

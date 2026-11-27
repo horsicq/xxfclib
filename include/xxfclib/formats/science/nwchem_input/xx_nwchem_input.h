@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://nwchemgit.github.io/Input-and-Output.html */
 #ifndef XX_NWCHEM_INPUT_H

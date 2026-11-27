@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Version 1.2.1 encoder to reproduce FEAD bytes.
  * No inflate/file entry points and no source image code are linked or run. */
 #include "fead_zlib_encoder.h"

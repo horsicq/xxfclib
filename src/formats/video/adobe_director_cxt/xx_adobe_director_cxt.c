@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT.
  * Director RIFX/XFIR chunk framing: https://github.com/scummvm/scummvm/blob/master/engines/director/archive.cpp
  * Exposes stored cast and sound chunks without deprotecting them.

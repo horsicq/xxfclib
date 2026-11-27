@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Unicode 17.0 property ranges derived from the Unicode Character Database.
  * Copyright Unicode, Inc. Unicode data license: https://www.unicode.org/license.txt
  * Generated tables; no Unicode library is required at runtime. */

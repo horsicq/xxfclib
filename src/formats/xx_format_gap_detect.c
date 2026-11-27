@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Appended readers use structural validation,
  * bounded signatures, and preserve the device cursor. */
 #include "xxfclib/formats/xx_format_gap_headers.inc"

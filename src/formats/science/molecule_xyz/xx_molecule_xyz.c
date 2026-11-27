@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://ase-lib.org/_modules/ase/io/xyz.html */
 #include "xxfclib/formats/science/molecule_xyz/xx_molecule_xyz.h"

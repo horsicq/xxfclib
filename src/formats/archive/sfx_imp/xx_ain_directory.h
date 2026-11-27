@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded directory-only AIN stream terminator reader. */
 #ifndef XX_AIN_DIRECTORY_H
 #define XX_AIN_DIRECTORY_H

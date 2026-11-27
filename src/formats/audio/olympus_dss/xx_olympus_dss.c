@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT.
  * Olympus DSS header and 512-byte audio blocks:
  * https://github.com/FFmpeg/FFmpeg/blob/master/libavformat/dss.c

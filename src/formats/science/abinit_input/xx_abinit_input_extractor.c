@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://docs.abinit.org/guide/abinit/ */
 #include "../../xx_format_extractor_engine.h"

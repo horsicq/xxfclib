@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.tensorflow.org/tutorials/load_data/tfrecord */
 #include "xxfclib/formats/other/tensorflow_tfrecord/xx_tensorflow_tfrecord.h"

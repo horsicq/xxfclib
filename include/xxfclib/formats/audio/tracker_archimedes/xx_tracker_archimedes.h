@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT */
 #ifndef XX_TRACKER_ARCHIMEDES_H
 #define XX_TRACKER_ARCHIMEDES_H

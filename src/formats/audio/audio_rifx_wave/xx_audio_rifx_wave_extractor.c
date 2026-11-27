@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Validated RIFX/WAVE signature search. */
 #include "../../xx_format_extractor_engine.h"
 #include "xxfclib/formats/audio/audio_rifx_wave/xx_audio_rifx_wave.h"

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://teem.sourceforge.net/nrrd/format.html */
 #ifndef XX_NRRD_H

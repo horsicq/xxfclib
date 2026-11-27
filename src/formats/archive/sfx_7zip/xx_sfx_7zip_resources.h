@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private 7z resource adapter. */
 #include "../../common/xx_pe_resource_archives.h"
 static bool sfx7_resource_candidate(Abstractformat *f,pm_stream *s,int64_t at,uint32_t bytes,xx_pd_struct *pd)

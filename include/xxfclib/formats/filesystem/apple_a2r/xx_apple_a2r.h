@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded A2R2 STRM and A2R3 RWCP/SLVD reader.
  * Lists/extracts capture and solved-track descriptors, index timestamps and
  * raw flux/bit bytes; does not decode a sector disk or expand mirrored tracks.

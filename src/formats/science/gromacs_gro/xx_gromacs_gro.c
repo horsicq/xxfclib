@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://manual.gromacs.org/current/reference-manual/file-formats.html#gro */
 #include "xxfclib/formats/science/gromacs_gro/xx_gromacs_gro.h"

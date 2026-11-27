@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT.
  * EA SCHl block framing: https://github.com/vgmstream/vgmstream/blob/master/src/layout/blocked_ea_schl.c
  * Exports original stream blocks, leaving their coded samples unchanged.

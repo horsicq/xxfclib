@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Optional in-process UPX bridge. Included by sevenzip_backend after its
  * monotonic clock helper; all existing iterator and extraction policy stays

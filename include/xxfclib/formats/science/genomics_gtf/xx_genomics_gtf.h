@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.ensembl.org/info/website/upload/gff.html */
 #ifndef XX_GENOMICS_GTF_H

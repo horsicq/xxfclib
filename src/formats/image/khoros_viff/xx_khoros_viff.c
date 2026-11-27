@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/coders/viff.c
  * Khoros VIFFv1 images: complete1024-byte typed descriptor, implicit finite geometry, counted8-bit/16-bit/32-bit/finite-float planes and bounded byte maps with exact

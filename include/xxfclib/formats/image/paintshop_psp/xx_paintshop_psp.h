@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/GNOME/gimp/master/plug-ins/common/file-psp.c
  * Native PSP3.0 RGB24/grayscale8 raster images with one color bitmap per layer: exact38-byte image,375-byte layer and12-byte channel descriptors, bounded

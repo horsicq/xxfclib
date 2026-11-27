@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/PicoQuant/PicoQuant-Time-Tagged-File-Format-Demos */
 #include "xxfclib/formats/science/photontiming_phu/xx_photontiming_phu.h"

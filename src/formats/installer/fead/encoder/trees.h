@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* FEAD port: symbol isolation and xxfclib memory operations; original notice retained. */
 /* header created automatically with -DGEN_TREES_H */
 

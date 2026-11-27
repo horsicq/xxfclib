@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. UAE extended ADF framing, independently written.
  * Layout: WinUAE disk.cpp ADF_EXT2 header documentation and HxC EXTADF loader.
  * Raw MFM/revolution bytes are preserved; no sector recovery is claimed.

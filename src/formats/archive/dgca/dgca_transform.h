@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Independent standard transforms. SPDX-License-Identifier: MIT. */
 #ifndef DGCA_TRANSFORM_H
 #define DGCA_TRANSFORM_H

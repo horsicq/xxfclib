@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/aros-development-team/AROS/master/workbench/libs/icon/diskobjio.c
  * Classic Amiga68k DiskObject v1: complete Gadget flags, optional old/new drawer descriptor, planar Image descriptors/data, length-prefixed terminated

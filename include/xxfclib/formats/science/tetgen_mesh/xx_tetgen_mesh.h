@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://wias-berlin.de/software/tetgen/1.5/doc/manual/manual006.html
  * TetGen standalone node/element sections: exact counted dimensions/attribute/marker columns, unique nonnegative IDs, finite coordinates/attributes and distinct bounded

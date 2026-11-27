@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. shared format private full-framing carrier helpers. */
 #ifndef XX_ARCHIVE_CARRIER_READERS_H
 #define XX_ARCHIVE_CARRIER_READERS_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original SAB Diskette Utility geometry parser.
  * Layout facts: HxC sdu_format.h/sdu_loader.c. Sector image follows 46-byte header.
  */

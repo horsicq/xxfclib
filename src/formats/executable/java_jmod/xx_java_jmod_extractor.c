@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://raw.githubusercontent.com/openjdk/jdk/master/src/java.base/share/classes/jdk/internal/jmod/JmodFile.java */
 #include "../../xx_format_extractor_engine.h"

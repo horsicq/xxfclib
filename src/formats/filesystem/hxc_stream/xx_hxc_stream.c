@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original Pauline HxCStream chunk parser.
  * Facts: HxC hxcstream_format.h; Pauline dump_chunk.c generate_chunk framing.
  * Container CRC includes arbitrary authenticated alignment padding.

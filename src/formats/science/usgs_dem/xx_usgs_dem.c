@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://pubs.usgs.gov/dug/0005/dug0005.pdf
  * USGS ASCII DEM: complete fixed1024-byte A descriptor and counted B elevation profiles/continuations, finite header/profile numbers, exact sample extents and matching

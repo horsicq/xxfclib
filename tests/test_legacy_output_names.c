@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT */
 #include "../src/formats/xx_archive_output_name.h"
 #include "../src/formats/archive/warc/xx_warc.c"

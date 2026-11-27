@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Independently implemented primary framing.
  * Reference: https://7800.8bitdev.org/index.php/A78_Header_Specification
  * No payload execution, machine restoration or synthesized audio.

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/ecmwf/eccodes/tree/develop/definitions/bufr */
 #ifndef XX_WMO_BUFR_H

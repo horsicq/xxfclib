@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://raw.githubusercontent.com/freesurfer/freesurfer/dev/matlab/load_mgh.m */
 #ifndef XX_FREESURFER_MGH_H

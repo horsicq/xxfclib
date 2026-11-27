@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/open-ephys/analysis-tools/blob/master/OpenEphys.py */
 #ifndef XX_OPENEPHYS_CONTINUOUS_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/theochem/iodata/blob/master/iodata/formats/fchk.py */
 #include "xxfclib/formats/science/gaussian_fchk/xx_gaussian_fchk.h"

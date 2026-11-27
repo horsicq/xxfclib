@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/coders/otb.c
  * Nokia OTA bitmap: checked information flags, short/extended positive dimensions, depth1 and exact MSB-packed rows; original descriptor and row bitmaps exported;

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT.
  * Interplay ACM header: https://github.com/dtiefling/snd2acm-portable/blob/master/src/general.h
  * Preserves encoded bytes; this reader does not decode subband audio.

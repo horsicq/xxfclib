@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://pmc.ncbi.nlm.nih.gov/articles/PMC2892967/ */
 #include "xxfclib/formats/science/fcs/xx_fcs.h"

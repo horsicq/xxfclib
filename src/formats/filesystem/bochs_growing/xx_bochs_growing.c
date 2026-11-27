@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original Bochs Growing v1/v2 run-map parser.
  * Primary field facts: Bochs Developers Guide, harddisk-redologs.html.
  */

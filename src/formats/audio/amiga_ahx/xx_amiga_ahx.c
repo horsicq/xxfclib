@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Independently implemented primary framing.
  * Reference: https://github.com/pete-gordon/planet-hively/blob/master/hvl_replay.c
  * No payload execution, machine restoration or synthesized audio.

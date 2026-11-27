@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original validated encoded components; no playback. */
 #include "xxfclib/formats/audio/dosbox_dro/xx_dosbox_dro.h"
 #include "../../common/xx_music_components.h"

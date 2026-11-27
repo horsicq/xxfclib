@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independent C implementation of the published Smart Install Maker layout.
  * Primary grammar: Binary Refinery xtsim (BSD-3-Clause), Jesko Huttenhain.

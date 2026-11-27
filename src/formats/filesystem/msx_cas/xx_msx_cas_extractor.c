@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Validated original-component search. */
 #include "../../xx_format_extractor_engine.h"
 #include "xxfclib/formats/filesystem/msx_cas/xx_msx_cas.h"

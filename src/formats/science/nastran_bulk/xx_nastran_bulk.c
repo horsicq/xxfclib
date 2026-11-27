@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/nasa/NASTRAN-95/master/um/BULK.TXT
  * NASTRAN bounded mesh bulk-data subset: small/free-field GRID and standard shell/solid connectivity with unique IDs, finite coordinates, zero coordinate systems and

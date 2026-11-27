@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private native ARQ member delegation. */
 typedef struct arqm_cursor { xx_arq *reader; xx_archive_record_state *nested; } arqm_cursor;
 static xx_arq *arqm_open(Abstractformat *f,int64_t *extent,xx_pd_struct *pd)

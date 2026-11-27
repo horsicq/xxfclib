@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT - read-only, memory-only SQLite SQL export. */
 #include "xxfclib/formats/database/sqlite_sql/xx_sqlite_sql.h"
 #include "xxfclib/data/xx_data.h"

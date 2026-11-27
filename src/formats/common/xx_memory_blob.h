@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private checked shared format primitives. */
 #ifndef XX_MEMORY_BLOB_H
 #define XX_MEMORY_BLOB_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Private static Demolition Core ZIP credential locator. Never executes code.
  * Producer imports and bounded x86 string arguments identify candidates;

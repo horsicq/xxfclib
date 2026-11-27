@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Validated signature search. */
 #include "../../xx_format_extractor_engine.h"
 #include "xxfclib/formats/audio/olympus_dss/xx_olympus_dss.h"

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Reuse the bounded helper iterator ABI. */
 #include "xxfclib/formats/video/media_engine/xx_media_engine.h"
 #include "xxfclib/rt/xx_rt.h"

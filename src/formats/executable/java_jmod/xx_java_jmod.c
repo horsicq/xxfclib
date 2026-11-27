@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/openjdk/jdk/master/src/java.base/share/classes/jdk/internal/jmod/JmodFile.java */
 #include "xxfclib/formats/executable/java_jmod/xx_java_jmod.h"

@@ -19,6 +19,69 @@
 #include "xxfclib/threads/xx_threads.h"
 #include "../../../algo/lzx/xx_lzx_gated.h"
 
+/* CAB-private decoder instance: retain the codec and its allocation sizes,
+ * while exposing allocation failure separately from malformed compressed data.
+ * The decoder sources are included rather than changed outside this lane.
+ * Only a failed allocation touches the thread-local flag; independent decodes
+ * on other threads cannot overwrite this call's status. */
+#if defined(_MSC_VER)
+static __declspec(thread) bool cab_deflate_oom;
+#else
+static _Thread_local bool cab_deflate_oom;
+#endif
+
+static void *cab_deflate_alloc(size_t size)
+{
+    void *p = xx_mem_alloc(size);
+    if (!p) cab_deflate_oom = true;
+    return p;
+}
+
+#pragma push_macro("xx_mem_alloc")
+#undef xx_mem_alloc
+#define xx_mem_alloc cab_deflate_alloc
+#define xx_br_init cab_deflate_br_init
+#define xx_br_free cab_deflate_br_free
+#define xx_deflate_decompress_stream cab_deflate_stream
+#define xx_deflate_decompress_stream_with_dictionary cab_deflate_stream_dictionary
+#define xx_deflate_decompress_stream_with_options cab_deflate_stream_options
+#define xx_deflate_decompress_stream_with_flags cab_deflate_stream_flags
+#include "../../../algo/deflate/xx_deflate_dec.c"
+#undef xx_deflate_decompress_stream_with_flags
+#undef xx_deflate_decompress_stream_with_options
+#undef xx_deflate_decompress_stream_with_dictionary
+#undef xx_deflate_decompress_stream
+#undef xx_br_free
+#undef xx_br_init
+#pragma pop_macro("xx_mem_alloc")
+
+/* Status extension of the memory-with-dictionary interface. The Boolean and
+ * written-byte semantics match xx_deflate_decompress_memory_with_dictionary;
+ * out_of_memory is set only when the decoder's allocator actually failed. */
+static bool cab_mszip_decode(const void *src, size_t src_size, void *dst, size_t dst_size, size_t *written,
+                              const void *dictionary, size_t dictionary_size, bool *out_of_memory)
+{
+    xx_bit_reader reader;
+    bool ok, previous;
+    *out_of_memory = false;
+    if (!src || (!dst && dst_size > 0U) || (dictionary_size != 0U && !dictionary)) return false;
+    if (!src_size) {
+        if (written) *written = 0;
+        return true;
+    }
+    previous = cab_deflate_oom;
+    cab_deflate_oom = false;
+    ok = cab_deflate_br_init(&reader, NULL, (const uint8_t *)src, src_size, (int64_t)src_size);
+    if (ok) {
+        ok = cab_deflate_stream_flags(&reader, NULL, (uint8_t *)dst, dst_size, written, false, 0U, NULL,
+                                       (const uint8_t *)dictionary, dictionary_size, 0U);
+        cab_deflate_br_free(&reader);
+    }
+    *out_of_memory = cab_deflate_oom;
+    cab_deflate_oom = previous;
+    return ok;
+}
+
 #define CAB_FLAG_PREV 1U
 #define CAB_FLAG_NEXT 2U
 #define CAB_FLAG_RESERVE 4U
@@ -63,8 +126,8 @@ typedef struct cab_context_s {
  * the threaded LZX path (charged up-front and before allocation when MEMORY_LIMIT
  * is active):
  * - LZX (out\xx_lzx.c:616): xx_lzx_cab_decode_gated allocates one lzx_state
- *   heap block via xx_mem_calloc(1, sizeof(lzx_state)) = 77,792 bytes on 64-bit
- *   (77,784 bytes on 32-bit: 12,544*4 + 8,960*2 + 2,816*2 + 128*2 + tables/state).
+ *   heap block via xx_mem_calloc(1, sizeof(lzx_state)), at most 77,792 bytes
+ *   (the native 32-bit reader uses less: 12,544*4 + 8,960*2 + 2,816*2 + 128*2 + tables/state).
  * - Threaded LZX sync/thread objects (cab_decode_lzx_async): xx_mutex_create
  *   (40 B Win64 / <=64 B POSIX) + two xx_cond_create (16 B Win64 / <=96 B POSIX)
  *   + xx_thread_create control block (32 B) = 88 B Win64 (<=192 B POSIX);
@@ -72,6 +135,8 @@ typedef struct cab_context_s {
  * - Quantum (src\algo\quantum\xx_quantum.c:336-352): xx_quantum_cab_decode
  *   holds q_state and q_range on the stack and uses the caller's output buffer
  *   as its history window, making 0 heap allocations.
+ * - Single-record STORE/MSZIP: a 1 MiB input slice and a 32 KiB history plus
+ *   65,535-byte output block; MSZIP also has the codec charge below.
  * - MSZIP (src\algo\deflate\xx_deflate_dec.c:623,1237):
  *   xx_deflate_decompress_memory_with_dictionary runs with dev==NULL (0 heap
  *   bytes in xx_br_init), allocates xx_dec_state (48,980 B) and, when
@@ -81,6 +146,43 @@ typedef struct cab_context_s {
 #define CAB_LZX_ASYNC_SYNC_BYTES 256U
 #define CAB_QUANTUM_DECODER_STATE_BYTES 0U
 #define CAB_MSZIP_DECODER_STATE_BYTES (384U * 1024U)
+#if defined(_M_IX86) || defined(__i386__)
+#define CAB_X86_STREAM 1
+#endif
+
+#define CAB_STREAM_INPUT_BYTES (1U << 20)
+#define CAB_STREAM_OUTPUT_BYTES (32768U + 65535U)
+
+static bool cab_out_of_memory(xx_pd_struct *pd)
+{
+    xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Out of memory while decoding CAB folder");
+    return false;
+}
+
+#ifdef CAB_X86_STREAM
+static size_t cab_stream_input_size(const cab_folder *folder)
+{
+    return folder->raw_size ? (folder->raw_size < CAB_STREAM_INPUT_BYTES ? folder->raw_size : CAB_STREAM_INPUT_BYTES) : 1U;
+}
+
+static size_t cab_stream_output_size(const cab_folder *folder)
+{
+    return folder->plain_total ? (folder->plain_total < CAB_STREAM_OUTPUT_BYTES ? folder->plain_total : CAB_STREAM_OUTPUT_BYTES) : 1U;
+}
+
+/* Only record extraction uses this path; memory decompression still returns a
+ * complete folder. Count by folder, including zero-length records. */
+static bool cab_single_stream(const cab_context *c, const cab_file *x)
+{
+    size_t i, count = 0;
+    unsigned method = c->folders[x->folder].type & 15U;
+    if (method != CAB_METHOD_STORE && method != CAB_METHOD_MSZIP) return false;
+    for (i = 0; i < c->file_count; ++i)
+        if (c->files[i].folder == x->folder && ++count > 1U) return false;
+    return count == 1U;
+}
+
+#endif /* CAB_X86_STREAM */
 
 typedef struct cab_limits_s {
     bool limits_active;
@@ -198,6 +300,8 @@ static bool cab_resource_limits_allow(const cab_limits *limits, const cab_contex
     method = folder->type & 15U;
     raw_alloc = folder->raw_size ? (uint64_t)folder->raw_size : 1ULL;
     out_alloc = folder->plain_total ? (uint64_t)folder->plain_total : 1ULL;
+    /* Preserve the original configured-limit decisions on both architectures.
+     * Record streaming is used only when MEMORY_LIMIT is absent. */
     if (!cab_add_u64(&required, raw_alloc) || !cab_add_u64(&required, out_alloc)) {
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_BOUNDS, "CAB extraction exceeds the configured memory limit");
         return false;
@@ -598,7 +702,7 @@ static bool cab_load_raw(Abstractformat *f, const cab_folder *folder, cab_budget
     raw = (uint8_t *)xx_mem_alloc(alloc_size);
     if (!raw) {
         if (track_budget) cab_budget_release(budget, alloc_size);
-        return false;
+        return cab_out_of_memory(pd);
     }
     if (folder->raw_size && !cab_read(f->device, start, raw, folder->raw_size)) {
         xx_mem_free(raw);
@@ -745,6 +849,154 @@ static void cab_sink_discard(cab_sink *k)
     }
 }
 
+#ifdef CAB_X86_STREAM
+/* Writes the next `count` bytes of the record from the decoded folder. */
+static bool cab_sink_write_data(cab_sink *k, const uint8_t *data, size_t count)
+{
+    if (k->failed) return false;
+    if (!k->device) {
+        if (!xx_store_create_dirs_a(k->path, false) || !(k->device = cab_open_stage(k->path, k->stage_seq, &k->stage_path))) {
+            k->failed = true;
+            return false;
+        }
+    }
+    while (count) {
+        ssize_t n = xx_io_write(k->device, data, count);
+        if (n <= 0 || (size_t)n > count) {
+            k->failed = true;
+            cab_sink_discard(k);
+            return false;
+        }
+        k->done += (size_t)n;
+        data += (size_t)n;
+        count -= (size_t)n;
+    }
+    return true;
+}
+
+static bool cab_sink_write(cab_sink *k, const uint8_t *folder, size_t count)
+{
+    return cab_sink_write_data(k, folder + k->offset + k->done, count);
+}
+
+/* Keeps a bounded input slice, preserving any CFDATA header/payload split at
+ * its boundary. All I/O and staged writes stay on the calling thread. */
+typedef struct cab_slice_s {
+    uint8_t *data;
+    size_t pos, size, loaded, capacity;
+} cab_slice;
+
+static bool cab_slice_ensure(Abstractformat *f, const cab_folder *folder, cab_slice *s, size_t need)
+{
+    size_t left = s->size - s->pos, n, got = 0;
+    if (left >= need) return true;
+    if (left) xx_rt_memmove(s->data, s->data + s->pos, left);
+    s->pos = 0;
+    s->size = left;
+    n = folder->raw_size - s->loaded;
+    if (n > s->capacity - left) n = s->capacity - left;
+    if (!s->loaded) {
+        if (!cab_read(f->device, f->base_address + (int64_t)folder->data_offset, s->data, n)) return false;
+    } else {
+        while (got < n) {
+            ssize_t r = xx_io_read(f->device, s->data + left + got, n - got);
+            if (r <= 0 || (size_t)r > n - got) return false;
+            got += (size_t)r;
+        }
+    }
+    s->loaded += n;
+    s->size += n;
+    return s->size >= need;
+}
+
+static bool cab_decode_single(Abstractformat *f, const cab_context *c, const cab_file *x, xx_pd_struct *pd,
+                              cab_budget *budget, cab_sink *sink)
+{
+    const cab_folder *folder = &c->folders[x->folder];
+    const int64_t start = f->base_address + (int64_t)folder->data_offset;
+    const unsigned method = folder->type & 15U;
+    const size_t header = 8U + c->data_reserve;
+    size_t output_capacity = cab_stream_output_size(folder);
+    uint64_t charge = (uint64_t)cab_stream_input_size(folder) + output_capacity +
+                      (method == CAB_METHOD_MSZIP ? CAB_MSZIP_DECODER_STATE_BYTES : 0U);
+    cab_slice slice;
+    uint8_t *output = NULL;
+    size_t used = 0, history = 0;
+    unsigned j;
+    bool ok = false;
+    xx_mem_zero(&slice, sizeof(slice));
+    slice.capacity = cab_stream_input_size(folder);
+    if (start < 0 || start > LONG_MAX || (int64_t)folder->last_payload > LONG_MAX - start) return false;
+    if (!cab_budget_reserve(budget, charge, pd)) return false;
+    slice.data = (uint8_t *)xx_mem_alloc(slice.capacity);
+    output = (uint8_t *)xx_mem_alloc(output_capacity);
+    if (!slice.data || !output) {
+        (void)cab_out_of_memory(pd);
+        goto done;
+    }
+    for (j = 0; j < folder->blocks; ++j) {
+        const uint8_t *in;
+        uint16_t packed, plain;
+        size_t wrote = 0, from, to, combined;
+        if (pd && xx_pd_is_stopped(pd)) goto done;
+        if (!cab_slice_ensure(f, folder, &slice, header)) goto done;
+        packed = xx_data_get_u16(slice.data + slice.pos + 4U, 2, 0, false);
+        plain = xx_data_get_u16(slice.data + slice.pos + 6U, 2, 0, false);
+        if (!packed || !plain || used > SIZE_MAX - plain || !cab_slice_ensure(f, folder, &slice, header + packed)) goto done;
+        in = slice.data + slice.pos + header;
+        if (history + plain > output_capacity) {
+            /* Only needed if the device changed its sizes since cab_parse.
+             * Still bound the buffer by one block plus the history. */
+            size_t want = history + plain;
+            uint8_t *grown;
+            if (!cab_budget_reserve(budget, want, pd)) goto done;
+            grown = (uint8_t *)xx_mem_realloc(output, want);
+            if (!grown) {
+                cab_budget_release(budget, want);
+                (void)cab_out_of_memory(pd);
+                goto done;
+            }
+            cab_budget_release(budget, output_capacity);
+            charge += want - output_capacity;
+            output_capacity = want;
+            output = grown;
+        }
+        if (method == CAB_METHOD_STORE) {
+            if (packed != plain) goto done;
+            xx_mem_copy(output + history, in, plain);
+        } else {
+            bool decoded, out_of_memory;
+            if (packed < 2U || in[0] != 'C' || in[1] != 'K') goto done;
+            decoded = cab_mszip_decode(in + 2, packed - 2U, output + history, plain, &wrote, output, history, &out_of_memory);
+            if (out_of_memory) (void)cab_out_of_memory(pd);
+            if (!decoded || wrote != plain) goto done;
+        }
+        /* A single record may cover only part of its folder. Decode and check
+         * every block, but stage only the record's intersection with this one. */
+        from = used < x->folder_offset ? x->folder_offset - used : 0U;
+        if (used < x->folder_offset) {
+            /* Clamp before addition, including records ending past SIZE_MAX. */
+            to = from >= plain ? 0U : from + (x->size < plain - from ? x->size : plain - from);
+        } else {
+            to = used - x->folder_offset < x->size ? x->size - (used - x->folder_offset) : 0U;
+        }
+        if (to > plain) to = plain;
+        if (sink && from < to && !cab_sink_write_data(sink, output + history + from, to - from)) goto done;
+        used += plain;
+        slice.pos += header + packed;
+        combined = history + plain;
+        history = combined > 32768U ? 32768U : combined;
+        xx_rt_memmove(output, output + combined - history, history);
+    }
+    ok = x->folder_offset <= used && x->size <= used - x->folder_offset && !(pd && xx_pd_is_stopped(pd));
+done:
+    xx_mem_free(output);
+    xx_mem_free(slice.data);
+    cab_budget_release(budget, charge);
+    return ok;
+}
+
+#else
 /* Writes the next `count` bytes of the record from the decoded folder. */
 static bool cab_sink_write(cab_sink *k, const uint8_t *folder, size_t count)
 {
@@ -768,6 +1020,8 @@ static bool cab_sink_write(cab_sink *k, const uint8_t *folder, size_t count)
     return true;
 }
 
+#endif /* CAB_X86_STREAM */
+
 typedef struct cab_job_s {
     xx_mutex_t *mutex;
     xx_cond_t *owner_cond, *decoder_cond;
@@ -778,6 +1032,7 @@ typedef struct cab_job_s {
     unsigned window_bits;
     uint8_t *output;
     int32_t decoder_translation; /* E8 translation size; the worker's until it has finished block 0 */
+    bool decoder_out_of_memory; /* read by the owner only after join */
     /* Guarded by mutex. */
     size_t ready_blocks;            /* owner: blocks the decoder may use */
     size_t decoded_blocks;          /* decoder: blocks it has finished */
@@ -814,8 +1069,8 @@ static int cab_job_thread(void *arg)
 {
     cab_job *j = (cab_job *)arg;
     size_t wrote = 0;
-    bool ok = xx_lzx_cab_decode_gated((const uint8_t *const *)j->blocks, j->packed_sizes, j->plain_sizes, j->block_count, j->window_bits, j->output,
-                                      j->output_size, &wrote, cab_job_gate, j, &j->decoder_translation) &&
+    bool ok = xx_lzx_cab_decode_gated_status((const uint8_t *const *)j->blocks, j->packed_sizes, j->plain_sizes, j->block_count, j->window_bits, j->output,
+                                             j->output_size, &wrote, cab_job_gate, j, &j->decoder_translation, &j->decoder_out_of_memory) &&
               wrote == j->output_size;
     xx_mutex_lock(j->mutex);
     j->ok = ok;
@@ -952,9 +1207,15 @@ static int cab_decode_lzx_async(Abstractformat *f, const cab_context *c, const c
     j.packed_sizes = (size_t *)xx_mem_calloc(folder->blocks, sizeof(*j.packed_sizes));
     j.plain_sizes = (size_t *)xx_mem_calloc(folder->blocks, sizeof(*j.plain_sizes));
     feed.raw = (uint8_t *)xx_mem_alloc(folder->raw_size);
-    if (!j.blocks || !j.packed_sizes || !j.plain_sizes || !feed.raw) goto cleanup;
+    if (!j.blocks || !j.packed_sizes || !j.plain_sizes || !feed.raw) {
+        (void)cab_out_of_memory(p);
+        goto cleanup;
+    }
     j.output = (uint8_t *)xx_mem_alloc(total);
-    if (!j.output) goto cleanup;
+    if (!j.output) {
+        (void)cab_out_of_memory(p);
+        goto cleanup;
+    }
     /* The first slice before the thread exists: an unreadable or foreign data area costs no thread. */
     if (!cab_feed_step(f, c, folder, &j, &feed)) goto cleanup;
     j.ready_blocks = feed.ready;
@@ -1026,6 +1287,7 @@ static int cab_decode_lzx_async(Abstractformat *f, const cab_context *c, const c
     }
     xx_mutex_unlock(j.mutex);
     xx_thread_join(thread, NULL);
+    if (j.decoder_out_of_memory) (void)cab_out_of_memory(p);
     if (j.ok && !failed) {
         /* The worker is gone: the rest of the output is settled. */
         xx_lzx_cab_translate(j.output, translated, total, j.translation);
@@ -1087,7 +1349,11 @@ static bool cab_decode_folder_advanced(Abstractformat *f, const cab_context *c, 
     blocks = (const uint8_t **)xx_mem_calloc(folder->blocks, sizeof(*blocks));
     packed_sizes = (size_t *)xx_mem_calloc(folder->blocks, sizeof(*packed_sizes));
     plain_sizes = (size_t *)xx_mem_calloc(folder->blocks, sizeof(*plain_sizes));
-    if (!blocks || !packed_sizes || !plain_sizes || !cab_load_raw(f, folder, budget, p, &raw, &raw_charge)) goto done;
+    if (!blocks || !packed_sizes || !plain_sizes) {
+        (void)cab_out_of_memory(p);
+        goto done;
+    }
+    if (!cab_load_raw(f, folder, budget, p, &raw, &raw_charge)) goto done;
     for (i = 0; i < folder->blocks; i++) {
         uint16_t packed, plain;
         if (!cab_next_block(c, raw, folder->raw_size, &off, &blocks[i], &packed, &plain) || plain > SIZE_MAX - total) goto done;
@@ -1106,8 +1372,16 @@ static bool cab_decode_folder_advanced(Abstractformat *f, const cab_context *c, 
     } else {
         result = (uint8_t *)xx_mem_alloc(total);
     }
-    if (!result) goto done;
-    if (method == CAB_METHOD_LZX) ok = xx_lzx_cab_decode(blocks, packed_sizes, plain_sizes, folder->blocks, window_bits, result, total, &wrote);
+    if (!result) {
+        (void)cab_out_of_memory(p);
+        goto done;
+    }
+    if (method == CAB_METHOD_LZX) {
+        bool out_of_memory = false;
+        ok = xx_lzx_cab_decode_gated_status(blocks, packed_sizes, plain_sizes, folder->blocks, window_bits, result, total, &wrote,
+                                             NULL, NULL, NULL, &out_of_memory);
+        if (out_of_memory) (void)cab_out_of_memory(p);
+    }
     else ok = xx_quantum_cab_decode(blocks, packed_sizes, plain_sizes, folder->blocks, window_bits, result, total, &wrote);
     if (!ok || wrote != total) {
         ok = false;
@@ -1150,6 +1424,9 @@ static bool cab_decode_folder(Abstractformat *f, const cab_context *c, uint16_t 
         const uint8_t *in;
         uint16_t packed, plain;
         size_t wrote = 0;
+#ifdef CAB_X86_STREAM
+        if (p && xx_pd_is_stopped(p)) goto fail;
+#endif
         if (!cab_next_block(c, raw, folder->raw_size, &off, &in, &packed, &plain) || used > SIZE_MAX - plain) goto fail;
         if (used + plain > cap) {
             /* Grow geometrically (the old code grew by one block, copying
@@ -1173,6 +1450,7 @@ static bool cab_decode_folder(Abstractformat *f, const cab_context *c, uint16_t 
             grown = (uint8_t *)xx_mem_realloc(result, want);
             if (!grown) {
                 if (track_budget) cab_budget_release(budget, want);
+                (void)cab_out_of_memory(p);
                 goto fail;
             }
             if (track_budget) cab_budget_release(budget, cap);
@@ -1184,11 +1462,12 @@ static bool cab_decode_folder(Abstractformat *f, const cab_context *c, uint16_t 
             xx_mem_copy(result + used, in, plain);
             wrote = plain;
         } else {
-            bool ok;
+            bool ok, out_of_memory;
             if (packed < 2 || in[0] != 'C' || in[1] != 'K') goto fail;
             if (track_budget && !cab_budget_reserve(budget, CAB_MSZIP_DECODER_STATE_BYTES, p)) goto fail;
-            ok = xx_deflate_decompress_memory_with_dictionary(in + 2, packed - 2, result + used, plain, &wrote,
-                                                              result + used - (used > 32768U ? 32768U : used), used > 32768U ? 32768U : used, false);
+            ok = cab_mszip_decode(in + 2, packed - 2, result + used, plain, &wrote,
+                                   result + used - (used > 32768U ? 32768U : used), used > 32768U ? 32768U : used, &out_of_memory);
+            if (out_of_memory) (void)cab_out_of_memory(p);
             if (track_budget) cab_budget_release(budget, CAB_MSZIP_DECODER_STATE_BYTES);
             if (!ok || wrote != plain) goto fail;
         }
@@ -1360,6 +1639,21 @@ bool xx_cab_unpack_current_archive_record(Abstractformat *f, xx_archive_record_s
         c->decoded_folder = NULL;
         c->decoded_size = 0;
     }
+#ifdef CAB_X86_STREAM
+    /* Configured memory limits retain the reference's whole-folder allocation,
+     * growth and cache decisions. Without a limit, bound the physical peak. */
+    if (!limits.memory_present && !c->decoded_folder && cab_single_stream(c, x)) {
+        if (!cab_decode_single(f, c, x, p, decode_budget, path ? &sink : NULL)) goto done;
+        if (!o) {
+            ok = true;
+            goto done;
+        }
+        if (!base || !path) goto done;
+        /* Also creates an empty staged file for a zero-length record. */
+        ok = cab_sink_write_data(&sink, NULL, 0);
+        goto commit;
+    }
+#endif
     if (!c->decoded_folder) {
         if (!cab_decode_folder(f, c, x->folder, p, decode_budget, path ? &sink : NULL, &c->decoded_folder, &c->decoded_size)) goto done;
         c->decoded_index = x->folder;
@@ -1374,6 +1668,9 @@ bool xx_cab_unpack_current_archive_record(Abstractformat *f, xx_archive_record_s
     if (!base || !path) goto done;
     /* Whatever was not written during the decode (everything, for a cached folder); creates the stage file if needed. */
     ok = cab_sink_write(&sink, folder, sink.size - sink.done);
+#ifdef CAB_X86_STREAM
+commit:
+#endif
     if (sink.device) {
         if (xx_io_close(sink.device) != 0) ok = false;
         sink.device = NULL;

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original BlindWrite4 descriptor/track parser.
  * Layout facts: Aaru v5.4.2 BlindWrite4/Structs.cs and field-reading offsets.
  * Companions are data only, opened from safe leaf names beside the descriptor.

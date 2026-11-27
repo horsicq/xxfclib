@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://raw.githubusercontent.com/OSGeo/shapelib/master/dbfopen.c */
 #include "xxfclib/formats/database/dbase_dbf/xx_dbase_dbf.h"

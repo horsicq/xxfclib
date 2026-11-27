@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/coders/wbmp.c
  * WAP WBMP type0: canonical bounded unsigned varints, positive dimensions, complete row-packed one-bit bitmap and exact EOF. Original descriptor and packed bitmap

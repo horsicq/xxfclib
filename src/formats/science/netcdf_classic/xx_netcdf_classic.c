@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://docs.unidata.ucar.edu/netcdf-c/4.9.2/file_format_specifications.html */
 #include "xxfclib/formats/science/netcdf_classic/xx_netcdf_classic.h"

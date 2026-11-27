@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original parser from primary documented layout facts. */
 #include "xxfclib/formats/filesystem/fdx68_fdx/xx_fdx68_fdx.h"
 #include "../../disk_additions/xx_disk_additions.h"

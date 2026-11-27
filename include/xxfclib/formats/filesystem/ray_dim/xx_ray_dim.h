@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Native bounded image reader. */
 #ifndef XX_RAY_DIM_H
 #define XX_RAY_DIM_H

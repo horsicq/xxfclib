@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://imagemagick.org/magick-vector-graphics/
  * MVG graphics subset: complete balanced graphic contexts, finite viewbox/affine/transforms and checked color/stroke/text/geometric/path commands; original typed records

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Historical encoder, RAM-only bounded API. */
 #ifndef XFU_FEAD_ZLIB_ENCODER_H
 #define XFU_FEAD_ZLIB_ENCODER_H

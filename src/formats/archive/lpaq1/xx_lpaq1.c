@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original LPAQ revision framing; RAM-only licensed helper. */
 /* Request POSIX before any header; a strict -std=c11 hides it otherwise. */
 #if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-2.0.html */
 #ifndef XX_INIVATION_AEDAT_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/sqlite/sqlite/blob/master/src/pager.c */
 #include "xxfclib/formats/database/sqlite_rollback_journal/xx_sqlite_rollback_journal.h"

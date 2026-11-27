@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.ks.uiuc.edu/Research/vmd/plugins/molfile/dxplugin.html */
 #ifndef XX_OPENDX_FIELD_H

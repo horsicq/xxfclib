@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://docs.mdanalysis.org/stable/documentation_pages/coordinates/CRD.html */
 #ifndef XX_CHARMM_CRD_H

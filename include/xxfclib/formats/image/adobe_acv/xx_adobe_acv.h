@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/
  * Adobe curve file versions1/4: complete counted curves and sorted distinct input/output 8-bit point pairs with exact EOF. Original header and individual curve records

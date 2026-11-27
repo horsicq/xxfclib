@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/coders/mtv.c
  * MTV raytracing image: complete ASCII dimensions and exact RGB24 rows; original descriptor and raster rows exported; image sequences declined. Signatureless fallback

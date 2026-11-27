@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private bounded shared format wire primitives. */
 #ifndef XX_PHYLOGENETIC_TEXT_H
 #define XX_PHYLOGENETIC_TEXT_H

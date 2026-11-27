@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/apache/parquet-format/master/src/main/thrift/parquet.thrift
  * Bounded encoded-component extraction. */

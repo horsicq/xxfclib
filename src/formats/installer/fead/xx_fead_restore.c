@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Independently authored FEAD action inversion.
  * Source installers and bundled compressor DLLs are treated only as data. */
 #include "fead_restore.h"

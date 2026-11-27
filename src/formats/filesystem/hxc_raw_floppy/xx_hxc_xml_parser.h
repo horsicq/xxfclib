@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original bounded HxC descriptor interpreter.
  * Timing/encoding fields remain in the retained descriptor. The exported
  * image is logical sector data, not synthesized magnetic tracks. */

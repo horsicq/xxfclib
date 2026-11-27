@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.tek.com/en/support/faqs/what-format-isf-file */
 #ifndef XX_TEKTRONIX_ISF_H

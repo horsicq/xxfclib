@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://www.ucamco.com/en/sales/downloads
  * Gerber RS274X linear subset: complete FS/MO and basic C/R/O/P aperture declarations, modal coordinate/tool state, G01 draw/flash and bounded closed G36/G37 regions,

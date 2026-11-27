@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT */
 #ifndef XX_HXC_XML_DISK_LAYOUT_H
 #define XX_HXC_XML_DISK_LAYOUT_H

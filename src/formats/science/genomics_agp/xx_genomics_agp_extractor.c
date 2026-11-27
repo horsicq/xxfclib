@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.ncbi.nlm.nih.gov/assembly/agp/AGP_Specification/ */
 #include "../../xx_format_extractor_engine.h"

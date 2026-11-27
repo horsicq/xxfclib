@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original parser of Steem STW 1.x specification.
  * All words big endian; each data byte is represented by one MFM word.
  */

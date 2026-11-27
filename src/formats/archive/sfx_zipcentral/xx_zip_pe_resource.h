@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Private named PE ZIP resource adapter for the existing ZIP view. */
 #ifndef XX_ZIP_PE_RESOURCE_H
 #define XX_ZIP_PE_RESOURCE_H

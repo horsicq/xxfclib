@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Complete physical-container search. */
 #include "../../xx_format_extractor_engine.h"
 #include "xxfclib/formats/filesystem/pc98_d88/xx_pc98_d88.h"

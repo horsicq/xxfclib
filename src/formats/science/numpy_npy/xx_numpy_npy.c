@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html */
 #include "xxfclib/formats/science/numpy_npy/xx_numpy_npy.h"

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.biosemi.com/faq/file_format.htm */
 #include "xxfclib/formats/science/biomedical_bdf/xx_biomedical_bdf.h"

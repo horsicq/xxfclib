@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT.
  * Private SFX member-reader delegation. The wrapper authenticates carrier
  * framing; the existing archive reader owns names, codecs and checksums.

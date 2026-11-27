@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Portable Voice Format PVF1/PVF2 reader. */
 #ifndef XX_AUDIO_PVF_H
 #define XX_AUDIO_PVF_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://spider.wadsworth.org/spider_doc/spider/docs/image_doc.html */
 #ifndef XX_MICROSCOPY_SPIDER_H

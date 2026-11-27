@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/AcademySoftwareFoundation/OpenColorIO/main/src/OpenColorIO/fileformats/FileFormatIridasCube.cpp
  * IRIDAS CUBE LUT: complete finite1D/3D color tables, exact declared sample count, ordered finite domains and bounded quoted title. Original header/table exported; LUT

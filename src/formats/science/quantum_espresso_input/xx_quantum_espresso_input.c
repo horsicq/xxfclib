@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.quantum-espresso.org/Doc/INPUT_PW.html */
 #include "xxfclib/formats/science/quantum_espresso_input/xx_quantum_espresso_input.h"

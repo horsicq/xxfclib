@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Independently implemented interoperability primitives. SPDX-License-Identifier: MIT. */
 #ifndef DGCA_CIPHER_H
 #define DGCA_CIPHER_H

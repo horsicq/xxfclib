@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Independent DGCA payload codecs. SPDX-License-Identifier: MIT. */
 #ifndef DGCA_CODEC_H
 #define DGCA_CODEC_H

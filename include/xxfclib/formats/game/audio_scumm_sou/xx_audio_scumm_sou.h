@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. SCUMM SOU speech archive reader. */
 #ifndef XX_AUDIO_SCUMM_SOU_H
 #define XX_AUDIO_SCUMM_SOU_H

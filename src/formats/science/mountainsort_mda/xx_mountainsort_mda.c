@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/magland/mountainlab_pytools */
 #include "xxfclib/formats/science/mountainsort_mda/xx_mountainsort_mda.h"

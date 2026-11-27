@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Square Enix Nintendo DS RIFF/IMA packet reader. */
 #ifndef XX_AUDIO_RIFF_IMA_H
 #define XX_AUDIO_RIFF_IMA_H

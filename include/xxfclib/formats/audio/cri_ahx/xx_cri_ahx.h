@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Bounded native cri_ahx reader. */
 #ifndef XX_CRI_AHX_H
 #define XX_CRI_AHX_H

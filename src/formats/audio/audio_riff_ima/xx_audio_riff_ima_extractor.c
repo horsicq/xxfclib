@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. */
 #include "../../xx_format_extractor_engine.h"
 #include "xxfclib/formats/audio/audio_riff_ima/xx_audio_riff_ima.h"

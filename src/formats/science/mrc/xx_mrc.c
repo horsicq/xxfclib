@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.ccpem.ac.uk/mrc-format/mrc2014/ */
 #include "xxfclib/formats/science/mrc/xx_mrc.h"

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://docs.lammps.org/dump.html */
 #ifndef XX_LAMMPS_DUMP_H

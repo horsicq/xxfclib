@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Norton Secret Stuff's bounded LZW and 0x90 run-length decoder.
  * Derived from the 16-bit self-extractor's decode routine. */
 #ifndef XX_SFX_NSS_CODEC_PRIVATE_H

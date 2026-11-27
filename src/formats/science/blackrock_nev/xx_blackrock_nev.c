@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/BlackrockNeurotech/NPMK/blob/master/NPMK/openNEV.m */
 #include "xxfclib/formats/science/blackrock_nev/xx_blackrock_nev.h"

@@ -21,7 +21,13 @@
 #define kNumMoveBits 5
 #define NORMALIZE if (range < kTopValue) { range <<= 8; code = (code << 8) | (*buf++); }
 
+#if defined(_M_IX86) || defined(__i386__)
+/* Load the probability after normalization: on x86 it otherwise stays live
+   across the refill branch while range, code and buf need registers too. */
+#define IF_BIT_0(p) NORMALIZE; ttt = *(p); bound = (range >> kNumBitModelTotalBits) * (UInt32)ttt; if (code < bound)
+#else
 #define IF_BIT_0(p) ttt = *(p); NORMALIZE; bound = (range >> kNumBitModelTotalBits) * (UInt32)ttt; if (code < bound)
+#endif
 #define UPDATE_0(p) range = bound; *(p) = (CLzmaProb)(ttt + ((kBitModelTotal - ttt) >> kNumMoveBits));
 #define UPDATE_1(p) range -= bound; code -= bound; *(p) = (CLzmaProb)(ttt - (ttt >> kNumMoveBits));
 #define GET_BIT2(p, i, A0, A1) IF_BIT_0(p) \
@@ -56,7 +62,25 @@
   i -= 0x40; }
 #endif
 
+#if defined(_M_IX86) || defined(__i386__)
+/* Select literal-bit results without a data-dependent tree branch.  Match
+   and length decisions keep the SDK's branch-based structure. */
+#define NORMAL_LITER_DEC \
+  { CLzmaProb *litProb = prob + symbol; \
+    unsigned bitValue, prob0, prob1; \
+    NORMALIZE; \
+    ttt = *litProb; \
+    bound = (range >> kNumBitModelTotalBits) * (UInt32)ttt; \
+    bitValue = (unsigned)(code >= bound); \
+    prob0 = ttt + ((kBitModelTotal - ttt) >> kNumMoveBits); \
+    prob1 = ttt - (ttt >> kNumMoveBits); \
+    *litProb = (CLzmaProb)(bitValue ? prob1 : prob0); \
+    range = bitValue ? range - bound : bound; \
+    code -= bitValue ? bound : 0; \
+    symbol = symbol + symbol + bitValue; }
+#else
 #define NORMAL_LITER_DEC TREE_GET_BIT(prob, symbol)
+#endif
 #define MATCHED_LITER_DEC \
   matchByte += matchByte; \
   bit = offs; \
@@ -294,7 +318,19 @@ int Z7_FASTCALL LZMA_DECODE_REAL(CLzmaDec *p, SizeT limit, const Byte *bufLimit)
         unsigned offs = 0x100;
         state -= (state < 10) ? 3 : 6;
         symbol = 1;
-        #ifdef Z7_LZMA_SIZE_OPT
+        #if defined(_M_IX86) || defined(__i386__)
+        /* Once a bit differs from the match byte, the rest of the literal
+           uses the ordinary tree.  Drop the match-byte temporaries then
+           instead of carrying them through eight unrolled x86 steps. */
+        do
+        {
+          unsigned bit;
+          CLzmaProb *probLit;
+          MATCHED_LITER_DEC
+        }
+        while (symbol < 0x100 && offs != 0);
+        while (symbol < 0x100) { NORMAL_LITER_DEC }
+        #elif defined(Z7_LZMA_SIZE_OPT)
         do
         {
           unsigned bit;
@@ -575,6 +611,39 @@ int Z7_FASTCALL LZMA_DECODE_REAL(CLzmaDec *p, SizeT limit, const Byte *bufLimit)
           ptrdiff_t src = (ptrdiff_t)pos - (ptrdiff_t)dicPos;
           const Byte *lim = dest + curLen;
           dicPos += (SizeT)curLen;
+#if defined(_M_IX86) || defined(__i386__)
+          if (src == -1 && curLen > 8)
+          {
+            memset(dest, *(dest - 1), curLen);
+            continue;
+          }
+          /* Fixed-size memcpy is an unaligned, alias-safe word load/store.
+             Copy forward: a repeated match may overlap its own output.
+             Four bytes are safe only when both ends are at least four
+             bytes apart; the contiguous-region check above bounds every
+             access, including when the dictionary source is ahead. */
+          if (src <= -8 || src >= 8)
+          {
+            while ((size_t)(lim - dest) >= 8)
+            {
+              memcpy(dest, dest + src, 8);
+              dest += 8;
+            }
+          }
+          if (src <= -4 || src >= 4)
+          {
+            while ((size_t)(lim - dest) >= 4)
+            {
+              memcpy(dest, dest + src, 4);
+              dest += 4;
+            }
+          }
+          while (dest != lim)
+          {
+            *dest = *(dest + src);
+            ++dest;
+          }
+#else
           if (curLen > 8)
           {
             size_t dist = (size_t)(-src);
@@ -592,6 +661,7 @@ int Z7_FASTCALL LZMA_DECODE_REAL(CLzmaDec *p, SizeT limit, const Byte *bufLimit)
           do
             *(dest) = (Byte)*(dest + src);
           while (++dest != lim);
+#endif
         }
         else
         {

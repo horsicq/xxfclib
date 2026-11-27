@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Independently implemented interoperability primitives. SPDX-License-Identifier: MIT.
  * SHA-512: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
  * MT19937: standard 624-word recurrence, directly supplied initial state.

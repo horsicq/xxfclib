@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://www.biosemi.com/faq/file_format.htm */
 #include "../../xx_format_extractor_engine.h"

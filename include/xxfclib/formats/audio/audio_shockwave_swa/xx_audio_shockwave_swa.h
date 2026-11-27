@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Shockwave Audio MPEG Layer III reader. */
 #ifndef XX_AUDIO_SHOCKWAVE_SWA_H
 #define XX_AUDIO_SHOCKWAVE_SWA_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Private Inno 1.08/g/h wire layouts. */
 static bool inno_parse_108h(Abstractformat *f, inno_ctx *ctx, int64_t size, xx_pd_struct *pd)
 {

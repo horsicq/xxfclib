@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/OGRECave/ogre/master/OgreMain/src/OgreSkeletonSerializer.cpp
  * OGRE skeleton serializer v1.10/v1.80: complete bounded bone/hierarchy/animation track/keyframe chunks with finite transforms, resolved bone handles and acyclic parent

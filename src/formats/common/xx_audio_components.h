@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Independent bounded original-component helpers. */
 #ifndef XX_AUDIO_COMPONENTS_H
 #define XX_AUDIO_COMPONENTS_H

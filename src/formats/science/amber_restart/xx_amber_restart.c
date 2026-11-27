@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/ParmEd/ParmEd/blob/master/parmed/amber/asciicrd.py */
 #include "xxfclib/formats/science/amber_restart/xx_amber_restart.h"

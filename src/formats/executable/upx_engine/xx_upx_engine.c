@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT */
 #include "xxfclib/formats/executable/upx_engine/xx_upx_engine.h"
 #include "xxfclib/formats/archive/sevenzip_engine/xx_sevenzip_engine.h"

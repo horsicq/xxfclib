@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://samtools.github.io/hts-specs/VCFv4.3.pdf */
 #include "xxfclib/formats/science/genomics_vcf/xx_genomics_vcf.h"

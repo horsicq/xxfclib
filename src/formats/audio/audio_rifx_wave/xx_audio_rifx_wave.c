@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT.
  * Standard RIFX/WAVE big-endian chunk framing and WAVEFORMAT:
  * https://github.com/vgmstream/vgmstream/blob/master/src/meta/wwise.c

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original music framing derived independently from primary AdPlug loader. */
 #include "xxfclib/formats/audio/mad_tracker/xx_mad_tracker.h"
 #include "../../common/xx_music_components.h"

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://www.tek.com/en/support/faqs/what-format-isf-file */
 #include "xxfclib/formats/science/tektronix_isf/xx_tektronix_isf.h"

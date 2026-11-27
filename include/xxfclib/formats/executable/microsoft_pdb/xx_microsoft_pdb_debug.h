@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* xx_microsoft_pdb_debug.h - debug information of a Microsoft PDB beyond types:
  * C13 line tables and source file checksums, the /names string table, compiler
  * and build information per module, procedure details (parameters, locals,

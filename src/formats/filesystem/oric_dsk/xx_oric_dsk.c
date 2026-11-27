@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original ORICDISK/MFM_DISK component parser.
  * Facts: Fabrice Frances format description retained in HxC oricdsk_format.h.
  */

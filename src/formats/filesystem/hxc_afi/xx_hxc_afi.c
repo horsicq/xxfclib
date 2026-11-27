@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Original AFI block-graph and checksum parser.
  * Facts: official HxC afi_format.h/afi_writer.c. AFI's "GZIP" packer is
  * actually an RFC1950 zlib stream. RLE/LZW reserved packers remain opaque,

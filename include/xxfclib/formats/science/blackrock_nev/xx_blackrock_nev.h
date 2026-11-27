@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/BlackrockNeurotech/NPMK/blob/master/NPMK/openNEV.m */
 #ifndef XX_BLACKROCK_NEV_H

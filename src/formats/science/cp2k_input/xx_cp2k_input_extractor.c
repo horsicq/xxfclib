@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://manual.cp2k.org/trunk/CP2K_INPUT.html */
 #include "../../xx_format_extractor_engine.h"

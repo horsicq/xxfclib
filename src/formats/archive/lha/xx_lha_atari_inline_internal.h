@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* Private carrier context; no public structure or API change. */
 #ifndef XX_LHA_ATARI_INLINE_INTERNAL_H
 #define XX_LHA_ATARI_INLINE_INTERNAL_H

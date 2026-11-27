@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. private typed framing primitives. */
 #ifndef XX_NETWORK_PACKET_H
 #define XX_NETWORK_PACKET_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/theochem/iodata/blob/master/iodata/formats/fchk.py */
 #ifndef XX_GAUSSIAN_FCHK_H

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Wire specification: https://github.com/sqlite/sqlite/blob/master/src/pager.c */
 #ifndef XX_SQLITE_ROLLBACK_JOURNAL_H

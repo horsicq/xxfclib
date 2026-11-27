@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT. Wwise RIFF stored-chunk reader. */
 #ifndef XX_AUDIO_WWISE_WEM_H
 #define XX_AUDIO_WWISE_WEM_H

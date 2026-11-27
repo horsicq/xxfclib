@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://www.khronos.org/files/collada_spec_1_4.pdf
  * COLLADA1.4.1 static geometry/scene subset: complete bounded XML grammar, counted float arrays/accessors/indexed triangles, local identifiers/references and finite

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Primary reference: https://raw.githubusercontent.com/daveho/Galasm/master/src/jedec.c
  * JEDEC fuse stream: complete STX/ETX framing, fuse count/default/security fields and bounded nonoverlapping bit assignments, checked packed-fuse checksum and

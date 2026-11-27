@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://raw.githubusercontent.com/gromacs/gromacs/main/src/gromacs/fileio/trrio.cpp */
 #include "xxfclib/formats/science/gromacs_trr/xx_gromacs_trr.h"

@@ -1,3 +1,5 @@
+/* Copyright (c) 2026 hors<horsicq@gmail.com> */
+
 /* SPDX-License-Identifier: MIT
  * Independently implemented from https://github.com/python/cpython/blob/3.13/Python/marshal.c */
 #include "xxfclib/formats/executable/python_marshal/xx_python_marshal.h"
