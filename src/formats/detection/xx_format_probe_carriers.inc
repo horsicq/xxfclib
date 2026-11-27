@@ -84,6 +84,10 @@ XX_FORMAT_READER_PROBE(palminput_360, XX_FILE_TYPE_PALMINPUT_360,
     (is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
 XX_FORMAT_READER_PROBE(sfx_ace, XX_FILE_TYPE_SFX_ACE,
     (is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
+XX_FORMAT_READER_PROBE(py2exe, XX_FILE_TYPE_PY2EXE,
+    (is_mz && header_size >= 2 && header[0] == 'M' && header[1] == 'Z'))
+XX_FORMAT_READER_PROBE(nuitka_onefile, XX_FILE_TYPE_NUITKA_ONEFILE,
+    (is_mz && header_size >= 2 && header[0] == 'M' && header[1] == 'Z'))
 XX_FORMAT_READER_PROBE(sfx_zipcentral, XX_FILE_TYPE_SFX_ZIPCENTRAL,
     (is_mz && (header_size >= 2 && (xx_rt_memcmp(header+0,"\x4d\x5a",2) == 0 || xx_rt_memcmp(header+0,"\x5a\x4d",2) == 0 || xx_rt_memcmp(header+0,"\x60\x1a",2) == 0))))
 

@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "include/xxfclib/formats/xx_format_reader_only_abstract_extractor_decls.inc",
-      "sha256": "205386f002fe753c7efca7c81b83f81c4d599777aee88b8cd9cb74866619b0c7"
+      "sha256": "576b834cda5d216578c4f3365e354abfbe948d444cd40e7de5b50f5c0808c782"
     },
     {
       "path": "src/formats/adapters/xx_format_detector_adapters.c",
@@ -11,7 +11,7 @@
     },
     {
       "path": "src/formats/adapters/xx_reader_adapters_sources.cmake",
-      "sha256": "4de6ef1e87bf1d0f1e9d04f66fe5132279bcc3b603d6ac9c35975500fda8f055"
+      "sha256": "2588b6c91bc3a303c57daeaf380ef93544e72fbcb30504a708ed3d049bcc9187"
     },
     {
       "path": "src/formats/archive/amplus/xx_amplus_reader_adapters.c",
@@ -234,6 +234,10 @@
       "sha256": "9790eded4da9732e88e4a3e9a53e97fdcb7082572884f4992346e60f6cb03426"
     },
     {
+      "path": "src/formats/executable/nuitka_onefile/xx_nuitka_onefile_reader_adapters.c",
+      "sha256": "f420e3387f003367452a2664a6baae21089bfc64ace7af0a5f7cc02d28440e2a"
+    },
+    {
       "path": "src/formats/executable/omf/xx_omf_reader_adapters.c",
       "sha256": "5263c304cbbe5bf8772e10b64cdfd2ac79651a1caf2c58ef961b6a08f4d38942"
     },
@@ -244,6 +248,10 @@
     {
       "path": "src/formats/executable/plan9_exec/xx_plan9_exec_reader_adapters.c",
       "sha256": "51d41d7255fd5cc1c743978649e89824d52ed4a91e33a9dc05173e476ce155f0"
+    },
+    {
+      "path": "src/formats/executable/py2exe/xx_py2exe_reader_adapters.c",
+      "sha256": "bd1b6a13bef8599085748ab17954816b9c78a6611220f416263661bf02070c91"
     },
     {
       "path": "src/formats/executable/qnx_lmf/xx_qnx_lmf_reader_adapters.c",
@@ -1151,11 +1159,11 @@
     },
     {
       "path": "src/formats/xx_format_reader_only_decls.inc",
-      "sha256": "12e69e52d4c947386fc9ed32f4aa07064c06e65b6adde16f3a4299ecaf79c423"
+      "sha256": "a0253673cca7aa79eccf6441c7dcbac7bfd80ec2f97988351ebdf843c5ca426d"
     },
     {
       "path": "src/formats/xx_format_reader_only_rows.inc",
-      "sha256": "cde5a4cda28cff184dfa11bec27b625acf69c93d4e7c2698d8e150ccaabcd4de"
+      "sha256": "8fb2b2b1f2c9f33394ebd12f1a5cfbf62aa42c55514e926473d734233ab3e356"
     }
   ]
 }

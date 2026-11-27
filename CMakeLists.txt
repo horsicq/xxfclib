@@ -5048,6 +5048,8 @@ set(XXFCLIB_SOURCES
     src/formats/installer/pc_install_setup/xx_pc_install_setup.c
     src/formats/installer/pc_install_setup/xx_pc_install_setup_extractor.c
     src/formats/executable/pyinstaller_one_executable/xx_pyinstaller_one_executable.c
+    src/formats/executable/py2exe/xx_py2exe.c
+    src/formats/executable/nuitka_onefile/xx_nuitka_onefile.c
     src/formats/executable/pyinstaller_one_executable/xx_pyinstaller_one_executable_extractor.c
     src/formats/installer/qsetup_installation_suite/xx_qsetup_installation_suite.c
     src/formats/installer/qsetup_installation_suite/xx_qsetup_installation_suite_extractor.c

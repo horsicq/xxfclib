@@ -48,6 +48,8 @@ static const xxfc_reader_alias aliases[] = {
     {"compress", XX_FILE_TYPE_UNIX_COMPRESS},
     {"txt", XX_FILE_TYPE_TEXT},
     {"executable_overlay", XX_FILE_TYPE_EXECUTABLE_OVERLAY},
+    {"py2exe", XX_FILE_TYPE_PY2EXE},
+    {"nuitka_onefile", XX_FILE_TYPE_NUITKA_ONEFILE},
     {"scummvm_dxa", XX_FILE_TYPE_SCUMMVM_DXA},
     {"apple_diags", XX_FILE_TYPE_APPLE_DIAGS},
     {"eid", XX_FILE_TYPE_EID},

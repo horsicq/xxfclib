@@ -1556,6 +1556,8 @@ typedef enum xx_file_type_e {
     XX_FILE_TYPE_HXC_XML_DISK_LAYOUT = 2151,
     XX_FILE_TYPE_NUMBERED_SPLIT = 2603,
     XX_FILE_TYPE_PYC = 2604,
+    XX_FILE_TYPE_PY2EXE = 2605,
+    XX_FILE_TYPE_NUITKA_ONEFILE = 2606,
 #include "formats/xx_uniextract_enums.inc"
 #include "formats/xx_format_gap_enums.inc"
 #include "formats/audio/die_music/xx_die_music_enums.inc"

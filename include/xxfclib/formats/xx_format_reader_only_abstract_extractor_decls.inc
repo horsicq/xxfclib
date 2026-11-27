@@ -924,6 +924,11 @@ XXFC_API xx_file_type_t xx_nowcompress_file_type(xx_io_device *device, int64_t b
 XXFC_API int64_t xx_nowcompress_size(xx_io_device *, int64_t, bool);
 XXFC_API Abstractextractor *xx_nowcompress_get_abstract_extractor(void);
 XXFC_API Abstractdetector *xx_nowcompress_get_abstract_detector(void);
+XXFC_API bool xx_nuitka_onefile_fast_detect(xx_io_device *, int64_t, bool);
+XXFC_API xx_file_type_t xx_nuitka_onefile_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_nuitka_onefile_size(xx_io_device *, int64_t, bool);
+XXFC_API Abstractextractor *xx_nuitka_onefile_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_nuitka_onefile_get_abstract_detector(void);
 XXFC_API bool xx_ods2_fs_fast_detect(xx_io_device *, int64_t, bool);
 XXFC_API xx_file_type_t xx_ods2_fs_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_ods2_fs_size(xx_io_device *, int64_t, bool);
@@ -1084,6 +1089,11 @@ XXFC_API xx_file_type_t xx_ppmd_file_type(xx_io_device *device, int64_t base_add
 XXFC_API int64_t xx_ppmd_size(xx_io_device *, int64_t, bool);
 XXFC_API Abstractextractor *xx_ppmd_get_abstract_extractor(void);
 XXFC_API Abstractdetector *xx_ppmd_get_abstract_detector(void);
+XXFC_API bool xx_py2exe_fast_detect(xx_io_device *, int64_t, bool);
+XXFC_API xx_file_type_t xx_py2exe_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
+XXFC_API int64_t xx_py2exe_size(xx_io_device *, int64_t, bool);
+XXFC_API Abstractextractor *xx_py2exe_get_abstract_extractor(void);
+XXFC_API Abstractdetector *xx_py2exe_get_abstract_detector(void);
 XXFC_API bool xx_qlie_pack_fast_detect(xx_io_device *, int64_t, bool);
 XXFC_API xx_file_type_t xx_qlie_pack_file_type(xx_io_device *device, int64_t base_address, bool is_mapped);
 XXFC_API int64_t xx_qlie_pack_size(xx_io_device *, int64_t, bool);

@@ -1452,6 +1452,8 @@ const char *xx_format_file_type_to_string(xx_file_type_t type)
         case XX_FILE_TYPE_O_SETUP: return "O'Setup";
         case XX_FILE_TYPE_PC_INSTALL_SETUP: return "PC-Install";
         case XX_FILE_TYPE_PYINSTALLER_ONE_EXECUTABLE: return "PyInstaller CArchive";
+        case XX_FILE_TYPE_PY2EXE: return "py2exe";
+        case XX_FILE_TYPE_NUITKA_ONEFILE: return "Nuitka onefile";
         case XX_FILE_TYPE_QSETUP_INSTALLATION_SUITE: return "QSetup";
         case XX_FILE_TYPE_RTPATCH_SETUP_DATA: return "RTPatch Setup volume";
         case XX_FILE_TYPE_SETUP_FACTORY: return "Setup Factory";

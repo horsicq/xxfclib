@@ -1166,6 +1166,8 @@ xx_file_type_t xx_format_get_file_type_device(xx_io_device *dev)
 #include "xxfclib/formats/installer/palminput_360/xx_palminput_360.h"
 #include "xxfclib/formats/archive/sfx_ace/xx_sfx_ace.h"
 #include "xxfclib/formats/archive/sfx_zipcentral/xx_sfx_zipcentral.h"
+#include "xxfclib/formats/executable/py2exe/xx_py2exe.h"
+#include "xxfclib/formats/executable/nuitka_onefile/xx_nuitka_onefile.h"
 #include "xxfclib/formats/executable/sony_psx_exe/xx_sony_psx_exe.h"
 #include "xxfclib/formats/audio/sony_psf/xx_sony_psf.h"
 #include "xxfclib/formats/filesystem/xbox_xdvdfs/xx_xbox_xdvdfs.h"
