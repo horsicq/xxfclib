@@ -452,12 +452,15 @@ void xx_format_search_free(xx_format_search_state *state)
 /* One extractor per format, and the file types each answers to. Generated. */
 
 #if !XFU_FORMAT_SUPPORT_FULL
-#define XX_SUPPORTED_FORMAT(type, name, label)                          \
-    extern xx_format_extractor xx_##name##_extractor;                   \
+#define XX_SUPPORTED_READER(type, name, label)                          \
     extern Abstractextractor *xx_##name##_get_abstract_extractor(void); \
     extern Abstractdetector *xx_##name##_get_abstract_detector(void);
+#define XX_SUPPORTED_FORMAT(type, name, label)        \
+    extern xx_format_extractor xx_##name##_extractor; \
+    XX_SUPPORTED_READER(type, name, label)
 #include "xxfclib/formats/xx_format_support_rows.inc"
 #undef XX_SUPPORTED_FORMAT
+#undef XX_SUPPORTED_READER
 static const struct {
     xx_file_type_t type;
     xx_format_extractor *extractor;
@@ -465,8 +468,10 @@ static const struct {
     Abstractdetector *(*get_detector)(void);
 } g_xx_format_extractors[] = {
 #define XX_SUPPORTED_FORMAT(type, name, label) {XX_FILE_TYPE_##type, &xx_##name##_extractor, xx_##name##_get_abstract_extractor, xx_##name##_get_abstract_detector},
+#define XX_SUPPORTED_READER(type, name, label) {XX_FILE_TYPE_##type, NULL, xx_##name##_get_abstract_extractor, xx_##name##_get_abstract_detector},
 #include "xxfclib/formats/xx_format_support_rows.inc"
 #undef XX_SUPPORTED_FORMAT
+#undef XX_SUPPORTED_READER
 };
 #else
 #include "xx_format_extractor_list.inc"
@@ -483,14 +488,30 @@ xx_format_extractor *xx_format_extractor_get(xx_file_type_t type)
 
 size_t xx_format_extractor_count(void)
 {
+#if XFU_FORMAT_SUPPORT_FULL
     return sizeof(g_xx_format_extractors) / sizeof(g_xx_format_extractors[0]);
+#else
+    size_t count = 0;
+    for (size_t i = 0; i < xx_abstract_extractor_count(); ++i)
+        if (g_xx_format_extractors[i].extractor) ++count;
+    return count;
+#endif
 }
 
 xx_format_extractor *xx_format_extractor_at(size_t index, xx_file_type_t *type)
 {
+#if XFU_FORMAT_SUPPORT_FULL
     if (index >= xx_format_extractor_count()) return NULL;
     if (type) *type = g_xx_format_extractors[index].type;
     return g_xx_format_extractors[index].extractor;
+#else
+    for (size_t i = 0; i < xx_abstract_extractor_count(); ++i) {
+        if (!g_xx_format_extractors[i].extractor || index-- != 0) continue;
+        if (type) *type = g_xx_format_extractors[i].type;
+        return g_xx_format_extractors[i].extractor;
+    }
+    return NULL;
+#endif
 }
 
 /* Every registered legacy extractor has one abstract extractor and detector.
@@ -580,7 +601,7 @@ Abstractextractor *xx_abstract_extractor_get(xx_file_type_t type)
 Abstractextractor *xx_abstract_extractor_get(xx_file_type_t type)
 {
     size_t i;
-    for (i = 0; i < xx_format_extractor_count(); ++i)
+    for (i = 0; i < xx_abstract_extractor_count(); ++i)
         if (g_xx_format_extractors[i].type == type) return g_xx_format_extractors[i].get();
     return NULL;
 }
@@ -702,29 +723,33 @@ Abstractdetector *xx_abstract_detector_at(size_t index, xx_file_type_t *type)
 #else
 size_t xx_abstract_extractor_count(void)
 {
-    return xx_format_extractor_count();
+    return sizeof(g_xx_format_extractors) / sizeof(g_xx_format_extractors[0]);
 }
 
 Abstractextractor *xx_abstract_extractor_at(size_t index, xx_file_type_t *type)
 {
-    return xx_format_extractor_at(index, type) ? g_xx_format_extractors[index].get() : NULL;
+    if (index >= xx_abstract_extractor_count()) return NULL;
+    if (type) *type = g_xx_format_extractors[index].type;
+    return g_xx_format_extractors[index].get();
 }
 
 Abstractdetector *xx_abstract_detector_get(xx_file_type_t type)
 {
     size_t i;
-    for (i = 0; i < xx_format_extractor_count(); ++i)
+    for (i = 0; i < xx_abstract_extractor_count(); ++i)
         if (g_xx_format_extractors[i].type == type) return g_xx_format_extractors[i].get_detector();
     return NULL;
 }
 
 size_t xx_abstract_detector_count(void)
 {
-    return xx_format_extractor_count();
+    return xx_abstract_extractor_count();
 }
 
 Abstractdetector *xx_abstract_detector_at(size_t index, xx_file_type_t *type)
 {
-    return xx_format_extractor_at(index, type) ? g_xx_format_extractors[index].get_detector() : NULL;
+    if (index >= xx_abstract_detector_count()) return NULL;
+    if (type) *type = g_xx_format_extractors[index].type;
+    return g_xx_format_extractors[index].get_detector();
 }
 #endif

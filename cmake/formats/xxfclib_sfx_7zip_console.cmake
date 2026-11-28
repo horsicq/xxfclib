@@ -17,6 +17,7 @@ xxfclib_add_family_console(sfx_7zip
         src/algo/bzip2/xx_bzip2.c
         src/algo/bzip2/xx_bzip2_bwt.c
         src/algo/bzip2/xx_bzip2_dec.c
+        src/algo/bzip2/xx_bzip2_dec_mt.c
         src/algo/bzip2/xx_bzip2_enc.c
         src/algo/bzip2/xx_bzip2_huffman.c
         src/algo/bzip2/xx_bzip2_mtf.c
@@ -61,4 +62,7 @@ xxfclib_add_family_console(sfx_7zip
         src/formats/archive/7zip/xx_7zip_stream.c
         src/formats/archive/7zip/xx_7zip_writer.c
         src/formats/archive/sfx_7zip/xx_sfx_7zip.c
-        src/formats/archive/sfx_7zip/xx_sfx_7zip_extractor.c)
+        src/formats/archive/sfx_7zip/xx_sfx_7zip_extractor.c
+        src/threads/platforms/xx_threads_posix.c
+        src/threads/platforms/xx_threads_windows.c
+        src/threads/xx_threads.c)

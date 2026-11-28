@@ -365,6 +365,7 @@
     defined(XFU_SUPPORT_FORMAT_NSA) || \
     defined(XFU_SUPPORT_FORMAT_NSIS) || \
     defined(XFU_SUPPORT_FORMAT_NUFX) || \
+    defined(XFU_SUPPORT_FORMAT_NUITKA_ONEFILE) || \
     defined(XFU_SUPPORT_FORMAT_NVP) || \
     defined(XFU_SUPPORT_FORMAT_OBERON) || \
     defined(XFU_SUPPORT_FORMAT_OMAHA_META_INSTALLER) || \
@@ -413,6 +414,7 @@
     defined(XFU_SUPPORT_FORMAT_PSDC) || \
     defined(XFU_SUPPORT_FORMAT_PSN) || \
     defined(XFU_SUPPORT_FORMAT_PX) || \
+    defined(XFU_SUPPORT_FORMAT_PY2EXE) || \
     defined(XFU_SUPPORT_FORMAT_PYINSTALLER_ONE_EXECUTABLE) || \
     defined(XFU_SUPPORT_FORMAT_PYZ) || \
     defined(XFU_SUPPORT_FORMAT_QDA) || \

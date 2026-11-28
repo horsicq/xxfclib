@@ -1053,7 +1053,9 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/formats/executable/molebox
     src/formats/executable/ne
     src/formats/executable/node_pkg
+    src/formats/executable/nuitka_onefile
     src/formats/executable/pe
+    src/formats/executable/py2exe
     src/formats/executable/pyinstaller_one_executable
     src/formats/executable/pyz
     src/formats/executable/resourcefork
@@ -1373,6 +1375,8 @@ set(XXFCLIB_FAMILY_DIRECTORIES
     src/fs/platforms
     src/sort/platforms
     src/sort
+    src/threads/platforms
+    src/threads
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_algo_adler32_platforms
     src/algo/adler32/platforms/xx_adler32_arm_dotprod.c
@@ -1455,6 +1459,7 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_algo_bzip2
     src/algo/bzip2/xx_bzip2.c
     src/algo/bzip2/xx_bzip2_bwt.c
     src/algo/bzip2/xx_bzip2_dec.c
+    src/algo/bzip2/xx_bzip2_dec_mt.c
     src/algo/bzip2/xx_bzip2_enc.c
     src/algo/bzip2/xx_bzip2_huffman.c
     src/algo/bzip2/xx_bzip2_mtf.c
@@ -3449,6 +3454,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_node_pkg
     src/formats/executable/node_pkg/xx_node_pkg.c
     src/formats/executable/node_pkg/xx_node_pkg_extractor.c
 )
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_nuitka_onefile
+    src/formats/executable/nuitka_onefile/xx_nuitka_onefile.c
+    src/formats/executable/nuitka_onefile/xx_nuitka_onefile_reader_adapters.c
+)
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_pe
     src/formats/executable/pe/xx_pe.c
     src/formats/executable/pe/xx_pe_exception.c
@@ -3459,6 +3468,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_pe
     src/formats/executable/pe/xx_pe_unwind_validate.c
     src/formats/executable/pe/xx_pe_yx.c
     src/formats/executable/pe/xx_pe_yx_authenticode.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_py2exe
+    src/formats/executable/py2exe/xx_py2exe.c
+    src/formats/executable/py2exe/xx_py2exe_reader_adapters.c
 )
 set(XXFCLIB_FAMILY_DIRECTORY_src_formats_executable_pyinstaller_one_executable
     src/formats/executable/pyinstaller_one_executable/xx_pyinstaller_one_executable.c
@@ -4734,4 +4747,10 @@ set(XXFCLIB_FAMILY_DIRECTORY_src_sort_platforms
 set(XXFCLIB_FAMILY_DIRECTORY_src_sort
     src/sort/xx_sort.c
     src/sort/xx_sort_list.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_threads_platforms
+    src/threads/platforms/xx_threads_posix.c
+)
+set(XXFCLIB_FAMILY_DIRECTORY_src_threads
+    src/threads/xx_threads.c
 )
